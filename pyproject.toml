@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "firebench"
+version = "0.0.0.dev1"
+authors = [
+    {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
+]
+maintainers = [
+    {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
+]
+description = "FireBench is a Python library designed for the systematic benchmarking and inter-comparison of fire models."
+dependencies = [
+    "numpy < 2.0",
+    "pint < 2.0",
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+    # How mature is this project? Common values are
+    #   3 - Alpha
+    #   4 - Beta
+    #   5 - Production/Stable
+    "Development Status :: 3 - Alpha",
+
+    # Specify the Python versions you support here.
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+
+    # Pick your license as you wish (see also "license" above)
+    "License :: OSI Approved :: MIT License",
+]
