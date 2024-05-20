@@ -24,3 +24,7 @@ We encourage you to use the [GitHub Discussions](https://github.com/wirc-sjsu/fi
 - **General**: For any other discussions related to FireBench.
 
 Feel free to start a new discussion or join existing ones to engage with the community!
+
+## Contributing
+
+We welcome contributions to FireBench! Please see our [contribution guidelines](CONTRIBUTE.md) for more information on how to contribute.
