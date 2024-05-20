@@ -11,3 +11,16 @@ FireBench aims to address this gap by providing a framework to assess fire model
 - **Inter-Compatibility**: Integration capabilities with other models.
 
 FireBench offers a dual approach for evaluation: intercomparison without extensive observational data and benchmarking against a validation dataset. This framework aims to enhance fire modeling for both scientific research and operational applications, with results archived in a dedicated database.
+
+## Community Discussions
+
+We encourage you to use the [GitHub Discussions](https://github.com/wirc-sjsu/firebench/discussions) tab for questions, help requests, and general discussions about the project. This helps keep our issue tracker focused on bugs and feature requests.
+
+### How to Use Discussions
+
+- **Q&A**: If you have a question about using FireBench, please check the Q&A category.
+- **Ideas**: Share your ideas for new features or improvements in the Ideas category.
+- **Show and Tell**: Showcase your projects and workflows using FireBench.
+- **General**: For any other discussions related to FireBench.
+
+Feel free to start a new discussion or join existing ones to engage with the community!
