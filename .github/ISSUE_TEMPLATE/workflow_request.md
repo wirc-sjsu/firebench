@@ -18,14 +18,3 @@ assignees: ''
 
 ## Additional Context
 <!-- Add any other context or screenshots about the workflow request here. -->
-
-## Checklist
-
-- [ ] Ensure workflow is well-documented
-- [ ] Verify workflow functionality and consistency
-- [ ] Add workflow to the `workflow` directory in the repository
-- [ ] Unit and functional testing
-- [ ] Documentation
-- [ ] Add to the changelog
-- [ ] Code review by at least one other contributor (if applicable)
-- [ ] Ensure adherence to workflow standards and guidelines

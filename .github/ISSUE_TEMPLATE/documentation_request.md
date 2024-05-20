@@ -24,9 +24,3 @@ Sections of Documentation:
 - Examples
 - Other (please specify)
 -->
-
-## Checklist
-
-- [ ] Add to changelog
-- [ ] Ensure adherence to documentation guidelines
-- [ ] Documentation added in the correct section

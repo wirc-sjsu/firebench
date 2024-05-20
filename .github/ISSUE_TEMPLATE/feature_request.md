@@ -18,17 +18,3 @@ assignees: ''
 
 ## Additional Context
 <!-- Add any other context or screenshots about the feature request here.-->
-
-## Checklist
-
-- [ ] Add milestone version
-- [ ] Implementation of the requested feature
-- [ ] Unit and functional testing
-- [ ] Documentation
-- [ ] Add to the changelog
-- [ ] Code review by at least one other contributor
-- [ ] Ensure backward compatibility
-- [ ] Update relevant examples or tutorials
-- [ ] Check for performance implications
-- [ ] Ensure adherence to coding standards and guidelines
-- [ ] Update dependencies if necessary

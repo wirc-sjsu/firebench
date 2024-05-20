@@ -24,15 +24,3 @@ assignees: ''
 
 ## Additional Context
 <!-- Add any other context or screenshots about the data request here. -->
-
-## Checklist
-
-- [ ] Ensure data is well-documented
-- [ ] Verify data quality and consistency
-- [ ] Add data to the appropriate database
-- [ ] Update relevant processing/post-processing scripts
-- [ ] Unit and functional testing
-- [ ] Documentation
-- [ ] Add to the changelog
-- [ ] Code review by at least one other contributor (if applicable)
-- [ ] Ensure adherence to data handling standards and guidelines
