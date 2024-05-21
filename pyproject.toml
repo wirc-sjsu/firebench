@@ -40,5 +40,5 @@ dev = [
     "pytest",
     "pytest-cov",
     "bandit",
-    "pygithub",
+    "pylint",
 ]
