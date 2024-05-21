@@ -7,6 +7,8 @@ on:
 jobs:
   pylint:
     runs-on: ubuntu-latest
+    permissions:
+        contents: write  # Grant write permissions for the job
 
     strategy:
         matrix:
@@ -26,27 +28,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install pylint
 
-      - name: Run pylint
-        id: pylint
-        run: pylint src/firebench --rcfile=.pylintrc > pylint_report.txt || true
-
-      - name: Get pylint score
-        id: score
-        run: |
-          score=$(grep "Your code has been rated at" pylint_report.txt | awk '{print $7}')
-          echo "Pylint score: $score"
-          echo "::set-output name=score::$score"
-
-      - name: Create status badge
-        uses: emibcn/badge-action@v2.0.2
+      - name: Run Pylint
+        uses: Silleellie/pylint-github-action@v2
         with:
-          label: "Pylint Score"
-          status: ${{ steps.score.outputs.score }}
-          color: ${{ steps.score.outputs.score >= 9 && 'green' || steps.score.outputs.score >= 7 && 'yellow' || 'red' }}
-          path: '.github/pylint.svg'
-      
-      - name: Commit badge
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Update Pylint badge"
-          file_pattern: .github/pylint.svg
+          path: src/firebench
+          rcfile: .pylintrc
+          github_token: ${{ secrets.GITHUB_TOKEN }}
