@@ -153,9 +153,5 @@ class Rothermel_SFIRE:
             ros = max(0.03333, 1.2974 * spdms**1.41)  # Spread rate, m/s
             phiw, phis = np.nan, np.nan
 
-        # Output options
-        if output_opt == 1:
-            return [min(ros, 6.0), r_0 * 0.00508, phiw, phis]
-
         # Default
         return min(ros, 6.0)
