@@ -45,4 +45,4 @@ jobs:
           label: "Pylint Score"
           status: ${{ steps.score.outputs.score }}
           color: ${{ steps.score.outputs.score >= 9 && 'green' || steps.score.outputs.score >= 7 && 'yellow' || 'red' }}
-          path: '.github/badges/pylint.svg'
+          path: '.github/pylint.svg'
