@@ -35,3 +35,10 @@ classifiers = [
     # Pick your license as you wish (see also "license" above)
     "License :: OSI Approved :: MIT License",
 ]
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "bandit",
+    "pygithub",
+]
