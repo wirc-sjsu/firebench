@@ -1,5 +1,8 @@
 # FireBench
 
+[![CI](https://github.com/wirc-sjsu/firebench/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/ci.yml)
+[![pages-build-deployment](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment)
+
 **FireBench** is a Python library designed for the systematic benchmarking and inter-comparison of fire models.
 Recent advancements in fire modeling have introduced complex and varied models, but there is a lack of systematic evaluation regarding their accuracy, efficiency, sensitivity, validity domain, and inter-compatibility.
 FireBench aims to address this gap by providing a framework to assess fire models on the following criteria:
