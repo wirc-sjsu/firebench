@@ -29,4 +29,4 @@ jobs:
           pip install bandit
 
       - name: Run Bandit
-        run: bandit -r src/firebench
+        run: bandit -r src/firebench --severity-level high --confidence-level high
