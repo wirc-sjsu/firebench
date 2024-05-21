@@ -2,9 +2,7 @@ name: Linting with Pylint
 
 on:
   push:
-    branches: [ main, dev-actions ]
-  pull_request:
-    branches: [ main ]
+    branches: [ dev-actions ]
 
 jobs:
   pylint:
@@ -46,3 +44,9 @@ jobs:
           status: ${{ steps.score.outputs.score }}
           color: ${{ steps.score.outputs.score >= 9 && 'green' || steps.score.outputs.score >= 7 && 'yellow' || 'red' }}
           path: '.github/pylint.svg'
+      
+      - name: Commit badge
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update Pylint badge"
+          file_pattern: .github/pylint.svg
