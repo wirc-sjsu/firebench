@@ -1,0 +1,49 @@
+name: Linting with Pylint
+
+on:
+  push:
+    branches: [ main, dev-actions ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+
+    strategy:
+        matrix:
+          python-version: ['3.10']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint
+
+      - name: Run pylint
+        id: pylint
+        run: pylint src/firebench --rcfile=.pylintrc > pylint_report.txt || true
+
+      - name: Get pylint score
+        id: score
+        run: |
+          score=$(grep "Your code has been rated at" pylint_report.txt | awk '{print $7}')
+          echo "::set-output name=score::$score"
+
+      - name: Create status badge
+        uses: calebtote/status-badge-action@v1.1.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          label: "Pylint Score"
+          value: "${{ steps.score.outputs.score }}"
+          color: ${{ steps.score.outputs.score >= 9 && 'green' || steps.score.outputs.score >= 7 && 'yellow' || 'red' }}
+          status_file: pylint-status.json
+          repository: wirc-sjsu/firebench
