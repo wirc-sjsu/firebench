@@ -2,57 +2,55 @@ import numpy as np
 
 from ..units import ureg
 
-__METADATA = {
-    "windrf": {
-        "description": "wind reduction factor",
-        "units": ureg.dimensionless,
-        "range": (0, 1),
-    },
-    "fgi": {
-        "description": "dry fuel load",
-        "units": ureg.pound / ureg.foot**2,
-        "range": (0, np.inf),
-    },
-    "fueldepthm": {
-        "description": "fuel height",
-        "units": ureg.meter,
-        "range": (0, np.inf),
-    },
-    "fueldens": {
-        "description": "fuel density",
-        "units": ureg.pound / ureg.foot**3,
-        "range": (0, np.inf),
-    },
-    "savr": {
-        "description": "surface area to volume ratio",
-        "units": 1 / ureg.foot,
-        "range": (0, np.inf),
-    },
-    "fuelmce": {
-        "description": "wind reduction factor",
-        "units": ureg.percent,
-        "range": (0, np.inf),
-    },
-    "st": {
-        "description": "total mineral content",
-        "units": ureg.dimensionless,
-        "range": (0, 1),
-    },
-    "se": {
-        "description": "effective mineral content",
-        "units": ureg.dimensionless,
-        "range": (0, 1),
-    },
-    "ichap": {
-        "description": "Chaparral flag",
-        "units": ureg.dimensionless,
-        "range": (0, 1),
-    },
-}
-
 
 class Rothermel_SFIRE:
-    metadata = __METADATA
+    metadata = {
+        "windrf": {
+            "description": "wind reduction factor",
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+        },
+        "fgi": {
+            "description": "dry fuel load",
+            "units": ureg.pound / ureg.foot**2,
+            "range": (0, np.inf),
+        },
+        "fueldepthm": {
+            "description": "fuel height",
+            "units": ureg.meter,
+            "range": (0, np.inf),
+        },
+        "fueldens": {
+            "description": "fuel density",
+            "units": ureg.pound / ureg.foot**3,
+            "range": (0, np.inf),
+        },
+        "savr": {
+            "description": "surface area to volume ratio",
+            "units": 1 / ureg.foot,
+            "range": (0, np.inf),
+        },
+        "fuelmce": {
+            "description": "wind reduction factor",
+            "units": ureg.percent,
+            "range": (0, np.inf),
+        },
+        "st": {
+            "description": "total mineral content",
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+        },
+        "se": {
+            "description": "effective mineral content",
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+        },
+        "ichap": {
+            "description": "Chaparral flag",
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+        },
+    }
 
     @staticmethod
     def compute_ros(
