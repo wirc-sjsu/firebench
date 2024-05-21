@@ -43,7 +43,6 @@ jobs:
         uses: emibcn/badge-action@v2.0.2
         with:
           label: "Pylint Score"
-          message: ${{ steps.score.outputs.score }}
+          status: ${{ steps.score.outputs.score }}
           color: ${{ steps.score.outputs.score >= 9 && 'green' || steps.score.outputs.score >= 7 && 'yellow' || 'red' }}
-          path: "pylint-status.json"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          path: '.github/badges/pylint.svg'
