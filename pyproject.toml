@@ -14,7 +14,7 @@ maintainers = [
 description = "FireBench is a Python library designed for the systematic benchmarking and inter-comparison of fire models."
 dependencies = [
     "numpy < 2.0",
-    "pint < 2.0",
+    "pint < 1.0",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
