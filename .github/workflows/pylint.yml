@@ -36,14 +36,14 @@ jobs:
         id: score
         run: |
           score=$(grep "Your code has been rated at" pylint_report.txt | awk '{print $7}')
+          echo "Pylint score: $score"
           echo "::set-output name=score::$score"
 
       - name: Create status badge
-        uses: calebtote/status-badge-action@v1.1.0
+        uses: emibcn/badge-action@v2.0.2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           label: "Pylint Score"
-          value: "${{ steps.score.outputs.score }}"
+          message: ${{ steps.score.outputs.score }}
           color: ${{ steps.score.outputs.score >= 9 && 'green' || steps.score.outputs.score >= 7 && 'yellow' || 'red' }}
-          status_file: pylint-status.json
-          repository: wirc-sjsu/firebench
+          path: "pylint-status.json"
+          token: ${{ secrets.GITHUB_TOKEN }}
