@@ -1,4 +1,4 @@
-name: Check linting with Pylint
+name: Pylint score up-to-date
 
 on:
   push:
