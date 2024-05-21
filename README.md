@@ -4,8 +4,8 @@
 [![pages-build-deployment](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment)
 [![codecov](https://codecov.io/github/wirc-sjsu/firebench/graph/badge.svg?token=8F44OX12EW)](https://codecov.io/github/wirc-sjsu/firebench)
 [![Security Analysis](https://github.com/wirc-sjsu/firebench/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/security.yml)
+![Pylint Score](https://img.shields.io/badge/Pylint-10.00-brightgreen.svg)
 ![GitHub License](https://img.shields.io/github/license/wirc-sjsu/firebench)
-![pylint]()
 
 **FireBench** is a Python library designed for the systematic benchmarking and inter-comparison of fire models.
 Recent advancements in fire modeling have introduced complex and varied models, but there is a lack of systematic evaluation regarding their accuracy, efficiency, sensitivity, validity domain, and inter-compatibility.
