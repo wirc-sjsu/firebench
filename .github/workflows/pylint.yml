@@ -1,18 +1,20 @@
-name: Linting with Pylint
+name: Check linting with Pylint
 
 on:
   push:
-    branches: [ dev-actions ]
+    branches: [ main, dev-actions ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   pylint:
     runs-on: ubuntu-latest
     permissions:
-        contents: write  # Grant write permissions for the job
+      contents: write
 
     strategy:
-        matrix:
-          python-version: ['3.10']
+      matrix:
+        python-version: ['3.10']
 
     steps:
       - name: Checkout code
@@ -28,9 +30,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install pylint
 
-      - name: Run Pylint
-        uses: Silleellie/pylint-github-action@v2
-        with:
-          path: src/firebench
-          rcfile: .pylintrc
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run pylint and update badge
+        run: python .github/actions/run_pylint.py
+
+      - name: Run pylint and check badge
+        run: python .github/actions/run_pylint.py --check
