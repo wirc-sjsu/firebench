@@ -1,18 +1,18 @@
-name: Security Analysis
+name: Code Formatting
 
 on:
   push:
-    branches: [ main, develop, release ]
+    branches: [ release ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  bandit:
+  black:
     runs-on: ubuntu-latest
 
     strategy:
-        matrix:
-          python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
     steps:
       - name: Checkout code
@@ -23,10 +23,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Bandit
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install bandit
+          pip install black
 
-      - name: Run Bandit
-        run: bandit -r src/firebench --severity-level high --confidence-level high
+      - name: Run black check
+        run: black --line-length 108 --check src/firebench

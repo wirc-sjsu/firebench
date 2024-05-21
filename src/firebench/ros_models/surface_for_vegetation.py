@@ -14,14 +14,15 @@ class Rothermel_SFIRE:
     ----------
     metadata : dict
         A dictionary containing metadata for various fuel properties such as wind reduction factor, dry fuel load, fuel height,
-        fuel density, surface area to volume ratio, fuel moisture content, total mineral content, effective mineral content, 
+        fuel density, surface area to volume ratio, fuel moisture content, total mineral content, effective mineral content,
         and Chaparral flag. Each entry in the dictionary provides a description, units, and acceptable range for the property.
 
     Methods
     -------
     compute_ros(fueldata, fuelclass, wind, slope, fmc, **opt) -> float
         Compute the rate of spread of fire using Rothermel's model.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
+
     metadata = {
         "windrf": {
             "description": "wind reduction factor",
@@ -106,7 +107,7 @@ class Rothermel_SFIRE:
         -------
         float
             Rate of spread [m/s]
-        """ # pylint: disable=line-too-long
+        """  # pylint: disable=line-too-long
         fuelclass -= 1  # Convert to 0-based index
 
         # Optional parameters
