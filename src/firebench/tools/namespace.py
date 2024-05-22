@@ -1,6 +1,15 @@
 from enum import Enum
 
-class StandardVariableNames(Enum):
+
+class StandardVariableNames(Enum):  # pragma: no cover
+    """
+    Enum class for standard variable names used in the firebench project.
+
+    This enumeration defines standard names for various physical and model variables
+    related to fire modeling. These names are used to ensure consistency and
+    clarity across the codebase and related data files.
+    """
+
     CANOPY_DENSITY_BULK = "canopy_density_bulk"
     CANOPY_HEIGHT_BOTTOM = "canopy_height_bottom"
     CANOPY_HEIGHT_TOP = "canopy_height_top"
@@ -29,6 +38,7 @@ class StandardVariableNames(Enum):
     FUEL_THERMAL_CONDUCTIVITY = "fuel_thermal_conductivity"
     FUEL_TREE_CLASS = "fuel_tree_class"
     FUEL_WIND_HEIGHT = "fuel_wind_height"
+    RATE_OF_SPREAD = "rate_of_spread"
     SLOPE_ANGLE = "slope_angle"
     WIND = "wind"
     WIND_REDUCTION_FACTOR = "wind_reduction_factor"
