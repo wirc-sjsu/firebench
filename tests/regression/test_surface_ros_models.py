@@ -1,7 +1,7 @@
-import pytest
-import numpy as np
-
 import firebench.ros_models as rm
+import numpy as np
+import pytest
+
 
 # test dataset
 @pytest.fixture

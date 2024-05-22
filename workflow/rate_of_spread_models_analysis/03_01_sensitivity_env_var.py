@@ -14,3 +14,22 @@ of fire models to enhance their scientific and operational applications.
 """
 import numpy as np
 import firebench.ros_models as rm
+import firebench.tools as fbt
+from firebench import ureg
+
+#######################################################################################
+#                             STEP 1: DESIGN OF EXPERIMENT 
+#######################################################################################
+
+# Import fuel data
+
+
+# Create wind [m s-1], slope [deg] and moisture [%] data
+## Create the dict of variable name, units and range 
+input_vars_info = {
+    "wind": (ureg.meter / ureg.second, [-20, 20]),
+    "slope": (ureg.degree, [-45, 45]),
+    "moisture": (ureg.percent, [1, 50]),
+}
+
+fbt.sobol_seq(5, input_vars_info)
