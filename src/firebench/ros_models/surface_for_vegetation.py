@@ -1,7 +1,7 @@
 import numpy as np
 
-from ..units import ureg
-
+from ..tools.units import ureg
+from ..tools.namespace import StandardVariableNames as svn
 
 class Rothermel_SFIRE:
     """
@@ -25,49 +25,69 @@ class Rothermel_SFIRE:
 
     metadata = {
         "windrf": {
-            "description": "wind reduction factor",
+            "std_name": svn.WIND_REDUCTION_FACTOR,
             "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "fgi": {
-            "description": "dry fuel load",
+            "std_name": svn.FUEL_LOAD_DRY_TOTAL,
             "units": ureg.pound / ureg.foot**2,
             "range": (0, np.inf),
         },
         "fueldepthm": {
-            "description": "fuel height",
+            "std_name": svn.FUEL_HEIGHT,
             "units": ureg.meter,
             "range": (0, np.inf),
         },
         "fueldens": {
-            "description": "fuel density",
+            "std_name": svn.FUEL_DENSITY,
             "units": ureg.pound / ureg.foot**3,
             "range": (0, np.inf),
         },
         "savr": {
-            "description": "surface area to volume ratio",
+            "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
             "units": 1 / ureg.foot,
             "range": (0, np.inf),
         },
         "fuelmce": {
-            "description": "wind reduction factor",
+            "std_name": svn.FUEL_MOISTURE_EXTINCTION,
             "units": ureg.percent,
             "range": (0, np.inf),
         },
         "st": {
-            "description": "total mineral content",
+            "std_name": svn.FUEL_MINERAL_CONTENT_TOTAL,
             "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "se": {
-            "description": "effective mineral content",
+            "std_name": svn.FUEL_MINERAL_CONTENT_EFFECTIVE,
             "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "ichap": {
-            "description": "Chaparral flag",
+            "std_name": svn.FUEL_CHAPARRAL_FLAG,
             "units": ureg.dimensionless,
             "range": (0, 1),
+        },
+        "wind": {
+            "std_name": svn.WIND,
+            "units": ureg.meter / ureg.second,
+            "range": (-np.inf, np.inf),
+        },
+        "slope": {
+            "std_name": svn.SLOPE_ANGLE,
+            "units": ureg.degree,
+            "range": (-90, 90),
+        },
+        "fmc": {
+            "std_name": svn.FUEL_MOISTURE_CONTENT,
+            "units": ureg.percent,
+            "range": (0, 200),
+        },
+        "output_rate_of_spread": {
+            "std_name": svn.RATE_OF_SPREAD,
+            "units": ureg.meter / ureg.second,
+            "range": (0, np.inf),
         },
     }
 
