@@ -25,6 +25,8 @@ from firebench import ureg
 
 
 # Create wind [m s-1], slope [deg] and moisture [%] data
+nb_sobol_pts = 4 # better if 2^N
+
 ## Create the dict of variable name, units and range 
 input_vars_info = {
     "wind": (ureg.meter / ureg.second, [-20, 20]),
@@ -32,4 +34,6 @@ input_vars_info = {
     "moisture": (ureg.percent, [1, 50]),
 }
 
-fbt.sobol_seq(5, input_vars_info)
+input = fbt.sobol_seq(nb_sobol_pts, input_vars_info)
+
+print(input)
