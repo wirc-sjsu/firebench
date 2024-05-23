@@ -3,3 +3,6 @@ from .sensitivity_doe import (
 )
 from .namespace import StandardVariableNames
 from .units import ureg
+from .read_data import (
+    read_fuel_data_file,
+)

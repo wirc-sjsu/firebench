@@ -3,6 +3,7 @@ import numpy as np
 from ..tools.units import ureg
 from ..tools.namespace import StandardVariableNames as svn
 
+
 class Rothermel_SFIRE:
     """
     A class to represent the Rothermel's model for fire spread rate calculation used in SFIRE code.
@@ -25,7 +26,7 @@ class Rothermel_SFIRE:
 
     metadata = {
         "windrf": {
-            "std_name": svn.WIND_REDUCTION_FACTOR,
+            "std_name": svn.FUEL_WIND_REDUCTION_FACTOR,
             "units": ureg.dimensionless,
             "range": (0, 1),
         },
