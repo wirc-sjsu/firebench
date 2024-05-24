@@ -1,7 +1,7 @@
 import firebench.ros_models as rm
 import numpy as np
 import pytest
-
+from firebench import svn
 
 # test dataset
 @pytest.fixture
@@ -36,6 +36,35 @@ def dummy_fuel_data():
     ],
 )
 def test_compute_ros_regression(dummy_fuel_data, fuelclass, wind, slope, fmc, expected_ros):
-    ros = rm.Rothermel_SFIRE.compute_ros(dummy_fuel_data, fuelclass, wind, slope, fmc)
+    ros = rm.Rothermel_SFIRE.rothermel(dummy_fuel_data, fuelclass, wind, slope, fmc)
 
     assert np.isclose(ros, expected_ros)
+
+
+@pytest.mark.parametrize(
+    "input_dict, expected_ros",
+    [
+        (
+            {
+                svn.FUEL_WIND_REDUCTION_FACTOR: [0.3],
+                svn.FUEL_LOAD_DRY_TOTAL: [0.5],
+                svn.FUEL_HEIGHT: [1.0],
+                svn.FUEL_DENSITY: [32.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: [1500.0],
+                svn.FUEL_MOISTURE_EXTINCTION: [20.0],
+                svn.FUEL_MINERAL_CONTENT_TOTAL: [0.0555],
+                svn.FUEL_MINERAL_CONTENT_EFFECTIVE: [0.01],
+                svn.FUEL_CHAPARRAL_FLAG: [0],
+                svn.FUEL_CLASS: 1,
+                svn.WIND: 5.0,
+                svn.SLOPE_ANGLE: 0.0,
+                svn.FUEL_MOISTURE_CONTENT: 10.0,
+            },
+            0.7176587116405758,  # Expected ROS value (adjust this to the expected value)
+        ),
+        # Add more test cases as needed
+    ],
+)
+def test_compute_ros(input_dict, expected_ros):
+    ros = rm.Rothermel_SFIRE.compute_ros(input_dict)
+    assert pytest.approx(ros, rel=1e-2) == expected_ros

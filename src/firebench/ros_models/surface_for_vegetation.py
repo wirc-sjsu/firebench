@@ -32,7 +32,7 @@ class Rothermel_SFIRE:
         },
         "fgi": {
             "std_name": svn.FUEL_LOAD_DRY_TOTAL,
-            "units": ureg.pound / ureg.foot**2,
+            "units": ureg.kilogram / ureg.meter**2,
             "range": (0, np.inf),
         },
         "fueldepthm": {
@@ -88,12 +88,12 @@ class Rothermel_SFIRE:
         "output_rate_of_spread": {
             "std_name": svn.RATE_OF_SPREAD,
             "units": ureg.meter / ureg.second,
-            "range": (0, np.inf),
+            "item": (0, np.inf),
         },
     }
 
     @staticmethod
-    def compute_ros(
+    def rothermel(
         fueldata: dict[str, list[float]],
         fuelclass: int,
         wind: float,
@@ -195,3 +195,52 @@ class Rothermel_SFIRE:
 
         # Default
         return min(ros, 6.0)
+
+    @staticmethod
+    def compute_ros(
+        input_dict: dict[str, list[float]],
+        **opt,
+    ) -> float:
+        """
+        Compute the rate of spread of fire using the Rothermel's model.
+
+        This is a wrapper function that prepares the fuel data dictionary and calls the `rothermel` method.
+
+        Parameters
+        ----------
+        input_dict : dict[str, list[float]]
+            Dictionary containing the input data for various fuel properties.
+
+        Optional Parameters
+        -------------------
+        **opt : dict
+            Optional parameters for the `rothermel` method.
+
+        Returns
+        -------
+        float
+            The computed rate of spread of fire [m/s].
+        """
+        fuel_dict_list_vars = [
+            "windrf",
+            "fgi",
+            "fueldepthm",
+            "fueldens",
+            "savr",
+            "fuelmce",
+            "st",
+            "se",
+            "ichap",
+        ]
+        fuel_dict = {}
+        for var in fuel_dict_list_vars:
+            fuel_dict[var] = input_dict[Rothermel_SFIRE.metadata[var]["std_name"]]
+
+        return Rothermel_SFIRE.rothermel(
+            fueldata=fuel_dict,
+            fuelclass=input_dict[svn.FUEL_CLASS],
+            wind=input_dict[svn.WIND],
+            slope=input_dict[svn.SLOPE_ANGLE],
+            fmc=input_dict[svn.FUEL_MOISTURE_CONTENT],
+            **opt,
+        )
