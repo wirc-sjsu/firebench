@@ -244,6 +244,30 @@ def test_check_input_completeness():
     empty_metadata_dict = {}
     ft.check_input_completeness(input_data, empty_metadata_dict)
 
+    # Test case with 'output_' keys in metadata
+    input_data_with_output = {"wind_speed": 5, "temperature": 25, "humidity": 60}
+    metadata_with_output = {
+        "wind": {"std_name": "wind_speed"},
+        "temp": {"std_name": "temperature"},
+        "hum": {"std_name": "humidity"},
+        "output_wind_speed": {"std_name": "output_wind_speed"},  # Should be ignored
+    }
+    ft.check_input_completeness(input_data_with_output, metadata_with_output)
+
+    # Test case with missing data but with 'output_' key in metadata
+    incomplete_input_data_with_output = {"wind_speed": 5, "temperature": 25}
+    metadata_with_output_incomplete = {
+        "wind": {"std_name": "wind_speed"},
+        "temp": {"std_name": "temperature"},
+        "output_wind_speed": {"std_name": "output_wind_speed"},  # Should be ignored
+    }
+    # This should not raise KeyError since 'humidity' is not in metadata_with_output_incomplete
+    ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output_incomplete)
+
+    # Ensure the function raises KeyError for the incomplete input that doesn't have "humidity"
+    with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
+        ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output)
+
 # Run the tests
 if __name__ == "__main__":
     pytest.main()

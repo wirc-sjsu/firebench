@@ -15,7 +15,9 @@ def check_input_completeness(input_data: dict, metadata_dict: dict):
     KeyError
         If any standard name specified in the metadata is missing in the input data.
     """
-    for item in metadata_dict.values():
+    for key, item in metadata_dict.items():
+        if key.startswith("output_"):
+            continue
         std_name_metadata = item["std_name"]
         if std_name_metadata not in input_data:
             raise KeyError(f"The data '{std_name_metadata}' is missing in the input dict")
