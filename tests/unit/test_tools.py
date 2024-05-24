@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 from firebench import ureg
 from pint import Quantity, Unit
+import os.path as osp
 
 
 def test_sobol_seq_basic():
@@ -124,16 +125,27 @@ def test_merge_dictionaries_key_conflict(dict1, dict2, conflicting_keys):
         ft.merge_dictionaries(dict1, dict2)
     assert str(conflicting_keys) in str(excinfo.value)
 
+
 @pytest.mark.parametrize(
     "filename, suffix, expected",
     [
-        ("file", "txt", "file.txt"),                  # Case: No suffix, should add
-        ("file.txt", "txt", "file.txt"),              # Case: Already has suffix, should not change
-        ("file", "csv", "file.csv"),                  # Case: No suffix, different suffix
-        ("file.csv", "txt", "file.csv.txt"),          # Case: Different existing suffix
-        ("", "txt", ".txt"),                          # Case: Empty filename
+        ("file", "txt", "file.txt"),  # Case: No suffix, should add
+        ("file.txt", "txt", "file.txt"),  # Case: Already has suffix, should not change
+        ("file", "csv", "file.csv"),  # Case: No suffix, different suffix
+        ("file.csv", "txt", "file.csv.txt"),  # Case: Different existing suffix
+        ("", "txt", ".txt"),  # Case: Empty filename
         ("file.name.with.dots", "txt", "file.name.with.dots.txt"),  # Case: Filename with dots
-    ]
+    ],
 )
 def test_add_suffix(filename, suffix, expected):
     assert ft.read_data.__add_suffix(filename, suffix) == expected
+
+
+def test_get_json_data_file_default_path():
+    # Test with a real file in the default package path
+    fuel_model_name = "Anderson13"
+    expected_path = osp.abspath(
+        osp.normpath(osp.join(osp.dirname(__file__), "..", "..", "data", "fuel_models", "Anderson13.json"))
+    )
+    func_path = osp.abspath(osp.normpath(ft.read_data.__get_json_data_file(fuel_model_name)))
+    assert func_path == expected_path
