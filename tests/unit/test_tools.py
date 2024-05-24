@@ -1,9 +1,12 @@
+import json
+import os
+import os.path as osp
+
 import firebench.tools as ft
 import numpy as np
 import pytest
-from firebench import ureg
+from firebench import ureg, svn
 from pint import Quantity, Unit
-import os.path as osp
 
 
 def test_sobol_seq_basic():
@@ -172,3 +175,47 @@ def test_get_json_data_file_not_found():
     )
     with pytest.raises(FileNotFoundError):
         ft.read_data.__get_json_data_file(fuel_model_name, local_path)
+
+
+def test_read_fuel_data_file():
+    # Test with a real file in the default package path
+    fuel_model_name = "Anderson13"
+
+    # Assuming these files exist in the package
+    package_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "data", "fuel_models")
+    )
+    json_file_path = os.path.join(package_dir, "Anderson13.json")
+    csv_file_path = os.path.join(package_dir, "data_Anderson13.csv")
+
+    # Ensure the files exist
+    assert os.path.isfile(json_file_path), f"Missing JSON file: {json_file_path}"
+    assert os.path.isfile(csv_file_path), f"Missing CSV file: {csv_file_path}"
+
+    # Run the function
+    output_data = ft.read_fuel_data_file(fuel_model_name)
+
+    # Known values from Anderson13.csv
+    known_values = {
+        "fuel_load_dry_total": [
+            0.166,
+            0.897,
+            0.675,
+            2.468,
+            0.785,
+            1.345,
+            1.092,
+            1.121,
+            0.78,
+            2.694,
+            2.582,
+            7.749,
+            13.024,
+        ],
+    }
+
+    # Compare the output to the known values
+    for key, expected_values in known_values.items():
+        std_var = svn(key)
+        np.testing.assert_array_equal(output_data[std_var].magnitude, np.array(expected_values))
+        assert output_data[std_var].units == ureg("kg/m**2")
