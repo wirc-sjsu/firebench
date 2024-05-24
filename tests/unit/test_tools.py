@@ -219,3 +219,31 @@ def test_read_fuel_data_file():
         std_var = svn(key)
         np.testing.assert_array_equal(output_data[std_var].magnitude, np.array(expected_values))
         assert output_data[std_var].units == ureg("kg/m**2")
+
+def test_check_input_completeness():
+    # Test case with complete data
+    input_data = {"wind_speed": 5, "temperature": 25, "humidity": 60}
+    metadata_dict = {
+        "wind": {"std_name": "wind_speed"},
+        "temp": {"std_name": "temperature"},
+        "hum": {"std_name": "humidity"},
+    }
+    ft.check_input_completeness(input_data, metadata_dict)
+
+    # Test case with missing data
+    incomplete_input_data = {"wind_speed": 5, "temperature": 25}
+    with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
+        ft.check_input_completeness(incomplete_input_data, metadata_dict)
+
+    # Test case with empty input data
+    empty_input_data = {}
+    with pytest.raises(KeyError, match="The data 'wind_speed' is missing in the input dict"):
+        ft.check_input_completeness(empty_input_data, metadata_dict)
+
+    # Test case with empty metadata
+    empty_metadata_dict = {}
+    ft.check_input_completeness(input_data, empty_metadata_dict)
+
+# Run the tests
+if __name__ == "__main__":
+    pytest.main()
