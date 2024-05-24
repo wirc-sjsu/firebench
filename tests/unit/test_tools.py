@@ -160,3 +160,15 @@ def test_get_json_data_file_local_path():
     expected_path = osp.join(local_path, "Anderson13.json")
     func_path = osp.abspath(osp.normpath(ft.read_data.__get_json_data_file(fuel_model_name, local_path)))
     assert func_path == expected_path
+
+
+def test_get_json_data_file_not_found():
+    # Test with a non-existent file
+    fuel_model_name = "non_existent_model"
+    with pytest.raises(FileNotFoundError):
+        ft.read_data.__get_json_data_file(fuel_model_name)
+    local_path = osp.abspath(
+        osp.normpath(osp.join(osp.dirname(__file__), "..", "..", "data", "fuel_models"))
+    )
+    with pytest.raises(FileNotFoundError):
+        ft.read_data.__get_json_data_file(fuel_model_name, local_path)
