@@ -22,6 +22,7 @@ code-formatting:
 	black --line-length 108 src/firebench
 	black --line-length 108 tests
 	black --line-length 108 .github/actions
+	black --line-length 108 workflow
 
 # Run bandit analysis
 bandit:
