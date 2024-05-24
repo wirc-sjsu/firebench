@@ -306,6 +306,42 @@ def test_convert_input_data_units(input_data, metadata_dict, expected_output):
         assert output[key].units == expected_output[key].units
 
 
+@pytest.mark.parametrize(
+    "input_data, metadata_dict, should_raise",
+    [
+        (
+            {"temperature": ureg.Quantity([20, 25, 30], ureg.celsius)},
+            {"temp": {"std_name": "temperature", "units": "celsius", "range": (15, 35)}},
+            False,
+        ),
+        (
+            {"temperature": ureg.Quantity([10, 25, 30], ureg.celsius)},
+            {"temp": {"std_name": "temperature", "units": "celsius", "range": (15, 35)}},
+            True,
+        ),
+        (
+            {"temperature": ureg.Quantity([20, 25, 40], ureg.celsius)},
+            {"temp": {"std_name": "temperature", "units": "celsius", "range": (15, 35)}},
+            True,
+        ),
+        (
+            {"temperature": ureg.Quantity([20, 25, 30], ureg.celsius)},
+            {
+                "temp": {"std_name": "temperature", "units": "celsius", "range": (15, 35)},
+                "output_test": {"std_name": "output_value", "units": "some_units", "range": (0, 100)},
+            },
+            False,
+        ),
+    ],
+)
+def test_check_validity_range(input_data, metadata_dict, should_raise):
+    if should_raise:
+        with pytest.raises(ValueError):
+            ft.check_validity_range(input_data, metadata_dict)
+    else:
+        ft.check_validity_range(input_data, metadata_dict)
+
+
 # Run the tests
 if __name__ == "__main__":
     pytest.main()
