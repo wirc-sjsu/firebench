@@ -1,6 +1,7 @@
 import numpy as np
 
-from ..units import ureg
+from ..tools.units import ureg
+from ..tools.namespace import StandardVariableNames as svn
 
 
 class Rothermel_SFIRE:
@@ -25,54 +26,74 @@ class Rothermel_SFIRE:
 
     metadata = {
         "windrf": {
-            "description": "wind reduction factor",
+            "std_name": svn.FUEL_WIND_REDUCTION_FACTOR,
             "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "fgi": {
-            "description": "dry fuel load",
-            "units": ureg.pound / ureg.foot**2,
+            "std_name": svn.FUEL_LOAD_DRY_TOTAL,
+            "units": ureg.kilogram / ureg.meter**2,
             "range": (0, np.inf),
         },
         "fueldepthm": {
-            "description": "fuel height",
+            "std_name": svn.FUEL_HEIGHT,
             "units": ureg.meter,
             "range": (0, np.inf),
         },
         "fueldens": {
-            "description": "fuel density",
+            "std_name": svn.FUEL_DENSITY,
             "units": ureg.pound / ureg.foot**3,
             "range": (0, np.inf),
         },
         "savr": {
-            "description": "surface area to volume ratio",
+            "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
             "units": 1 / ureg.foot,
             "range": (0, np.inf),
         },
         "fuelmce": {
-            "description": "wind reduction factor",
+            "std_name": svn.FUEL_MOISTURE_EXTINCTION,
             "units": ureg.percent,
             "range": (0, np.inf),
         },
         "st": {
-            "description": "total mineral content",
+            "std_name": svn.FUEL_MINERAL_CONTENT_TOTAL,
             "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "se": {
-            "description": "effective mineral content",
+            "std_name": svn.FUEL_MINERAL_CONTENT_EFFECTIVE,
             "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "ichap": {
-            "description": "Chaparral flag",
+            "std_name": svn.FUEL_CHAPARRAL_FLAG,
             "units": ureg.dimensionless,
             "range": (0, 1),
+        },
+        "wind": {
+            "std_name": svn.WIND,
+            "units": ureg.meter / ureg.second,
+            "range": (-np.inf, np.inf),
+        },
+        "slope": {
+            "std_name": svn.SLOPE_ANGLE,
+            "units": ureg.degree,
+            "range": (-90, 90),
+        },
+        "fmc": {
+            "std_name": svn.FUEL_MOISTURE_CONTENT,
+            "units": ureg.percent,
+            "range": (0, 200),
+        },
+        "output_rate_of_spread": {
+            "std_name": svn.RATE_OF_SPREAD,
+            "units": ureg.meter / ureg.second,
+            "item": (0, np.inf),
         },
     }
 
     @staticmethod
-    def compute_ros(
+    def rothermel(
         fueldata: dict[str, list[float]],
         fuelclass: int,
         wind: float,
@@ -174,3 +195,52 @@ class Rothermel_SFIRE:
 
         # Default
         return min(ros, 6.0)
+
+    @staticmethod
+    def compute_ros(
+        input_dict: dict[str, list[float]],
+        **opt,
+    ) -> float:
+        """
+        Compute the rate of spread of fire using the Rothermel's model.
+
+        This is a wrapper function that prepares the fuel data dictionary and calls the `rothermel` method.
+
+        Parameters
+        ----------
+        input_dict : dict[str, list[float]]
+            Dictionary containing the input data for various fuel properties.
+
+        Optional Parameters
+        -------------------
+        **opt : dict
+            Optional parameters for the `rothermel` method.
+
+        Returns
+        -------
+        float
+            The computed rate of spread of fire [m/s].
+        """
+        fuel_dict_list_vars = [
+            "windrf",
+            "fgi",
+            "fueldepthm",
+            "fueldens",
+            "savr",
+            "fuelmce",
+            "st",
+            "se",
+            "ichap",
+        ]
+        fuel_dict = {}
+        for var in fuel_dict_list_vars:
+            fuel_dict[var] = input_dict[Rothermel_SFIRE.metadata[var]["std_name"]]
+
+        return Rothermel_SFIRE.rothermel(
+            fueldata=fuel_dict,
+            fuelclass=input_dict[svn.FUEL_CLASS],
+            wind=input_dict[svn.WIND],
+            slope=input_dict[svn.SLOPE_ANGLE],
+            fmc=input_dict[svn.FUEL_MOISTURE_CONTENT],
+            **opt,
+        )
