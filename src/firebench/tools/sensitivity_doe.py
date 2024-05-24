@@ -55,3 +55,32 @@ def sobol_seq(
         )
 
     return output_dict
+
+
+def merge_dictionaries(dict1: dict, dict2: dict) -> dict:
+    """
+    Merge two dictionaries and check for key conflicts.
+
+    Parameters
+    ----------
+    dict1 : dict
+        The first dictionary.
+    dict2 : dict
+        The second dictionary.
+
+    Returns
+    -------
+    dict
+        The merged dictionary.
+
+    Raises
+    ------
+    KeyError
+        If there is a key conflict between the dictionaries.
+    """  # pylint: disable=line-too-long
+    # Check for key conflicts
+    conflicts = set(dict1.keys()) & set(dict2.keys())
+    if conflicts:
+        raise KeyError(f"Key conflicts detected: {conflicts}")
+
+    return {**dict1, **dict2}

@@ -96,3 +96,30 @@ def test_seed_reproducibility(scramble_1, seed_1, scramble_2, seed_2, expected_s
             assert not np.array_equal(
                 result_seed_42_a[key].magnitude, result_seed_42_b[key].magnitude
             ), f"{key} should be different for different seeds."
+
+
+@pytest.mark.parametrize(
+    "dict1, dict2, expected",
+    [
+        ({"a": 1, "b": 2}, {"c": 3, "d": 4}, {"a": 1, "b": 2, "c": 3, "d": 4}),  # No conflicts
+        ({"a": 1}, {"b": 2, "c": 3}, {"a": 1, "b": 2, "c": 3}),  # No conflicts
+        ({}, {"a": 1}, {"a": 1}),  # One empty dictionary
+        ({"a": 1}, {}, {"a": 1}),  # One empty dictionary
+    ],
+)
+def test_merge_dictionaries(dict1, dict2, expected):
+    assert ft.merge_dictionaries(dict1, dict2) == expected
+
+
+@pytest.mark.parametrize(
+    "dict1, dict2, conflicting_keys",
+    [
+        ({"a": 1, "b": 2}, {"a": 3, "c": 4}, {"a"}),  # Single conflict
+        ({"a": 1}, {"a": 2}, {"a"}),  # Single conflict
+        ({"a": 1, "b": 2}, {"b": 3, "c": 4}, {"b"}),  # Single conflict
+    ],
+)
+def test_merge_dictionaries_key_conflict(dict1, dict2, conflicting_keys):
+    with pytest.raises(KeyError) as excinfo:
+        ft.merge_dictionaries(dict1, dict2)
+    assert str(conflicting_keys) in str(excinfo.value)
