@@ -220,6 +220,7 @@ def test_read_fuel_data_file():
         np.testing.assert_array_equal(output_data[std_var].magnitude, np.array(expected_values))
         assert output_data[std_var].units == ureg("kg/m**2")
 
+
 def test_check_input_completeness():
     # Test case with complete data
     input_data = {"wind_speed": 5, "temperature": 25, "humidity": 60}
@@ -267,6 +268,43 @@ def test_check_input_completeness():
     # Ensure the function raises KeyError for the incomplete input that doesn't have "humidity"
     with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
         ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output)
+
+
+@pytest.mark.parametrize(
+    "input_data, metadata_dict, expected_output",
+    [
+        (
+            {"temperature": ureg.Quantity(25, ureg.celsius)},
+            {
+                "temp": {"std_name": "temperature", "units": "kelvin"},
+                "output_test": {"std_name": "output_value", "units": "some_units"},
+            },
+            {"temperature": ureg.Quantity(298.15, ureg.kelvin)},
+        ),
+        (
+            {"distance": ureg.Quantity(1000, ureg.meter)},
+            {
+                "dist": {"std_name": "distance", "units": "kilometer"},
+                "output_test": {"std_name": "output_value", "units": "some_units"},
+            },
+            {"distance": ureg.Quantity(1, ureg.kilometer)},
+        ),
+        (
+            {"speed": ureg.Quantity(100, ureg.kph)},
+            {
+                "spd": {"std_name": "speed", "units": "m/s"},
+                "output_test": {"std_name": "output_value", "units": "some_units"},
+            },
+            {"speed": ureg.Quantity(27.77777778, ureg.m / ureg.s)},
+        ),
+    ],
+)
+def test_convert_input_data_units(input_data, metadata_dict, expected_output):
+    output = ft.convert_input_data_units(input_data, metadata_dict)
+    for key in expected_output:
+        assert output[key].magnitude == pytest.approx(expected_output[key].magnitude)
+        assert output[key].units == expected_output[key].units
+
 
 # Run the tests
 if __name__ == "__main__":
