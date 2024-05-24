@@ -149,3 +149,14 @@ def test_get_json_data_file_default_path():
     )
     func_path = osp.abspath(osp.normpath(ft.read_data.__get_json_data_file(fuel_model_name)))
     assert func_path == expected_path
+
+
+def test_get_json_data_file_local_path():
+    # Test with a real file in a local path
+    fuel_model_name = "Anderson13"
+    local_path = osp.abspath(
+        osp.normpath(osp.join(osp.dirname(__file__), "..", "..", "data", "fuel_models"))
+    )
+    expected_path = osp.join(local_path, "Anderson13.json")
+    func_path = osp.abspath(osp.normpath(ft.read_data.__get_json_data_file(fuel_model_name, local_path)))
+    assert func_path == expected_path
