@@ -67,7 +67,7 @@ for key, value in final_input.items():
     final_input[key] = final_input[key].magnitude
 
 # select fuel cat
-final_input[svn.FUEL_CLASS] = 1
+final_input[svn.FUEL_CLASS] = 7
 # loop over sobol sequence
 
 ros = np.zeros(nb_pts_total)
