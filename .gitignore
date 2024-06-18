@@ -182,3 +182,14 @@ docs/_site/assets/js/scale.fix.js
 docs/_site/images/firebench_logo.png
 docs/Gemfile.lock
 docs/Gemfile
+docs/_site/assets/css/just-the-docs-dark.css
+docs/_site/assets/css/just-the-docs-default.css
+docs/_site/assets/css/just-the-docs-head-nav.css
+docs/_site/assets/css/just-the-docs-light.css
+docs/_site/assets/js/just-the-docs.js
+docs/_site/assets/js/search-data.json
+docs/_site/assets/js/vendor/lunr.min.js
+docs/_site/images/favicon.ico
+docs/_site/workflows/index.html
+docs/_site/workflows/sensitivity/index.html
+docs/_site/workflows/sensitivity/ros_sensitivity.html

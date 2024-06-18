@@ -1,3 +1,8 @@
+---
+layout: home
+title: "Welcome to the FireBench Project"
+nav_order: 1
+---
 # Welcome to the FireBench Project
 
 <div style="text-align: center;">
