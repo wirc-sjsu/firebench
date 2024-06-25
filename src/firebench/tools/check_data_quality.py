@@ -1,6 +1,8 @@
 import numpy as np
 from pint import Quantity
 
+from ..ros_models import RateOfSpreadModel
+
 
 def check_input_completeness(input_data: dict, metadata_dict: dict):
     """
@@ -93,3 +95,42 @@ def check_validity_range(input_data: dict, metadata_dict: dict):
                 f"max value of input variable {std_name_metadata}: {data_max:.2e} {item['units']} "
                 f"greater than upper bound of validity range {item['range'][1]:.2e}."
             )
+
+
+def check_data_quality_ros_model(input_dict: dict[str, Quantity], ros_model: RateOfSpreadModel) -> dict:
+    """
+    Check and process the input data quality for a Rate of Spread (ROS) model.
+
+    This function performs the following checks and conversions on the input data:
+    - Completeness: Ensures all necessary inputs for the ROS model are present in the input dictionary.
+    - Unit Conversion: Converts units of input data to match the units specified in the ROS model's metadata.
+    - Validity Range: Verifies that the input data values are within the valid ranges specified by the model's metadata.
+
+    Parameters
+    ----------
+    input_dict : dict
+        Dictionary containing the input data for the ROS model. The keys are the standard names of the variables,
+        and the values are quantities with units.
+    ros_model : RateOfSpreadModel
+        An instance of a subclass of `RateOfSpreadModel` that provides the metadata for the ROS model.
+
+    Returns
+    -------
+    dict
+        A new dictionary with the input data checked for completeness, units converted, and values verified to be within valid ranges.
+        The values are converted to their magnitude (unitless).
+    """
+
+    # Completeness check
+    check_input_completeness(input_dict, ros_model.metadata)
+
+    # Unit conversion
+    input_converted = convert_input_data_units(input_dict, ros_model.metadata)
+
+    # Validity range check
+    check_validity_range(input_converted, ros_model.metadata)
+
+    # Create final input dictionary with magnitudes
+    final_input = {key: value.magnitude for key, value in input_converted.items()}
+
+    return final_input
