@@ -61,6 +61,9 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
         else:
             output_data[std_var] = np.array(data_dict[key], dtype=np.float64) * ureg(value["unit"])
 
+    # store number of fuel classes
+    output_data["nb_fuel_classes"] = len(content[1:])
+
     return output_data
 
 
