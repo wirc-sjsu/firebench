@@ -7,7 +7,7 @@ test:
 
 # Run all tests with coverage report
 test-cov:
-	pytest --cov=src/firebench
+	pytest --cov-report term-missing --cov=src/firebench
 
 # Run pylint analysis
 lint:
