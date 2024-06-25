@@ -10,7 +10,7 @@ def sobol_seq(
     variables_info: Dict[str, Tuple[Unit, List[float]]],
     scramble: bool = True,
     seed: int = 0,
-) -> Dict[str, Quantity]:
+):
     """
     Generate a Sobol sequence for the given variables with specified units and ranges.
 
