@@ -44,12 +44,12 @@ def sobol_seq(
         "names": [k.value for k in variables_info.keys()],  # Replace with your variable names
         "bounds": [variables_info[k][1] for k in variables_info.keys()],
     }
-    sobol_seq = sobol.sample(sobol_problem, N, calc_second_order=True, scramble=scramble, seed=seed)
-    N_sobol = np.size(sobol_seq, 0)
+    sobol_sequence = sobol.sample(sobol_problem, N, calc_second_order=True, scramble=scramble, seed=seed)
+    N_sobol = np.size(sobol_sequence, 0)
     output_dict = {}
 
     for k, (var_name, var_info) in enumerate(variables_info.items()):
-        output_dict[var_name] = Quantity(sobol_seq[:, k], var_info[0])
+        output_dict[var_name] = Quantity(sobol_sequence[:, k], var_info[0])
 
     return output_dict, sobol_problem, N_sobol
 
