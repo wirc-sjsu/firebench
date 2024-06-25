@@ -4,6 +4,7 @@ import pytest
 from firebench import svn, ureg
 from pint import Quantity
 
+
 def test_check_data_quality_ros_model():
     # Prepare test data
     fuel_data = fbt.read_fuel_data_file("Anderson13")
@@ -25,7 +26,9 @@ def test_check_data_quality_ros_model():
     # Check the completeness of the final input
     for key in ros_model.metadata:
         if not key.startswith("output_"):
-            assert ros_model.metadata[key]["std_name"] in final_input, f"{ros_model.metadata[key]['std_name']} missing in final input"
+            assert (
+                ros_model.metadata[key]["std_name"] in final_input
+            ), f"{ros_model.metadata[key]['std_name']} missing in final input"
 
     # Check specific values in the final input (example)
     assert final_input[svn.WIND] == 3, "WIND value mismatch"

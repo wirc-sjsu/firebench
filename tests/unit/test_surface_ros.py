@@ -7,10 +7,12 @@ class TestRateOfSpreadModel(RateOfSpreadModel):
     def compute_ros(input_dict, **opt) -> float:
         return 0.5  # Dummy implementation for testing
 
+
 # Test cases
 def test_base_class_not_implemented():
     with pytest.raises(NotImplementedError):
         RateOfSpreadModel.compute_ros({})
+
 
 def test_subclass_implementation():
     input_data = {"dummy_input": [1.0, 2.0, 3.0]}
