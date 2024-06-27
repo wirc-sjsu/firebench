@@ -1,5 +1,5 @@
 import numpy as np
-from pint import Quantity, Unit
+from pint import Quantity
 from SALib.sample import sobol
 
 

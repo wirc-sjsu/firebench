@@ -54,6 +54,13 @@ cd firebench
 pip install .
 ```
 
+### 3. Set up the path to your local working directory
+
+In order to centralize all the files managed locally by firebench, a working directory called the `firebench local database` has to be defined. Add the following line to your `.bashrc` or `.zshrc`:
+```bash
+export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db
+```
+
 ## Community Discussions
 
 We encourage you to use the [GitHub Discussions](https://github.com/wirc-sjsu/firebench/discussions) tab for questions, help requests, and general discussions about the project. This helps keep our issue tracker focused on bugs and feature requests.

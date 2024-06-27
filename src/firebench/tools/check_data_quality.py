@@ -119,7 +119,7 @@ def check_data_quality_ros_model(input_dict: dict[str, Quantity], ros_model: Rat
     dict
         A new dictionary with the input data checked for completeness, units converted, and values verified to be within valid ranges.
         The values are converted to their magnitude (unitless).
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
 
     # Completeness check
     check_input_completeness(input_dict, ros_model.metadata)
