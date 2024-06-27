@@ -11,9 +11,9 @@ from pint import Quantity, Unit
 
 def test_sobol_seq_basic():
     variables_info = {
-        svn.LENGTH: (ureg.meter, [0.0, 1.0]),
-        svn.TIME: (ureg.second, [10.0, 20.0]),
-        svn.TEMPERATURE: (ureg.kelvin, [273.15, 373.15]),
+        svn.LENGTH: {"unit": ureg.meter, "range": [0.0, 1.0]},
+        svn.TIME: {"unit": ureg.second, "range": [10.0, 20.0]},
+        svn.TEMPERATURE: {"unit": ureg.kelvin, "range": [273.15, 373.15]},
     }
     result, _, _ = ft.sobol_seq(8, variables_info)
     print(result)
@@ -33,7 +33,10 @@ def test_sobol_seq_basic():
     ],
 )
 def test_sobol_seq_parameters(N, scramble, seed, N_sobol_th):
-    variables_info = {svn.LENGTH: (ureg.meter, [0.0, 1.0]), svn.TIME: (ureg.second, [10.0, 20.0])}
+    variables_info = {
+        svn.LENGTH: {"unit": ureg.meter, "range": [0.0, 1.0]},
+        svn.TIME: {"unit": ureg.second, "range": [10.0, 20.0]},
+    }
     result, _, N_sobol = ft.sobol_seq(N, variables_info, scramble=scramble, seed=seed)
 
     assert isinstance(result[svn.LENGTH], Quantity)
@@ -45,7 +48,10 @@ def test_sobol_seq_parameters(N, scramble, seed, N_sobol_th):
 
 def test_scramble_effect():
     N = 8
-    variables_info = {svn.LENGTH: (ureg.meter, [0.0, 1.0]), svn.TIME: (ureg.second, [10.0, 20.0])}
+    variables_info = {
+        svn.LENGTH: {"unit": ureg.meter, "range": [0.0, 1.0]},
+        svn.TIME: {"unit": ureg.second, "range": [10.0, 20.0]},
+    }
     result_no_scramble, _, _ = ft.sobol_seq(N, variables_info, scramble=False)
     result_scramble, _, _ = ft.sobol_seq(N, variables_info, scramble=True)
 
@@ -65,7 +71,10 @@ def test_scramble_effect():
 )
 def test_seed_reproducibility(scramble_1, seed_1, scramble_2, seed_2, expected_similar):
     N = 8
-    variables_info = {svn.LENGTH: (ureg.meter, [0.0, 1.0]), svn.TIME: (ureg.second, [10.0, 20.0])}
+    variables_info = {
+        svn.LENGTH: {"unit": ureg.meter, "range": [0.0, 1.0]},
+        svn.TIME: {"unit": ureg.second, "range": [10.0, 20.0]},
+    }
     result_seed_42_a, _, _ = ft.sobol_seq(N, variables_info, scramble=scramble_1, seed=seed_1)
     result_seed_42_b, _, _ = ft.sobol_seq(N, variables_info, scramble=scramble_2, seed=seed_2)
 

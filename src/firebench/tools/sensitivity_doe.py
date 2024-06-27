@@ -1,5 +1,3 @@
-from typing import Dict, List, Tuple
-
 import numpy as np
 from pint import Quantity, Unit
 from SALib.sample import sobol
@@ -7,7 +5,7 @@ from SALib.sample import sobol
 
 def sobol_seq(
     N: int,
-    variables_info: Dict[str, Tuple[Unit, List[float]]],
+    variables_info: dict,
     scramble: bool = True,
     seed: int = 0,
 ):
@@ -22,8 +20,8 @@ def sobol_seq(
     N : int
         The number of points in the Sobol sequence.
     variables_info : dict
-        A dictionary where each key is the name of a variable, and the value is a tuple containing a `pint.Unit`
-        and a list of two floats representing the range of the variable.
+        A dictionary where each key is the name of a variable, and the value is a dictionary containing a `pint.Unit` (key: unit)
+        and a list of two floats representing the range of the variable (key: range).
     scramble : bool, optional
         If True, applies scrambling to the Sobol sequence for better uniformity. Defaults to True.
     seed : int, optional
@@ -42,14 +40,14 @@ def sobol_seq(
     sobol_problem = {
         "num_vars": len(variables_info),
         "names": [k.value for k in variables_info.keys()],  # Replace with your variable names
-        "bounds": [variables_info[k][1] for k in variables_info.keys()],
+        "bounds": [variables_info[k]["range"] for k in variables_info.keys()],
     }
     sobol_sequence = sobol.sample(sobol_problem, N, calc_second_order=True, scramble=scramble, seed=seed)
     N_sobol = np.size(sobol_sequence, 0)
     output_dict = {}
 
     for k, (var_name, var_info) in enumerate(variables_info.items()):
-        output_dict[var_name] = Quantity(sobol_sequence[:, k], var_info[0])
+        output_dict[var_name] = Quantity(sobol_sequence[:, k], var_info["unit"])
 
     return output_dict, sobol_problem, N_sobol
 
