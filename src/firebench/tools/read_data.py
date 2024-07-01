@@ -1,3 +1,4 @@
+import importlib.resources
 import json
 import os
 from os import path
@@ -115,8 +116,8 @@ def __get_json_data_file(fuel_model_name: str, local_path_json_fuel_db: str = No
 
     if local_path_json_fuel_db is None:
         # Use default path to data
-        defaultpath = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..", "data", "fuel_models", json_filename
+        defaultpath = importlib.resources.files("firebench").parent.parent.joinpath(
+            "data", "fuel_models", json_filename
         )
         defaultexists = os.path.exists(defaultpath)
 
