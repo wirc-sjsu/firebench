@@ -7,7 +7,7 @@ url: "https://wirc-sjsu.github.io/firebench" # the base hostname & protocol for 
 # Just the Docs settings
 just_the_docs:
   favicon:
-    href: "/images/favicon.ico"  # Path to your favicon
+    href: "/favicon.ico"  # Path to your favicon
   logo:
     src: "/images/firebench_logo.png"
 
