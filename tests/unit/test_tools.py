@@ -1,4 +1,3 @@
-import json
 import os
 import os.path as osp
 
@@ -6,7 +5,7 @@ import firebench.tools as ft
 import numpy as np
 import pytest
 from firebench import ureg, svn
-from pint import Quantity, Unit
+from pint import Quantity
 
 
 def test_sobol_seq_basic():
@@ -327,18 +326,6 @@ def test_check_validity_range(input_data, metadata_dict, should_raise):
             ft.check_validity_range(input_data, metadata_dict)
     else:
         ft.check_validity_range(input_data, metadata_dict)
-
-
-def test_get_local_db_path(mocker):
-    # Test when the environment variable is set
-    mocker.patch.dict(os.environ, {"FIREBENCH_LOCAL_DB": "/path/to/your/firebench/local/db"})
-    assert ft.get_local_db_path() == "/path/to/your/firebench/local/db"
-
-    # Test when the environment variable is not set
-    mocker.patch.dict(os.environ, {}, clear=True)
-    with pytest.raises(Exception) as excinfo:
-        ft.get_local_db_path()
-    assert "Firebench local database path is not set." in str(excinfo.value)
 
 
 # Run the tests

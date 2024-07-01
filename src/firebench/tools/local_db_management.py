@@ -1,4 +1,7 @@
 import os
+import shutil
+
+from .logging_config import logger
 
 
 def get_local_db_path():
@@ -25,3 +28,35 @@ def get_local_db_path():
             "Firebench local database path is not set. Define the path using 'export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db'"
         )
     return local_db_path
+
+
+def __create_record_directory(record_path: str, overwrite: bool = False):
+    """
+    Create a workflow record directory.
+
+    This function creates a new directory for storing workflow records. If the directory already exists,
+    it will either overwrite it (if `overwrite` is True) or raise an error (if `overwrite` is False).
+
+    Parameters
+    ----------
+    record_path : str
+        The path of the directory to be created.
+    overwrite : bool, optional
+        Whether to overwrite the directory if it already exists. Defaults to False.
+
+    Raises
+    ------
+    OSError
+        If the directory already exists and `overwrite` is False.
+    """
+    # Check if the record path already exists
+    if os.path.exists(record_path):
+        if overwrite:
+            shutil.rmtree(record_path)
+        else:
+            raise OSError(f"Workflow record {record_path} already exists and cannot be overwritten")
+
+    # Create the new record directory
+    os.makedirs(record_path)
+
+
