@@ -1,36 +1,29 @@
 ---
 layout: default
-title: How to Personalize the Fuel Model
+title: How to Use Fuel Models
 parent: Tutorials
 nav_order: 1
 ---
-# How to Personalize the Fuel Model
 
-This guide will walk you through the steps to personalize a fuel model in the FireBench library. Personalizing your fuel model allows you to adapt the default settings to better match the specific conditions and characteristics of your study area.
+# How to Use Fuel Models
+
+This guide will walk you through the steps to use fuel models in the FireBench library. You can either use a default fuel model or create and use a custom one. Specify the name of the model in `fuel_model_name`. If a path to a directory containing a custom fuel model JSON file is specified in `local_path_json_fuel_db`, then `FireBench` will search for the file in the given path before searching within the package database.
 
 ## Overview
 
-Personalizing a fuel model involves:
+Using a fuel model involves:
 1. Understanding the default fuel model structure.
-2. Creating a custom fuel model.
-3. Integrating the custom fuel model into FireBench.
-4. Validating the custom fuel model.
-
-## Prerequisites
-
-Before you begin, ensure you have the following:
-- Installed FireBench library.
-- Basic understanding of fire modeling concepts.
-- Access to relevant fuel data for your specific use case.
+2. Using a default fuel model in the workflow.
+3. Creating a custom fuel model.
+4. Using a custom fuel model in the workflow.
 
 ## Step 1: Understanding the Default Fuel Model Structure
 
-Firebench contains some default fuel models. The fuel models distributed within the package are listed [here](../content.md).
+FireBench includes several default fuel models. The fuel models distributed within the package are listed [here](../content.md).
 
-### Default Fuel Model management
+### Default Fuel Model Management
 
-The fuel models are stored as a JSON metedata file and a CSV data file. The CSV data file contains one header containing the name of the variables, and the data as each row represents a fuel class
-The metadata file contains information fuel model variables. For example, the `Anderson13` fuel model is composed of the `Anderson13.json` metadata file:
+The fuel models are stored as a JSON metadata file and a CSV data file. The CSV data file contains a header with variable names, and each row represents a fuel class. The metadata file contains information about fuel model variables. For example, the `Anderson13` fuel model is composed of the `Anderson13.json` metadata file:
 
 ```json
 {
@@ -43,9 +36,51 @@ The metadata file contains information fuel model variables. For example, the `A
       "windrf": {
         "variable_name": "fuel_wind_reduction_factor",
         "unit": "dimensionless"
-      }
-      ...
+      },
+    }
 }
 ```
-The metadata file stores the path of the data file in `data_path`. The metadata dictionnary contains the following information for each variable in the data file:
-- variable name as given within the standard namespace
+The metadata file stores the path of the data file in `data_path`. The metadata dictionary contains the following information for each variable in the data file:
+- `variable_name` as given within the [standard namespace](../namespace.md) in lowercase
+- `unit` using [Pint library](https://pint.readthedocs.io/en/stable/) standard. The default unit registry (*i.e.* the list of acceptable units) can be found [here](https://github.com/hgrecco/pint/blob/master/pint/default_en.txt).
+
+The CSV data file `data_Anderson13.csv` looks like this:
+```csv
+windrf,fgi,fueldepthm,fueldens,savr,fuelmce,st,se,ichap
+0.45,0.200,0.350,30.0,3600.0,10.0,0.0655,0.02,1
+```
+
+## Step 2: Using a default fuel model in the workflow
+
+In most workflows that use Fuel Models, you will find two variables dedicated to fuel model configuration. When using a default Fuel Model, `local_path_json_fuel_db` can be set to `None` to ensure that FireBench looks for the metadata file in the FireBench database (`data/fuel_models`). The default fuel models distributed within the package are listed [here](../content.md).
+
+```python
+fuel_model_name = "Anderson13" # name of the fuel model -> looking for Anderson13.json
+local_path_json_fuel_db = None # 
+```
+
+## Step 3: Create a custom fuel model
+
+You can create you custome fuel model and use it locally. First you have to create the CSV data file that contains the data with one header line specifying the name of the variables. Each line of the file corresponds to a fuel class. Then, you have to create the metadata file `my_custom_fuel_model.json` that will contain the relative path to the datafile and information about the variables:
+```json
+{
+    "data_path": "my_custom_fuel_model.csv",
+    "metadata": {
+      "x_1": {
+        "variable_name": "length",
+        "unit": "m"
+      },
+      "t_1": {
+        "variable_name": "time",
+        "unit": "s"
+      },
+}
+```
+
+## Step 4: Create a custom fuel model
+
+To use the custom data, specify the path of the directory that contains the JSON file and the name of the fuel model:
+```python
+fuel_model_name = "my_custom_fuel_model" # name of the fuel model -> looking for my_custom_fuel_model.json
+local_path_json_fuel_db = "/path/to/the/custom/fuel/models/database" # 
+```

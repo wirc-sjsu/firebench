@@ -10,7 +10,7 @@ This page lists the fuels models, the rate of spread models and the workflows th
 
 ## Fuel models
 
-- `Anderson13`: Anderson 13 categories [ref](https://www.fs.usda.gov/rm/pubs_int/int_gtr122.pdf)
+- `Anderson13`: Anderson 13 categories ([reference](https://www.fs.usda.gov/rm/pubs_int/int_gtr122.pdf))
 
 ## Rate of spread models
 
