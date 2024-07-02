@@ -106,7 +106,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
             "range": (0, 1),
         },
         "wind": {
-            "std_name": svn.WIND,
+            "std_name": svn.WIND_SPEED,
             "units": ureg.meter / ureg.second,
             "range": (-np.inf, np.inf),
         },
@@ -123,7 +123,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         "output_rate_of_spread": {
             "std_name": svn.RATE_OF_SPREAD,
             "units": ureg.meter / ureg.second,
-            "item": (0, np.inf),
+            "range": (0, np.inf),
         },
     }
 
