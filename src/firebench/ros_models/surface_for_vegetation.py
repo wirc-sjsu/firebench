@@ -274,7 +274,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         return Rothermel_SFIRE.rothermel(
             fueldata=fuel_dict,
             fuelclass=input_dict[svn.FUEL_CLASS],
-            wind=input_dict[svn.WIND],
+            wind=input_dict[svn.WIND_SPEED],
             slope=input_dict[svn.SLOPE_ANGLE],
             fmc=input_dict[svn.FUEL_MOISTURE_CONTENT],
             **opt,

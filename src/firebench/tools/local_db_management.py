@@ -1,5 +1,8 @@
+import json
 import os
 import shutil
+
+import h5py
 
 from .logging_config import logger
 
@@ -47,7 +50,7 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str):
         If the file does not exist.
     OSError
         If the workflow record directory does not exist.
-    """
+    """ # pylint: disable=line-too-long
     # Get record path
     record_path = os.path.join(get_local_db_path(), workflow_record_name)
 
@@ -61,6 +64,7 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str):
 
     # Copy file to workflow record directory
     shutil.copy2(file_path, record_path)
+
 
 def create_record_directory(workflow_record_name: str, overwrite: bool = False):
     """
@@ -80,7 +84,7 @@ def create_record_directory(workflow_record_name: str, overwrite: bool = False):
     ------
     OSError
         If the directory already exists and `overwrite` is False.
-    """
+    """ # pylint: disable=line-too-long
     # Get record path
     record_path = os.path.join(get_local_db_path(), workflow_record_name)
 
@@ -96,21 +100,20 @@ def create_record_directory(workflow_record_name: str, overwrite: bool = False):
     os.makedirs(record_path)
 
 
-
-
-
-def save_workflow_record(workflow_record_name: str, workflow_data: dict, script_path: str, overwrite_record:bool=False):
+def save_workflow_data(
+    workflow_record_name: str, workflow_data: dict,
+):
     """
-    Save the workflow in a directory called workflow record.
-    The data is saved in a json file.
+    Save the workflow data in a directory called workflow record.
+    The data is saved in a hdf5 file.
     A copy of the workflow script is saved in the record
-    """
-    
-
-    # create the record directory
-    __create_record_directory(record_path, overwrite=overwrite_record)
-
-    # copy script file to workflow record directory
-    shutil.copy2(script_path, record_path)
+    """ # pylint: disable=line-too-long
+    # Get record path
+    json_path = os.path.join(get_local_db_path(), workflow_record_name, "workflow_data.json")
 
     # save workflow data in json file
+    try:
+        with open(json_path, 'w') as json_file:
+            json.dump(workflow_data, json_file, indent=4)
+    except OSError as e:
+        raise OSError(f"Error writing to file '{json_path}': {e}")

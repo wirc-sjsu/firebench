@@ -45,4 +45,4 @@ class StandardVariableNames(Enum):  # pragma: no cover
     SLOPE_ANGLE = "slope_angle"
     TEMPERATURE = "temperature"
     TIME = "time"
-    WIND = "wind"
+    WIND_SPEED = "wind_speed"

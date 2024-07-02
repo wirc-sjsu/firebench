@@ -17,6 +17,7 @@ dependencies = [
     "pint < 1.0",
     "scipy < 2.0",
     "SALib < 2.0",
+    "h5py < 4.0",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
