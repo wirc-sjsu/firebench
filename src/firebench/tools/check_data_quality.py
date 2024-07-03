@@ -2,7 +2,6 @@ import numpy as np
 from pint import Quantity
 
 from ..ros_models import RateOfSpreadModel
-from .units import ureg
 
 
 def check_input_completeness(input_data: dict, metadata_dict: dict):

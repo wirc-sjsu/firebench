@@ -1,8 +1,5 @@
-import json
 import os
 import shutil
-
-import h5py
 
 from .logging_config import logger
 
@@ -73,6 +70,7 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
 
     # Copy file to workflow record directory
     shutil.copy2(file_path, record_path)
+    logger.info("file %s copied to %s", file_path, record_path)
 
 
 def create_record_directory(workflow_record_name: str):

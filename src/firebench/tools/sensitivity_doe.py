@@ -2,6 +2,7 @@ import numpy as np
 from SALib.sample import sobol
 from .units import ureg
 
+
 def sobol_seq(
     N: int,
     variables_info: dict,
