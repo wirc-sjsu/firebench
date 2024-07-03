@@ -56,7 +56,7 @@ def test_compute_ros_regression(dummy_fuel_data, fuelclass, wind, slope, fmc, ex
                 svn.FUEL_MINERAL_CONTENT_EFFECTIVE: [0.01],
                 svn.FUEL_CHAPARRAL_FLAG: [0],
                 svn.FUEL_CLASS: 1,
-                svn.WIND: 5.0,
+                svn.WIND_SPEED: 5.0,
                 svn.SLOPE_ANGLE: 0.0,
                 svn.FUEL_MOISTURE_CONTENT: 10.0,
             },

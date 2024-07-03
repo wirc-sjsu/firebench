@@ -1,7 +1,9 @@
 import os
+import shutil
+
 import firebench.tools as ft
 import pytest
-
+import tempfile
 
 def test_get_local_db_path(mocker):
     # Test when the environment variable is set
@@ -17,99 +19,94 @@ def test_get_local_db_path(mocker):
 
 def test_create_record_directory(mocker):
     workflow_record_name = "test_workflow"
-    record_path = os.path.join("fake_local_db_path", workflow_record_name)
 
-    # Mocking os.path.exists to simulate directory existence
-    mocker.patch("os.path.exists", return_value=False)
-    mock_makedirs = mocker.patch("os.makedirs")
-    mocker.patch("firebench.tools.local_db_management.get_local_db_path", return_value="fake_local_db_path")
+    # Mocking get_local_db_path to return a fake path
+    mocker.patch("os.path.join", return_value="/fake/local/db/path/test_workflow")
+    mocker.patch("os.makedirs")
 
-    # Test directory creation when it does not exist
+    # Test directory creation
     ft.create_record_directory(workflow_record_name)
-    mock_makedirs.assert_called_once_with(record_path)
+    os.makedirs.assert_called_once_with("/fake/local/db/path/test_workflow", exist_ok=True)
 
-
-def test_create_record_directory_overwrite(mocker):
-    workflow_record_name = "test_workflow"
-    record_path = os.path.join("fake_local_db_path", workflow_record_name)
-
-    # Mocking os.path.exists to simulate directory existence
-    mocker.patch("os.path.exists", return_value=True)
-    mock_rmtree = mocker.patch("shutil.rmtree")
-    mock_makedirs = mocker.patch("os.makedirs")
-    mock_logger = mocker.patch("firebench.tools.local_db_management.logger.info")
-    mocker.patch("firebench.tools.local_db_management.get_local_db_path", return_value="fake_local_db_path")
-
-    # Test directory creation with overwrite
-    ft.create_record_directory(workflow_record_name, overwrite=True)
-    mock_rmtree.assert_called_once_with(record_path)
-    mock_makedirs.assert_called_once_with(record_path)
-    mock_logger.assert_called_once_with(f"Workflow record {record_path} has been overwritten")
-
-
-def test_create_record_directory_exists_no_overwrite(mocker):
-    workflow_record_name = "test_workflow"
-    record_path = os.path.join("fake_local_db_path", workflow_record_name)
-
-    # Mocking os.path.exists to simulate directory existence
-    mocker.patch("os.path.exists", return_value=True)
-    mocker.patch("firebench.tools.local_db_management.get_local_db_path", return_value="fake_local_db_path")
-
-    # Test directory creation without overwrite, expecting an OSError
-    with pytest.raises(
-        OSError, match=f"Workflow record {record_path} already exists and cannot be overwritten"
-    ):
-        ft.create_record_directory(workflow_record_name)
-
-
-def test_copy_file_to_workflow_record(mocker):
-    workflow_record_name = "test_workflow"
-    file_path = "fake_file_path/file.txt"
-    record_path = os.path.join("fake_local_db_path", workflow_record_name)
-
-    # Mocking os.path.isfile to simulate file existence
-    mocker.patch("os.path.isfile", return_value=True)
-    # Mocking os.path.isdir to simulate directory existence
-    mocker.patch("os.path.isdir", return_value=True)
-    mock_copy2 = mocker.patch("shutil.copy2")
-    mocker.patch("firebench.tools.local_db_management.get_local_db_path", return_value="fake_local_db_path")
-
-    # Test copying file to workflow record directory
-    ft.copy_file_to_workflow_record(workflow_record_name, file_path)
-    mock_copy2.assert_called_once_with(file_path, record_path)
-
-
-def test_copy_file_to_workflow_record_file_not_exist(mocker):
-    workflow_record_name = "test_workflow"
-    file_path = "fake_file_path/file.txt"
-    record_path = os.path.join("fake_local_db_path", workflow_record_name)
-
-    # Mocking os.path.isfile to simulate file non-existence
-    mocker.patch("os.path.isfile", return_value=False)
-    # Mocking os.path.isdir to simulate directory existence
-    mocker.patch("os.path.isdir", return_value=True)
-    mocker.patch("firebench.tools.local_db_management.get_local_db_path", return_value="fake_local_db_path")
-
-    # Test for FileNotFoundError when file does not exist
-    with pytest.raises(FileNotFoundError, match=f"The file '{file_path}' does not exist."):
+def test_copy_file_to_workflow_record_success(mocker):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        workflow_record_name = "test_workflow"
+        file_name = "file.txt"
+        file_path = os.path.join(temp_dir, file_name)
+        record_path = os.path.join(temp_dir, workflow_record_name)
+        
+        # Mocking environment variable for local db path
+        mocker.patch("os.getenv", return_value=temp_dir)
+        
+        # Create a dummy file to copy
+        with open(file_path, 'w') as f:
+            f.write("test content")
+        
+        # Create the workflow record directory
+        os.makedirs(record_path)
+        
+        # Test successful copy
         ft.copy_file_to_workflow_record(workflow_record_name, file_path)
+        
+        # Check if the file is copied
+        assert os.path.isfile(os.path.join(record_path, file_name))
 
+def test_copy_file_to_workflow_record_file_not_found(mocker):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        workflow_record_name = "test_workflow"
+        file_path = os.path.join(temp_dir, "non_existent_file.txt")
+        
+        # Mocking environment variable for local db path
+        mocker.patch("os.getenv", return_value=temp_dir)
+        
+        # Create the workflow record directory
+        record_path = os.path.join(temp_dir, workflow_record_name)
+        os.makedirs(record_path)
+        
+        # Test file not found error
+        with pytest.raises(FileNotFoundError):
+            ft.copy_file_to_workflow_record(workflow_record_name, file_path)
 
-def test_copy_file_to_workflow_record_directory_not_exist(mocker):
-    workflow_record_name = "test_workflow"
-    file_path = "fake_file_path/file.txt"
-    record_path = os.path.join("fake_local_db_path", workflow_record_name)
+def test_copy_file_to_workflow_record_directory_not_found(mocker):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        workflow_record_name = "test_workflow"
+        file_name = "file.txt"
+        file_path = os.path.join(temp_dir, file_name)
+        
+        # Mocking environment variable for local db path
+        mocker.patch("os.getenv", return_value=temp_dir)
+        
+        # Create a dummy file to copy
+        with open(file_path, 'w') as f:
+            f.write("test content")
+        
+        # Do not create the workflow record directory
+        
+        # Test workflow record directory not found error
+        with pytest.raises(OSError):
+            ft.copy_file_to_workflow_record(workflow_record_name, file_path)
 
-    # Mocking os.path.isfile to simulate file existence
-    mocker.patch("os.path.isfile", return_value=True)
-    # Mocking os.path.isdir to simulate directory non-existence
-    mocker.patch("os.path.isdir", return_value=False)
-    mocker.patch("firebench.tools.local_db_management.get_local_db_path", return_value="fake_local_db_path")
-
-    # Test for OSError when workflow record directory does not exist
-    with pytest.raises(OSError, match=f"The workflow record directory '{record_path}' does not exist."):
-        ft.copy_file_to_workflow_record(workflow_record_name, file_path)
-
+def test_copy_file_to_workflow_record_file_exists_no_overwrite(mocker):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        workflow_record_name = "test_workflow"
+        file_name = "file.txt"
+        file_path = os.path.join(temp_dir, file_name)
+        record_path = os.path.join(temp_dir, workflow_record_name)
+        
+        # Mocking environment variable for local db path
+        mocker.patch("os.getenv", return_value=temp_dir)
+        
+        # Create a dummy file to copy
+        with open(file_path, 'w') as f:
+            f.write("test content")
+        
+        # Create the workflow record directory and the destination file
+        os.makedirs(record_path)
+        shutil.copy2(file_path, record_path)
+        
+        # Test file already exists and overwrite is False
+        with pytest.raises(OSError):
+            ft.copy_file_to_workflow_record(workflow_record_name, file_path)
 
 # Run the tests
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 import numpy as np
-from pint import Quantity
 from SALib.sample import sobol
-
+from .units import ureg
 
 def sobol_seq(
     N: int,
@@ -47,7 +46,7 @@ def sobol_seq(
     output_dict = {}
 
     for k, (var_name, var_info) in enumerate(variables_info.items()):
-        output_dict[var_name] = Quantity(sobol_sequence[:, k], var_info["unit"])
+        output_dict[var_name] = ureg.Quantity(sobol_sequence[:, k], var_info["unit"])
 
     return output_dict, sobol_problem, N_sobol
 

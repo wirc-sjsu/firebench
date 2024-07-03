@@ -33,7 +33,7 @@ def get_local_db_path():
     return local_db_path
 
 
-def copy_file_to_workflow_record(workflow_record_name: str, file_path: str):
+def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, overwrite: bool = False):
     """
     Copy a file to the specified workflow record directory.
 
@@ -43,18 +43,20 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str):
         The name of the workflow record directory where the file will be copied.
     file_path : str
         The path to the file that needs to be copied.
+    overwrite : bool, optional
+        Whether to overwrite the file if it already exists in the destination directory. Defaults to False.
 
     Raises
     ------
     FileNotFoundError
         If the file does not exist.
     OSError
-        If the workflow record directory does not exist.
-    """ # pylint: disable=line-too-long
+        If the workflow record directory does not exist or if the file already exists and overwrite is False.
+    """  # pylint: disable=line-too-long
     # Get record path
     record_path = os.path.join(get_local_db_path(), workflow_record_name)
 
-    # Check if the file file exists
+    # Check if the file exists
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"The file '{file_path}' does not exist.")
 
@@ -62,58 +64,31 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str):
     if not os.path.isdir(record_path):
         raise OSError(f"The workflow record directory '{record_path}' does not exist.")
 
+    # Check if destination file already exists
+    destination_file_path = os.path.join(record_path, os.path.basename(file_path))
+    if os.path.isfile(destination_file_path) and not overwrite:
+        raise OSError(
+            f"The file '{destination_file_path}' already exists and overwrite option is set to False"
+        )
+
     # Copy file to workflow record directory
     shutil.copy2(file_path, record_path)
 
 
-def create_record_directory(workflow_record_name: str, overwrite: bool = False):
+def create_record_directory(workflow_record_name: str):
     """
     Create a workflow record directory.
 
     This function creates a new directory for storing workflow records. If the directory already exists,
-    it will either overwrite it (if `overwrite` is True) or raise an error (if `overwrite` is False).
+    it will not raise an error and will simply return.
 
     Parameters
     ----------
     workflow_record_name : str
         The name of the directory to be created.
-    overwrite : bool, optional
-        Whether to overwrite the directory if it already exists. Defaults to False.
-
-    Raises
-    ------
-    OSError
-        If the directory already exists and `overwrite` is False.
-    """ # pylint: disable=line-too-long
+    """
     # Get record path
     record_path = os.path.join(get_local_db_path(), workflow_record_name)
 
-    # Check if the record path already exists
-    if os.path.exists(record_path):
-        if overwrite:
-            shutil.rmtree(record_path)
-            logger.info(f"Workflow record {record_path} has been overwritten")
-        else:
-            raise OSError(f"Workflow record {record_path} already exists and cannot be overwritten")
-
     # Create the new record directory
-    os.makedirs(record_path)
-
-
-def save_workflow_data(
-    workflow_record_name: str, workflow_data: dict,
-):
-    """
-    Save the workflow data in a directory called workflow record.
-    The data is saved in a hdf5 file.
-    A copy of the workflow script is saved in the record
-    """ # pylint: disable=line-too-long
-    # Get record path
-    json_path = os.path.join(get_local_db_path(), workflow_record_name, "workflow_data.json")
-
-    # save workflow data in json file
-    try:
-        with open(json_path, 'w') as json_file:
-            json.dump(workflow_data, json_file, indent=4)
-    except OSError as e:
-        raise OSError(f"Error writing to file '{json_path}': {e}")
+    os.makedirs(record_path, exist_ok=True)
