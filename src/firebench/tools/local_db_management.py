@@ -66,6 +66,37 @@ def _handle_existing_destination_file(destination_file_path: str, overwrite: boo
             )
 
 
+def generate_file_path_in_record(new_file_name: str, record_name: str, overwrite: bool = False) -> str:
+    """
+    Get the file path for a new file in the specified workflow record directory.
+
+    Parameters
+    ----------
+    new_file_name : str
+        The name of the new file to be created.
+    record_name : str
+        The name of the workflow record directory where the file will be located.
+    overwrite : bool, optional
+        Whether to overwrite the file if it already exists. Defaults to False.
+
+    Returns
+    -------
+    str
+        The full path to the new file in the workflow record directory.
+
+    Raises
+    ------
+    OSError
+        If the file already exists and overwrite is set to False.
+    """
+    tmp_file_path = os.path.join(get_local_db_path(), record_name, new_file_name)
+
+    if os.path.isfile(tmp_file_path) and not overwrite:
+        raise OSError(f"file {tmp_file_path} already exists and overwrite option is set to False")
+
+    return tmp_file_path
+
+
 def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, overwrite: bool = False):
     """
     Copy a file to the specified workflow record directory.

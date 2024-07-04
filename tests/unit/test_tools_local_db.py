@@ -219,6 +219,39 @@ def test_same_source_and_destination(mocker):
         ), "File should still exist when source and destination are the same."
 
 
+def test_generate_file_path_in_record(mocker):
+    new_file_name = "new_file.txt"
+    record_name = "test_record"
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Mocking environment variable for local db path
+        mocker.patch("os.getenv", return_value=temp_dir)
+
+        # Create the workflow record directory
+        record_path = os.path.join(temp_dir, record_name)
+        os.makedirs(record_path)
+
+        # Test creating a new file path
+        new_file_path = ft.generate_file_path_in_record(new_file_name, record_name)
+        assert new_file_path == os.path.join(record_path, new_file_name)
+
+        # Create a dummy file
+        with open(new_file_path, "w") as f:
+            f.write("test content")
+
+        # Test when the file already exists and overwrite is False
+        with pytest.raises(
+            OSError, match=f"file {new_file_path} already exists and overwrite option is set to False"
+        ):
+            ft.generate_file_path_in_record(new_file_name, record_name, overwrite=False)
+
+        # Test when the file already exists and overwrite is True
+        new_file_path_overwrite = ft.generate_file_path_in_record(
+            new_file_name, record_name, overwrite=True
+        )
+        assert new_file_path_overwrite == new_file_path
+
+
 # Run the tests
 if __name__ == "__main__":
     pytest.main()
