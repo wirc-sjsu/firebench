@@ -1,10 +1,10 @@
 import os
 import shutil
+import tempfile
 
 import firebench.tools as ft
 import pytest
-import tempfile
-from firebench.tools.local_db_management import _check_source_file_exists
+from firebench.tools.local_db_management import _check_source_file_exists, _check_workflow_record_exists
 
 
 def test_get_local_db_path(mocker):
@@ -123,6 +123,30 @@ def test_check_source_file_exists():
             _check_source_file_exists(non_existing_file_path)
 
         assert str(exc_info.value) == f"The file '{non_existing_file_path}' does not exist."
+
+
+def test_check_workflow_record_exists():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        existing_record_path = os.path.join(temp_dir, "existing_record")
+        non_existing_record_path = os.path.join(temp_dir, "non_existing_record")
+
+        # Create a dummy directory to test the existing record case
+        os.makedirs(existing_record_path)
+
+        # Test when the directory exists
+        try:
+            _check_workflow_record_exists(existing_record_path)
+        except OSError:
+            pytest.fail("OSError raised unexpectedly for an existing directory.")
+
+        # Test when the directory does not exist
+        with pytest.raises(OSError) as exc_info:
+            _check_workflow_record_exists(non_existing_record_path)
+
+        assert (
+            str(exc_info.value)
+            == f"The workflow record directory '{non_existing_record_path}' does not exist."
+        )
 
 
 # Run the tests
