@@ -90,6 +90,7 @@ def generate_file_path_in_record(new_file_name: str, record_name: str, overwrite
         If the file already exists and overwrite is set to False.
     """
     tmp_file_path = os.path.join(get_local_db_path(), record_name, new_file_name)
+    logging.debug("create file path %(tmp_file_path)s")
 
     if os.path.isfile(tmp_file_path) and not overwrite:
         raise OSError(f"file {tmp_file_path} already exists and overwrite option is set to False")

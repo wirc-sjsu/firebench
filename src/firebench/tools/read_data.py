@@ -59,7 +59,7 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
         try:
             std_var = svn(value["variable_name"])
         except ValueError:
-            logger.warning(f"ignore the input value: {value['variable_name']}")
+            logger.warning("ignore the input value: %s", value["variable_name"])
         else:
             output_data[std_var] = ureg.Quantity(
                 np.array(data_dict[key], dtype=np.float64), ureg(value["unit"])
