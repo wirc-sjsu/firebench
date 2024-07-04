@@ -7,6 +7,7 @@ import numpy as np
 
 from .namespace import StandardVariableNames as svn
 from .units import ureg
+from .logging_config import logger
 
 
 def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = None):
@@ -58,7 +59,7 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
         try:
             std_var = svn(value["variable_name"])
         except ValueError:
-            print(f"ignore the input value: {value['variable_name']}")
+            logger.warning(f"ignore the input value: {value['variable_name']}")
         else:
             output_data[std_var] = ureg.Quantity(
                 np.array(data_dict[key], dtype=np.float64), ureg(value["unit"])

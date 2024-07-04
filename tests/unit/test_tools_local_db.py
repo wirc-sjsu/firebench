@@ -4,6 +4,7 @@ import shutil
 import firebench.tools as ft
 import pytest
 import tempfile
+from firebench.tools.logging_config import create_file_handler
 
 
 def test_get_local_db_path(mocker):
@@ -21,13 +22,20 @@ def test_get_local_db_path(mocker):
 def test_create_record_directory(mocker):
     workflow_record_name = "test_workflow"
 
-    # Mocking get_local_db_path to return a fake path
-    mocker.patch("os.path.join", return_value="/fake/local/db/path/test_workflow")
-    mocker.patch("os.makedirs")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Mocking environment variable for local db path
+        mocker.patch("os.getenv", return_value=temp_dir)
 
-    # Test directory creation
-    ft.create_record_directory(workflow_record_name)
-    os.makedirs.assert_called_once_with("/fake/local/db/path/test_workflow", exist_ok=True)
+        # Test directory creation
+        ft.create_record_directory(workflow_record_name)
+
+        # Verify the directory was created
+        expected_path = os.path.join(temp_dir, workflow_record_name)
+        assert os.path.isdir(expected_path)
+
+        # Verify the log file was created
+        expected_log_file_path = os.path.join(expected_path, "firebench.log")
+        assert os.path.isfile(expected_log_file_path)
 
 
 def test_copy_file_to_workflow_record_success(mocker):
