@@ -5,7 +5,7 @@ import shutil
 from .logging_config import create_file_handler, logger
 
 
-def __check_source_file_exists(file_path: str):
+def _check_source_file_exists(file_path: str):
     """
     Check if the source file exists.
 
@@ -23,7 +23,7 @@ def __check_source_file_exists(file_path: str):
         raise FileNotFoundError(f"The file '{file_path}' does not exist.")
 
 
-def __check_workflow_record_exists(record_path: str):
+def _check_workflow_record_exists(record_path: str):
     """
     Check if the workflow record directory exists.
 
@@ -41,7 +41,7 @@ def __check_workflow_record_exists(record_path: str):
         raise OSError(f"The workflow record directory '{record_path}' does not exist.")
 
 
-def __handle_existing_destination_file(destination_file_path: str, overwrite: bool):
+def _handle_existing_destination_file(destination_file_path: str, overwrite: bool):
     """
     Handle the case where the destination file already exists.
 
@@ -96,13 +96,13 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
         return
 
     # Check if the source file exists
-    __check_source_file_exists(file_path)
+    _check_source_file_exists(file_path)
 
     # Check if the workflow record directory exists
-    __check_workflow_record_exists(record_path)
+    _check_workflow_record_exists(record_path)
 
     # Handle existing destination file
-    __handle_existing_destination_file(destination_file_path, overwrite)
+    _handle_existing_destination_file(destination_file_path, overwrite)
 
     # Copy file to workflow record directory
     shutil.copy2(file_path, destination_file_path)

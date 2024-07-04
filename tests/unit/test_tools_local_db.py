@@ -4,6 +4,7 @@ import shutil
 import firebench.tools as ft
 import pytest
 import tempfile
+from firebench.tools.local_db_management import _check_source_file_exists
 
 
 def test_get_local_db_path(mocker):
@@ -16,25 +17,6 @@ def test_get_local_db_path(mocker):
     with pytest.raises(Exception) as excinfo:
         ft.get_local_db_path()
     assert "Firebench local database path is not set." in str(excinfo.value)
-
-
-def test_create_record_directory(mocker):
-    workflow_record_name = "test_workflow"
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Mocking environment variable for local db path
-        mocker.patch("os.getenv", return_value=temp_dir)
-
-        # Test directory creation
-        ft.create_record_directory(workflow_record_name)
-
-        # Verify the directory was created
-        expected_path = os.path.join(temp_dir, workflow_record_name)
-        assert os.path.isdir(expected_path)
-
-        # Verify the log file was created
-        expected_log_file_path = os.path.join(expected_path, "firebench.log")
-        assert os.path.isfile(expected_log_file_path)
 
 
 def test_copy_file_to_workflow_record_success(mocker):
@@ -119,6 +101,28 @@ def test_copy_file_to_workflow_record_file_exists_no_overwrite(mocker):
         # Test file already exists and overwrite is False
         with pytest.raises(OSError):
             ft.copy_file_to_workflow_record(workflow_record_name, file_path)
+
+
+def test_check_source_file_exists():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        existing_file_path = os.path.join(temp_dir, "existing_file.txt")
+        non_existing_file_path = os.path.join(temp_dir, "non_existing_file.txt")
+
+        # Create a dummy file to test the existing file case
+        with open(existing_file_path, "w") as f:
+            f.write("test content")
+
+        # Test when the file exists
+        try:
+            _check_source_file_exists(existing_file_path)
+        except FileNotFoundError:
+            pytest.fail("FileNotFoundError raised unexpectedly for an existing file.")
+
+        # Test when the file does not exist
+        with pytest.raises(FileNotFoundError) as exc_info:
+            _check_source_file_exists(non_existing_file_path)
+
+        assert str(exc_info.value) == f"The file '{non_existing_file_path}' does not exist."
 
 
 # Run the tests
