@@ -1,10 +1,15 @@
+import io
 import os
 import shutil
 import tempfile
 
 import firebench.tools as ft
 import pytest
-from firebench.tools.local_db_management import _check_source_file_exists, _check_workflow_record_exists
+from firebench.tools.local_db_management import (
+    _check_source_file_exists,
+    _check_workflow_record_exists,
+    _handle_existing_destination_file,
+)
 
 
 def test_get_local_db_path(mocker):
@@ -147,6 +152,71 @@ def test_check_workflow_record_exists():
             str(exc_info.value)
             == f"The workflow record directory '{non_existing_record_path}' does not exist."
         )
+
+
+def test_handle_existing_destination_file():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        existing_file_path = os.path.join(temp_dir, "existing_file.txt")
+        non_existing_file_path = os.path.join(temp_dir, "non_existing_file.txt")
+
+        # Create a dummy file to test the existing file case
+        with open(existing_file_path, "w") as f:
+            f.write("test content")
+
+        # Test when the file exists and overwrite is True
+        try:
+            _handle_existing_destination_file(existing_file_path, overwrite=True)
+            assert not os.path.isfile(existing_file_path), "File should be removed when overwrite is True."
+        except OSError:
+            pytest.fail("OSError raised unexpectedly when overwrite is True.")
+
+        # Recreate the dummy file for the next test
+        with open(existing_file_path, "w") as f:
+            f.write("test content")
+
+        # Test when the file exists and overwrite is False
+        with pytest.raises(OSError) as exc_info:
+            _handle_existing_destination_file(existing_file_path, overwrite=False)
+        assert (
+            str(exc_info.value)
+            == f"The file '{existing_file_path}' already exists and overwrite option is set to False"
+        )
+
+        # Test when the file does not exist
+        try:
+            _handle_existing_destination_file(non_existing_file_path, overwrite=False)
+        except OSError:
+            pytest.fail("OSError raised unexpectedly for a non-existing file.")
+
+        # Ensure the non-existing file is still non-existent
+        assert not os.path.isfile(non_existing_file_path), "Non-existing file should remain non-existent."
+
+
+def test_same_source_and_destination(mocker):
+    workflow_record_name = "dummy_workflow"
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Mocking environment variable for local db path
+        mocker.patch("os.getenv", return_value=temp_dir)
+
+        # Create the workflow record directory
+        ft.create_record_directory(workflow_record_name)
+
+        file_path = os.path.join(temp_dir, workflow_record_name, "same_file.txt")
+
+        # Create a dummy file
+        with open(file_path, "w") as f:
+            f.write("test content")
+
+        # Test when the source and destination are the same
+        try:
+            ft.copy_file_to_workflow_record(workflow_record_name, file_path, overwrite=True)
+        except Exception:
+            pytest.fail("Exception raised unexpectedly when source and destination are the same.")
+
+        # Check if the file still exists
+        assert os.path.isfile(
+            file_path
+        ), "File should still exist when source and destination are the same."
 
 
 # Run the tests
