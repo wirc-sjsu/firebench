@@ -18,7 +18,7 @@ def __check_source_file_exists(file_path: str):
     ------
     FileNotFoundError
         If the file does not exist.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"The file '{file_path}' does not exist.")
 
@@ -36,7 +36,7 @@ def __check_workflow_record_exists(record_path: str):
     ------
     OSError
         If the workflow record directory does not exist.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     if not os.path.isdir(record_path):
         raise OSError(f"The workflow record directory '{record_path}' does not exist.")
 
@@ -56,7 +56,7 @@ def __handle_existing_destination_file(destination_file_path: str, overwrite: bo
     ------
     OSError
         If the file already exists and overwrite is False.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     if os.path.isfile(destination_file_path):
         if overwrite:
             os.remove(destination_file_path)
@@ -85,7 +85,7 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
         If the file does not exist.
     OSError
         If the workflow record directory does not exist or if the file already exists and overwrite is False.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     # Get record path
     record_path = os.path.join(get_local_db_path(), workflow_record_name)
     destination_file_path = os.path.join(record_path, os.path.basename(file_path))
