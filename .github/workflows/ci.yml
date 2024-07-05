@@ -29,8 +29,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install hatch
-          hatch env create
-          hatch run pip install pytest pytest-cov
+          hatch env create -e dev
 
       - name: Run tests with coverage
         run: |
