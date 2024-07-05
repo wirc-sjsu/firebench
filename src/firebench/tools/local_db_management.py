@@ -98,6 +98,35 @@ def generate_file_path_in_record(new_file_name: str, record_name: str, overwrite
     return tmp_file_path
 
 
+def get_file_path_in_record(file_name: str, record_name: str) -> str:
+    """
+    Get the file path for an existing file in the specified workflow record directory.
+
+    Parameters
+    ----------
+    file_name : str
+        The name of the existing file.
+    record_name : str
+        The name of the workflow record directory where the file will be located.
+
+    Returns
+    -------
+    str
+        The full path to the file in the workflow record directory.
+
+    Raises
+    ------
+    OSError
+        If the file does not exist.
+    """
+    tmp_file_path = os.path.join(get_local_db_path(), record_name, file_name)
+
+    if not os.path.isfile(tmp_file_path):
+        raise OSError(f"The file '{tmp_file_path}' does not exist.")
+
+    return tmp_file_path
+
+
 def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, overwrite: bool = False):
     """
     Copy a file to the specified workflow record directory.

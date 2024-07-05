@@ -252,6 +252,31 @@ def test_generate_file_path_in_record(mocker):
         assert new_file_path_overwrite == new_file_path
 
 
+def test_get_file_path_in_record():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Set the environment variable for the local db path
+        os.environ["FIREBENCH_LOCAL_DB"] = temp_dir
+
+        # Create a dummy workflow record directory
+        record_name = "test_workflow"
+        record_path = os.path.join(temp_dir, record_name)
+        os.makedirs(record_path)
+
+        # Create a dummy file in the workflow record directory
+        file_name = "test_file.txt"
+        file_path = os.path.join(record_path, file_name)
+        with open(file_path, "w") as f:
+            f.write("test content")
+
+        # Test successful retrieval of file path
+        result_path = ft.get_file_path_in_record(file_name, record_name)
+        assert result_path == file_path
+
+        # Test file not found
+        with pytest.raises(OSError, match="does not exist"):
+            ft.get_file_path_in_record("non_existent_file.txt", record_name)
+
+
 # Run the tests
 if __name__ == "__main__":
     pytest.main()
