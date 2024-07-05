@@ -23,11 +23,18 @@ jobs:
       - name: Set up Git LFS
         run: |
           ls -l
+          ls -l data
+          ls -l data/fuel_models
           git lfs install
-
+        continue-on-error: true
 
       - name: Pull LFS files
-        run: git lfs pull
+        run: |
+          git lfs pull
+          ls -l
+          ls -l data
+          ls -l data/fuel_models
+        continue-on-error: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
