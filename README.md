@@ -27,6 +27,45 @@ FireBench aims to address this gap by providing a framework to assess fire model
 
 FireBench offers a dual approach for evaluation: intercomparison without extensive observational data and benchmarking against a validation dataset. This framework aims to enhance fire modeling for both scientific research and operational applications, with results archived in a dedicated database.
 
+## Installation
+
+### Prerequisites
+
+Before installing FireBench, you need to install [Git LFS](https://git-lfs.github.com/).
+
+To install the FireBench library, follow these steps:
+
+### 1. Clone the Repository
+
+You can clone the repository using either HTTPS or SSH. Choose one of the following methods:
+
+#### Using HTTPS:
+```bash
+git clone https://github.com/wirc-sjsu/firebench.git
+```
+
+#### Using SSH:
+```bash
+git clone git@github.com:wirc-sjsu/firebench.git
+```
+
+### 2. Install FireBench and its Dependencies
+
+Navigate to the cloned repository and install the FireBench library along with its dependencies using `pip`:
+
+```bash
+cd firebench
+git lfs pull
+pip install .
+```
+
+### 3. Set up the path to your local working directory
+
+In order to centralize all the files managed locally by firebench, a working directory called the `firebench local database` has to be defined. Add the following line to your `.bashrc` or `.zshrc`:
+```bash
+export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db
+```
+
 ## Community Discussions
 
 We encourage you to use the [GitHub Discussions](https://github.com/wirc-sjsu/firebench/discussions) tab for questions, help requests, and general discussions about the project. This helps keep our issue tracker focused on bugs and feature requests.

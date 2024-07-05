@@ -1,3 +1,4 @@
+import importlib.resources
 import json
 import os
 from os import path
@@ -6,6 +7,7 @@ import numpy as np
 
 from .namespace import StandardVariableNames as svn
 from .units import ureg
+from .logging_config import logger
 
 
 def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = None):
@@ -57,9 +59,14 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
         try:
             std_var = svn(value["variable_name"])
         except ValueError:
-            print(f"ignore the input value: {value['variable_name']}")
+            logger.warning("ignore the input value: %s", value["variable_name"])
         else:
-            output_data[std_var] = np.array(data_dict[key], dtype=np.float64) * ureg(value["unit"])
+            output_data[std_var] = ureg.Quantity(
+                np.array(data_dict[key], dtype=np.float64), ureg(value["unit"])
+            )
+
+    # store number of fuel classes
+    output_data["nb_fuel_classes"] = len(content[1:])
 
     return output_data
 
@@ -112,8 +119,8 @@ def __get_json_data_file(fuel_model_name: str, local_path_json_fuel_db: str = No
 
     if local_path_json_fuel_db is None:
         # Use default path to data
-        defaultpath = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..", "data", "fuel_models", json_filename
+        defaultpath = importlib.resources.files("firebench").parent.parent.joinpath(
+            "data", "fuel_models", json_filename
         )
         defaultexists = os.path.exists(defaultpath)
 

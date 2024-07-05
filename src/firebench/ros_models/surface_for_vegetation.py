@@ -1,10 +1,45 @@
 import numpy as np
 
-from ..tools.units import ureg
 from ..tools.namespace import StandardVariableNames as svn
+from ..tools.units import ureg
 
 
-class Rothermel_SFIRE:
+class RateOfSpreadModel:
+    """
+    A base class for fire spread rate models.
+
+    This class provides common functionalities and attributes for different fire spread rate models.
+    """  # pylint: disable=line-too-long
+
+    # metada dict containing information about inputs and outputs (std_name, units, range)
+    metadata = {}
+
+    @staticmethod
+    def compute_ros(input_dict: dict[str, list[float]], **opt) -> float:
+        """
+        Compute the rate of spread of fire using the specific model.
+
+        This method should be overridden by subclasses.
+
+        Parameters
+        ----------
+        input_dict : dict[str, list[float]]
+            Dictionary containing the input data for various fuel properties.
+
+        Optional Parameters
+        -------------------
+        **opt : dict
+            Optional parameters for the fire spread rate model.
+
+        Returns
+        -------
+        float
+            The computed rate of spread of fire [m/s].
+        """  # pylint: disable=line-too-long
+        raise NotImplementedError("Subclasses should implement this method")
+
+
+class Rothermel_SFIRE(RateOfSpreadModel):
     """
     A class to represent the Rothermel's model for fire spread rate calculation used in SFIRE code.
 
@@ -71,7 +106,7 @@ class Rothermel_SFIRE:
             "range": (0, 1),
         },
         "wind": {
-            "std_name": svn.WIND,
+            "std_name": svn.WIND_SPEED,
             "units": ureg.meter / ureg.second,
             "range": (-np.inf, np.inf),
         },
@@ -88,7 +123,7 @@ class Rothermel_SFIRE:
         "output_rate_of_spread": {
             "std_name": svn.RATE_OF_SPREAD,
             "units": ureg.meter / ureg.second,
-            "item": (0, np.inf),
+            "range": (0, np.inf),
         },
     }
 
@@ -239,7 +274,7 @@ class Rothermel_SFIRE:
         return Rothermel_SFIRE.rothermel(
             fueldata=fuel_dict,
             fuelclass=input_dict[svn.FUEL_CLASS],
-            wind=input_dict[svn.WIND],
+            wind=input_dict[svn.WIND_SPEED],
             slope=input_dict[svn.SLOPE_ANGLE],
             fmc=input_dict[svn.FUEL_MOISTURE_CONTENT],
             **opt,

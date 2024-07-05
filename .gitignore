@@ -154,3 +154,5 @@ cython_debug/
 
 # other
 *.DS_Store
+docs/_site/*
+docs/Gemfile.lock
