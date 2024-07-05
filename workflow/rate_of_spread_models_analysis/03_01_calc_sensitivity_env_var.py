@@ -1,10 +1,10 @@
 """
 Workflow: 03_01_sensitivity_env_var.py
 Category: Sensitivity Analysis
-version: 1.0
+Version: 1.0
 
 Description:
-This workflow performs a sensitivity analysis on rate of spread models using a static fuel database (e.g. Anderson, Scott & Burgan)
+This workflow performs a sensitivity analysis on rate of spread models using a static fuel database (e.g., Anderson, Scott & Burgan).
 The analysis considers the impact of environmental variables on fire behavior, specifically focusing on:
 - Wind
 - Slope
@@ -12,69 +12,61 @@ The analysis considers the impact of environmental variables on fire behavior, s
 
 Documentation page:
 """
-import os
+
+from datetime import datetime
 
 import firebench.ros_models as rm
 import firebench.tools as ft
+import h5py
 import numpy as np
 from firebench import svn, ureg
 from SALib.analyze import sobol
-import h5py
-from datetime import datetime
-
 
 #######################################################################################
-#                             STEP 1: DESIGN OF EXPERIMENT
+#                             SETUP SECTION
+# This section is for setting up parameters. Change these parameters as needed.
 #######################################################################################
 
-########################## SET UP
-
-# File management
-# Name of the case
-# TODO: record logic
-record_name = "Sensitivity_env_var_Anderson13_Rothermel"
+# Workflow Configuration
+workflow_record_name = "Sensitivity_env_var_Anderson13_Rothermel"
 overwrite_files_in_record = True
 
-# Fuel model choice
-# TODO: how to use existing fuel DB + how to use a personalized one
-fuel_model_name = "Anderson13"  #
+# Fuel Model Configuration
+fuel_model_name = "Anderson13"
 local_path_json_fuel_db = None
 
-# Choose ROS model
-# TODO: How to change ROS model in the workflow
+# Rate of Spread Model
 ros_model = rm.Rothermel_SFIRE
 
-# Create wind [m s-1], slope [deg] and moisture [%] data
-# TODO: adapt number of point for sobol analysis
-nb_pts_sobol_seq = 2**10  # Choose number of point for Sobol sequence, better if 2^N
+# Sobol Sequence Configuration
+num_sobol_points = 2**8  # Number of points for Sobol sequence, better if 2^N
 
-## Create the dict of variable name, units and range
-# TODO: variable dict with range and unit or unit and value
+# Input Variables Configuration
 input_vars_info = {
     svn.WIND_SPEED: {"unit": ureg.meter / ureg.second, "range": [-15, 15]},
     svn.SLOPE_ANGLE: {"unit": ureg.degree, "range": [-45, 45]},
     svn.FUEL_MOISTURE_CONTENT: {"unit": ureg.percent, "range": [1, 50]},
 }
 
-# set logging parameters
+# Logging Configuration
 # set logging level, from lower to higher: NOTSET (0), DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
 ft.logger.setLevel(0)
-########################## END OF SET UP
 
-# Create workflow record directory (working directory for the current workflow)
-ft.create_record_directory(record_name)
+#######################################################################################
+#                             STEP 1: DESIGN OF EXPERIMENT
+#######################################################################################
 
-# copy script file to record
-ft.copy_file_to_workflow_record(record_name, __file__, overwrite=overwrite_files_in_record)
+# Create workflow record directory
+ft.create_record_directory(workflow_record_name)
+
+# Copy script file to record
+ft.copy_file_to_workflow_record(workflow_record_name, __file__, overwrite=overwrite_files_in_record)
 
 # Import fuel data
-fuel_data = ft.read_fuel_data_file(
-    fuel_model_name,
-    local_path_json_fuel_db=local_path_json_fuel_db,
-)
+fuel_data = ft.read_fuel_data_file(fuel_model_name, local_path_json_fuel_db=local_path_json_fuel_db)
 
-## Create the final data
-input_vars_dict, sobol_problem, nb_pts_total = ft.sobol_seq(nb_pts_sobol_seq, input_vars_info)
+# Create Sobol sequence and final data dictionary
+input_vars_dict, sobol_problem, num_total_points = ft.sobol_seq(num_sobol_points, input_vars_info)
 input_dict = ft.merge_dictionaries(fuel_data, input_vars_dict)
 
 #######################################################################################
@@ -87,112 +79,79 @@ final_input = ft.check_data_quality_ros_model(input_dict=input_dict, ros_model=r
 #                             STEP 3: ROS MODEL
 #######################################################################################
 
-# Sobol indices array (N_pts, 4, N_vars) with 2nd dimension for first order, first order confidence, total order, total order confidence
-sobol_indices = np.zeros((fuel_data["nb_fuel_classes"], 4, 3))
+# Initialize Sobol indices array (N_pts, 4, N_vars)
+sobol_indices = np.zeros((fuel_data["nb_fuel_classes"], 4, len(input_vars_info)))
 
-original_dict = final_input.copy()
+# Compute rate of spread (ROS) and Sobol indices
+ros = np.zeros((num_total_points, fuel_data["nb_fuel_classes"]))
+for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
+    final_input[svn.FUEL_CLASS] = fuel_class
 
-i_exp = 0
-ros = np.zeros((nb_pts_total, fuel_data["nb_fuel_classes"]))
-for i_fc in range(fuel_data["nb_fuel_classes"]):
-    final_input[svn.FUEL_CLASS] = i_fc + 1
-
-    ref_dict = original_dict.copy()
-
-    for k in range(nb_pts_total):
+    for k in range(num_total_points):
         for key in input_vars_info.keys():
-            final_input[key] = ref_dict[key][k]
+            final_input[key] = input_vars_dict[key][k]
 
-        ros[k, i_fc] = ros_model.compute_ros(final_input)
+        ros[k, i] = ros_model.compute_ros(final_input)
 
     # Perform Sobol analysis
-    sobol_indices_output = sobol.analyze(sobol_problem, ros[:, i_fc], print_to_console=False)
+    sobol_results = sobol.analyze(sobol_problem, ros[:, i], print_to_console=False)
 
     # Extract first-order and total-order indices
-    sobol_indices[i_exp, 0, :] = sobol_indices_output["S1"]
-    sobol_indices[i_exp, 1, :] = sobol_indices_output["S1_conf"]
-    sobol_indices[i_exp, 2, :] = sobol_indices_output["ST"]
-    sobol_indices[i_exp, 3, :] = sobol_indices_output["ST_conf"]
+    sobol_indices[i, 0, :] = sobol_results["S1"]
+    sobol_indices[i, 1, :] = sobol_results["S1_conf"]
+    sobol_indices[i, 2, :] = sobol_results["ST"]
+    sobol_indices[i, 3, :] = sobol_results["ST_conf"]
 
-    i_exp += 1
-
-# Assign unit
-ros_unit = ureg.Quantity(ros, ros_model.metadata["output_rate_of_spread"]["units"])
+# Assign unit to ROS
+ros_quantity = ureg.Quantity(ros, ros_model.metadata["output_rate_of_spread"]["units"])
 
 #######################################################################################
 #                             STEP 4: SAVE DATA
 #######################################################################################
 
-output_file_path = ft.generate_file_path_in_record(
-    f"output_{record_name}.h5", record_name, overwrite_files_in_record
-)
+# Generate output file path
+output_file_path = ft.generate_file_path_in_record(f"output_{workflow_record_name}.h5", workflow_record_name, overwrite_files_in_record)
 
 with h5py.File(output_file_path, "w") as f:
-    # Info about the file
+    # Add file attributes
     f.attrs["description"] = "Sensitivity workflow for rate of spread model using firebench package"
     f.attrs["date"] = str(datetime.now())
-    # save fuel input data
-    fuel_grp = f.create_group("fuel")
-    fuel_grp.attrs["description"] = f"Fuel Model data"
-    fuel_grp.attrs["fuel_model_name"] = fuel_model_name
+
+    # Save fuel input data
+    fuel_group = f.create_group("fuel")
+    fuel_group.attrs["description"] = "Fuel Model data"
+    fuel_group.attrs["fuel_model_name"] = fuel_model_name
     for key, value in fuel_data.items():
-        if type(key) is ft.StandardVariableNames:
-            key = key.value
-            is_part_of_firebench_StandardVariableNames = True
-        else:
-            is_part_of_firebench_StandardVariableNames = False
+        is_standard_var = isinstance(key, ft.StandardVariableNames)
+        key = key.value if is_standard_var else key
+        unit = getattr(value, 'units', None)
+        magnitude = getattr(value, 'magnitude', value)
+        dataset = fuel_group.create_dataset(key, data=magnitude)
+        dataset.attrs["units"] = str(unit)
+        dataset.attrs["is_part_of_firebench_StandardVariableNames"] = is_standard_var
 
-        try:
-            tmp_unit = value.units
-            tmp_array = value.magnitude
-        except:
-            tmp_unit = None
-            tmp_array = value
-        new_ds = fuel_grp.create_dataset(key, data=tmp_array)
-        new_ds.attrs["units"] = str(tmp_unit)
-        new_ds.attrs[
-            "is_part_of_firebench_StandardVariableNames"
-        ] = is_part_of_firebench_StandardVariableNames
-
-    # Save wind, slope, fmc inputs
-    sensitivity_input_grp = f.create_group("sensitivity_vars")
-    sensitivity_input_grp.attrs["description"] = "variables used for the sensitivity analysis"
+    # Save sensitivity input variables
+    sensitivity_group = f.create_group("sensitivity_vars")
+    sensitivity_group.attrs["description"] = "Variables used for the sensitivity analysis"
     for key, value in input_vars_dict.items():
-        if type(key) is ft.StandardVariableNames:
-            key = key.value
-            is_part_of_firebench_StandardVariableNames = True
-        else:
-            is_part_of_firebench_StandardVariableNames = False
-        try:
-            tmp_unit = value.units
-            tmp_array = value.magnitude
-        except:
-            tmp_unit = None
-            tmp_array = value
-        new_ds = sensitivity_input_grp.create_dataset(key, data=tmp_array)
-        new_ds.attrs["units"] = str(tmp_unit)
-        new_ds.attrs[
-            "is_part_of_firebench_StandardVariableNames"
-        ] = is_part_of_firebench_StandardVariableNames
+        is_standard_var = isinstance(key, ft.StandardVariableNames)
+        key = key.value if is_standard_var else key
+        unit = getattr(value, 'units', None)
+        magnitude = getattr(value, 'magnitude', value)
+        dataset = sensitivity_group.create_dataset(key, data=magnitude)
+        dataset.attrs["units"] = str(unit)
+        dataset.attrs["is_part_of_firebench_StandardVariableNames"] = is_standard_var
 
-    # Save raw output
-    raw_output_grp = f.create_group("outputs")
-    raw_output_grp.attrs["description"] = "output of the workflow"
+    # Save raw outputs
+    output_group = f.create_group("outputs")
+    output_group.attrs["description"] = "Output of the workflow"
 
-    # ros
-    new_ds = raw_output_grp.create_dataset("rate_of_spread", data=ros)
-    new_ds.attrs["units"] = str(ros_model.metadata["output_rate_of_spread"]["units"])
+    # Save ROS data
+    ros_dataset = output_group.create_dataset("rate_of_spread", data=ros_quantity.magnitude)
+    ros_dataset.attrs["units"] = str(ros_quantity.units)
 
-    # sobol indices
-    new_ds = raw_output_grp.create_dataset("Sobol_first_order", data=sobol_indices[:, 0, :])
-    new_ds.attrs["units"] = "dimensionless"
-    new_ds.attrs["column_names"] = np.string_(sobol_problem["names"])
-    new_ds = raw_output_grp.create_dataset("Sobol_first_order_confidence", data=sobol_indices[:, 1, :])
-    new_ds.attrs["units"] = "dimensionless"
-    new_ds.attrs["column_names"] = np.string_(sobol_problem["names"])
-    new_ds = raw_output_grp.create_dataset("Sobol_total_order", data=sobol_indices[:, 2, :])
-    new_ds.attrs["units"] = "dimensionless"
-    new_ds.attrs["column_names"] = np.string_(sobol_problem["names"])
-    new_ds = raw_output_grp.create_dataset("Sobol_total_order_confidence", data=sobol_indices[:, 3, :])
-    new_ds.attrs["units"] = "dimensionless"
-    new_ds.attrs["column_names"] = np.string_(sobol_problem["names"])
+    # Save Sobol indices
+    for name, index in [("Sobol_first_order", 0), ("Sobol_first_order_confidence", 1), ("Sobol_total_order", 2), ("Sobol_total_order_confidence", 3)]:
+        sobol_dataset = output_group.create_dataset(name, data=sobol_indices[:, index, :])
+        sobol_dataset.attrs["units"] = "dimensionless"
+        sobol_dataset.attrs["column_names"] = np.string_(sobol_problem["names"])
