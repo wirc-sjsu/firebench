@@ -45,3 +45,5 @@ dev = [
     "bandit",
     "pylint",
 ]
+[tool.hatch.envs.default]
+features = ["dev"]
