@@ -38,14 +38,19 @@ output_dict = {}
 
 with h5py.File(output_h5_path, "r") as f:
     outputs_grp = f["outputs"]
-
-    sobol_keys = ["Sobol_first_order", "Sobol_first_order_confidence", "Sobol_total_order", "Sobol_total_order_confidence"]
+    fuel_model_name = f["fuel"].attrs["fuel_model_name"]
+    sobol_keys = [
+        "Sobol_first_order",
+        "Sobol_first_order_confidence",
+        "Sobol_total_order",
+        "Sobol_total_order_confidence",
+    ]
     for key in sobol_keys:
         sobol_dataset = outputs_grp[key]
         output_dict[key] = {
             "unit": sobol_dataset.attrs["units"],
             "column_names": sobol_dataset.attrs["column_names"],
-            "data": sobol_dataset[:]
+            "data": sobol_dataset[:],
         }
 
 fuel_classes = np.arange(1, np.size(output_dict["Sobol_first_order"]["data"], 0) + 1, 1)
@@ -68,16 +73,28 @@ x_positions = np.arange(len(fuel_classes))  # the label locations
 ax.axhline(1, color="k", linewidth=0.5, linestyle="--")
 colors = ["b", "r", "g"]
 for i, param in enumerate(parameters):
-    ax.bar(x_positions + i * bar_width, output_dict["Sobol_first_order"]["data"][:, i], bar_width, label=f"First Order - {param}", color=colors[i])
+    ax.bar(
+        x_positions + i * bar_width,
+        output_dict["Sobol_first_order"]["data"][:, i],
+        bar_width,
+        label=f"First Order - {param}",
+        color=colors[i],
+    )
 
 # Plotting the total order indices as scatter plots
 for i, param in enumerate(parameters):
-    ax.scatter(x_positions + i * bar_width, output_dict["Sobol_total_order"]["data"][:, i], label=f"Total Order - {param}", marker="d", color=colors[i])
+    ax.scatter(
+        x_positions + i * bar_width,
+        output_dict["Sobol_total_order"]["data"][:, i],
+        label=f"Total Order - {param}",
+        marker="d",
+        color=colors[i],
+    )
 
 # Adding labels and title
-ax.set_xlabel("Anderson Fuel Classes")
+ax.set_xlabel("Fuel Classes")
 ax.set_ylabel("Sobol Indices")
-ax.set_title("Sobol Indices for Different Fuel Classes and Parameters")
+ax.set_title(f"Sobol Indices for {fuel_model_name} fuel model for environmental parameters")
 ax.set_xticks(x_positions + bar_width)
 ax.set_xticklabels(fuel_classes, rotation=0, ha="center")
 ax.legend(frameon=False, ncols=2)
@@ -85,6 +102,3 @@ ax.legend(frameon=False, ncols=2)
 # Display the plot
 plt.tight_layout()
 fig.savefig(figure_path, dpi=300)
-
-# Output the data for verification
-print(output_dict)

@@ -110,7 +110,9 @@ ros_quantity = ureg.Quantity(ros, ros_model.metadata["output_rate_of_spread"]["u
 #######################################################################################
 
 # Generate output file path
-output_file_path = ft.generate_file_path_in_record(f"output_{workflow_record_name}.h5", workflow_record_name, overwrite_files_in_record)
+output_file_path = ft.generate_file_path_in_record(
+    f"output_{workflow_record_name}.h5", workflow_record_name, overwrite_files_in_record
+)
 
 with h5py.File(output_file_path, "w") as f:
     # Add file attributes
@@ -124,8 +126,8 @@ with h5py.File(output_file_path, "w") as f:
     for key, value in fuel_data.items():
         is_standard_var = isinstance(key, ft.StandardVariableNames)
         key = key.value if is_standard_var else key
-        unit = getattr(value, 'units', None)
-        magnitude = getattr(value, 'magnitude', value)
+        unit = getattr(value, "units", None)
+        magnitude = getattr(value, "magnitude", value)
         dataset = fuel_group.create_dataset(key, data=magnitude)
         dataset.attrs["units"] = str(unit)
         dataset.attrs["is_part_of_firebench_StandardVariableNames"] = is_standard_var
@@ -136,8 +138,8 @@ with h5py.File(output_file_path, "w") as f:
     for key, value in input_vars_dict.items():
         is_standard_var = isinstance(key, ft.StandardVariableNames)
         key = key.value if is_standard_var else key
-        unit = getattr(value, 'units', None)
-        magnitude = getattr(value, 'magnitude', value)
+        unit = getattr(value, "units", None)
+        magnitude = getattr(value, "magnitude", value)
         dataset = sensitivity_group.create_dataset(key, data=magnitude)
         dataset.attrs["units"] = str(unit)
         dataset.attrs["is_part_of_firebench_StandardVariableNames"] = is_standard_var
@@ -151,7 +153,12 @@ with h5py.File(output_file_path, "w") as f:
     ros_dataset.attrs["units"] = str(ros_quantity.units)
 
     # Save Sobol indices
-    for name, index in [("Sobol_first_order", 0), ("Sobol_first_order_confidence", 1), ("Sobol_total_order", 2), ("Sobol_total_order_confidence", 3)]:
+    for name, index in [
+        ("Sobol_first_order", 0),
+        ("Sobol_first_order_confidence", 1),
+        ("Sobol_total_order", 2),
+        ("Sobol_total_order_confidence", 3),
+    ]:
         sobol_dataset = output_group.create_dataset(name, data=sobol_indices[:, index, :])
         sobol_dataset.attrs["units"] = "dimensionless"
         sobol_dataset.attrs["column_names"] = np.string_(sobol_problem["names"])
