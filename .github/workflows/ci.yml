@@ -21,7 +21,10 @@ jobs:
           lfs: true  # Fetch LFS files
       
       - name: Set up Git LFS
-        run: git lfs install
+        run: |
+          ls -l
+          git lfs install
+
 
       - name: Pull LFS files
         run: git lfs pull

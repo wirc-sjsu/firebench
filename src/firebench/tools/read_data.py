@@ -119,15 +119,13 @@ def __get_json_data_file(fuel_model_name: str, local_path_json_fuel_db: str = No
 
     if local_path_json_fuel_db is None:
         # Use default path to data
-        defaultpath = importlib.resources.files("firebench").parent.parent.joinpath(
+        json_file_path = importlib.resources.files("firebench").parent.parent.joinpath(
             "data", "fuel_models", json_filename
         )
-        defaultexists = os.path.exists(defaultpath)
+        defaultexists = os.path.exists(json_file_path)
 
         if not defaultexists:
-            raise FileNotFoundError(f"File {json_filename} not found in the package data path.")
-
-        json_file_path = defaultpath
+            raise FileNotFoundError(f"File {json_file_path} not found in the package data path.")
     else:
         # Use specified local path to data
         json_file_path = os.path.join(local_path_json_fuel_db, json_filename)
