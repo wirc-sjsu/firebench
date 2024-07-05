@@ -31,6 +31,7 @@ jobs:
       - name: Pull LFS files
         run: |
           git lfs pull
+          pwd
           ls -l
           ls -l data
           ls -l data/fuel_models

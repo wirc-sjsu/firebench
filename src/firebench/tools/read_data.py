@@ -119,6 +119,7 @@ def __get_json_data_file(fuel_model_name: str, local_path_json_fuel_db: str = No
 
     if local_path_json_fuel_db is None:
         # Use default path to data
+        print(importlib.resources.files("firebench"))
         json_file_path = importlib.resources.files("firebench").parent.parent.joinpath(
             "data", "fuel_models", json_filename
         )
