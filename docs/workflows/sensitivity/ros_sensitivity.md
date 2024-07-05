@@ -25,12 +25,12 @@ As the range and units are specified within the workflow, they can be modified b
 ## Scripts
 
 ### Computation of the Sobol indices
-path: `workflows/rate_of_spread_models/03_01_C_sensitivity_env_vars.py`
+path: `workflows/rate_of_spread_models/03_01_calc_sensitivity_env_vars.py`
 
 This script will create a directory in the local data directory
 
 ### Post processing
-path: `workflows/rate_of_spread_models/03_01_P_sensitivity_env_vars.py`
+path: `workflows/rate_of_spread_models/03_01_post_sensitivity_env_vars.py`
 
 ## Data
 

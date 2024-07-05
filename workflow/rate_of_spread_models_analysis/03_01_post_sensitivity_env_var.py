@@ -12,38 +12,42 @@ The analysis considers the impact of environmental variables on fire behavior, s
 This workflow is part of the FireBench project, aimed at systematic benchmarking and inter-comparisons 
 of fire models to enhance their scientific and operational applications.
 """
-import firebench.ros_models as rm
-import firebench.tools as fbt
+import firebench.tools as ft
 import numpy as np
-from firebench import svn, ureg
-from pint import Quantity
-from SALib.analyze import sobol
-from tqdm import tqdm
+
 import matplotlib.pyplot as plt
+import h5py
 
 ########################## SET UP
 
-# File management
-# Name of the case
 record_name = "Sensitivity_env_var_Anderson13_Rothermel"
+figure_name = "sobol_index.png"
+overwrite_fig = True
 
-fuel_classes = [
-    "1: Short grass",
-    "2: Timber",
-    "3: Tall grass",
-    "4: Chaparral",
-    "5: Brush",
-    "6: Dormant brush",
-    "7: Southern rough",
-    "8: Closed timber litter",
-    "9: Hardwood litter",
-    "10: Timber",
-    "11: Light logging slash",
-    "12: Medium logging slash",
-    "13: Heavy logging slash",
-]
-parameters = sobol_problem["names"]
-colors = ["b", "r", "g"]
+########################## SET UP
+
+
+# get the data
+output_h5_path = ft.get_file_path_in_record(f"output_{record_name}.h5", record_name)
+
+output_dict = {}
+
+with h5py.File(output_h5_path, "r") as f:
+    outputs_grp = f["outputs"]
+
+    sobol_keys = ["Sobol_first_order", "Sobol_first_order_confidence", "Sobol_total_order", "Sobol_total_order_confidence"]
+    for key in sobol_keys:
+        sobol_dataset = outputs_grp[key]
+        output_dict[key] = {
+            "unit": sobol_dataset.attrs["units"],
+            "column_names": sobol_dataset.attrs["column_names"],
+            "data": sobol_dataset[:]
+        }
+
+fuel_classes = np.arange(1, np.size(output_dict["Sobol_first_order"]["data"], 0)+1, 1)
+parameters = np.array(output_dict["Sobol_first_order"]["column_names"], dtype=str)
+
+fig_path = ft.generate_file_path_in_record(figure_name, record_name, overwrite=overwrite_fig)
 
 # Create a new figure
 fig, ax = plt.subplots(figsize=(12, 8))
@@ -53,22 +57,24 @@ width = 0.25  # width of the bars
 x = np.arange(len(fuel_classes))  # the label locations
 
 ax.axhline(1, c="k", lw=0.5, ls="--")
-
+colors = ["b", "r", "g"]
 for i, param in enumerate(parameters):
-    ax.bar(x + i * width, sobol_S1[:, i], width, label=f"First Order - {param}", color=colors[i])
+    ax.bar(x + i * width, output_dict["Sobol_first_order"]["data"][:, i], width, label=f"First Order - {param}", color=colors[i])
 
 # Plotting the total order indices as scatter plots
 for i, param in enumerate(parameters):
-    ax.scatter(x + i * width, sobol_ST[:, i], label=f"Total Order - {param}", marker="d", color=colors[i])
+    ax.scatter(x + i * width, output_dict["Sobol_total_order"]["data"][:, i], label=f"Total Order - {param}", marker="d", color=colors[i])
 
 # Adding labels and title
 ax.set_xlabel("Anderson Fuel Classes")
 ax.set_ylabel("Sobol Indices")
 ax.set_title("Sobol Indices for Different Fuel Classes and Parameters")
 ax.set_xticks(x + width)
-ax.set_xticklabels(fuel_classes, rotation=45, ha="right")
+ax.set_xticklabels(fuel_classes, rotation=0, ha="center")
 ax.legend(frameon=False, ncols=2)
 
 # Display the plot
 plt.tight_layout()
-fig.savefig("../../../IAB_tmp.png", dpi=300)
+fig.savefig(fig_path, dpi=300)
+
+print(output_dict)

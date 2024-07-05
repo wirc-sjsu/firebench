@@ -15,10 +15,9 @@ Documentation page:
 import os
 
 import firebench.ros_models as rm
-import firebench.tools as fbt
+import firebench.tools as ft
 import numpy as np
 from firebench import svn, ureg
-from pint import Quantity
 from SALib.analyze import sobol
 import h5py
 from datetime import datetime
@@ -34,7 +33,7 @@ from datetime import datetime
 # Name of the case
 # TODO: record logic
 record_name = "Sensitivity_env_var_Anderson13_Rothermel"
-overwrite_record = True
+overwrite_files_in_record = True
 
 # Fuel model choice
 # TODO: how to use existing fuel DB + how to use a personalized one
@@ -59,30 +58,30 @@ input_vars_info = {
 
 # set logging parameters
 # set logging level, from lower to higher: NOTSET (0), DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
-fbt.logger.setLevel(0)
+ft.logger.setLevel(0)
 ########################## END OF SET UP
 
 # Create workflow record directory (working directory for the current workflow)
-fbt.create_record_directory(record_name, overwrite_record)
+ft.create_record_directory(record_name)
 
 # copy script file to record
-fbt.copy_file_to_workflow_record(record_name, __file__)
+ft.copy_file_to_workflow_record(record_name, __file__, overwrite=overwrite_files_in_record)
 
 # Import fuel data
-fuel_data = fbt.read_fuel_data_file(
+fuel_data = ft.read_fuel_data_file(
     fuel_model_name,
     local_path_json_fuel_db=local_path_json_fuel_db,
 )
 
 ## Create the final data
-input_vars_dict, sobol_problem, nb_pts_total = fbt.sobol_seq(nb_pts_sobol_seq, input_vars_info)
-input_dict = fbt.merge_dictionaries(fuel_data, input_vars_dict)
+input_vars_dict, sobol_problem, nb_pts_total = ft.sobol_seq(nb_pts_sobol_seq, input_vars_info)
+input_dict = ft.merge_dictionaries(fuel_data, input_vars_dict)
 
 #######################################################################################
 #                             STEP 2: DATA QUALITY CHECK
 #######################################################################################
 
-final_input = fbt.check_data_quality_ros_model(input_dict=input_dict, ros_model=ros_model)
+final_input = ft.check_data_quality_ros_model(input_dict=input_dict, ros_model=ros_model)
 
 #######################################################################################
 #                             STEP 3: ROS MODEL
@@ -94,10 +93,10 @@ sobol_indices = np.zeros((fuel_data["nb_fuel_classes"], 4, 3))
 original_dict = final_input.copy()
 
 i_exp = 0
+ros = np.zeros((nb_pts_total, fuel_data["nb_fuel_classes"]))
 for i_fc in range(fuel_data["nb_fuel_classes"]):
     final_input[svn.FUEL_CLASS] = i_fc + 1
 
-    ros = np.zeros((nb_pts_total, fuel_data["nb_fuel_classes"]))
     ref_dict = original_dict.copy()
 
     for k in range(nb_pts_total):
@@ -118,15 +117,17 @@ for i_fc in range(fuel_data["nb_fuel_classes"]):
     i_exp += 1
 
 # Assign unit
-ros_unit = Quantity(ros, ros_model.metadata["output_rate_of_spread"]["units"])
+ros_unit = ureg.Quantity(ros, ros_model.metadata["output_rate_of_spread"]["units"])
 
 #######################################################################################
 #                             STEP 4: SAVE DATA
 #######################################################################################
 
-tmp_file_path = os.path.join(fbt.get_local_db_path(), record_name, f"output_{record_name}.h5")
+output_file_path = ft.generate_file_path_in_record(
+    f"output_{record_name}.h5", record_name, overwrite_files_in_record
+)
 
-with h5py.File(tmp_file_path, 'w') as f:
+with h5py.File(output_file_path, "w") as f:
     # Info about the file
     f.attrs["description"] = "Sensitivity workflow for rate of spread model using firebench package"
     f.attrs["date"] = str(datetime.now())
@@ -135,7 +136,7 @@ with h5py.File(tmp_file_path, 'w') as f:
     fuel_grp.attrs["description"] = f"Fuel Model data"
     fuel_grp.attrs["fuel_model_name"] = fuel_model_name
     for key, value in fuel_data.items():
-        if type(key) is fbt.StandardVariableNames:
+        if type(key) is ft.StandardVariableNames:
             key = key.value
             is_part_of_firebench_StandardVariableNames = True
         else:
@@ -149,13 +150,15 @@ with h5py.File(tmp_file_path, 'w') as f:
             tmp_array = value
         new_ds = fuel_grp.create_dataset(key, data=tmp_array)
         new_ds.attrs["units"] = str(tmp_unit)
-        new_ds.attrs["is_part_of_firebench_StandardVariableNames"] = is_part_of_firebench_StandardVariableNames
+        new_ds.attrs[
+            "is_part_of_firebench_StandardVariableNames"
+        ] = is_part_of_firebench_StandardVariableNames
 
     # Save wind, slope, fmc inputs
     sensitivity_input_grp = f.create_group("sensitivity_vars")
     sensitivity_input_grp.attrs["description"] = "variables used for the sensitivity analysis"
     for key, value in input_vars_dict.items():
-        if type(key) is fbt.StandardVariableNames:
+        if type(key) is ft.StandardVariableNames:
             key = key.value
             is_part_of_firebench_StandardVariableNames = True
         else:
@@ -168,7 +171,9 @@ with h5py.File(tmp_file_path, 'w') as f:
             tmp_array = value
         new_ds = sensitivity_input_grp.create_dataset(key, data=tmp_array)
         new_ds.attrs["units"] = str(tmp_unit)
-        new_ds.attrs["is_part_of_firebench_StandardVariableNames"] = is_part_of_firebench_StandardVariableNames
+        new_ds.attrs[
+            "is_part_of_firebench_StandardVariableNames"
+        ] = is_part_of_firebench_StandardVariableNames
 
     # Save raw output
     raw_output_grp = f.create_group("outputs")
