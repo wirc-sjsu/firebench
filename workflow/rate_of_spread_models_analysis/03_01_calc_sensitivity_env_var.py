@@ -1,5 +1,5 @@
 """
-Workflow: 03_01_sensitivity_env_var.py
+Workflow: 03_01_sensitivity_env_var
 Category: Sensitivity Analysis
 Version: 1.0
 
