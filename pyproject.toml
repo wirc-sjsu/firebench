@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "firebench"
-version = "0.0.0.dev1"
+version = "0.0.1"
 authors = [
     {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
 ]
@@ -15,6 +15,9 @@ description = "FireBench is a Python library designed for the systematic benchma
 dependencies = [
     "numpy < 2.0",
     "pint < 1.0",
+    "scipy < 2.0",
+    "SALib < 2.0",
+    "h5py < 4.0",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -38,6 +41,9 @@ classifiers = [
 dev = [
     "pytest",
     "pytest-cov",
+    "pytest-mock",
     "bandit",
     "pylint",
 ]
+[tool.hatch.envs.default]
+features = ["dev"]
