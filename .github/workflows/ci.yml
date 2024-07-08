@@ -37,7 +37,6 @@ jobs:
       
       - name: Set environment variable for package path
         run: |
-          echo "$(pwd)/data"
           echo "FIREBENCH_DATA_PATH=$(pwd)/data" >> $GITHUB_ENV
       
       - name: Install dependencies
