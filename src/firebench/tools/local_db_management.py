@@ -88,7 +88,7 @@ def generate_file_path_in_record(new_file_name: str, record_name: str, overwrite
     ------
     OSError
         If the file already exists and overwrite is set to False.
-    """
+    """  # pylint: disable=line-too-long
     tmp_file_path = os.path.join(get_local_db_path(), record_name, new_file_name)
     logging.debug("create file path %(tmp_file_path)s")
 
@@ -118,7 +118,7 @@ def get_file_path_in_record(file_name: str, record_name: str) -> str:
     ------
     OSError
         If the file does not exist.
-    """
+    """  # pylint: disable=line-too-long
     tmp_file_path = os.path.join(get_local_db_path(), record_name, file_name)
 
     if not os.path.isfile(tmp_file_path):

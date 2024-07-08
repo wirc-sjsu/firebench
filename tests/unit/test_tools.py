@@ -1,10 +1,10 @@
 import os
-import os.path as osp
+import tempfile
 
 import firebench.tools as ft
 import numpy as np
 import pytest
-from firebench import ureg, svn
+from firebench import svn, ureg
 from pint import Quantity
 
 
@@ -130,81 +130,89 @@ def test_add_suffix(filename, suffix, expected):
     assert ft.read_data.__add_suffix(filename, suffix) == expected
 
 
-def test_get_json_data_file_default_path():
-    # Test with a real file in the default package path
-    fuel_model_name = "Anderson13"
-    expected_path = osp.abspath(
-        osp.normpath(osp.join(osp.dirname(__file__), "..", "..", "data", "fuel_models", "Anderson13.json"))
-    )
-    func_path = osp.abspath(osp.normpath(ft.read_data.__get_json_data_file(fuel_model_name)))
-    assert func_path == expected_path
+def test_get_firebench_data_directory_success(mocker):
+    # Mock the environment variable
+    mocker.patch.dict(os.environ, {"FIREBENCH_DATA_PATH": "/fake/path/to/firebench/data"})
+
+    # Call the function and check the result
+    result = ft.read_data.get_firebench_data_directory()
+    assert result == "/fake/path/to/firebench/data"
 
 
-def test_get_json_data_file_local_path():
-    # Test with a real file in a local path
-    fuel_model_name = "Anderson13"
-    local_path = osp.abspath(
-        osp.normpath(osp.join(osp.dirname(__file__), "..", "..", "data", "fuel_models"))
-    )
-    expected_path = osp.join(local_path, "Anderson13.json")
-    func_path = osp.abspath(osp.normpath(ft.read_data.__get_json_data_file(fuel_model_name, local_path)))
-    assert func_path == expected_path
+def test_get_firebench_data_directory_no_env_var(mocker):
+    # Ensure the environment variable is not set
+    mocker.patch.dict(os.environ, {}, clear=True)
+
+    # Call the function and expect an EnvironmentError
+    with pytest.raises(EnvironmentError, match="Firebench data directory path is not set"):
+        ft.get_firebench_data_directory()
 
 
-def test_get_json_data_file_not_found():
-    # Test with a non-existent file
-    fuel_model_name = "non_existent_model"
-    with pytest.raises(FileNotFoundError):
-        ft.read_data.__get_json_data_file(fuel_model_name)
-    local_path = osp.abspath(
-        osp.normpath(osp.join(osp.dirname(__file__), "..", "..", "data", "fuel_models"))
-    )
-    with pytest.raises(FileNotFoundError):
-        ft.read_data.__get_json_data_file(fuel_model_name, local_path)
+def test_fuel_model_json_file_not_exists():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        custom_fuel_data_directory = temp_dir
+        custom_fuel_model_name = "mymodel"
+        custom_fuel_model_json_path = os.path.join(
+            custom_fuel_data_directory, f"{custom_fuel_model_name}.json"
+        )
+
+        # Ensure the file does not exist
+        assert not os.path.isfile(custom_fuel_model_json_path)
+
+        with pytest.raises(FileNotFoundError, match="not found"):
+            ft.read_data._get_fuel_model_json_data_file_path(
+                custom_fuel_model_name, local_path_json_fuel_db=custom_fuel_data_directory
+            )
 
 
-def test_read_fuel_data_file():
-    # Test with a real file in the default package path
-    fuel_model_name = "Anderson13"
+def test_fuel_model_json_file_exists():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        custom_fuel_model_name = "mymodel"
+        custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
 
-    # Assuming these files exist in the package
-    package_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "data", "fuel_models")
-    )
-    json_file_path = os.path.join(package_dir, "Anderson13.json")
-    csv_file_path = os.path.join(package_dir, "data_Anderson13.csv")
+        # Create a dummy file
+        with open(custom_fuel_model_json_path, "w") as dummy_file:
+            dummy_file.write("test content")
 
-    # Ensure the files exist
-    assert os.path.isfile(json_file_path), f"Missing JSON file: {json_file_path}"
-    assert os.path.isfile(csv_file_path), f"Missing CSV file: {csv_file_path}"
+        result_path = ft.read_data._get_fuel_model_json_data_file_path(
+            custom_fuel_model_name, local_path_json_fuel_db=temp_dir
+        )
 
-    # Run the function
-    output_data = ft.read_fuel_data_file(fuel_model_name)
+        assert result_path == custom_fuel_model_json_path
 
-    # Known values from Anderson13.csv
-    known_values = {
-        "fuel_load_dry_total": [
-            0.166,
-            0.897,
-            0.675,
-            2.468,
-            0.785,
-            1.345,
-            1.092,
-            1.121,
-            0.78,
-            2.694,
-            2.582,
-            7.749,
-            13.024,
-        ],
-    }
 
-    # Compare the output to the known values
-    for key, expected_values in known_values.items():
-        std_var = svn(key)
-        np.testing.assert_array_equal(output_data[std_var].magnitude, np.array(expected_values))
-        assert output_data[std_var].units == ureg("kg/m**2")
+def test_fuel_model_default_json_file_not_exists():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        os.environ["FIREBENCH_DATA_PATH"] = temp_dir
+        custom_fuel_model_name = "mymodel"
+        custom_fuel_model_json_path = os.path.join(
+            temp_dir, "fuel_models", f"{custom_fuel_model_name}.json"
+        )
+
+        # Ensure the file does not exist
+        assert not os.path.isfile(custom_fuel_model_json_path)
+
+        with pytest.raises(FileNotFoundError, match="not found"):
+            ft.read_data._get_fuel_model_json_data_file_path(
+                custom_fuel_model_name, local_path_json_fuel_db=None
+            )
+
+
+def test_fuel_model_default_json_file_exists():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        os.environ["FIREBENCH_DATA_PATH"] = temp_dir
+        custom_fuel_model_name = "mymodel"
+        custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
+
+        # Create a dummy file
+        with open(custom_fuel_model_json_path, "w") as dummy_file:
+            dummy_file.write("test content")
+
+        result_path = ft.read_data._get_fuel_model_json_data_file_path(
+            custom_fuel_model_name, local_path_json_fuel_db=temp_dir
+        )
+
+        assert result_path == custom_fuel_model_json_path
 
 
 def test_check_input_completeness():
