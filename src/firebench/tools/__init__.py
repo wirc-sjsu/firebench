@@ -6,6 +6,7 @@ from .namespace import StandardVariableNames
 from .units import ureg
 from .read_data import (
     read_fuel_data_file,
+    get_firebench_data_directory,
 )
 from .check_data_quality import (
     check_input_completeness,
