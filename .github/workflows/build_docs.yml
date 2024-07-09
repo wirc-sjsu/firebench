@@ -1,16 +1,11 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 # Sample workflow for building and deploying a Jekyll site to GitHub Pages
 name: Deploy Jekyll site to Pages
 
 on:
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+  
+    # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -49,16 +44,16 @@ jobs:
         uses: actions/configure-pages@v3
 
       - name: Build with Jekyll
-        # Outputs to the './_site' directory by default
         run: |
           cd docs  # Change to the directory containing Gemfile and _config.yml
-          bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+          bundle exec jekyll build --destination ./_site --baseurl "${{ steps.pages.outputs.base_path }}"
         env:
           JEKYLL_ENV: production
 
       - name: Upload artifact
-        # Automatically uploads an artifact from the './_site' directory by default
         uses: actions/upload-pages-artifact@v2
+        with:
+          path: ./docs/_site  # Correct path for the artifact upload
 
   # Deployment job
   deploy:
