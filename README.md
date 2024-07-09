@@ -61,9 +61,17 @@ pip install .
 
 ### 3. Set up the path to your local working directory
 
-In order to centralize all the files managed locally by firebench, a working directory called the `firebench local database` has to be defined. Add the following line to your `.bashrc` or `.zshrc`:
+In order to centralize all the files managed locally by firebench, a working directory called the `firebench local database` has to be defined.
+This directory will store the output of workflows.
+Add the following line to your `.bashrc` or `.zshrc`:
 ```bash
 export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db
+```
+
+FireBench contains some data (fuel models, workflow runs, *etc*.) that is contained in the directory `firebench/data`. 
+In order to easily access this data, add the absolute path to the `firebench/data` directory to your `.bashrc` or `.zshrc`:
+```bash
+export FIREBENCH_DATA_PATH=/path/to/package/firebench/data
 ```
 
 ## Community Discussions
