@@ -1,6 +1,6 @@
 title: "FireBench Project"
 description: "FireBench is a Python library designed for the systematic benchmarking and inter-comparison of fire models."
-remote_theme: just-the-docs/just-the-docs
+theme: "just-the-docs"
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://wirc-sjsu.github.io/firebench" # the base hostname & protocol for your site
 
