@@ -10,6 +10,8 @@ class StandardVariableNames(Enum):  # pragma: no cover
     clarity across the codebase and related data files.
     """
 
+    BUILDING_LENGTH_SEPARATION = "building_length_separation"
+    BUILDING_LENGTH_SIDE = "building_length_side"
     CANOPY_DENSITY_BULK = "canopy_density_bulk"
     CANOPY_HEIGHT_BOTTOM = "canopy_height_bottom"
     CANOPY_HEIGHT_TOP = "canopy_height_top"
