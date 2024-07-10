@@ -49,32 +49,32 @@ class Hamada_1(RateOfSpreadModel):
         },
         "normal_vector_x": {
             "std_name": svn.NORMAL_SPREAD_DIR_X,
-            "units": ureg._dimensionless,
+            "units": ureg.dimensionless,
             "range": (-1, 1),
         },
         "normal_vector_y": {
             "std_name": svn.NORMAL_SPREAD_DIR_Y,
-            "units": ureg._dimensionless,
+            "units": ureg.dimensionless,
             "range": (-1, 1),
         },
         "fire_resistant_ratio": {
             "std_name": svn.BUILDING_RATIO_FIRE_RESISTANT,
-            "units": ureg._dimensionless,
+            "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "bare_structure_ratio": {
             "std_name": svn.BUILDING_RATIO_STRUCTURE_WOOD_BARE,
-            "units": ureg._dimensionless,
+            "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "mortar_structure_ratio": {
             "std_name": svn.BUILDING_RATIO_STRUCTURE_WOOD_MORTAR,
-            "units": ureg._dimensionless,
+            "units": ureg.dimensionless,
             "range": (0, 1),
         },
         "beta": {
             "std_name": svn.BETA,
-            "units": ureg._dimensionless,
+            "units": ureg.dimensionless,
             "range": (0, np.inf),
         },
         "output_rate_of_spread": {
