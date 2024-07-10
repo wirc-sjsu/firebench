@@ -10,7 +10,7 @@ The analysis considers the impact of environmental variables on fire behavior, s
 - Slope
 - Fuel Moisture
 
-Documentation page:
+Documentation page: https://wirc-sjsu.github.io/firebench/workflows/sensitivity/ros_sensitivity.html
 """
 
 from datetime import datetime
@@ -30,6 +30,7 @@ from SALib.analyze import sobol
 # Workflow Configuration
 workflow_record_name = "Sensitivity_env_var_Anderson13_Rothermel"
 overwrite_files_in_record = True
+output_filename = "Rothermel_SFIRE"
 
 # Fuel Model Configuration
 fuel_model_name = "Anderson13"
@@ -84,14 +85,18 @@ sobol_indices = np.zeros((fuel_data["nb_fuel_classes"], 4, len(input_vars_info))
 
 # Compute rate of spread (ROS) and Sobol indices
 ros = np.zeros((num_total_points, fuel_data["nb_fuel_classes"]))
+model_inputs = final_input.copy()
 for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
-    final_input[svn.FUEL_CLASS] = fuel_class
+    
+    # Add fuel class to inputs
+    model_inputs[svn.FUEL_CLASS] = fuel_class
 
+    # select variable from sobol sequence
     for k in range(num_total_points):
         for key in input_vars_info.keys():
-            final_input[key] = input_vars_dict[key][k]
+            model_inputs[key] = final_input[key][k]
 
-        ros[k, i] = ros_model.compute_ros(final_input)
+        ros[k, i] = ros_model.compute_ros(model_inputs)
 
     # Perform Sobol analysis
     sobol_results = sobol.analyze(sobol_problem, ros[:, i], print_to_console=False)
@@ -111,7 +116,7 @@ ros_quantity = ureg.Quantity(ros, ros_model.metadata["output_rate_of_spread"]["u
 
 # Generate output file path
 output_file_path = ft.generate_file_path_in_record(
-    f"output_{workflow_record_name}.h5", workflow_record_name, overwrite_files_in_record
+    f"output_{output_filename}.h5", workflow_record_name, overwrite_files_in_record
 )
 
 with h5py.File(output_file_path, "w") as f:

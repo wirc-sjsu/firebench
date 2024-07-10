@@ -1,6 +1,7 @@
 """
 Workflow: 03_01_sensitivity_env_var
 Category: Sensitivity Analysis
+Version: 1.0
 
 Description:
 This workflow performs a sensitivity analysis on rate of spread models using a static fuel database (e.g., Anderson, Scott & Burgan).
@@ -11,6 +12,8 @@ The analysis considers the impact of environmental variables on fire behavior, s
 
 This workflow is part of the FireBench project, aimed at systematic benchmarking and inter-comparisons 
 of fire models to enhance their scientific and operational applications.
+
+Documentation page: https://wirc-sjsu.github.io/firebench/workflows/sensitivity/ros_sensitivity.html
 """
 
 import firebench.tools as ft
@@ -25,6 +28,7 @@ import h5py
 
 # Workflow Configuration
 workflow_record_name = "Sensitivity_env_var_Anderson13_Rothermel"
+output_filename = "Rothermel_SFIRE"
 figure_name = "sobol_index.png"
 overwrite_figure = True
 
@@ -33,7 +37,7 @@ overwrite_figure = True
 #######################################################################################
 
 # Get the data
-output_h5_path = ft.get_file_path_in_record(f"output_{workflow_record_name}.h5", workflow_record_name)
+output_h5_path = ft.get_file_path_in_record(f"output_{output_filename}.h5", workflow_record_name)
 output_dict = {}
 
 with h5py.File(output_h5_path, "r") as f:
@@ -59,6 +63,9 @@ parameters = np.array(output_dict["Sobol_first_order"]["column_names"], dtype=st
 #######################################################################################
 #                             PLOTTING
 #######################################################################################
+
+# Copy script file to record
+ft.copy_file_to_workflow_record(workflow_record_name, __file__, overwrite=True)
 
 # Generate figure path
 figure_path = ft.generate_file_path_in_record(figure_name, workflow_record_name, overwrite=overwrite_figure)
