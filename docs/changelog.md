@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Firebench changelog"
+title: "Changelog"
 nav_order: 6
 ---
 

@@ -18,7 +18,7 @@ def update_changelog_in_docs():
     # Front matter for the docs/changelog.md file
     front_matter = """---
 layout: default
-title: "Firebench changelog"
+title: "Changelog"
 nav_order: 6
 ---
 

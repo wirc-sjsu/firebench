@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Firebench variable namespace"
+title: "Variable namespace"
 nav_order: 5
 ---
 # Standard Namespace
