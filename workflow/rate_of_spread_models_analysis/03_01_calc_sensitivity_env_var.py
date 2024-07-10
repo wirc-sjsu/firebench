@@ -87,7 +87,7 @@ sobol_indices = np.zeros((fuel_data["nb_fuel_classes"], 4, len(input_vars_info))
 ros = np.zeros((num_total_points, fuel_data["nb_fuel_classes"]))
 model_inputs = final_input.copy()
 for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
-    
+
     # Add fuel class to inputs
     model_inputs[svn.FUEL_CLASS] = fuel_class
 
