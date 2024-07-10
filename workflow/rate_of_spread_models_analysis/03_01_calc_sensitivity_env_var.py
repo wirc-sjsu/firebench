@@ -40,7 +40,7 @@ local_path_json_fuel_db = None
 ros_model = rm.Rothermel_SFIRE
 
 # Sobol Sequence Configuration
-num_sobol_points = 2**8  # Number of points for Sobol sequence, better if 2^N
+num_sobol_points = 2**13  # Number of points for Sobol sequence, better if 2^N
 
 # Input Variables Configuration
 input_vars_info = {

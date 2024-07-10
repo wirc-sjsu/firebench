@@ -159,6 +159,6 @@ overwrite_figure = True
 The workflow has been run with the following models and parameters:
 
 <!-- name of the workflow test, commit hash of the code thaht generated this data, generation date, other info on library used (with commit hash if possible), inputs  -->
-- Rothermel (SFIRE version): `firebench/data/workflow/sensitivity`
+- Rothermel (SFIRE version): `firebench/data/workflow/Sensitivity_env_var_Anderson13_Rothermel.zip`
 
 If you don't find the content in the `data` directory, try `git lfs pull`.
