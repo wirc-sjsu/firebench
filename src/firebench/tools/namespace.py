@@ -47,6 +47,8 @@ class StandardVariableNames(Enum):  # pragma: no cover
     FUEL_WIND_HEIGHT = "fuel_wind_height"
     FUEL_WIND_REDUCTION_FACTOR = "fuel_wind_reduction_factor"
     LENGTH = "length"
+    NORMAL_SPREAD_DIR_X = "normal_spread_dir_x"
+    NORMAL_SPREAD_DIR_Y = "normal_spread_dir_y"
     RATE_OF_SPREAD = "rate_of_spread"
     SLOPE_ANGLE = "slope_angle"
     TEMPERATURE = "temperature"
