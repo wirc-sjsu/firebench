@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.0] - 2024 / 07 / 09
+### Added
+- Documentation for the rate of spread sensitivity workflow
+- Add changelog to documentation
+- Archive for the rate of spread sensitivity workflow with the `Rothermel_SFIRE` model
+- Change output filename for the rate of spread sensitivity workflow
+
+### Fixes
+- unit issues in the rate of spread sensitivity workflow
+
 ## [0.0.1] - 2024 / 07 / 08
 ### Added
 - Initial release of the FireBench library.
