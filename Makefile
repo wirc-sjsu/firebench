@@ -1,5 +1,5 @@
 # Declare these targets as phony to avoid conflicts with files of the same name
-.PHONY: test test-cov lint update-lint-score code-formatting bandit
+.PHONY: test test-cov lint update-lint-score code-formatting bandit update-docs-changelog
 
 # Run all tests without coverage report
 test:
@@ -27,3 +27,7 @@ code-formatting:
 # Run bandit analysis
 bandit:
 	bandit -r src/firebench --severity-level high --confidence-level high
+
+# Update documentation
+update-docs-changelog:
+	python .github/actions/update_changelog_in_docs.py

@@ -11,7 +11,7 @@ nav_order: 1
 
 <div style="height: 20px;"></div> <!-- Adds a blank space -->
 
-**FireBench** is a Python library designed for the systematic benchmarking and inter-comparison of wildfire models.
+**FireBench** is a Python library designed for the systematic benchmarking and inter-comparison of fire models.
 Recent advancements in fire modeling have introduced complex and varied models, but there is a lack of systematic evaluation regarding their accuracy, efficiency, sensitivity, validity domain, and inter-compatibility.
 FireBench aims to address this gap by providing a framework to assess fire models on the following criteria:
 
@@ -24,6 +24,10 @@ FireBench aims to address this gap by providing a framework to assess fire model
 FireBench offers a dual approach for evaluation: intercomparison without extensive observational data and benchmarking against a validation dataset. This framework aims to enhance fire modeling for both scientific research and operational applications, with results archived in a dedicated database.
 
 ## Installation
+
+### Prerequisites
+
+Before installing FireBench, you need to install [Git LFS](https://git-lfs.github.com/).
 
 To install the FireBench library, follow these steps:
 
@@ -47,14 +51,25 @@ Navigate to the cloned repository and install the FireBench library along with i
 
 ```bash
 cd firebench
+git lfs pull
 pip install .
 ```
+
 ### 3. Set up the path to your local working directory
 
-In order to centralize all the files managed locally by firebench, a working directory called the `firebench local database` has to be defined. Add the following line to your `.bashrc` or `.zshrc`:
+In order to centralize all the files managed locally by firebench, a working directory called the `firebench local database` has to be defined.
+This directory will store the output of workflows.
+Add the following line to your `.bashrc` or `.zshrc`:
 ```bash
 export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db
 ```
+
+FireBench contains some data (fuel models, workflow runs, *etc*.) that is contained in the directory `firebench/data`. 
+In order to easily access this data, add the absolute path to the `firebench/data` directory to your `.bashrc` or `.zshrc`:
+```bash
+export FIREBENCH_DATA_PATH=/path/to/package/firebench/data
+```
+
 ## Community Discussions
 
 We encourage you to use the [GitHub Discussions](https://github.com/wirc-sjsu/firebench/discussions) tab for questions, help requests, and general discussions about the project. This helps keep our issue tracker focused on bugs and feature requests.
@@ -67,3 +82,7 @@ We encourage you to use the [GitHub Discussions](https://github.com/wirc-sjsu/fi
 - **General**: For any other discussions related to FireBench.
 
 Feel free to start a new discussion or join existing ones to engage with the community!
+
+## Contributing
+
+We welcome contributions to FireBench! For more information on how to contribute, please see our [contribution guidelines](CONTRIBUTE.md).
