@@ -101,7 +101,7 @@ for i, param in enumerate(parameters):
 # Adding labels and title
 ax.set_xlabel("Fuel Classes")
 ax.set_ylabel("Sobol Indices")
-ax.set_title(f"Sobol Indices for {fuel_model_name} fuel model for environmental parameters")
+ax.set_title(f"Sobol Indices for {fuel_model_name} fuel model for environmental parameters using {output_filename} record data")
 ax.set_xticks(x_positions + bar_width)
 ax.set_xticklabels(fuel_classes, rotation=0, ha="center")
 ax.legend(frameon=False, ncols=2)

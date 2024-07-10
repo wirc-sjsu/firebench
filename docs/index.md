@@ -58,7 +58,7 @@ pip install .
 ### 3. Set up the path to your local working directory
 
 In order to centralize all the files managed locally by firebench, a working directory called the `firebench local database` has to be defined.
-This directory will store the workflow outputs.
+This directory will store the output of workflows.
 Add the following line to your `.bashrc` or `.zshrc`:
 ```bash
 export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db
@@ -85,4 +85,4 @@ Feel free to start a new discussion or join existing ones to engage with the com
 
 ## Contributing
 
-We welcome contributions to FireBench! Please see our [contribution guidelines](CONTRIBUTE.md) for more information on how to contribute.
+We welcome contributions to FireBench! For more information on how to contribute, please see our [contribution guidelines](CONTRIBUTE.md).

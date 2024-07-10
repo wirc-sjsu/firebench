@@ -9,7 +9,7 @@ nav_order: 1
 # ROS Sensitivity to Environmental Variables
 ## Objectives
 
-This workflow aims to evaluate the sensitivity of a specific rate of spread (ROS) model to its environemental inputs. It computes the `First and Total Order Sobol indices` with respect to environemental variable for each fuel class in a specific [Fuel Model](../../tutorials/change_fuel_model_ros.md).
+This workflow aims to evaluate the sensitivity of a specific rate of spread (ROS) model to its environmental inputs. It computes the `First and Total Order Sobol indices` with respect to environmental variable for each fuel class in a specific [Fuel Model](../../tutorials/change_fuel_model_ros.md).
 The environmental variables are:
 - Total fuel moisture content
 - Terrain slope angle in the spread direction
@@ -17,21 +17,21 @@ The environmental variables are:
 
 The following figure shows the workflow architecture:
 <div style="text-align: center;">
-    <img src="../../images/Benchmark_0d_sensitivity_ros.png" alt="workflow rate of spread sensitivity to environemental variables" style="width: 100%; max-width: 1200px;"/>
+    <img src="../../images/Benchmark_0d_sensitivity_ros.png" alt="workflow rate of spread sensitivity to environmental variables" style="width: 100%; max-width: 1200px;"/>
 </div>
 
 
-The workflow is organised around two python scripts:
+The workflow is organized around two Python scripts:
 - `calc` (`firebench/workflows/rate_of_spread_models/03_01_calc_sensitivity_env_vars.py`): Computation of the Sobol indices
-- `post`(`firebench/workflows/rate_of_spread_models/03_01_post_sensitivity_env_vars.py`): Post processing
+- `post`(`firebench/workflows/rate_of_spread_models/03_01_post_sensitivity_env_vars.py`): Post-processing
 
 
 ## Computation of the Sobol indices (calc script)
 
 ### Workflow record setup
 
-The workflow outputs will be stored in a directory called a `record` within the local database. The path to the local database has been set up through the environmeent variable `FIREBENCH_LOCAL_DB` (See [Installation](../../index.md)).
-The record directory name is set using `workflow_record_name`. You can force overwrite of files in record through `overwrite_files_in_record`.
+The workflow outputs will be stored in a local database’s directory called a `record`. The path to the local database has been set up through the environment variable `FIREBENCH_LOCAL_DB` (See [Installation](../../index.md)).
+The record directory name is set using `workflow_record_name`. You can force the overwriting of files in the record through `overwrite_files_in_record`.
 
 ### Import fuel model data
 
@@ -41,9 +41,9 @@ If you want to use a custom Fuel Model ([How to Use Fuel Models](../../tutorials
 
 ### Select the rate of spread model
 
-To select the rate of spread model for the analysis, you can, change the `ros_model` variable in the setup section. This variable should be a `firebench.ros_models.surface_for_vegetation.RateOfSpreadModel` class ([How to customize a rate of spread model](../../tutorials/new_ros_model.md)).
+To select the rate of spread model for the analysis, you can change the `ros_model` variable in the setup section. This variable should be a `firebench.ros_models.surface_for_vegetation.RateOfSpreadModel` class ([How to customize a rate of spread model](../../tutorials/new_ros_model.md)).
 
-### Generate Sobol sequence for environemental inputs
+### Generate Sobol sequence for environmental inputs
 
 The inputs (using the [standard variable namespace](../../namespace.md)) for this workflow are:
 - `FUEL_MOISTURE_CONTENT`: Total fuel moisture content
@@ -52,7 +52,7 @@ The inputs (using the [standard variable namespace](../../namespace.md)) for thi
 
 Each variable should have a unit attached and a range that will be used to create the Sobol sequence. Units are managed using the [Pint library](https://pint.readthedocs.io/en/stable/) standard. The default unit registry (*i.e.* the list of acceptable units) can be found [here](https://github.com/hgrecco/pint/blob/master/pint/default_en.txt).
 
-The number of points in the sequence can be modified using `num_sobol_points`. It is recommended that this value is a power of 2. The number of model calls for `N` points is `N * (2D + 2)`, where `D` is the number of parameter (here D=3, leading to `8N` rate of spread model calls).
+The number of points in the sequence can be modified using `num_sobol_points`. It is recommended that this value is a power of 2. The number of model calls for `N` points is `N * (2D + 2)`, where `D` is the number of parameters (here D=3, leading to `8N` rate of spread model calls).
 
 ### Logging
 
@@ -60,7 +60,7 @@ A log file called `firebench.log` will be generated throughout the workflow and 
 
 ### Setup
 
-The set up section in the python script is:
+The setup section in the Python script is:
 ```python
 #######################################################################################
 #                             SETUP SECTION
@@ -98,7 +98,7 @@ ft.logger.setLevel(20)
 
 The workflow generates an output file in [hdf5 format](https://www.hdfgroup.org/solutions/hdf5/).
 The output file contains the Fuel Model data, the raw output of the rate of spread model, the Sobol sequence, and the output from the Sobol analysis. First and Total Order indices are computed as well as confidence intervals.
-The content is organized as follow (using `Anderson13` Fuel Model).
+The content is organized as follows (using `Anderson13` Fuel Model).
 The output filename is `output_{output_filename}.h5`.
 
 ```
@@ -131,15 +131,15 @@ output_record_name.h5
     └── wind_speed
 ```
 
-## Post processing and plotting (post script)
+## Post-processing and plotting (post script)
 
 The `post` script is designed to load the data generated by the `calc` script and plot the First and Total Order Sobol indices for each fuel class.
-This script provides an example of post processing possible and users are encouraged to explore the data produced and share different post processing and analysis scripts to the community.
+This script provides an example of post-processing, and users are encouraged to explore the data produced and share different post-processing and analysis scripts with the community.
 
 
 ### Setup
 
-The set up section in the python script is:
+The setup section in the Python script is:
 ```python
 #######################################################################################
 #                             SETUP SECTION
@@ -158,7 +158,7 @@ overwrite_figure = True
 
 The workflow has been run with the following models and parameters:
 
-<!-- name of the workflow test, commit hash of the code thaht generated this data, generation date, other info on library used (with commit hash if possible), inputs  -->
+<!-- the name of the workflow test, commit hash of the code that generated this data, generation date, other info on the library used (with commit hash if possible), inputs  -->
 - Rothermel (SFIRE version): `firebench/data/workflow/Sensitivity_env_var_Anderson13_Rothermel.zip`
 
 If you don't find the content in the `data` directory, try `git lfs pull`.
