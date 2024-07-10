@@ -89,4 +89,4 @@ Feel free to start a new discussion or join existing ones to engage with the com
 
 ## Contributing
 
-We welcome contributions to FireBench! Please see our [contribution guidelines](CONTRIBUTE.md) for more information on how to contribute.
+We welcome contributions to FireBench! For more information on how to contribute, please see our [contribution guidelines](CONTRIBUTE.md).

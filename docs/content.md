@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Firebench content"
+title: "Content"
 nav_order: 4
 ---
 
