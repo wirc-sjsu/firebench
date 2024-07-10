@@ -9,7 +9,11 @@ class StandardVariableNames(Enum):  # pragma: no cover
     related to fire modeling. These names are used to ensure consistency and
     clarity across the codebase and related data files.
     """
-
+    ALPHA = "alpha"
+    BETA = "beta"
+    BUILDING_RATIO_FIRE_RESISTANT = "building_ratio_fire_resistant"
+    BUILDING_RATIO_STRUCTURE_WOOD_BARE = "building_ratio_structure_wood_bare"
+    BUILDING_RATIO_STRUCTURE_WOOD_MORTAR = "building_ratio_structure_wood_mortar"
     BUILDING_LENGTH_SEPARATION = "building_length_separation"
     BUILDING_LENGTH_SIDE = "building_length_side"
     CANOPY_DENSITY_BULK = "canopy_density_bulk"
@@ -48,3 +52,6 @@ class StandardVariableNames(Enum):  # pragma: no cover
     TEMPERATURE = "temperature"
     TIME = "time"
     WIND_SPEED = "wind_speed"
+    WIND_SPEED_U = "wind_speed_u"
+    WIND_SPEED_V = "wind_speed_v"
+    WIND_SPEED_W = "wind_speed_w"
