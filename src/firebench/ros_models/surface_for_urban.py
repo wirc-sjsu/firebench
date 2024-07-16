@@ -6,7 +6,7 @@ from ..tools.units import ureg
 from .rate_of_spread_model import RateOfSpreadModel
 
 
-class Hamada_1(RateOfSpreadModel):
+class Hamada_2(RateOfSpreadModel):
     """
     A class to represent the Hamada's model for urban fire spread rate calculation in its version 1.
 
@@ -85,7 +85,7 @@ class Hamada_1(RateOfSpreadModel):
     }
 
     @staticmethod
-    def hamada_1(
+    def hamada_2(
         fuel_data: dict,
         fuel_class_index: int,
         wind_u: float,
@@ -96,7 +96,7 @@ class Hamada_1(RateOfSpreadModel):
         bare_structure_ratio: float = 0.2,
         mortar_structure_ratio: float = 0.4,
         beta: float = 1,
-        **options
+        **options,
     ) -> float:
         """
         Compute the urban rate of spread using the Hamada model.
@@ -141,14 +141,14 @@ class Hamada_1(RateOfSpreadModel):
         downwind_ros = (
             (bare_structure_ratio + mortar_structure_ratio)
             * (1 - fire_resistant_ratio)
-            * (fuel_data['side_length'][fuel_class_index] + fuel_data['separation'][fuel_class_index])
+            * (fuel_data["side_length"][fuel_class_index] + fuel_data["separation"][fuel_class_index])
             * (1 + 0.1 * wind_speed + 0.007 * wind_speed**2)
             / (
                 (bare_structure_ratio + 5 * mortar_structure_ratio / 3)
                 * (
                     3
-                    + 3 * fuel_data['side_length'][fuel_class_index] / 8
-                    + 8 * fuel_data['separation'][fuel_class_index] / (1.15 * beta * (5 + 0.5 * wind_speed))
+                    + 3 * fuel_data["side_length"][fuel_class_index] / 8
+                    + 8 * fuel_data["separation"][fuel_class_index] / (1.15 * beta * (5 + 0.5 * wind_speed))
                 )
             )
         )
@@ -157,28 +157,24 @@ class Hamada_1(RateOfSpreadModel):
         orthogonal_ros = (
             (bare_structure_ratio + mortar_structure_ratio)
             * (1 - fire_resistant_ratio)
-            * (fuel_data['side_length'][fuel_class_index] + fuel_data['separation'][fuel_class_index])
+            * (fuel_data["side_length"][fuel_class_index] + fuel_data["separation"][fuel_class_index])
             * (1 + 0.002 * wind_speed**2)
             / (
                 (bare_structure_ratio + 5 * mortar_structure_ratio / 3)
                 * (
                     3
-                    + 3 * fuel_data['side_length'][fuel_class_index] / 8
-                    + 8 * fuel_data['separation'][fuel_class_index] / (1.15 * (5 + 0.5 * wind_speed))
+                    + 3 * fuel_data["side_length"][fuel_class_index] / 8
+                    + 8 * fuel_data["separation"][fuel_class_index] / (1.15 * (5 + 0.5 * wind_speed))
                 )
             )
         )
-
-        # Ellipse parameters as a function of spread direction
-        c = 1
+        cos_theta = 0
         if wind_speed > 0:
-            c = (normal_vector_x * wind_u + normal_vector_y * wind_v) / wind_speed
-
-        a = downwind_ros
-        b = orthogonal_ros
-        eccentricity = np.sqrt(1 - (b / a) ** 2)
-
-        return a * (1 - eccentricity**2) / (1 - eccentricity * c) / 60
+            cos_theta = (normal_vector_x * wind_u + normal_vector_y * wind_v) / wind_speed
+        eccentricity = (downwind_ros - orthogonal_ros) / downwind_ros
+        a_ellipse = downwind_ros**2 / (2 * downwind_ros - orthogonal_ros)
+        # c_ellipse = downwind_ros * (downwind_ros - orthogonal_ros) / (2 *downwind_ros - orthogonal_ros)
+        return a_ellipse * (1 - eccentricity**2) / (1 - eccentricity * cos_theta) / 60
 
     @staticmethod
     def compute_ros(
@@ -211,9 +207,9 @@ class Hamada_1(RateOfSpreadModel):
         ]
         fuel_dict = {}
         for var in fuel_dict_list_vars:
-            fuel_dict[var] = input_dict[Hamada_1.metadata[var]["std_name"]]
+            fuel_dict[var] = input_dict[Hamada_2.metadata[var]["std_name"]]
 
-        return Hamada_1.hamada_1(
+        return Hamada_2.hamada_2(
             fuel_dict,
             input_dict[svn.FUEL_CLASS],
             input_dict[svn.WIND_SPEED_U],
@@ -224,4 +220,5 @@ class Hamada_1(RateOfSpreadModel):
             input_dict[svn.BUILDING_RATIO_STRUCTURE_WOOD_BARE],
             input_dict[svn.BUILDING_RATIO_STRUCTURE_WOOD_MORTAR],
             input_dict[svn.BETA],
-            **opt,)
+            **opt,
+        )

@@ -9,6 +9,7 @@ class StandardVariableNames(Enum):  # pragma: no cover
     related to fire modeling. These names are used to ensure consistency and
     clarity across the codebase and related data files.
     """
+
     ALPHA = "alpha"
     BETA = "beta"
     BUILDING_RATIO_FIRE_RESISTANT = "building_ratio_fire_resistant"
