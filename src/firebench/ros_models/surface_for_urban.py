@@ -77,7 +77,6 @@ class Hamada_1(RateOfSpreadModel):
         normal_vector_x: float,
         normal_vector_y: float,
         fire_resistant_ratio: float,
-        **options,
     ) -> float:
         """
         Compute the urban rate of spread using the Hamada model.
@@ -97,9 +96,7 @@ class Hamada_1(RateOfSpreadModel):
         wind_direction_y : float
             The Y component of the normalized spread direction vector.
         fire_resistant_ratio : float
-            The ratio of fire-resistant buildings. Default is 0.4.
-        **options : dict
-            Additional optional parameters.
+            The ratio of fire-resistant buildings.
 
         Returns
         -------
@@ -175,8 +172,8 @@ class Hamada_1(RateOfSpreadModel):
             eccentricity = (ros_d - ros_o) / ros_d
             a_ellipse = ros_d**2 / (2 * ros_d - ros_o)
             return a_ellipse * (1 - eccentricity**2) / (1 - eccentricity * k) / 60
-        else:
-            return ros_o * ros_u / np.sqrt(ros_u**2 * (1 - k**2) + ros_o**2 * k**2) / 60
+
+        return ros_o * ros_u / np.sqrt(ros_u**2 * (1 - k**2) + ros_o**2 * k**2) / 60
 
     @staticmethod
     def compute_ros(
@@ -212,7 +209,7 @@ class Hamada_1(RateOfSpreadModel):
             fuel_dict[var] = input_dict[Hamada_1.metadata[var]["std_name"]]
 
         # Set default values for low importance inputs
-        fire_resistant_ratio=input_dict.get(svn.BUILDING_RATIO_FIRE_RESISTANT, 0.6),
+        fire_resistant_ratio = input_dict.get(svn.BUILDING_RATIO_FIRE_RESISTANT, 0.6)
 
         return Hamada_1.hamada_1(
             fuel_dict,
@@ -311,11 +308,10 @@ class Hamada_2(RateOfSpreadModel):
         wind_v: float,
         normal_vector_x: float,
         normal_vector_y: float,
-        fire_resistant_ratio: float = 0.6,
-        bare_structure_ratio: float = 0.2,
-        mortar_structure_ratio: float = 0.2,
-        beta: float = 5,
-        **options,
+        fire_resistant_ratio: float,
+        bare_structure_ratio: float,
+        mortar_structure_ratio: float,
+        beta: float,
     ) -> float:
         """
         Compute the urban rate of spread using the Hamada model.
@@ -334,23 +330,20 @@ class Hamada_2(RateOfSpreadModel):
             The X component of the normalized spread direction vector.
         wind_direction_y : float
             The Y component of the normalized spread direction vector.
-        fire_resistant_ratio : float, optional
-            The ratio of fire-resistant buildings. Default is 0.4.
-        bare_structure_ratio : float, optional
-            The ratio of buildings with bare structural materials. Default is 0.2.
-        mortar_structure_ratio : float, optional
-            The ratio of buildings with mortar. Default is 0.4.
-        beta : float, optional
-            The beta parameter for the model. Default is 1.
-        **options : dict
-            Additional optional parameters.
+        fire_resistant_ratio : float
+            The ratio of fire-resistant buildings.
+        bare_structure_ratio : float
+            The ratio of buildings with bare structural materials.
+        mortar_structure_ratio : float
+            The ratio of buildings with mortar.
+        beta : float
+            The beta parameter for the model (>2 for stability).
 
         Returns
         -------
         float
             The computed urban rate of spread in meters per second.
         """
-        print(f"{fire_resistant_ratio=}")
         # Convert 1-based index to 0-based
         fuel_class_index -= 1
 
@@ -429,6 +422,12 @@ class Hamada_2(RateOfSpreadModel):
         for var in fuel_dict_list_vars:
             fuel_dict[var] = input_dict[Hamada_2.metadata[var]["std_name"]]
 
+        # Set default values for low importance inputs
+        fire_resistant_ratio = input_dict.get(svn.BUILDING_RATIO_FIRE_RESISTANT, 0.6)
+        bare_structure_ratio = input_dict.get(svn.BUILDING_RATIO_STRUCTURE_WOOD_BARE, 0.2)
+        mortar_structure_ratio = input_dict.get(svn.BUILDING_RATIO_STRUCTURE_WOOD_MORTAR, 0.2)
+        beta = input_dict.get(svn.BETA, 5)
+
         return Hamada_2.hamada_2(
             fuel_dict,
             input_dict[svn.FUEL_CLASS],
@@ -436,9 +435,9 @@ class Hamada_2(RateOfSpreadModel):
             input_dict[svn.WIND_SPEED_V],
             input_dict[svn.NORMAL_SPREAD_DIR_X],
             input_dict[svn.NORMAL_SPREAD_DIR_Y],
-            input_dict[svn.BUILDING_RATIO_FIRE_RESISTANT],
-            input_dict[svn.BUILDING_RATIO_STRUCTURE_WOOD_BARE],
-            input_dict[svn.BUILDING_RATIO_STRUCTURE_WOOD_MORTAR],
-            input_dict[svn.BETA],
+            fire_resistant_ratio=fire_resistant_ratio,
+            bare_structure_ratio=bare_structure_ratio,
+            mortar_structure_ratio=mortar_structure_ratio,
+            beta=beta,
             **opt,
         )
