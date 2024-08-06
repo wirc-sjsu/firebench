@@ -185,6 +185,9 @@ class Hamada_1(RateOfSpreadModel):
 
         This is a wrapper function that prepares the fuel data dictionary and calls the `hamada_1` method.
 
+        If the one or more of the following keys are missing from the input dict, the default values are used:
+        - svn.BUILDING_RATIO_FIRE_RESISTANT: 0.6
+
         Parameters
         ----------
         input_dict : dict[str, list[float]]
@@ -398,6 +401,12 @@ class Hamada_2(RateOfSpreadModel):
         Compute the rate of spread of fire using the Hamada's model.
 
         This is a wrapper function that prepares the fuel data dictionary and calls the `hamada_1` method.
+
+        If the one or more of the following keys are missing from the input dict, the default value are used:
+        - svn.BUILDING_RATIO_FIRE_RESISTANT: 0.6
+        - svn.BUILDING_RATIO_STRUCTURE_WOOD_BARE: 0.2
+        - svn.BUILDING_RATIO_STRUCTURE_WOOD_MORTAR: 0.2
+        - svn.BETA: 5
 
         Parameters
         ----------
