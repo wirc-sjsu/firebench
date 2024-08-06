@@ -76,7 +76,7 @@ class Hamada_1(RateOfSpreadModel):
         wind_v: float,
         normal_vector_x: float,
         normal_vector_y: float,
-        fire_resistant_ratio: float = 0.4,
+        fire_resistant_ratio: float = 0.6,
         **options,
     ) -> float:
         """
@@ -308,10 +308,10 @@ class Hamada_2(RateOfSpreadModel):
         wind_v: float,
         normal_vector_x: float,
         normal_vector_y: float,
-        fire_resistant_ratio: float = 0.4,
+        fire_resistant_ratio: float = 0.6,
         bare_structure_ratio: float = 0.2,
-        mortar_structure_ratio: float = 0.4,
-        beta: float = 1,
+        mortar_structure_ratio: float = 0.2,
+        beta: float = 5,
         **options,
     ) -> float:
         """
