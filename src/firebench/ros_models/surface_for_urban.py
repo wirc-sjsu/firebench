@@ -76,7 +76,7 @@ class Hamada_1(RateOfSpreadModel):
         wind_v: float,
         normal_vector_x: float,
         normal_vector_y: float,
-        fire_resistant_ratio: float = 0.6,
+        fire_resistant_ratio: float,
         **options,
     ) -> float:
         """
@@ -96,7 +96,7 @@ class Hamada_1(RateOfSpreadModel):
             The X component of the normalized spread direction vector.
         wind_direction_y : float
             The Y component of the normalized spread direction vector.
-        fire_resistant_ratio : float, optional
+        fire_resistant_ratio : float
             The ratio of fire-resistant buildings. Default is 0.4.
         **options : dict
             Additional optional parameters.
@@ -211,6 +211,9 @@ class Hamada_1(RateOfSpreadModel):
         for var in fuel_dict_list_vars:
             fuel_dict[var] = input_dict[Hamada_1.metadata[var]["std_name"]]
 
+        # Set default values for low importance inputs
+        fire_resistant_ratio=input_dict.get(svn.BUILDING_RATIO_FIRE_RESISTANT, 0.6),
+
         return Hamada_1.hamada_1(
             fuel_dict,
             input_dict[svn.FUEL_CLASS],
@@ -218,7 +221,7 @@ class Hamada_1(RateOfSpreadModel):
             input_dict[svn.WIND_SPEED_V],
             input_dict[svn.NORMAL_SPREAD_DIR_X],
             input_dict[svn.NORMAL_SPREAD_DIR_Y],
-            input_dict[svn.BUILDING_RATIO_FIRE_RESISTANT],
+            fire_resistant_ratio=fire_resistant_ratio,
             **opt,
         )
 
@@ -347,6 +350,7 @@ class Hamada_2(RateOfSpreadModel):
         float
             The computed urban rate of spread in meters per second.
         """
+        print(f"{fire_resistant_ratio=}")
         # Convert 1-based index to 0-based
         fuel_class_index -= 1
 
