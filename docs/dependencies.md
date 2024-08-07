@@ -3,8 +3,9 @@ layout: default
 title: "Dependencies"
 nav_order: 9
 ---
+# Dependencies
 
-## Required dependencies
+## Required
 
 - h5py < 4.0
 - numpy < 2.0
@@ -12,9 +13,8 @@ nav_order: 9
 - SALib < 2.0
 - scipy < 2.0
 
-
-## Optional dependencies
-These dependencies are required for advenced use (testing, offline generation of documentation, etc.)
+## Optional
+These dependencies are required for advanced use (testing, offline generation of documentation, etc.)
 
 - bandit
 - black
