@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 - License APACHE 2.0 is used instead of MIT
 
+### Documentation
+- Add dependencies, developers guide,and license pages
+- minor fixes to fuel models tutorial
+
 ## [0.1.0] - 2024 / 07 / 09
 ### Added
 - Documentation for the rate of spread sensitivity workflow
