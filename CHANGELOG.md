@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [0.2.0] - - / - / -
 ### Added
 - Hamada_1 urban rate of spread
+- Hamada_2 urban rate of spread
 - WUDAPT_urban fuel database
+
+### Changed
+- License APACHE 2.0 is used instead of MIT
 
 ## [0.1.0] - 2024 / 07 / 09
 ### Added
