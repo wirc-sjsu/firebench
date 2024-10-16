@@ -37,7 +37,7 @@ output_filename = "Rothermel_SFIRE"
 ##   - Anderson13
 ## Urban fuel models
 ##   - WUDAPT_urban
-fuel_model_name = "Anderson13" 
+fuel_model_name = "Anderson13"
 local_path_json_fuel_db = None
 
 # Rate of Spread Model as RateOfSpreadModel class
