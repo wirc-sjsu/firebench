@@ -98,7 +98,7 @@ def test_compute_ros_balbi(input_dict, expected_ros):
     assert pytest.approx(ros, rel=1e-4) == expected_ros
     # not enough iterations to converge
     ros = rm.Balbi_2022_fixed_SFIRE.compute_ros(input_dict, max_ite=1)
-    assert np.isnan(ros)
+    assert ros == 0.0
 
 
 @pytest.fixture
