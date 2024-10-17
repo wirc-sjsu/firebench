@@ -8,13 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - Hamada_1 urban rate of spread
 - Hamada_2 urban rate of spread
+- Balbi 2022 vegetation rate of spread model
 - WUDAPT_urban fuel database
 
 ### Changed
 - License APACHE 2.0 is used instead of MIT
 
 ### Documentation
-- Add dependencies, developers guide,and license pages
+- Add dependencies, developers guide, and license pages
 - minor fixes to fuel models tutorial
 
 ## [0.1.0] - 2024 / 07 / 09
