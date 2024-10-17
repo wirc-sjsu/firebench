@@ -500,7 +500,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
         # Set ros to NaN if the algorithm did not converge
         if failstatus:
-            ros = np.nan
+            ros = 0
 
         return min(ros, 6.0)
 
