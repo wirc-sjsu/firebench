@@ -137,7 +137,7 @@ def test_compute_ros_regression_balbi(
         wind,
         slope,
         fmc,
-        use_wind_reduction_factor = use_wind_reduction_factor,
+        use_wind_reduction_factor=use_wind_reduction_factor,
     )
     print(ros)
     assert np.isclose(ros, expected_ros)

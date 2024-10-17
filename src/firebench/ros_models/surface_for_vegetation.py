@@ -390,7 +390,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
         # dead fuel load
         sigma_d = sigma_t * opt.get("dead_fuel_load_ratio", 1)
-        
+
         # max number of iteration
         maxite = opt.get("max_ite", 20)
 
