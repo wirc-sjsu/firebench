@@ -349,6 +349,8 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             Flag to use wind reduction factor from fuel data (default: True).
         dead_fuel_load_ratio : float, optional
             dead fuel load ratio, ie sigma_d/sigma_t, between 0 and 1 (default 1).
+        max_ite : int, optional
+            maximum number of iteration for the fixed point method.
 
         Returns
         -------
@@ -369,7 +371,6 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         ## Model parameter
         st = 17.0  # Stoichiometric coefficient                 [-]
         scal_am = 0.025  # scaling factor am                    [-]
-        maxite = 20  # max number of iteration                  [-]
         tol = 1e-4  # tolerance for fixed point method          [-]
         r00 = 2.5e-5  # Model parameter
         chi0 = 0.3  # Radiative factor                          [-]
@@ -389,6 +390,9 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
         # dead fuel load
         sigma_d = sigma_t * opt.get("dead_fuel_load_ratio", 1)
+        
+        # max number of iteration
+        maxite = opt.get("max_ite", 20)
 
         # wind reduction factor
         use_wind_reduction_factor = opt.get("use_wind_reduction_factor", False)

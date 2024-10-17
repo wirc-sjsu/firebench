@@ -35,7 +35,7 @@ def dummy_fuel_data_rothermel():
         (1, 20, 45, 5, 6.0),
     ],
 )
-def test_compute_ros_rothermel_regression(
+def test_compute_ros_regression_rothermel(
     dummy_fuel_data_rothermel, fuelclass, wind, slope, fmc, expected_ros
 ):
     ros = rm.Rothermel_SFIRE.rothermel(dummy_fuel_data_rothermel, fuelclass, wind, slope, fmc)
@@ -93,8 +93,12 @@ def test_compute_ros_rothermel(input_dict, expected_ros):
     ],
 )
 def test_compute_ros_balbi(input_dict, expected_ros):
+    # normal behavior
     ros = rm.Balbi_2022_fixed_SFIRE.compute_ros(input_dict)
-    assert pytest.approx(ros, rel=1e-2) == expected_ros
+    assert pytest.approx(ros, rel=1e-4) == expected_ros
+    # not enough iterations to converge
+    ros = rm.Balbi_2022_fixed_SFIRE.compute_ros(input_dict, max_ite=1)
+    assert np.isnan(ros)
 
 
 @pytest.fixture
@@ -120,11 +124,11 @@ def dummy_fuel_data_balbi():
         (1, 0, -20, 10, False, 0.39599878435328895),
         (1, 0, 20, 10, False, 0.3658781276924766),
         (1, 3, 10, 15, False, 0.4473273380736792),
-        (1, 3, 10, 20, True, 0.383234609787183),
+        (1, 3, 10, 20, True, 0.3129398547410925),
         (1, 20, 45, 5, False, 2.364154054547705),
     ],
 )
-def test_compute_ros_balbi_regression(
+def test_compute_ros_regression_balbi(
     dummy_fuel_data_balbi, fuelclass, wind, slope, fmc, use_wind_reduction_factor, expected_ros
 ):
     ros = rm.Balbi_2022_fixed_SFIRE.balbi_2022_fixed(
@@ -133,7 +137,7 @@ def test_compute_ros_balbi_regression(
         wind,
         slope,
         fmc,
-        opt={"use_wind_reduction_factor": use_wind_reduction_factor},
+        use_wind_reduction_factor = use_wind_reduction_factor,
     )
     print(ros)
     assert np.isclose(ros, expected_ros)
