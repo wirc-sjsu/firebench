@@ -140,7 +140,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         cmbcnst = 17.433e06  # [J/kg]
         tanphi = np.tan(np.deg2rad(slope))
 
-        fuelmc_g = fmc / 100.0
+        fuelmc_g = fmc * 0.01
         fuelheat = cmbcnst * 4.30e-04  # Convert J/kg to BTU/lb
         fuelloadm = fueldata["fgi"][fuelclass]  # Fuel load without moisture
 
@@ -288,12 +288,12 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         },
         "fueldens": {
             "std_name": svn.FUEL_DENSITY,
-            "units": ureg.pound / ureg.foot**3,
+            "units": ureg.kilogram / ureg.meter**3,
             "range": (0, np.inf),
         },
         "savr": {
             "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
-            "units": 1 / ureg.foot,
+            "units": 1 / ureg.meter,
             "range": (0, np.inf),
         },
         "wind": {
@@ -380,6 +380,9 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
         # index starts at 0
         fuelclass -= 1
+
+        # fmc from percent to real
+        fmc *= 0.01
 
         # Add moisture to oven dry fuel load
         sigma_t = fueldata["fgi"][fuelclass] * (1 + fmc)
