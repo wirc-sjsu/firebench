@@ -14,6 +14,8 @@ This page lists the fuels models, the rate of spread models and the workflows th
 
 ## Rate of spread models
 
+Rate fo spread models are contained in `firebench.ros_models`.
+
 ### Vegetation
 - `Rothermel_SFIRE`: Rothermel model as implemented in [WRF-SFIRE](https://github.com/openwfm/WRF-SFIRE), from 
 - `Balbi_2022_fixed_SFIRE`: Balbi 2022 model as implemented in [WRF-SFIRE](https://github.com/openwfm/WRF-SFIRE)
