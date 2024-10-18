@@ -37,12 +37,13 @@ output_filename = "Rothermel_SFIRE"
 ##   - Anderson13
 ## Urban fuel models
 ##   - WUDAPT_urban
-fuel_model_name = "Anderson13" 
+fuel_model_name = "Anderson13"
 local_path_json_fuel_db = None
 
 # Rate of Spread Model as RateOfSpreadModel class
 ## Vegetation ROS models
-##   - rm.Rothermel_SFIRERothermel_SFIRE
+##   - rm.Rothermel_SFIRE
+##   - rm.Balbi_2022_fixed_SFIRE
 ## Urban  ROS models
 ##   - rm.Hamada_1
 ##   - rm.Hamada_2
