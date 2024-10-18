@@ -14,7 +14,15 @@ This page lists the fuels models, the rate of spread models and the workflows th
 
 ## Rate of spread models
 
-- `Rothermel_SFIRE`: Rothermel model as implemented in [WRF-SFIRE](https://github.com/openwfm/WRF-SFIRE)
+Rate fo spread models are contained in `firebench.ros_models`.
+
+### Vegetation
+- `Rothermel_SFIRE`: Rothermel model as implemented in [WRF-SFIRE](https://github.com/openwfm/WRF-SFIRE), from 
+- `Balbi_2022_fixed_SFIRE`: Balbi 2022 model as implemented in [WRF-SFIRE](https://github.com/openwfm/WRF-SFIRE)
+
+### Urban
+- `Hamada_1`: Hamada model derived from Scawthorn, C. (2009). Enhancements in HAZUS-MH. Fire Following Earthquake Task, 3.
+- `Hamada_2`: Hamada model derived from the equations in [Himoto, K., & Tanaka, T. (2008)](https://doi.org/10.1016/j.firesaf.2007.12.008)
 
 ## Workflows
 

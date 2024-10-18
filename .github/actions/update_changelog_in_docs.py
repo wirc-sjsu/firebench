@@ -19,7 +19,7 @@ def update_changelog_in_docs():
     # Front matter for the docs/changelog.md file
     front_matter = """---
 layout: default
-title: "Changelog"
+title: "Changes"
 nav_order: 6
 ---
 

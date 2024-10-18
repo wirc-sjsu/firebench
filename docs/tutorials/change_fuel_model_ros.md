@@ -22,7 +22,10 @@ Using a fuel model involves:
 
 ## Step 1: Understanding the Default Fuel Model Structure
 
-FireBench includes several default fuel models. The fuel models distributed within the package are listed [here](../content.md).
+FireBench includes several default fuel models.
+Fuel models are inputs to other components in `FireBench`.
+If you want to build a custom fuel model for a specific rate of spread model, for example, you should refer first to the metadata of the rate of spread model that contains its list of required inputs.
+The fuel models distributed within the package are listed [here](../content.md).
 
 ### Default Fuel Model Management
 
@@ -80,7 +83,7 @@ You can create your custom fuel model and use it locally. First, you have to cre
 }
 ```
 
-## Step 4: Create a custom fuel model
+## Step 4: Using a custom fuel model in the workflow
 
 To use the custom data, specify the path of the directory that contains the JSON file and the name of the fuel model:
 ```python

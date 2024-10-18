@@ -33,16 +33,28 @@ overwrite_files_in_record = True
 output_filename = "Rothermel_SFIRE"
 
 # Fuel Model Configuration
+## Vegetation fuel models
+##   - Anderson13
+## Urban fuel models
+##   - WUDAPT_urban
 fuel_model_name = "Anderson13"
 local_path_json_fuel_db = None
 
-# Rate of Spread Model
+# Rate of Spread Model as RateOfSpreadModel class
+## Vegetation ROS models
+##   - rm.Rothermel_SFIRE
+##   - rm.Balbi_2022_fixed_SFIRE
+## Urban  ROS models
+##   - rm.Hamada_1
+##   - rm.Hamada_2
 ros_model = rm.Rothermel_SFIRE
+output_ros_unit = ureg.meter / ureg.second
 
 # Sobol Sequence Configuration
 num_sobol_points = 2**13  # Number of points for Sobol sequence, better if 2^N
 
 # Input Variables Configuration
+# use firebecnh unit registry ureg to define units
 input_vars_info = {
     svn.WIND_SPEED: {"unit": ureg.meter / ureg.second, "range": [-15, 15]},
     svn.SLOPE_ANGLE: {"unit": ureg.degree, "range": [-45, 45]},
@@ -109,6 +121,8 @@ for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
 
 # Assign unit to ROS
 ros_quantity = ureg.Quantity(ros, ros_model.metadata["output_rate_of_spread"]["units"])
+# convert to user defined output unit
+ros_quantity = ureg.Quantity(ros_quantity, output_ros_unit)
 
 #######################################################################################
 #                             STEP 4: SAVE DATA

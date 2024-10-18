@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "firebench"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
 ]
@@ -35,7 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 
     # Pick your license as you wish (see also "license" above)
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
 ]
 [project.optional-dependencies]
 dev = [
@@ -44,6 +44,7 @@ dev = [
     "pytest-mock",
     "bandit",
     "pylint",
+    "black",
 ]
 [tool.hatch.envs.default]
 features = ["dev"]
