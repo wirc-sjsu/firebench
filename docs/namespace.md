@@ -28,9 +28,9 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_LOAD_DRY_100H`: Fuel load dry 100 hours
 - `FUEL_LOAD_DRY_1000H`: Fuel load dry 1000 hours
 - `FUEL_LOAD_DRY_LIVE`: Fuel load dry live
+- `FUEL_LOAD_DRY_LIVE_HERB`: Fuel load dry live herb
+- `FUEL_LOAD_DRY_LIVE_WOODY`: Fuel load dry live woody
 - `FUEL_LOAD_DRY_TOTAL`: Fuel load dry total
-- `FUEL_LOAD_LIVE_HERB`: Fuel load live herb
-- `FUEL_LOAD_LIVE_WOODY`: Fuel load live woody
 - `FUEL_MINERAL_CONTENT_EFFECTIVE`: Fuel mineral content effective
 - `FUEL_MINERAL_CONTENT_TOTAL`: Fuel mineral content total
 - `FUEL_MODEL_TYPE`: Fuel model type
