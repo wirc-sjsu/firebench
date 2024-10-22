@@ -12,6 +12,8 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 
 ## Standard Variable Names
 
+- `ALPHA`: Alpha
+- `BETA`: Beta
 - `CANOPY_DENSITY_BULK`: Canopy bulk density
 - `CANOPY_HEIGHT_BOTTOM`: Canopy height bottom
 - `CANOPY_HEIGHT_TOP`: Canopy height top
@@ -19,6 +21,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_CHAPARRAL_FLAG`: Fuel chaparral flag
 - `FUEL_DENSITY`: Fuel density
 - `FUEL_FRACTION_CONSUMED_FLAME_ZONE`: Fuel fraction consumed flame zone
+- `FUEL_HEAT_CONTENT`: Fuel heat content
 - `FUEL_HEIGHT`: Fuel height
 - `FUEL_LOAD_DRY_1H`: Fuel load dry 1 hour
 - `FUEL_LOAD_DRY_10H`: Fuel load dry 10 hours
@@ -26,8 +29,11 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_LOAD_DRY_1000H`: Fuel load dry 1000 hours
 - `FUEL_LOAD_DRY_LIVE`: Fuel load dry live
 - `FUEL_LOAD_DRY_TOTAL`: Fuel load dry total
+- `FUEL_LOAD_LIVE_HERB`: Fuel load live herb
+- `FUEL_LOAD_LIVE_WOODY`: Fuel load live woody
 - `FUEL_MINERAL_CONTENT_EFFECTIVE`: Fuel mineral content effective
 - `FUEL_MINERAL_CONTENT_TOTAL`: Fuel mineral content total
+- `FUEL_MODEL_TYPE`: Fuel model type
 - `FUEL_MOISTURE_CONTENT`: Fuel moisture content
 - `FUEL_MOISTURE_CONTENT_1H`: Fuel moisture content 1 hour
 - `FUEL_MOISTURE_CONTENT_10H`: Fuel moisture content 10 hours
@@ -35,9 +41,13 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_MOISTURE_CONTENT_1000H`: Fuel moisture content 1000 hours
 - `FUEL_MOISTURE_CONTENT_LIVE`: Fuel moisture content live
 - `FUEL_MOISTURE_EXTINCTION`: Fuel moisture extinction
+- `FUEL_NAME`: Fuel class name
 - `FUEL_ROUGHNESS_HEIGHT`: Fuel roughness height
 - `FUEL_SFIREBURNUP_CONSUMPTION_CST`: Fuel SFIRE BURNUP consumption constant
 - `FUEL_SURFACE_AREA_VOLUME_RATIO`: Fuel surface area volume ratio
+- `FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD_1H`: Fuel surface area volume ratio for dead 1h fuel
+- `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB`: Fuel surface area volume ratio for live herb fuel
+- `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY`: Fuel surface area volume ratio for live woody fuel
 - `FUEL_THERMAL_CONDUCTIVITY`: Fuel thermal conductivity
 - `FUEL_TREE_CLASS`: Fuel tree class
 - `FUEL_WIND_HEIGHT`: Fuel wind height
