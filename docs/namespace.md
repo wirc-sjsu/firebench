@@ -33,7 +33,6 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_LOAD_DRY_TOTAL`: Fuel load dry total
 - `FUEL_MINERAL_CONTENT_EFFECTIVE`: Fuel mineral content effective
 - `FUEL_MINERAL_CONTENT_TOTAL`: Fuel mineral content total
-- `FUEL_MODEL_TYPE`: Fuel model type
 - `FUEL_MOISTURE_CONTENT`: Fuel moisture content
 - `FUEL_MOISTURE_CONTENT_1H`: Fuel moisture content 1 hour
 - `FUEL_MOISTURE_CONTENT_10H`: Fuel moisture content 10 hours
@@ -41,7 +40,6 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_MOISTURE_CONTENT_1000H`: Fuel moisture content 1000 hours
 - `FUEL_MOISTURE_CONTENT_LIVE`: Fuel moisture content live
 - `FUEL_MOISTURE_EXTINCTION`: Fuel moisture extinction
-- `FUEL_NAME`: Fuel class name
 - `FUEL_ROUGHNESS_HEIGHT`: Fuel roughness height
 - `FUEL_SFIREBURNUP_CONSUMPTION_CST`: Fuel SFIRE BURNUP consumption constant
 - `FUEL_SURFACE_AREA_VOLUME_RATIO`: Fuel surface area volume ratio

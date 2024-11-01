@@ -58,10 +58,11 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
         try:
             std_var = svn(value["variable_name"])
         except ValueError:
-            logger.warning("ignore the input value: %s", value["variable_name"])
+            logger.warning("input value %s not found in SVN. Data imported without unit", value["variable_name"])
+            output_data[value["variable_name"]] = np.array(data_dict[key], dtype=value["type"])
         else:
             output_data[std_var] = ureg.Quantity(
-                np.array(data_dict[key], dtype=np.float64), ureg(value["unit"])
+                np.array(data_dict[key], dtype=value["type"]), ureg(value["unit"])
             )
 
     # store number of fuel classes
