@@ -20,7 +20,7 @@ def update_changelog_in_docs():
     front_matter = """---
 layout: default
 title: "Changes"
-nav_order: 6
+nav_order: 96
 ---
 
 """

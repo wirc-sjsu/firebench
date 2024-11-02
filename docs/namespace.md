@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Variable namespace"
-nav_order: 5
+nav_order: 95
 ---
 # Standard Namespace
 
