@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Content"
-nav_order: 4
+nav_order: 6
 ---
 
 # Content of the package
@@ -11,6 +11,7 @@ This page lists the fuels models, the rate of spread models and the workflows th
 ## Fuel models
 
 - `Anderson13`: Anderson 13 categories ([reference](https://www.fs.usda.gov/rm/pubs_int/int_gtr122.pdf))
+- `ScottandBurgan40`: Scott and Burgan 40 categories ([reference](https://www.fs.usda.gov/rm/pubs_series/rmrs/gtr/rmrs_gtr153.pdf))
 
 ## Rate of spread models
 
