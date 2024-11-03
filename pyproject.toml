@@ -45,6 +45,8 @@ dev = [
     "bandit",
     "pylint",
     "black",
+    "sphinx",
+    "sphinx-autodoc-typehints",
 ]
 [tool.hatch.envs.default]
 features = ["dev"]
