@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "firebench"
-version = "0.3.0.alpha"
+version = "0.3.0a1"
 authors = [
     {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
 ]
@@ -47,6 +47,7 @@ dev = [
     "black",
     "sphinx",
     "sphinx-autodoc-typehints",
+    "myst-parser",
 ]
 [tool.hatch.envs.default]
 features = ["dev"]

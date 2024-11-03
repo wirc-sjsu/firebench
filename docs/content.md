@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Content"
-nav_order: 6
+nav_order: 7
 ---
 
 # Content of the package
