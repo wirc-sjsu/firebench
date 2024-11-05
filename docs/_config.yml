@@ -23,10 +23,3 @@ nav:
         children:
           - title: "ROS Sensitivity to Environmental Variables"
             url: "/workflows/sensitivity/ros_sensitivity/"
-
-defaults:
-  - scope:
-      path: ""  # applies to all files
-      type: "pages"
-    values:
-      scripts: "/assets/js/mathjax.js"
