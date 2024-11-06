@@ -361,7 +361,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         boltz = 5.670373e-8  # Stefan-Boltzman constant         [W m-2 K-4]
         tau0 = 75591.0  # Anderson's residence time coefficient [s m-1]
         Cpa = 1150.0  # Specific heat of air                    [J kg-1 K-1]
-        Tvap = 373.0  # Liquid water evaporation temperature    [K]
+        Tvap = 373.15  # Liquid water evaporation temperature   [K]
         g = 9.81  # Gravitational acceleration                  [m s-2]
         Cp = 1200  # Specific heat of fuel                      [J kg-1 K-1]
         Cpw = 4180.0  # Specific heat of liquid water           [J kg-1 K-1]
