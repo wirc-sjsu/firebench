@@ -4,9 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.3.0.alpha] - 2024 / -- / --
+## [0.3.0a] - 2024 / -- / --
 ### Added
 - Scott and Burgan 40 fuel model
+
+### Documentation
+- Add Fire Models information and Dataset and fire experiment information sections
+- Add pages for:
+  - Rothermel_SFIRE
+  - Anderson13
+  - ScottandBurgan40
 
 ## [0.2.0] - 2024 / 10 / 17
 ### Added
