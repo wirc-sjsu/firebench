@@ -37,9 +37,9 @@ Import data using `FireBench` and output variable.
 ## Compatibility with fire models
 
 Compatibility levels:
-- Full: The data contained in the fuel model covers **all** the fuel input needed by the fire model
-- Partial: The data contained in the fuel model covers **some** of the fuel input needed by the fire model
-- None: The data contained in the fuel model covers **none** of the fuel input needed by the fire model
+- **Full**: The data contained in the fuel model covers *all* the fuel input needed by the fire model
+- **Partial**: The data contained in the fuel model covers *some* of the fuel input needed by the fire model
+- **None**: The data contained in the fuel model covers *none* of the fuel input needed by the fire model
 
 
 Fire model              | Category          | Compatibility level

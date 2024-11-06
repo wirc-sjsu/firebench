@@ -115,6 +115,17 @@ It also uses the wind reduction factor from Anderson fuel model.
 
 ## Compatibility with fire models
 
+Compatibility levels for **fuel models**:
+- **Full**: The data contained in the fuel model covers *all* the fuel input needed by the fire model
+- **Partial**: The data contained in the fuel model covers *some* of the fuel input needed by the fire model
+- **None**: The data contained in the fuel model covers *none* of the fuel input needed by the fire model
+
+
+Fire model              | Category          | Compatibility level
+----------              | --------          | -----------------
+Anderson13              | Fuel model        | Full
+ScottandBurgan40        | Fuel model        | Partial
+
 ## Benchmarks and workflows
 
 ## References
