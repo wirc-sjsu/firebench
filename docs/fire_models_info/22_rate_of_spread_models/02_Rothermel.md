@@ -91,7 +91,8 @@ It also uses the wind reduction factor from Anderson fuel model.
 
 ### Use with Scott and Burgan fuel model
 
-**TBD**
+
+The [Scott and Burgan](../21_fuel_models/03_SB40.md) fuel model provides a set of fuel properties that can be linked to Rothermel_SFIRE's inputs. The following diagram shows the workflow that can be used to connect Scott and Burgan fuel model and Rothermel rate of spread model.
 
 Fig. 2 shows an example of usage with Scott and Burgan fuel model.
 It uses constant environemental inputs for wind, slope and fuel moisture. 
