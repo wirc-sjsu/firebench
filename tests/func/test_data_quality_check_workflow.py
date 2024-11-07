@@ -24,11 +24,7 @@ def test_check_data_quality_ros_model():
     print(final_input)
 
     # Check the completeness of the final input
-    for key in ros_model.metadata:
-        if not key.startswith("output_"):
-            assert (
-                ros_model.metadata[key]["std_name"] in final_input
-            ), f"{ros_model.metadata[key]['std_name']} missing in final input"
+    ft.check_input_completeness(input_dict, ros_model.metadata)
 
     # Check specific values in the final input (example)
     assert final_input[svn.WIND_SPEED] == 3, "WIND value mismatch"

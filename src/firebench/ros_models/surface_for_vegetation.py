@@ -2,6 +2,7 @@ import numpy as np
 
 from ..tools.namespace import StandardVariableNames as svn
 from ..tools.units import ureg
+from ..tools.input_info import ParameterType
 
 from .rate_of_spread_model import RateOfSpreadModel
 
@@ -31,66 +32,79 @@ class Rothermel_SFIRE(RateOfSpreadModel):
             "std_name": svn.FUEL_WIND_REDUCTION_FACTOR,
             "units": ureg.dimensionless,
             "range": (0, 1),
+            "type": ParameterType.input,
         },
         "fgi": {
             "std_name": svn.FUEL_LOAD_DRY_TOTAL,
             "units": ureg.kilogram / ureg.meter**2,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "fueldepthm": {
             "std_name": svn.FUEL_HEIGHT,
             "units": ureg.meter,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "fueldens": {
             "std_name": svn.FUEL_DENSITY,
             "units": ureg.pound / ureg.foot**3,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "savr": {
             "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
             "units": 1 / ureg.foot,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "fuelmce": {
             "std_name": svn.FUEL_MOISTURE_EXTINCTION,
             "units": ureg.percent,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "st": {
             "std_name": svn.FUEL_MINERAL_CONTENT_TOTAL,
             "units": ureg.dimensionless,
             "range": (0, 1),
+            "type": ParameterType.input,
         },
         "se": {
             "std_name": svn.FUEL_MINERAL_CONTENT_EFFECTIVE,
             "units": ureg.dimensionless,
             "range": (0, 1),
+            "type": ParameterType.input,
         },
         "ichap": {
             "std_name": svn.FUEL_CHAPARRAL_FLAG,
             "units": ureg.dimensionless,
             "range": (0, 1),
+            "type": ParameterType.input,
         },
         "wind": {
             "std_name": svn.WIND_SPEED,
             "units": ureg.meter / ureg.second,
             "range": (-np.inf, np.inf),
+            "type": ParameterType.input,
         },
         "slope": {
             "std_name": svn.SLOPE_ANGLE,
             "units": ureg.degree,
             "range": (-90, 90),
+            "type": ParameterType.input,
         },
         "fmc": {
             "std_name": svn.FUEL_MOISTURE_CONTENT,
             "units": ureg.percent,
             "range": (0, 200),
+            "type": ParameterType.input,
         },
-        "output_rate_of_spread": {
+        "rate_of_spread": {
             "std_name": svn.RATE_OF_SPREAD,
             "units": ureg.meter / ureg.second,
             "range": (0, np.inf),
+            "type": ParameterType.output,
         },
     }
 
@@ -275,46 +289,55 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             "std_name": svn.FUEL_WIND_REDUCTION_FACTOR,
             "units": ureg.dimensionless,
             "range": (0, 1),
+            "type": ParameterType.input,
         },
         "fgi": {
             "std_name": svn.FUEL_LOAD_DRY_TOTAL,
             "units": ureg.kilogram / ureg.meter**2,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "fueldepthm": {
             "std_name": svn.FUEL_HEIGHT,
             "units": ureg.meter,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "fueldens": {
             "std_name": svn.FUEL_DENSITY,
             "units": ureg.kilogram / ureg.meter**3,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "savr": {
             "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
             "units": 1 / ureg.meter,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "wind": {
             "std_name": svn.WIND_SPEED,
             "units": ureg.meter / ureg.second,
             "range": (-np.inf, np.inf),
+            "type": ParameterType.input,
         },
         "slope": {
             "std_name": svn.SLOPE_ANGLE,
             "units": ureg.degree,
             "range": (-90, 90),
+            "type": ParameterType.input,
         },
         "fmc": {
             "std_name": svn.FUEL_MOISTURE_CONTENT,
             "units": ureg.percent,
             "range": (0, 200),
+            "type": ParameterType.input,
         },
-        "output_rate_of_spread": {
+        "rate_of_spread": {
             "std_name": svn.RATE_OF_SPREAD,
             "units": ureg.meter / ureg.second,
             "range": (0, np.inf),
+            "type": ParameterType.output,
         },
     }
 
