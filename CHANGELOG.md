@@ -8,10 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - Scott and Burgan 40 fuel model
 
+### Changed
+- External management of wind reduction factor (no more present in rate of spread models)
+
 ### Documentation
 - Add Fire Models information and Dataset and fire experiment information sections
 - Add pages for:
   - Rothermel_SFIRE
+  - Balbi_2022_fixed_SFIRE
   - Anderson13
   - ScottandBurgan40
 
