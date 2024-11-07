@@ -342,7 +342,7 @@ def __Baughman_20ft_wind_reduction_factor_unsheltered(
     vegetation_height: float,
 ):
     """
-    Compute the wind reduction factor in unsheltered land from Baughman and Albini (1980)
+    Compute the unsheltered wind reduction factor using Baughman and Albini's (1980) formula.
     """  # pylint: disable=line-too-long
     return (
         (1 + 0.36 * vegetation_height / interpolation_height)
