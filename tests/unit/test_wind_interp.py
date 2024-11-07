@@ -18,7 +18,7 @@ def test_use_wind_reduction_factor_float():
 def test_use_wind_reduction_factor_list():
     wind_speed = 10.0
     reduction_factors = [0.7, 0.8, 0.9]  # Indexed by fuel_cat
-    fuel_cat = 1
+    fuel_cat = 2
     expected_speed = 8.0  # 10.0 * 0.8
 
     result = fwi.use_wind_reduction_factor(
@@ -37,7 +37,7 @@ def test_use_wind_reduction_factor_list():
 def test_use_wind_reduction_factor_fuel_dict_and_fuelcat():
     wind_speed = 10.0
     fuel_dict = {svn.FUEL_WIND_REDUCTION_FACTOR: [0.7, 0.8, 0.9]}
-    fuel_cat = 1
+    fuel_cat = 2
     expected_speed = 8.0  # 10.0 * 0.8
 
     result = fwi.use_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
@@ -70,7 +70,7 @@ def test_invalid_fuel_cat_with_list():
     fuel_cat = 5  # Index out of range
 
     with pytest.raises(
-        IndexError, match=f"Fuel category {fuel_cat} not found in wind_reduction_factor array."
+        IndexError, match=f"Fuel category {fuel_cat-1} not found in wind_reduction_factor array."
     ):
         fwi.use_wind_reduction_factor(
             wind_speed=wind_speed, wind_reduction_factor=reduction_factors, fuel_cat=fuel_cat
@@ -80,7 +80,7 @@ def test_invalid_fuel_cat_with_list():
 def test_fuel_dict_wrong_key_fuel_cat():
     wind_speed = 10.0
     fuel_dict = {"other": [0.7, 0.8, 0.9]}
-    fuel_cat = 1
+    fuel_cat = 2
 
     with pytest.raises(KeyError, match=f"Key {svn.FUEL_WIND_REDUCTION_FACTOR} not found in fuel_dict."):
         fwi.use_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
@@ -91,7 +91,7 @@ def test_invalid_fuel_cat_with_fuel_dict():
     fuel_dict = {svn.FUEL_WIND_REDUCTION_FACTOR: [0.7, 0.8, 0.9]}
     fuel_cat = 5  # Index out of range
 
-    with pytest.raises(IndexError, match=f"Fuel category {fuel_cat} not found in fuel_dict."):
+    with pytest.raises(IndexError, match=f"Fuel category {fuel_cat-1} not found in fuel_dict."):
         fwi.use_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
 
 
@@ -124,8 +124,8 @@ def test_Baughman_wrf_unsheltered_float():
 def test_Baughman_wrf_unsheltered_list():
     interpolation_height = 6.0
     vegetation_heights = [1.5, 2.0, 2.5]  # Indexed by fuel_cat
-    fuel_cat = 1
-    veg_height = vegetation_heights[fuel_cat]
+    fuel_cat = 2
+    veg_height = vegetation_heights[fuel_cat-1]
     expected_wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
 
     result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
@@ -147,8 +147,8 @@ def test_Baughman_wrf_unsheltered_list():
 def test_Baughman_wrf_unsheltered_fuel_dict_and_fuelcat():
     interpolation_height = 6.0
     fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
-    fuel_cat = 1
-    veg_height = fuel_dict[svn.FUEL_HEIGHT][fuel_cat]
+    fuel_cat = 2
+    veg_height = fuel_dict[svn.FUEL_HEIGHT][fuel_cat-1]
     expected_wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
 
     result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
@@ -186,7 +186,7 @@ def test_Baughman_wrf_unsheltered_invalid_fuel_cat_with_list():
     fuel_cat = 5  # Index out of range
 
     with pytest.raises(
-        IndexError, match=f"Fuel category {fuel_cat} not found in vegetation_height array."
+        IndexError, match=f"Fuel category {fuel_cat-1} not found in vegetation_height array."
     ):
         fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
             interpolation_height=interpolation_height,
@@ -197,7 +197,7 @@ def test_Baughman_wrf_unsheltered_invalid_fuel_cat_with_list():
 def test_Baughman_wrf_unsheltered_fuel_dict_wrong_key_fuel_cat():
     interpolation_height = 6.0
     fuel_dict = {"other_key": [1.5, 2.0, 2.5]}
-    fuel_cat = 1
+    fuel_cat = 2
 
     with pytest.raises(KeyError, match=f"Key {svn.FUEL_HEIGHT} not found in fuel_dict."):
         fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
@@ -211,7 +211,7 @@ def test_Baughman_wrf_unsheltered_invalid_fuel_cat_with_fuel_dict():
     fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
     fuel_cat = 5  # Index out of range
 
-    with pytest.raises(IndexError, match=f"Fuel category {fuel_cat} not found in fuel_dict."):
+    with pytest.raises(IndexError, match=f"Fuel category {fuel_cat-1} not found in fuel_dict."):
         fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
             interpolation_height=interpolation_height,
             fuel_dict=fuel_dict,

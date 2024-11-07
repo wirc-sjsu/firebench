@@ -97,7 +97,7 @@ def use_wind_reduction_factor(
 
     # Example 2: Using wind reduction factors from a list with a fuel category
     wind_reduction_factors = [0.7, 0.8, 0.9]
-    fuel_cat = 1
+    fuel_cat = 2
     new_wind_speed = use_wind_reduction_factor(
         wind_speed=10.0,
         wind_reduction_factor=wind_reduction_factors,
@@ -107,7 +107,7 @@ def use_wind_reduction_factor(
 
     # Example 3: Using a fuel dictionary with a fuel category
     fuel_dict = {svn.FUEL_WIND_REDUCTION_FACTOR: [0.7, 0.8, 0.9]}
-    fuel_cat = 1
+    fuel_cat = 2
     new_wind_speed = use_wind_reduction_factor(
         wind_speed=10.0,
         fuel_dict=fuel_dict,
@@ -130,13 +130,9 @@ def use_wind_reduction_factor(
     - An `IndexError` is raised if `fuel_cat` is provided but out of range for the list or array.
     - A `KeyError` is raised if the expected key `svn.FUEL_WIND_REDUCTION_FACTOR` is missing in `fuel_dict`.
 
-    **Dependencies:**
-
-    - The function relies on `svn.FUEL_WIND_REDUCTION_FACTOR` being defined, typically in a module or class `StandardVariableNames`, which provides standardized keys for fuel parameters.
-
     **Important Considerations:**
 
-    - **1-Based Indexing:** Ensure that `fuel_cat` corresponds to the correct index in your list or array (Python uses zero-based indexing).
+    - **One-Based Indexing:** Note that `fuel_cat` uses one-based indexing to align with natural fuel category numbering (i.e., the first fuel category is `fuel_cat = 1`).
     - **Data Types:** The function accepts `wind_reduction_factor` as a float, list, or numpy array. Ensure that your inputs are of the correct type.
     - **Units Consistency:** Make sure that the units of `wind_speed` and the wind reduction factor are consistent. Typically, wind speeds are in meters per second (m/s) or miles per hour (mph), and the wind reduction factor is dimensionless.
 
@@ -154,9 +150,9 @@ def use_wind_reduction_factor(
         if fuel_cat is None:
             raise ValueError("fuel_cat must be provided when wind_reduction_factor is a list.")
         try:
-            factor = wind_reduction_factor[fuel_cat]
+            factor = wind_reduction_factor[fuel_cat-1]
         except IndexError as exc:
-            raise IndexError(f"Fuel category {fuel_cat} not found in wind_reduction_factor array.") from exc
+            raise IndexError(f"Fuel category {fuel_cat-1} not found in wind_reduction_factor array.") from exc
         return wind_speed * factor
 
     if fuel_dict is not None and fuel_cat is not None:
@@ -166,9 +162,9 @@ def use_wind_reduction_factor(
         except KeyError as exc:
             raise KeyError(f"Key {svn.FUEL_WIND_REDUCTION_FACTOR} not found in fuel_dict.") from exc
         try:
-            factor = list_wrf[fuel_cat]
+            factor = list_wrf[fuel_cat-1]
         except IndexError as exc:
-            raise IndexError(f"Fuel category {fuel_cat} not found in fuel_dict.") from exc
+            raise IndexError(f"Fuel category {fuel_cat-1} not found in fuel_dict.") from exc
         return wind_speed * factor
 
     if fuel_dict is not None and fuel_cat is None:
@@ -267,7 +263,7 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
     wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
         interpolation_height=6.0,
         vegetation_height=vegetation_heights,
-        fuel_cat=1
+        fuel_cat=2
     )
 
     # Example 3: Using a fuel dictionary with a fuel category
@@ -275,7 +271,7 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
     wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
         interpolation_height=6.0,
         fuel_dict=fuel_dict,
-        fuel_cat=1
+        fuel_cat=2
     )
 
     # Example 4: Using a fuel dictionary without a fuel category
@@ -285,6 +281,12 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
         fuel_dict=fuel_dict
     )
     ```
+
+    **Important Considerations:**
+
+    - **One-Based Indexing:** Note that `fuel_cat` uses one-based indexing to align with natural fuel category numbering (i.e., the first fuel category is `fuel_cat = 1`).
+    - **Data Types:** The function accepts `vegetation_height` as a float, list, or numpy array. Ensure that your inputs are of the correct type.
+    - **Units Consistency:** Make sure that the units of `vegetation_height` and the `interpolation_height` are consistent.
 
     References
     ----------
@@ -302,9 +304,9 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
         if fuel_cat is None:
             raise ValueError("fuel_cat must be provided when vegetation_height is a list.")
         try:
-            veg_height = vegetation_height[fuel_cat]
+            veg_height = vegetation_height[fuel_cat-1]
         except IndexError as exc:
-            raise IndexError(f"Fuel category {fuel_cat} not found in vegetation_height array.") from exc
+            raise IndexError(f"Fuel category {fuel_cat-1} not found in vegetation_height array.") from exc
         return __Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
 
     # Case 3: Retrieve vegetation_height from fuel_dict using fuel_cat
@@ -314,9 +316,9 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
         except KeyError as exc:
             raise KeyError(f"Key {svn.FUEL_HEIGHT} not found in fuel_dict.") from exc
         try:
-            veg_height = list_wrf[fuel_cat]
+            veg_height = list_wrf[fuel_cat-1]
         except IndexError as exc:
-            raise IndexError(f"Fuel category {fuel_cat} not found in fuel_dict.") from exc
+            raise IndexError(f"Fuel category {fuel_cat-1} not found in fuel_dict.") from exc
         return __Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
 
     # Case 4: Retrieve vegetation_height from fuel_dict
