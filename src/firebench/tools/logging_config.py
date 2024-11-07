@@ -32,7 +32,7 @@ def create_file_handler(log_path: str, level=logging.WARNING):
     ----------
     log_path : str
         The path to the log file.
-    """
+    """ # pylint: disable=line-too-long
     if os.path.isfile(log_path):
         os.remove(log_path)
     f_handler = logging.FileHandler(log_path)
@@ -52,7 +52,7 @@ def set_logging_level(level):
     ----------
     level : int
         The logging level to set (e.g., logging.DEBUG, logging.INFO).
-    """
+    """ # pylint: disable=line-too-long
     # Set the logger's level
     logger.setLevel(level)
 

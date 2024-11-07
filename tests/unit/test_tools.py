@@ -265,7 +265,7 @@ def test_check_input_completeness(caplog):
 
     # Change the logging level for the next tests
     ft.set_logging_level(ft.logging.INFO)
-    
+
     # Test with optional input in input dict
     input_data_with_optional = {"wind_speed": 5, "temperature": 25}
     metadata_with_optional = {

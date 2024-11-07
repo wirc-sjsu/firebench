@@ -46,13 +46,17 @@ def test_create_file_handler():
         with open(log_path, "r") as log_file:
             assert log_file.read() == ""
 
-@pytest.mark.parametrize("level, expected_levels", [
-    (ft.logging.DEBUG,     ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
-    (ft.logging.INFO,      ["INFO", "WARNING", "ERROR", "CRITICAL"]),
-    (ft.logging.WARNING,   ["WARNING", "ERROR", "CRITICAL"]),
-    (ft.logging.ERROR,     ["ERROR", "CRITICAL"]),
-    (ft.logging.CRITICAL,  ["CRITICAL"]),
-])
+
+@pytest.mark.parametrize(
+    "level, expected_levels",
+    [
+        (ft.logging.DEBUG, ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
+        (ft.logging.INFO, ["INFO", "WARNING", "ERROR", "CRITICAL"]),
+        (ft.logging.WARNING, ["WARNING", "ERROR", "CRITICAL"]),
+        (ft.logging.ERROR, ["ERROR", "CRITICAL"]),
+        (ft.logging.CRITICAL, ["CRITICAL"]),
+    ],
+)
 def test_set_logging_level(caplog, level, expected_levels):
     """
     Test that set_logging_level sets the logger and handler levels correctly,
@@ -87,11 +91,15 @@ def test_set_logging_level(caplog, level, expected_levels):
     captured_messages = [record.message for record in caplog.records]
 
     # Check that only the expected levels are captured
-    assert captured_levels == expected_levels, f"Expected levels {expected_levels}, but got {captured_levels}"
+    assert (
+        captured_levels == expected_levels
+    ), f"Expected levels {expected_levels}, but got {captured_levels}"
 
     # Optional: Check that the messages correspond to the expected levels
     expected_messages = [log_messages[level_name] for level_name in expected_levels]
-    assert captured_messages == expected_messages, f"Expected messages {expected_messages}, but got {captured_messages}"
+    assert (
+        captured_messages == expected_messages
+    ), f"Expected messages {expected_messages}, but got {captured_messages}"
 
 
 # Run the tests
