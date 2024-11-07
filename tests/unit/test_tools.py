@@ -263,18 +263,20 @@ def test_check_input_completeness(caplog):
     with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
         ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output)
 
+    # Change the logging level for the next tests
+    ft.set_logging_level(ft.logging.INFO)
+    
     # Test with optional input in input dict
     input_data_with_optional = {"wind_speed": 5, "temperature": 25}
     metadata_with_optional = {
         "wind": {"std_name": "wind_speed", "type": ft.ParameterType.input},
         "temp": {"std_name": "temperature", "type": ft.ParameterType.optional},
     }
-    ft.set_logging_level(ft.logger, ft.logging.INFO)
     with caplog.at_level(ft.logging.INFO):
         ft.check_input_completeness(input_data_with_optional, metadata_with_optional)
         # As optional input is in input dict, no info in log
         assert (
-            f"The optional data temp is missing in the input dict. Default value will be used."
+            f"The optional data temperature is missing in the input dict. Default value will be used."
             not in caplog.text
         )
 

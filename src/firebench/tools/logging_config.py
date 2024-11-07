@@ -44,7 +44,7 @@ def create_file_handler(log_path: str, level=logging.WARNING):
     logger.addHandler(f_handler)
 
 
-def set_logging_level(logger, level):
+def set_logging_level(level):
     """
     Set the logging level for both the logger and all its handlers.
 
