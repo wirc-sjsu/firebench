@@ -12,36 +12,138 @@ def use_wind_reduction_factor(
     """
     Calculate the wind speed at a different height using the wind reduction factor.
 
-    This function uses polymorphism to handle different types of input:
-    - If `wind_reduction_factor` is provided as a float, it uses it directly.
-    - If `wind_reduction_factor` is provided as a list, it uses `fuel_cat` to retrieve the factor.
-    - If `wind_reduction_factor` is not provided, it retrieves the factor from `fuel_dict` using `fuel_cat`.
-    - If `wind_reduction_factor` and `fuel_cat` are not provided, it retrieves the factor from `fuel_dict` not using `fuel_cat`.
+    This function computes the wind speed at a new height (h2) by applying a wind reduction factor to the wind speed at the initial height (h1).
+    It is designed to handle various types of inputs for the wind reduction factor, offering flexibility in how the factor is provided.
+
+    The function uses polymorphism to handle different input scenarios:
+
+    - If `wind_reduction_factor` is provided as a float, it uses this value directly.
+    - If `wind_reduction_factor` is provided as a list or numpy array, it uses `fuel_cat` to select the appropriate factor from the list or array.
+    - If `wind_reduction_factor` is not provided, it retrieves the factor from `fuel_dict`:
+        - If the value in `fuel_dict` at key `svn.FUEL_WIND_REDUCTION_FACTOR` is a list or numpy array, then `fuel_cat` is mandatory to select the factor.
+        - If it's a float, then `fuel_cat` is not needed.
 
     Parameters
     ----------
     wind_speed : float
         The wind speed at the initial height h1.
 
-    wind_reduction_factor : float or dict, optional
+    wind_reduction_factor : float or list or np.ndarray, optional
         The wind reduction factor from height h1 to h2. If a float, it is used directly.
-        If a list, it should contain wind reduction factors indexed by fuel category.
+        If a list or numpy array, it should contain wind reduction factors indexed by fuel category.
 
     fuel_dict : dict, optional
-        A dictionary containing fuel parameters, including FUEL_WIND_REDUCTION_FACTOR keys as described in StandardVariableNames.
+        A dictionary containing fuel parameters, including the key `svn.FUEL_WIND_REDUCTION_FACTOR` as described in `StandardVariableNames`. This key should map to either a float or a list/numpy array of wind reduction factors.
 
     fuel_cat : int, optional
-        The fuel category used to retrieve the wind reduction factor.
+        The fuel category index used to retrieve the wind reduction factor from a list or array when `wind_reduction_factor` or `fuel_dict` contains multiple values.
 
     Returns
     -------
     float
-        The wind speed at the new height h2.
+        The wind speed at the new height h2, calculated by applying the wind reduction factor.
 
     Raises
     ------
     ValueError
         If insufficient parameters are provided to compute the wind reduction factor.
+    IndexError
+        If `fuel_cat` is out of bounds for the provided list or array.
+    KeyError
+        If the required keys are missing in `fuel_dict`.
+
+    Notes
+    -----
+    **Wind Reduction Factor Application:**
+
+    The wind reduction factor adjusts the wind speed from one height to another, accounting for the change in wind speed due to atmospheric conditions and surface roughness.
+
+    **Input Scenarios:**
+
+    - **Direct Factor Provided:**
+        - When `wind_reduction_factor` is a float:
+          ```python
+          new_wind_speed = wind_speed * wind_reduction_factor
+          ```
+    - **Factor List or Array with Fuel Category:**
+        - When `wind_reduction_factor` is a list or array, and `fuel_cat` is provided:
+          ```python
+          factor = wind_reduction_factor[fuel_cat]
+          new_wind_speed = wind_speed * factor
+          ```
+    - **Factor Retrieved from `fuel_dict`:**
+        - When `wind_reduction_factor` is not provided, but `fuel_dict` is:
+            - If `fuel_dict[svn.FUEL_WIND_REDUCTION_FACTOR]` is a float:
+              ```python
+              factor = fuel_dict[svn.FUEL_WIND_REDUCTION_FACTOR]
+              new_wind_speed = wind_speed * factor
+              ```
+            - If it is a list or array and `fuel_cat` is provided:
+              ```python
+              factor = fuel_dict[svn.FUEL_WIND_REDUCTION_FACTOR][fuel_cat]
+              new_wind_speed = wind_speed * factor
+              ```
+            - If `fuel_cat` is not provided when required, a `ValueError` is raised.
+
+    **Example Usage:**
+
+    ```python
+    # Example 1: Using a direct wind reduction factor
+    new_wind_speed = use_wind_reduction_factor(
+        wind_speed=10.0,
+        wind_reduction_factor=0.8
+    )
+    # Result: new_wind_speed = 8.0
+
+    # Example 2: Using wind reduction factors from a list with a fuel category
+    wind_reduction_factors = [0.7, 0.8, 0.9]
+    fuel_cat = 1
+    new_wind_speed = use_wind_reduction_factor(
+        wind_speed=10.0,
+        wind_reduction_factor=wind_reduction_factors,
+        fuel_cat=fuel_cat
+    )
+    # Result: new_wind_speed = 8.0 (using factor 0.8 from index 1)
+
+    # Example 3: Using a fuel dictionary with a fuel category
+    fuel_dict = {svn.FUEL_WIND_REDUCTION_FACTOR: [0.7, 0.8, 0.9]}
+    fuel_cat = 1
+    new_wind_speed = use_wind_reduction_factor(
+        wind_speed=10.0,
+        fuel_dict=fuel_dict,
+        fuel_cat=fuel_cat
+    )
+    # Result: new_wind_speed = 8.0
+
+    # Example 4: Using a fuel dictionary without a fuel category
+    fuel_dict = {svn.FUEL_WIND_REDUCTION_FACTOR: 0.8}
+    new_wind_speed = use_wind_reduction_factor(
+        wind_speed=10.0,
+        fuel_dict=fuel_dict
+    )
+    # Result: new_wind_speed = 8.0
+    ```
+
+    **Error Handling:**
+
+    - A `ValueError` is raised if insufficient parameters are provided to compute the wind reduction factor.
+    - An `IndexError` is raised if `fuel_cat` is provided but out of range for the list or array.
+    - A `KeyError` is raised if the expected key `svn.FUEL_WIND_REDUCTION_FACTOR` is missing in `fuel_dict`.
+
+    **Dependencies:**
+
+    - The function relies on `svn.FUEL_WIND_REDUCTION_FACTOR` being defined, typically in a module or class `StandardVariableNames`, which provides standardized keys for fuel parameters.
+
+    **Important Considerations:**
+
+    - **1-Based Indexing:** Ensure that `fuel_cat` corresponds to the correct index in your list or array (Python uses zero-based indexing).
+    - **Data Types:** The function accepts `wind_reduction_factor` as a float, list, or numpy array. Ensure that your inputs are of the correct type.
+    - **Units Consistency:** Make sure that the units of `wind_speed` and the wind reduction factor are consistent. Typically, wind speeds are in meters per second (m/s) or miles per hour (mph), and the wind reduction factor is dimensionless.
+
+    References
+    ----------
+    StandardVariableNames module provides standardized keys for fuel parameters.
+
     """  # pylint: disable=line-too-long
     if isinstance(wind_reduction_factor, float):
         # Case 1: wind_reduction_factor is provided directly as a float
@@ -92,15 +194,101 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
     fuel_cat: int = None,
 ):
     """
-    Compute the wind reduction factor in unsheltered land from Baughman and Albini (1980)
+    Calculate the wind reduction factor in unsheltered land based on Baughman and Albini (1980).
 
-    The wind reduction factor is computed for a 20ft wind (20ft above the fuel surface).
-    The interpolation height is often the midflame height.
+    This function computes the wind reduction factor for converting a 20-foot wind speed (measured 20 feet above the fuel surface) to the wind speed at a specified interpolation height, often the midflame height. The calculation is based on empirical formulas provided by Baughman and Albini (1980).
 
-    Reference
-    ---------
+    The function uses polymorphism to handle different types of input for the vegetation height:
 
-    Baughman, R. G., & Albini, F. A. (1980, April).
+    - If `vegetation_height` is provided as a float, it uses it directly.
+    - If `vegetation_height` is provided as a list or numpy array, it uses `fuel_cat` to retrieve the vegetation height corresponding to the specific fuel category.
+    - If `vegetation_height` is not provided, it retrieves the vegetation height from `fuel_dict`:
+        - If the value in `fuel_dict` at key `svn.FUEL_HEIGHT` is a list or numpy array, then `fuel_cat` is mandatory.
+        - If it's a float, then `fuel_cat` is not needed.
+
+    Parameters
+    ----------
+    interpolation_height : float
+        The height at which to calculate the wind speed (e.g., the midflame height in feet).
+
+    vegetation_height : float or list or np.ndarray, optional
+        The vegetation height (in feet). If a float, it is used directly.
+        If a list or numpy array, it should contain vegetation heights indexed by fuel category.
+
+    fuel_dict : dict, optional
+        A dictionary containing fuel parameters, including the key `svn.FUEL_HEIGHT` as described in `StandardVariableNames`. This key should map to either a float or a list/numpy array of vegetation heights.
+
+    fuel_cat : int, optional
+        The fuel category index used to retrieve the vegetation height from a list or array when `vegetation_height` or `fuel_dict` contains multiple values.
+
+    Returns
+    -------
+    float
+        The wind reduction factor between the 20-foot wind and the wind at the specified interpolation height.
+
+    Raises
+    ------
+    ValueError
+        If insufficient parameters are provided to compute the wind reduction factor.
+    IndexError
+        If `fuel_cat` is out of bounds for the provided list or array.
+    KeyError
+        If the required keys are missing in `fuel_dict`.
+
+    Notes
+    -----
+    The wind reduction factor is computed using the formula from Baughman and Albini (1980):
+
+    .. math::
+
+        \text{Wind Reduction Factor} = \left(1 + 0.36 \frac{H_v}{H_i}\right) \left( \ln\left( \frac{0.36 + \frac{H_i}{H_v}}{0.13} \right) - 1 \right) \Bigg/ \ln\left( \frac{20 + 0.36 H_v}{0.13 H_v} \right)
+
+    where:
+
+    - :math:`H_v` is the vegetation height.
+    - :math:`H_i` is the interpolation height.
+
+    **Reference Heights:**
+
+    - **20-foot Wind Height:** Wind speed measured 20 feet above the vegetation surface.
+    - **Interpolation Height:** Typically the midflame height where the fire is burning.
+
+    **Example Usage:**
+
+    ```python
+    # Example 1: Using a direct vegetation height
+    wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=6.0,
+        vegetation_height=2.0
+    )
+
+    # Example 2: Using vegetation heights from a list with a fuel category
+    vegetation_heights = [1.5, 2.0, 2.5]
+    wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=6.0,
+        vegetation_height=vegetation_heights,
+        fuel_cat=1
+    )
+
+    # Example 3: Using a fuel dictionary with a fuel category
+    fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
+    wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=6.0,
+        fuel_dict=fuel_dict,
+        fuel_cat=1
+    )
+
+    # Example 4: Using a fuel dictionary without a fuel category
+    fuel_dict = {svn.FUEL_HEIGHT: 2.0}
+    wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=6.0,
+        fuel_dict=fuel_dict
+    )
+    ```
+
+    References
+    ----------
+    Baughman, R. G., & Albini, F. A. (1980).
     Estimating midflame windspeeds.
     In Proceedings, Sixth Conference on Fire and Forest Meteorology, Seattle, WA (pp. 88-92).
 
