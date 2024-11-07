@@ -5,7 +5,7 @@ import pytest
 from firebench import svn
 
 
-# Test functions
+## use_wind_reduction_factor test
 def test_use_wind_reduction_factor_float():
     wind_speed = 10.0
     reduction_factor = 0.8
@@ -108,3 +108,130 @@ def test_insufficient_parameters():
 
     with pytest.raises(ValueError, match="Insufficient parameters provided"):
         fwi.use_wind_reduction_factor(wind_speed=wind_speed)
+
+## Baughman_wrf_unsheltered
+def test_Baughman_wrf_unsheltered_float():
+    interpolation_height = 6.0  # Midflame height
+    vegetation_height = 2.0     # Vegetation height
+    expected_wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, vegetation_height)
+
+    result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=interpolation_height,
+        vegetation_height=vegetation_height
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+def test_Baughman_wrf_unsheltered_list():
+    interpolation_height = 6.0
+    vegetation_heights = [1.5, 2.0, 2.5]  # Indexed by fuel_cat
+    fuel_cat = 1
+    veg_height = vegetation_heights[fuel_cat]
+    expected_wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
+
+    result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=interpolation_height,
+        vegetation_height=vegetation_heights,
+        fuel_cat=fuel_cat
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+    # Try with numpy array
+    vegetation_heights = np.array(vegetation_heights)
+    result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=interpolation_height,
+        vegetation_height=vegetation_heights,
+        fuel_cat=fuel_cat
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+def test_Baughman_wrf_unsheltered_fuel_dict_and_fuelcat():
+    interpolation_height = 6.0
+    fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
+    fuel_cat = 1
+    veg_height = fuel_dict[svn.FUEL_HEIGHT][fuel_cat]
+    expected_wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
+
+    result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=interpolation_height,
+        fuel_dict=fuel_dict,
+        fuel_cat=fuel_cat
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+def test_Baughman_wrf_unsheltered_fuel_dict():
+    interpolation_height = 6.0
+    fuel_dict = {svn.FUEL_HEIGHT: 2.0}
+    veg_height = fuel_dict[svn.FUEL_HEIGHT]
+    expected_wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
+
+    result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+        interpolation_height=interpolation_height,
+        fuel_dict=fuel_dict
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+def test_Baughman_wrf_unsheltered_missing_fuel_cat_with_list():
+    interpolation_height = 6.0
+    vegetation_heights = [1.5, 2.0, 2.5]
+
+    with pytest.raises(ValueError, match="fuel_cat must be provided when vegetation_height is a list."):
+        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+            interpolation_height=interpolation_height,
+            vegetation_height=vegetation_heights
+        )
+
+def test_Baughman_wrf_unsheltered_invalid_fuel_cat_with_list():
+    interpolation_height = 6.0
+    vegetation_heights = [1.5, 2.0, 2.5]
+    fuel_cat = 5  # Index out of range
+
+    with pytest.raises(
+        IndexError, match=f"Fuel category {fuel_cat} not found in vegetation_height array."
+    ):
+        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+            interpolation_height=interpolation_height,
+            vegetation_height=vegetation_heights,
+            fuel_cat=fuel_cat
+        )
+
+def test_Baughman_wrf_unsheltered_fuel_dict_wrong_key_fuel_cat():
+    interpolation_height = 6.0
+    fuel_dict = {"other_key": [1.5, 2.0, 2.5]}
+    fuel_cat = 1
+
+    with pytest.raises(KeyError, match=f"Key {svn.FUEL_HEIGHT} not found in fuel_dict."):
+        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+            interpolation_height=interpolation_height,
+            fuel_dict=fuel_dict,
+            fuel_cat=fuel_cat
+        )
+
+def test_Baughman_wrf_unsheltered_invalid_fuel_cat_with_fuel_dict():
+    interpolation_height = 6.0
+    fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
+    fuel_cat = 5  # Index out of range
+
+    with pytest.raises(IndexError, match=f"Fuel category {fuel_cat} not found in fuel_dict."):
+        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+            interpolation_height=interpolation_height,
+            fuel_dict=fuel_dict,
+            fuel_cat=fuel_cat
+        )
+
+def test_Baughman_wrf_unsheltered_fuel_dict_wrong_key():
+    interpolation_height = 6.0
+    fuel_dict = {"other_key": 2.0}
+
+    with pytest.raises(KeyError, match=f"Key {svn.FUEL_HEIGHT} not found in fuel_dict."):
+        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+            interpolation_height=interpolation_height,
+            fuel_dict=fuel_dict
+        )
+
+def test_Baughman_wrf_unsheltered_insufficient_parameters():
+    interpolation_height = 6.0
+
+    with pytest.raises(ValueError, match="Insufficient parameters provided"):
+        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
+            interpolation_height=interpolation_height
+        )
