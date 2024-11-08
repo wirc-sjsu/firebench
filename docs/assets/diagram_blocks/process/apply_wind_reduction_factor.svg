@@ -8,7 +8,7 @@
    version="1.1"
    id="svg5"
    inkscape:version="1.2.1 (9c6d41e, 2022-07-14)"
-   sodipodi:docname="wind_reduction_factor.svg"
+   sodipodi:docname="apply_wind_reduction_factor.svg"
    inkscape:export-filename="rothermel.png"
    inkscape:export-xdpi="96"
    inkscape:export-ydpi="96"
@@ -28,12 +28,12 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.6819304"
-     inkscape:cx="387.05526"
+     inkscape:cx="333.54531"
      inkscape:cy="358.21934"
-     inkscape:window-width="2560"
-     inkscape:window-height="1387"
-     inkscape:window-x="1470"
-     inkscape:window-y="25"
+     inkscape:window-width="1470"
+     inkscape:window-height="891"
+     inkscape:window-x="2560"
+     inkscape:window-y="521"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1" />
   <defs
@@ -53,14 +53,14 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#784421;stroke:none;stroke-width:0.264999"
-       x="77.026245"
+       x="75.553032"
        y="70.88607"
        id="text832"><tspan
          sodipodi:role="line"
          id="tspan830"
          style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#784421;stroke:none;stroke-width:0.265"
-         x="77.026245"
-         y="70.88607">USE WIND REDUCTION FACTOR</tspan></text>
+         x="75.553032"
+         y="70.88607">APPLY WIND REDUCTION FACTOR</tspan></text>
     <g
        id="g1895"
        transform="translate(-20.92214,5.3625352)">
