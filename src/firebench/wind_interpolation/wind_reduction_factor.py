@@ -150,9 +150,11 @@ def use_wind_reduction_factor(
         if fuel_cat is None:
             raise ValueError("fuel_cat must be provided when wind_reduction_factor is a list.")
         try:
-            factor = wind_reduction_factor[fuel_cat-1]
+            factor = wind_reduction_factor[fuel_cat - 1]
         except IndexError as exc:
-            raise IndexError(f"Fuel category {fuel_cat-1} not found in wind_reduction_factor array.") from exc
+            raise IndexError(
+                f"Fuel category {fuel_cat-1} not found in wind_reduction_factor array."
+            ) from exc
         return wind_speed * factor
 
     if fuel_dict is not None and fuel_cat is not None:
@@ -162,7 +164,7 @@ def use_wind_reduction_factor(
         except KeyError as exc:
             raise KeyError(f"Key {svn.FUEL_WIND_REDUCTION_FACTOR} not found in fuel_dict.") from exc
         try:
-            factor = list_wrf[fuel_cat-1]
+            factor = list_wrf[fuel_cat - 1]
         except IndexError as exc:
             raise IndexError(f"Fuel category {fuel_cat-1} not found in fuel_dict.") from exc
         return wind_speed * factor
@@ -184,15 +186,17 @@ def use_wind_reduction_factor(
 
 
 def Baughman_20ft_wind_reduction_factor_unsheltered(
-    interpolation_height: float,
+    flame_height: float,
     vegetation_height: float | list | np.ndarray = None,
     fuel_dict: dict = None,
     fuel_cat: int = None,
 ):
-    """
+    r"""
     Calculate the wind reduction factor in unsheltered land based on Baughman and Albini (1980).
 
-    This function computes the wind reduction factor for converting a 20-foot wind speed (measured 20 feet above the fuel surface) to the wind speed at a specified interpolation height, often the midflame height. The calculation is based on empirical formulas provided by Baughman and Albini (1980).
+    This function computes the wind reduction factor for converting a 20-foot wind speed (measured 20 feet above the fuel surface) to the average wind between the top of the vegetation layer and the top of the flame.
+    The midflame wind is then the average wind between `h` and `h+h_f`.
+    The calculation is based on empirical formulas provided by Baughman and Albini (1980).
 
     The function uses polymorphism to handle different types of input for the vegetation height:
 
@@ -204,7 +208,7 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
 
     Parameters
     ----------
-    interpolation_height : float
+    flame_height : float
         The height at which to calculate the wind speed (e.g., the midflame height in feet).
 
     vegetation_height : float or list or np.ndarray, optional
@@ -242,26 +246,26 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
     where:
 
     - :math:`H_v` is the vegetation height.
-    - :math:`H_i` is the interpolation height.
+    - :math:`H_i` is the flame height.
 
     **Reference Heights:**
 
     - **20-foot Wind Height:** Wind speed measured 20 feet above the vegetation surface.
-    - **Interpolation Height:** Typically the midflame height where the fire is burning.
+    - **Flame Height:** Typically the flame height where the fire is burning.
 
     **Example Usage:**
 
     ```python
     # Example 1: Using a direct vegetation height
     wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
-        interpolation_height=6.0,
+        flame_height=6.0,
         vegetation_height=2.0
     )
 
     # Example 2: Using vegetation heights from a list with a fuel category
     vegetation_heights = [1.5, 2.0, 2.5]
     wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
-        interpolation_height=6.0,
+        flame_height=6.0,
         vegetation_height=vegetation_heights,
         fuel_cat=2
     )
@@ -269,7 +273,7 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
     # Example 3: Using a fuel dictionary with a fuel category
     fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
     wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
-        interpolation_height=6.0,
+        flame_height=6.0,
         fuel_dict=fuel_dict,
         fuel_cat=2
     )
@@ -277,7 +281,7 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
     # Example 4: Using a fuel dictionary without a fuel category
     fuel_dict = {svn.FUEL_HEIGHT: 2.0}
     wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
-        interpolation_height=6.0,
+        flame_height=6.0,
         fuel_dict=fuel_dict
     )
     ```
@@ -286,7 +290,7 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
 
     - **One-Based Indexing:** Note that `fuel_cat` uses one-based indexing to align with natural fuel category numbering (i.e., the first fuel category is `fuel_cat = 1`).
     - **Data Types:** The function accepts `vegetation_height` as a float, list, or numpy array. Ensure that your inputs are of the correct type.
-    - **Units Consistency:** Make sure that the units of `vegetation_height` and the `interpolation_height` are consistent.
+    - **Units Consistency:** Make sure that the units of `vegetation_height` and the `flame_height` are consistent.
 
     References
     ----------
@@ -297,17 +301,17 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
     """  # pylint: disable=line-too-long
     # Case 1: vegetation_height is provided directly as a float
     if isinstance(vegetation_height, float):
-        return __Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, vegetation_height)
+        return __Baughman_20ft_wind_reduction_factor_unsheltered(flame_height, vegetation_height)
 
     # Case 2: wind_reduction_factor is a dict; use fuel_cat to get the factor
     if isinstance(vegetation_height, (list, np.ndarray)):
         if fuel_cat is None:
             raise ValueError("fuel_cat must be provided when vegetation_height is a list.")
         try:
-            veg_height = vegetation_height[fuel_cat-1]
+            veg_height = vegetation_height[fuel_cat - 1]
         except IndexError as exc:
             raise IndexError(f"Fuel category {fuel_cat-1} not found in vegetation_height array.") from exc
-        return __Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
+        return __Baughman_20ft_wind_reduction_factor_unsheltered(flame_height, veg_height)
 
     # Case 3: Retrieve vegetation_height from fuel_dict using fuel_cat
     if fuel_dict is not None and fuel_cat is not None:
@@ -316,10 +320,10 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
         except KeyError as exc:
             raise KeyError(f"Key {svn.FUEL_HEIGHT} not found in fuel_dict.") from exc
         try:
-            veg_height = list_wrf[fuel_cat-1]
+            veg_height = list_wrf[fuel_cat - 1]
         except IndexError as exc:
             raise IndexError(f"Fuel category {fuel_cat-1} not found in fuel_dict.") from exc
-        return __Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
+        return __Baughman_20ft_wind_reduction_factor_unsheltered(flame_height, veg_height)
 
     # Case 4: Retrieve vegetation_height from fuel_dict
     if fuel_dict is not None and fuel_cat is None:
@@ -327,8 +331,8 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
             veg_height = fuel_dict[svn.FUEL_HEIGHT]
         except KeyError as exc:
             raise KeyError(f"Key {svn.FUEL_HEIGHT} not found in fuel_dict.") from exc
-        return __Baughman_20ft_wind_reduction_factor_unsheltered(interpolation_height, veg_height)
-    
+        return __Baughman_20ft_wind_reduction_factor_unsheltered(flame_height, veg_height)
+
     # Insufficient parameters provided
     raise ValueError(
         "Insufficient parameters provided. Please provide either "
@@ -338,14 +342,14 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
 
 
 def __Baughman_20ft_wind_reduction_factor_unsheltered(
-    interpolation_height: float,
+    flame_height: float,
     vegetation_height: float,
 ):
     """
     Compute the unsheltered wind reduction factor using Baughman and Albini's (1980) formula.
     """  # pylint: disable=line-too-long
     return (
-        (1 + 0.36 * vegetation_height / interpolation_height)
-        * (np.log((0.36 + interpolation_height / vegetation_height) / 0.13) - 1)
+        (1 + 0.36 * vegetation_height / flame_height)
+        * (np.log((0.36 + flame_height / vegetation_height) / 0.13) - 1)
         / np.log((20 + 0.36 * vegetation_height) / (0.13 * vegetation_height))
     )
