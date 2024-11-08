@@ -550,4 +550,5 @@ def __Baughman_generalized_wind_reduction_factor_unsheltered(
 
 
 def __primitive_log_profile(z, d_0, z_0):
+    """Calculate the primitive of ln((z - d_0) / z_0) with respect to z.""" # pylint: disable=line-too-long
     return (z - d_0) * np.log((z - d_0) / z_0) - z

@@ -441,3 +441,16 @@ def test_Baughman_generalization_validation():
         )
         # print(wrf, np.round(wrf, 2), wind_red_fac[k])
         assert np.round(wrf, 2) == wind_red_fac[k]
+
+def test_primitive_log_profile():
+    # Define test inputs and expected output
+    z = 10.0
+    d_0 = 1.0
+    z_0 = 0.5
+    expected_output = (z - d_0) * np.log((z - d_0) / z_0) - z
+    
+    # Calculate output using the function
+    result = fwi.wind_reduction_factor.__primitive_log_profile(z, d_0, z_0)
+    
+    # Assert that the result matches the expected output within a tolerance
+    assert np.isclose(result, expected_output, atol=1e-6), f"Expected {expected_output}, got {result}"
