@@ -477,7 +477,7 @@ def Baughman_generalized_wind_reduction_factor_unsheltered(
     # Case 1: vegetation_height is provided directly as a float
     if isinstance(vegetation_height, float):
         return __Baughman_generalized_wind_reduction_factor_unsheltered(
-            input_wind_height, flame_height, veg_height, is_source_wind_height_above_veg
+            input_wind_height, flame_height, vegetation_height, is_source_wind_height_above_veg
         )
 
     # Case 2: wind_reduction_factor is a dict; use fuel_cat to get the factor

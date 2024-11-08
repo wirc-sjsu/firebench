@@ -233,3 +233,178 @@ def test_Baughman_wrf_unsheltered_insufficient_parameters():
 
     with pytest.raises(ValueError, match="Insufficient parameters provided"):
         fwi.Baughman_20ft_wind_reduction_factor_unsheltered(flame_height=flame_height)
+
+
+## Baughman_generalized_wrf_unsheltered
+def test_Baughman_generalized_wrf_unsheltered_float():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0  # Flame height
+    vegetation_height = 2.0  # Vegetation height
+    expected_wrf = fwi.wind_reduction_factor.__Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height, flame_height, vegetation_height, False
+    )
+
+    result = fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height=input_wind_height,
+        flame_height=flame_height,
+        vegetation_height=vegetation_height,
+        is_source_wind_height_above_veg=False,
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+
+def test_Baughman_generalized_wrf_unsheltered_list():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+    vegetation_heights = [1.5, 2.0, 2.5]  # Indexed by fuel_cat
+    fuel_cat = 2
+    veg_height = vegetation_heights[fuel_cat - 1]
+    expected_wrf = fwi.wind_reduction_factor.__Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height, flame_height, veg_height, False
+    )
+
+    result = fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height=input_wind_height,
+        flame_height=flame_height,
+        vegetation_height=vegetation_heights,
+        fuel_cat=fuel_cat,
+        is_source_wind_height_above_veg=False,
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+    # Try with numpy array
+    vegetation_heights = np.array(vegetation_heights)
+    result = fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height=input_wind_height,
+        flame_height=flame_height,
+        vegetation_height=vegetation_heights,
+        fuel_cat=fuel_cat,
+        is_source_wind_height_above_veg=False,
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+
+def test_Baughman_generalized_wrf_unsheltered_fuel_dict_and_fuelcat():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+    fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
+    fuel_cat = 2
+    veg_height = fuel_dict[svn.FUEL_HEIGHT][fuel_cat - 1]
+    expected_wrf = fwi.wind_reduction_factor.__Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height, flame_height, veg_height, False
+    )
+
+    result = fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height=input_wind_height,
+        flame_height=flame_height,
+        fuel_dict=fuel_dict,
+        fuel_cat=fuel_cat,
+        is_source_wind_height_above_veg=False,
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+
+def test_Baughman_generalized_wrf_unsheltered_fuel_dict():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+    fuel_dict = {svn.FUEL_HEIGHT: 2.0}
+    veg_height = fuel_dict[svn.FUEL_HEIGHT]
+    expected_wrf = fwi.wind_reduction_factor.__Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height, flame_height, veg_height, False
+    )
+
+    result = fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height=input_wind_height,
+        flame_height=flame_height,
+        fuel_dict=fuel_dict,
+        is_source_wind_height_above_veg=False,
+    )
+    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
+
+
+def test_Baughman_generalized_wrf_unsheltered_missing_fuel_cat_with_list():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+    vegetation_heights = [1.5, 2.0, 2.5]
+
+    with pytest.raises(ValueError, match="fuel_cat must be provided when vegetation_height is a list."):
+        fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+            input_wind_height=input_wind_height,
+            flame_height=flame_height,
+            vegetation_height=vegetation_heights,
+            is_source_wind_height_above_veg=False,
+        )
+
+
+def test_Baughman_generalized_wrf_unsheltered_invalid_fuel_cat_with_list():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+    vegetation_heights = [1.5, 2.0, 2.5]
+    fuel_cat = 5  # Index out of range
+
+    with pytest.raises(
+        IndexError, match=f"Fuel category {fuel_cat-1} not found in vegetation_height array."
+    ):
+        fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+            input_wind_height=input_wind_height,
+            flame_height=flame_height,
+            vegetation_height=vegetation_heights,
+            fuel_cat=fuel_cat,
+            is_source_wind_height_above_veg=False,
+        )
+
+
+def test_Baughman_generalized_wrf_unsheltered_fuel_dict_wrong_key_fuel_cat():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+    fuel_dict = {"other_key": [1.5, 2.0, 2.5]}
+    fuel_cat = 2
+
+    with pytest.raises(KeyError, match=f"Key {svn.FUEL_HEIGHT} not found in fuel_dict."):
+        fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+            input_wind_height=input_wind_height,
+            flame_height=flame_height,
+            fuel_dict=fuel_dict,
+            fuel_cat=fuel_cat,
+            is_source_wind_height_above_veg=False,
+        )
+
+
+def test_Baughman_generalized_wrf_unsheltered_invalid_fuel_cat_with_fuel_dict():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+    fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
+    fuel_cat = 5  # Index out of range
+
+    with pytest.raises(IndexError, match=f"Fuel category {fuel_cat-1} not found in fuel_dict."):
+        fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+            input_wind_height=input_wind_height,
+            flame_height=flame_height,
+            fuel_dict=fuel_dict,
+            fuel_cat=fuel_cat,
+            is_source_wind_height_above_veg=False,
+        )
+
+
+def test_Baughman_generalized_wrf_unsheltered_fuel_dict_wrong_key():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+    fuel_dict = {"other_key": 2.0}
+
+    with pytest.raises(KeyError, match=f"Key {svn.FUEL_HEIGHT} not found in fuel_dict."):
+        fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+            input_wind_height=input_wind_height,
+            flame_height=flame_height,
+            fuel_dict=fuel_dict,
+            is_source_wind_height_above_veg=False,
+        )
+
+
+def test_Baughman_generalized_wrf_unsheltered_insufficient_parameters():
+    input_wind_height = 20  # Input wind height
+    flame_height = 6.0
+
+    with pytest.raises(ValueError, match="Insufficient parameters provided"):
+        fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
+            input_wind_height=input_wind_height, flame_height=flame_height
+        )
