@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - Balbi_2022_fixed_SFIRE
   - Anderson13
   - ScottandBurgan40
+  - Wind reduction factor methods
 
 ## [0.2.0] - 2024 / 10 / 17
 ### Added
