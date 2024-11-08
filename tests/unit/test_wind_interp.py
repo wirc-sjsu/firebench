@@ -11,7 +11,7 @@ def test_use_wind_reduction_factor_float():
     reduction_factor = 0.8
     expected_speed = 8.0
 
-    result = fwi.use_wind_reduction_factor(wind_speed=wind_speed, wind_reduction_factor=reduction_factor)
+    result = fwi.apply_wind_reduction_factor(wind_speed=wind_speed, wind_reduction_factor=reduction_factor)
     assert result == expected_speed, f"Expected {expected_speed}, got {result}"
 
 
@@ -21,14 +21,14 @@ def test_use_wind_reduction_factor_list():
     fuel_cat = 2
     expected_speed = 8.0  # 10.0 * 0.8
 
-    result = fwi.use_wind_reduction_factor(
+    result = fwi.apply_wind_reduction_factor(
         wind_speed=wind_speed, wind_reduction_factor=reduction_factors, fuel_cat=fuel_cat
     )
     assert result == expected_speed, f"Expected {expected_speed}, got {result}"
 
     # Try with numpy array
     reduction_factors = np.array(reduction_factors)
-    result = fwi.use_wind_reduction_factor(
+    result = fwi.apply_wind_reduction_factor(
         wind_speed=wind_speed, wind_reduction_factor=reduction_factors, fuel_cat=fuel_cat
     )
     assert result == expected_speed, f"Expected {expected_speed}, got {result}"
@@ -40,7 +40,7 @@ def test_use_wind_reduction_factor_fuel_dict_and_fuelcat():
     fuel_cat = 2
     expected_speed = 8.0  # 10.0 * 0.8
 
-    result = fwi.use_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
+    result = fwi.apply_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
     assert result == expected_speed, f"Expected {expected_speed}, got {result}"
 
 
@@ -49,7 +49,7 @@ def test_use_wind_reduction_factor_fuel_dict():
     fuel_dict = {svn.FUEL_WIND_REDUCTION_FACTOR: 0.8}
     expected_speed = 8.0  # 10.0 * 0.8
 
-    result = fwi.use_wind_reduction_factor(
+    result = fwi.apply_wind_reduction_factor(
         wind_speed=wind_speed,
         fuel_dict=fuel_dict,
     )
@@ -61,7 +61,7 @@ def test_missing_fuel_cat_with_list():
     reduction_factors = [0.7, 0.8, 0.9]
 
     with pytest.raises(ValueError, match="fuel_cat must be provided when wind_reduction_factor is a list."):
-        fwi.use_wind_reduction_factor(wind_speed=wind_speed, wind_reduction_factor=reduction_factors)
+        fwi.apply_wind_reduction_factor(wind_speed=wind_speed, wind_reduction_factor=reduction_factors)
 
 
 def test_invalid_fuel_cat_with_list():
@@ -72,7 +72,7 @@ def test_invalid_fuel_cat_with_list():
     with pytest.raises(
         IndexError, match=f"Fuel category {fuel_cat-1} not found in wind_reduction_factor array."
     ):
-        fwi.use_wind_reduction_factor(
+        fwi.apply_wind_reduction_factor(
             wind_speed=wind_speed, wind_reduction_factor=reduction_factors, fuel_cat=fuel_cat
         )
 
@@ -83,7 +83,7 @@ def test_fuel_dict_wrong_key_fuel_cat():
     fuel_cat = 2
 
     with pytest.raises(KeyError, match=f"Key {svn.FUEL_WIND_REDUCTION_FACTOR} not found in fuel_dict."):
-        fwi.use_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
+        fwi.apply_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
 
 
 def test_invalid_fuel_cat_with_fuel_dict():
@@ -92,7 +92,7 @@ def test_invalid_fuel_cat_with_fuel_dict():
     fuel_cat = 5  # Index out of range
 
     with pytest.raises(IndexError, match=f"Fuel category {fuel_cat-1} not found in fuel_dict."):
-        fwi.use_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
+        fwi.apply_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict, fuel_cat=fuel_cat)
 
 
 def test_fuel_dict_wrong_key():
@@ -100,14 +100,14 @@ def test_fuel_dict_wrong_key():
     fuel_dict = {"other": 0.8}
 
     with pytest.raises(KeyError, match=f"Key {svn.FUEL_WIND_REDUCTION_FACTOR} not found in fuel_dict."):
-        fwi.use_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict)
+        fwi.apply_wind_reduction_factor(wind_speed=wind_speed, fuel_dict=fuel_dict)
 
 
 def test_insufficient_parameters():
     wind_speed = 10.0
 
     with pytest.raises(ValueError, match="Insufficient parameters provided"):
-        fwi.use_wind_reduction_factor(wind_speed=wind_speed)
+        fwi.apply_wind_reduction_factor(wind_speed=wind_speed)
 
 
 ## Baughman_wrf_unsheltered

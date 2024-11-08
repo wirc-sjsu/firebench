@@ -3,7 +3,7 @@ import numpy as np
 from ..tools.namespace import StandardVariableNames as svn
 
 
-def use_wind_reduction_factor(
+def apply_wind_reduction_factor(
     wind_speed: float,
     wind_reduction_factor: float | list | np.ndarray = None,
     fuel_dict: dict = None,
