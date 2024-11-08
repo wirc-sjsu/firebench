@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [0.3.0a] - 2024 / -- / --
 ### Added
 - Scott and Burgan 40 fuel model
+- Wind reduction factor functions
+  - use_wind_reduction_factor from value, fuel model dictionary, or list
+  - Baughman_20ft_wind_reduction_factor_unsheltered from Baughman, R. G., & Albini, F. A. (1980) 
 
 ### Changed
 - External management of wind reduction factor (no more present in rate of spread models)
