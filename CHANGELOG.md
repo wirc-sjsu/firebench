@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Wind reduction factor functions
   - use_wind_reduction_factor from value, fuel model dictionary, or list
   - Baughman_20ft_wind_reduction_factor_unsheltered from Baughman, R. G., & Albini, F. A. (1980) 
+  - Baughman_generalized_wind_reduction_factor_unsheltered: Generalized wind reduction factor derived from Albini (1979)
 
 ### Changed
 - External management of wind reduction factor (no more present in rate of spread models)
