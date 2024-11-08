@@ -16,12 +16,17 @@ The wind information can come from stations at a specific height (20 ft, 10 m) o
 The latter vertical resolution is often larger than the midflame height itself.
 Therefore, a method is needed to estimate the midflame wind speed from wind speed information at a different height.
 
-The wind reduction factor, noted $$\alpha$$ [-], is introduced to get the wind at the midflame height $U_f$ from the wind at a different height $U_i$:
+The wind reduction factor, noted $$\alpha$$ [-], is introduced to get the wind at the midflame height $$U_f$$ from the wind at a different height, noted $U_r$:
 
-\\[ U_f = \alpha \, U_i.\\]
+\\[ U_f = \alpha \, U_r.\\]
 
 To compute the wind reduction factor, the method is generally based on a specific vertical profile that describe the wind speed as a function of height, considering the vegetation cover.
 The following sections describe methods to compute the wind reduction factors from a vertical profile and vegetaiton properties.
+
+To apply a wind reduction factor in a workflow, you can use the function `firebench.wind_interpolation.apply_wind_reduction_factor`. The block for this function can be found in `firebench/docs/assets/diagram_blocks/process/apply_wind_reduction_factor.svg`.
+<div style="text-align: center;">
+    <img src="../../assets/diagram_blocks/process/apply_wind_reduction_factor.svg" alt="Block use_wind_reduction_factor"/>
+</div>
 
 ## Baughman and Albini (1980)
 
@@ -39,7 +44,7 @@ where $$h$$ is the fuel height [ft], and $$h_f$$ is the flame height [ft].
 This wind reduction factor does not interpolate the value to midflame height but allows to calculate the average wind speed over the flame length.
 
 **Note**
-This formula, can be applied to [Anderson](../21_fuel_models/02_Anderson.md) fuel model, considering $$h_f/h=1$$, to retrieve the wind reduction factor contained in the dataset. However, the values for fuel category 7 and 8 are different from the values in [1], where the value 0.36 is given in [1] whereas the formula gives 0.28. 
+This formula can be applied to [Anderson](../21_fuel_models/02_Anderson.md) fuel model, considering $$h_f/h=1$$, to retrieve the wind reduction factor contained in the dataset. However, the values for fuel category 7 and 8 are different from the values in [1], where the value 0.36 is given in [1] whereas the formula gives 0.28. 
 
 ### Generalized unsheltered wind reduction factor
 

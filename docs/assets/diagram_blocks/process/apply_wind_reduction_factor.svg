@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="210mm"
-   height="297mm"
-   viewBox="0 0 210 297"
+   width="96.53978mm"
+   height="20.924782mm"
+   viewBox="0 0 96.53978 20.924782"
    version="1.1"
    id="svg5"
    inkscape:version="1.2.1 (9c6d41e, 2022-07-14)"
@@ -27,9 +27,9 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="1.6819304"
-     inkscape:cx="333.54531"
-     inkscape:cy="358.21934"
+     inkscape:zoom="1.6517384"
+     inkscape:cx="144.99875"
+     inkscape:cy="95.354085"
      inkscape:window-width="1470"
      inkscape:window-height="891"
      inkscape:window-x="2560"
@@ -41,29 +41,30 @@
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
-     id="layer1">
+     id="layer1"
+     transform="translate(-0.50934282,-0.98059311)">
     <rect
        style="fill:#f4e3d7;stroke:#000000;stroke-width:0.180788"
        id="rect234"
        width="96.358452"
        height="20.743994"
-       x="52.896"
-       y="67.172783"
+       x="0.60027534"
+       y="1.0709871"
        ry="0.30451599" />
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#784421;stroke:none;stroke-width:0.264999"
-       x="75.553032"
-       y="70.88607"
+       x="23.257307"
+       y="4.7842746"
        id="text832"><tspan
          sodipodi:role="line"
          id="tspan830"
          style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#784421;stroke:none;stroke-width:0.265"
-         x="75.553032"
-         y="70.88607">APPLY WIND REDUCTION FACTOR</tspan></text>
+         x="23.257307"
+         y="4.7842746">APPLY WIND REDUCTION FACTOR</tspan></text>
     <g
        id="g1895"
-       transform="translate(-20.92214,5.3625352)">
+       transform="translate(-73.217865,-60.739261)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -96,7 +97,7 @@
     </g>
     <g
        id="g1765"
-       transform="translate(12.112278,9.7049023)">
+       transform="translate(-40.183447,-56.396894)">
       <g
          id="g1890"
          transform="translate(-7.3935382,-4.4046611)">
@@ -133,7 +134,7 @@
     </g>
     <g
        id="g1900"
-       transform="translate(-20.92214,4.8333685)">
+       transform="translate(-73.217865,-61.268427)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -166,7 +167,7 @@
     </g>
     <path
        style="fill:#333333;stroke:#000000;stroke-width:0.411669;stroke-dasharray:none"
-       d="m 52.960021,72.690934 96.209509,-0.03133"
+       d="M 0.66429645,6.5891382 96.873805,6.5578082"
        id="path2362"
        sodipodi:nodetypes="cc" />
   </g>
