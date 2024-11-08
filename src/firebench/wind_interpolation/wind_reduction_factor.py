@@ -537,12 +537,9 @@ def __Baughman_generalized_wind_reduction_factor_unsheltered(
     z_0 = 0.13 * vegetation_height  # roughness length
     # numerator
     num = (
-        d_0 * np.log(vegetation_height - d_0)
-        - d_0 * np.log(vegetation_height + flame_height - d_0)
-        - vegetation_height * np.log((vegetation_height - d_0) / z_0)
-        - flame_height
-        + (vegetation_height + flame_height) * np.log((vegetation_height + flame_height - d_0) / z_0)
-    )
+        __primitive_log_profile(vegetation_height + flame_height, d_0, z_0)
+        - __primitive_log_profile(vegetation_height, d_0, z_0)
+    ) / flame_height
     if is_source_wind_height_above_veg:
         # consider input wind at height h + h_u
         denom = np.log((input_wind_height + vegetation_height - d_0) / z_0)
@@ -550,3 +547,7 @@ def __Baughman_generalized_wind_reduction_factor_unsheltered(
         # consider input wind at height h_u
         denom = np.log((input_wind_height - d_0) / z_0)
     return num / denom
+
+
+def __primitive_log_profile(z, d_0, z_0):
+    return (z - d_0) * np.log((z - d_0) / z_0) - z
