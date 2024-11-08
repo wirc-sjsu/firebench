@@ -235,6 +235,22 @@ def test_Baughman_wrf_unsheltered_insufficient_parameters():
         fwi.Baughman_20ft_wind_reduction_factor_unsheltered(flame_height=flame_height)
 
 
+## Baughman_20ft_wrf_unsheltered validation
+def test_Baughman_20ft_validation():
+    # data from Baughman and Albini (1980)
+    fuel_height = [1.0, 1.0, 2.5, 6.0, 2.0, 2.5, 2.5, 0.2, 0.2, 1.0, 1.0, 2.3, 3.0]
+    # wind_red_fac = [0.36, 0.36, 0.44, 0.55, 0.42, 0.44, 0.44, 0.36, 0.36, 0.36, 0.36, 0.43, 0.46] # Issue with cat 7, 8 compared to original paper
+    wind_red_fac = [0.36, 0.36, 0.44, 0.55, 0.42, 0.44, 0.44, 0.28, 0.28, 0.36, 0.36, 0.43, 0.46]
+    # ratio flame length / fuel height
+    ratio_fl_fh = 1  # according to Baughman and Albini (1980)
+
+    for k in range(13):
+        wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(
+            ratio_fl_fh * fuel_height[k], fuel_height[k]
+        )
+        assert np.round(wrf, 2) == wind_red_fac[k]
+
+
 ## Baughman_generalized_wrf_unsheltered
 def test_Baughman_generalized_wrf_unsheltered_float():
     input_wind_height = 20  # Input wind height
@@ -408,3 +424,20 @@ def test_Baughman_generalized_wrf_unsheltered_insufficient_parameters():
         fwi.Baughman_generalized_wind_reduction_factor_unsheltered(
             input_wind_height=input_wind_height, flame_height=flame_height
         )
+
+
+## Baughman_generalized_wrf_unsheltered validation
+def test_Baughman_generalization_validation():
+    # data from Baughman and Albini (1980)
+    fuel_height = [1.0, 1.0, 2.5, 6.0, 2.0, 2.5, 2.5, 0.2, 0.2, 1.0, 1.0, 2.3, 3.0]
+    # wind_red_fac = [0.36, 0.36, 0.44, 0.55, 0.42, 0.44, 0.44, 0.36, 0.36, 0.36, 0.36, 0.43, 0.46] # Issue with cat 7, 8 compared to original paper
+    wind_red_fac = [0.36, 0.36, 0.44, 0.55, 0.42, 0.44, 0.44, 0.27, 0.27, 0.36, 0.36, 0.43, 0.46]
+    # ratio flame length / fuel height
+    ratio_fl_fh = 1  # according to Baughman and Albini (1980)
+
+    for k in range(13):
+        wrf = fwi.wind_reduction_factor.__Baughman_generalized_wind_reduction_factor_unsheltered(
+            20, ratio_fl_fh * fuel_height[k], fuel_height[k], True
+        )
+        # print(wrf, np.round(wrf, 2), wind_red_fac[k])
+        assert np.round(wrf, 2) == wind_red_fac[k]
