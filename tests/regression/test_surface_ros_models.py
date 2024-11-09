@@ -42,6 +42,24 @@ def test_compute_ros_regression_rothermel(
                 svn.WIND_SPEED: 1.0,
                 svn.SLOPE_ANGLE: 0.0,
                 svn.FUEL_MOISTURE_CONTENT: 10.0,
+                "fuel_cat": None,
+            },
+            0.436663860541543,  # Expected ROS value (adjust this to the expected value)
+        ),
+        (
+            {
+                svn.FUEL_LOAD_DRY_TOTAL: [0.5],
+                svn.FUEL_HEIGHT: [1.0],
+                svn.FUEL_DENSITY: [32.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: [1500.0],
+                svn.FUEL_MOISTURE_EXTINCTION: [20.0],
+                svn.FUEL_MINERAL_CONTENT_TOTAL: [0.0555],
+                svn.FUEL_MINERAL_CONTENT_EFFECTIVE: [0.01],
+                svn.FUEL_CHAPARRAL_FLAG: [0],
+                svn.WIND_SPEED: 1.0,
+                svn.SLOPE_ANGLE: 0.0,
+                svn.FUEL_MOISTURE_CONTENT: 10.0,
+                "fuel_cat": 1,
             },
             0.436663860541543,  # Expected ROS value (adjust this to the expected value)
         ),
@@ -49,7 +67,7 @@ def test_compute_ros_regression_rothermel(
     ],
 )
 def test_compute_ros_rothermel(input_dict, expected_ros):
-    ros = rm.Rothermel_SFIRE.compute_ros(input_dict)
+    ros = rm.Rothermel_SFIRE.compute_ros(input_dict, fuel_cat=input_dict["fuel_cat"])
     assert np.isclose(ros, expected_ros, atol=1e-4)
 
 
