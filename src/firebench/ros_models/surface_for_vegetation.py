@@ -105,9 +105,9 @@ class Rothermel_SFIRE(RateOfSpreadModel):
     @staticmethod
     def rothermel(
         fgi: float,
-        fueldepthm:float,
+        fueldepthm: float,
         fueldens: float,
-        savr:float,
+        savr: float,
         fuelmce: float,
         st: float,
         se: float,
@@ -118,73 +118,73 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         **opt,
     ) -> float:
         """
-    Compute the rate of spread using Rothermel's model.
+        Compute the rate of spread using Rothermel's model.
 
-    This function calculates the forward rate of spread of a fire in a uniform fuel bed using
-    Rothermel's (1972) fire spread model. The model considers fuel properties, wind speed, slope,
-    and fuel moisture content to estimate the rate at which a fire will spread through wildland fuels.
+        This function calculates the forward rate of spread of a fire in a uniform fuel bed using
+        Rothermel's (1972) fire spread model. The model considers fuel properties, wind speed, slope,
+        and fuel moisture content to estimate the rate at which a fire will spread through wildland fuels.
 
-    Parameters
-    ----------
-    fgi : float
-        Total fuel load (dry weight) per unit area [kg m-2].
-        Represents the total mass of combustible material available to the fire.
+        Parameters
+        ----------
+        fgi : float
+            Total fuel load (dry weight) per unit area [kg m-2].
+            Represents the total mass of combustible material available to the fire.
 
-    fueldepthm : float
-        Fuel bed depth [m].
-        The vertical depth of the fuel bed perpendicular to the ground surface.
+        fueldepthm : float
+            Fuel bed depth [m].
+            The vertical depth of the fuel bed perpendicular to the ground surface.
 
-    fueldens : float
-        Oven-dry fuel particle density [lb ft-3].
-        The density of individual fuel particles when completely dry.
+        fueldens : float
+            Oven-dry fuel particle density [lb ft-3].
+            The density of individual fuel particles when completely dry.
 
-    savr : float
-        Surface-area-to-volume ratio [ft-1].
-        A measure of the fineness of the fuel particles; higher values indicate finer fuels.
+        savr : float
+            Surface-area-to-volume ratio [ft-1].
+            A measure of the fineness of the fuel particles; higher values indicate finer fuels.
 
-    fuelmce : float
-        Moisture content of extinction [%].
-        The fuel moisture content at which a fire will no longer spread.
+        fuelmce : float
+            Moisture content of extinction [%].
+            The fuel moisture content at which a fire will no longer spread.
 
-    st : float
-        Total mineral content [unitless, between 0 and 1].
-        The proportion of the fuel that is composed of mineral (inorganic) material.
+        st : float
+            Total mineral content [unitless, between 0 and 1].
+            The proportion of the fuel that is composed of mineral (inorganic) material.
 
-    se : float
-        Effective mineral content [unitless, between 0 and 1].
-        The proportion of mineral content that effectively absorbs heat.
+        se : float
+            Effective mineral content [unitless, between 0 and 1].
+            The proportion of mineral content that effectively absorbs heat.
 
-    ichap : int
-        Chaparral flag (0 or 1).
-        Indicator for chaparral fuel type: set to 1 if the fuel is chaparral, otherwise 0.
+        ichap : int
+            Chaparral flag (0 or 1).
+            Indicator for chaparral fuel type: set to 1 if the fuel is chaparral, otherwise 0.
 
-    wind : float
-        Wind speed at midflame height or average wind over flame height [m s-1].
-        The wind speed influencing the fire spread at the height of the flames.
+        wind : float
+            Wind speed at midflame height or average wind over flame height [m s-1].
+            The wind speed influencing the fire spread at the height of the flames.
 
-    slope : float
-        Slope steepness [degrees].
-        The angle of the terrain slope; positive for uphill, negative for downhill.
+        slope : float
+            Slope steepness [degrees].
+            The angle of the terrain slope; positive for uphill, negative for downhill.
 
-    fmc : float
-        Fuel moisture content [%].
-        The actual moisture content of the fuel affecting combustion.
+        fmc : float
+            Fuel moisture content [%].
+            The actual moisture content of the fuel affecting combustion.
 
-    **opt : dict, optional
-        Additional optional parameters.
+        **opt : dict, optional
+            Additional optional parameters.
 
-    Returns
-    -------
-    float
-        Rate of spread [m/s].
-        The estimated forward rate of spread of the fire.
+        Returns
+        -------
+        float
+            Rate of spread [m/s].
+            The estimated forward rate of spread of the fire.
 
-    References
-    ----------
-    Rothermel, R. C. (1972).
-    *A mathematical model for predicting fire spread in wildland fuels*.
-    USDA Forest Service Research Paper INT-115. Ogden, UT.
-    """  # pylint: disable=line-too-long
+        References
+        ----------
+        Rothermel, R. C. (1972).
+        *A mathematical model for predicting fire spread in wildland fuels*.
+        USDA Forest Service Research Paper INT-115. Ogden, UT.
+        """  # pylint: disable=line-too-long
         # Fuel category values
         cmbcnst = 17.433e06  # [J/kg]
         tanphi = np.tan(np.deg2rad(slope))
@@ -202,15 +202,13 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         qig = 250.0 + 1116.0 * fuelmc_g  # Heat of preignition, BTU/lb
         epsilon = np.exp(-138.0 / savr)  # Effective heating number
         rhob = fuelload / fueldepth  # Ovendry bulk density, lb/ft^3
-        c = 7.47 * np.exp(-0.133 * savr ** 0.55)  # Wind coefficient constant
-        bbb = 0.02526 * savr ** 0.54  # Wind coefficient constant
+        c = 7.47 * np.exp(-0.133 * savr**0.55)  # Wind coefficient constant
+        bbb = 0.02526 * savr**0.54  # Wind coefficient constant
         e = 0.715 * np.exp(-3.59e-4 * savr)  # Wind coefficient constant
         phiwc = c * (betafl / betaop) ** (-e)
-        rtemp2 = savr ** 1.5
+        rtemp2 = savr**1.5
         gammax = rtemp2 / (495.0 + 0.0594 * rtemp2)  # Maximum reaction velocity, 1/min
-        a = 1.0 / (
-            4.774 * savr ** 0.1 - 7.27
-        )  # Coefficient for optimum reaction velocity
+        a = 1.0 / (4.774 * savr**0.1 - 7.27)  # Coefficient for optimum reaction velocity
         ratio = betafl / betaop
         gamma = gammax * (ratio**a) * np.exp(a * (1.0 - ratio))  # Optimum reaction velocity, 1/min
         wn = fuelload / (1.0 + st)  # Net fuel loading, lb/ft^2
@@ -221,7 +219,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         etas = 0.174 * se ** (-0.19)  # Mineral damping coefficient
         ir = gamma * wn * fuelheat * etam * etas  # Reaction intensity, BTU/ft^2 min
         irm = ir * 1055.0 / (0.3048**2 * 60.0) * 1e-6  # For MW/m^2 (set but not used)
-        xifr = np.exp((0.792 + 0.681 * savr ** 0.5) * (betafl + 0.1)) / (
+        xifr = np.exp((0.792 + 0.681 * savr**0.5) * (betafl + 0.1)) / (
             192.0 + 0.2595 * savr
         )  # Propagating flux ratio
         r_0 = ir * xifr / (rhob * epsilon * qig)  # Default spread rate in ft/min
@@ -250,87 +248,87 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         **opt,
     ) -> float:
         """
-    Compute the rate of spread of fire using Rothermel's model.
+        Compute the rate of spread of fire using Rothermel's model.
 
-    This function serves as a wrapper that prepares the fuel data dictionary and calls the `rothermel` method.
-    It extracts the necessary fuel properties from `input_dict`, optionally selecting a specific fuel category,
-    and computes the rate of spread (ROS) of the fire.
+        This function serves as a wrapper that prepares the fuel data dictionary and calls the `rothermel` method.
+        It extracts the necessary fuel properties from `input_dict`, optionally selecting a specific fuel category,
+        and computes the rate of spread (ROS) of the fire.
 
-    Parameters
-    ----------
-    input_dict : dict
-        Dictionary containing the input data for various fuel properties.
-        The keys should be the standard variable names as defined in `Rothermel_SFIRE.metadata`.
-        Each value can be a single float/int or a list/array of floats/ints.
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing the input data for various fuel properties.
+            The keys should be the standard variable names as defined in `Rothermel_SFIRE.metadata`.
+            Each value can be a single float/int or a list/array of floats/ints.
 
-    fuel_cat : int, optional
-        Fuel category index (one-based). If provided, fuel properties are expected to be lists or arrays,
-        and the function will extract the properties corresponding to the specified fuel category.
-        If not provided, fuel properties are expected to be scalar values.
+        fuel_cat : int, optional
+            Fuel category index (one-based). If provided, fuel properties are expected to be lists or arrays,
+            and the function will extract the properties corresponding to the specified fuel category.
+            If not provided, fuel properties are expected to be scalar values.
 
-    **opt : dict
-        Additional optional parameters to be passed to the `rothermel` method.
+        **opt : dict
+            Additional optional parameters to be passed to the `rothermel` method.
 
-    Returns
-    -------
-    float
-        The computed rate of spread of fire [m/s].
+        Returns
+        -------
+        float
+            The computed rate of spread of fire [m/s].
 
-    Notes
-    -----
-    - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
-      When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-    - This function assumes that all necessary error handling (such as checking for missing keys,
-      valid indices, or correct data types) has been performed prior to calling it.
-    - The function expects that the keys in `input_dict` correspond to the standard variable names
-      defined in `Rothermel_SFIRE.metadata` for each fuel property.
-    - The `rothermel` method computes the rate of spread using the provided fuel properties,
-      wind speed (`wind`), slope angle (`slope`), and fuel moisture content (`fmc`).
+        Notes
+        -----
+        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
+          When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
+        - This function assumes that all necessary error handling (such as checking for missing keys,
+          valid indices, or correct data types) has been performed prior to calling it.
+        - The function expects that the keys in `input_dict` correspond to the standard variable names
+          defined in `Rothermel_SFIRE.metadata` for each fuel property.
+        - The `rothermel` method computes the rate of spread using the provided fuel properties,
+          wind speed (`wind`), slope angle (`slope`), and fuel moisture content (`fmc`).
 
-    Examples
-    --------
-    **Example with scalar fuel properties:**
+        Examples
+        --------
+        **Example with scalar fuel properties:**
 
-    ```python
-    input_data = {
-        svn.FUEL_LOAD_DRY_TOTAL: 0.5,           # fgi
-        svn.FUEL_HEIGHT: 0.3,                   # fueldepthm
-        svn.FUEL_DENSITY: 32.0,                 # fueldens
-        svn.FUEL_SURFACE_AREA_VOLUME_RATIO: 2000.0,  # savr
-        svn.FUEL_MOISTURE_EXTINCTION: 30.0,     # fuelmce
-        svn.FUEL_MINERAL_CONTENT_TOTAL: 0.0555, # st
-        svn.FUEL_MINERAL_CONTENT_EFFECTIVE: 0.01,    # se
-        svn.FUEL_CHAPARRAL_FLAG: 0,             # ichap
-        svn.WIND_SPEED: 2.0,
-        svn.SLOPE_ANGLE: 15.0,
-        svn.FUEL_MOISTURE_CONTENT: 10.0,
-    }
-    ros = Rothermel_SFIRE.compute_ros(input_data)
-    print(f"The rate of spread is {ros:.4f} m/s")
-    ```
+        ```python
+        input_data = {
+            svn.FUEL_LOAD_DRY_TOTAL: 0.5,           # fgi
+            svn.FUEL_HEIGHT: 0.3,                   # fueldepthm
+            svn.FUEL_DENSITY: 32.0,                 # fueldens
+            svn.FUEL_SURFACE_AREA_VOLUME_RATIO: 2000.0,  # savr
+            svn.FUEL_MOISTURE_EXTINCTION: 30.0,     # fuelmce
+            svn.FUEL_MINERAL_CONTENT_TOTAL: 0.0555, # st
+            svn.FUEL_MINERAL_CONTENT_EFFECTIVE: 0.01,    # se
+            svn.FUEL_CHAPARRAL_FLAG: 0,             # ichap
+            svn.WIND_SPEED: 2.0,
+            svn.SLOPE_ANGLE: 15.0,
+            svn.FUEL_MOISTURE_CONTENT: 10.0,
+        }
+        ros = Rothermel_SFIRE.compute_ros(input_data)
+        print(f"The rate of spread is {ros:.4f} m/s")
+        ```
 
-    **Example with fuel categories:**
+        **Example with fuel categories:**
 
-    ```python
-    input_data = {
-        svn.FUEL_LOAD_DRY_TOTAL: [0.4, 0.5, 0.6],           # fgi
-        svn.FUEL_HEIGHT: [0.2, 0.3, 0.4],                   # fueldepthm
-        svn.FUEL_DENSITY: [30.0, 32.0, 34.0],               # fueldens
-        svn.FUEL_SURFACE_AREA_VOLUME_RATIO: [1800.0, 2000.0, 2200.0],  # savr
-        svn.FUEL_MOISTURE_EXTINCTION: [25.0, 30.0, 35.0],   # fuelmce
-        svn.FUEL_MINERAL_CONTENT_TOTAL: [0.05, 0.0555, 0.06],     # st
-        svn.FUEL_MINERAL_CONTENT_EFFECTIVE: [0.009, 0.01, 0.011],  # se
-        svn.FUEL_CHAPARRAL_FLAG: [0, 0, 1],                 # ichap
-        svn.WIND_SPEED: 2.0,
-        svn.SLOPE_ANGLE: 15.0,
-        svn.FUEL_MOISTURE_CONTENT: 10.0,
-    }
-    fuel_category = 2  # One-based index
-    ros = Rothermel_SFIRE.compute_ros(input_data, fuel_cat=fuel_category)
-    print(f"The rate of spread for fuel category {fuel_category} is {ros:.4f} m/s")
-    ```
+        ```python
+        input_data = {
+            svn.FUEL_LOAD_DRY_TOTAL: [0.4, 0.5, 0.6],           # fgi
+            svn.FUEL_HEIGHT: [0.2, 0.3, 0.4],                   # fueldepthm
+            svn.FUEL_DENSITY: [30.0, 32.0, 34.0],               # fueldens
+            svn.FUEL_SURFACE_AREA_VOLUME_RATIO: [1800.0, 2000.0, 2200.0],  # savr
+            svn.FUEL_MOISTURE_EXTINCTION: [25.0, 30.0, 35.0],   # fuelmce
+            svn.FUEL_MINERAL_CONTENT_TOTAL: [0.05, 0.0555, 0.06],     # st
+            svn.FUEL_MINERAL_CONTENT_EFFECTIVE: [0.009, 0.01, 0.011],  # se
+            svn.FUEL_CHAPARRAL_FLAG: [0, 0, 1],                 # ichap
+            svn.WIND_SPEED: 2.0,
+            svn.SLOPE_ANGLE: 15.0,
+            svn.FUEL_MOISTURE_CONTENT: 10.0,
+        }
+        fuel_category = 2  # One-based index
+        ros = Rothermel_SFIRE.compute_ros(input_data, fuel_cat=fuel_category)
+        print(f"The rate of spread for fuel category {fuel_category} is {ros:.4f} m/s")
+        ```
 
-    """
+        """
         # list properties linked to fuel category
         fuel_properties_list = [
             "fgi",
@@ -346,7 +344,9 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         for var in fuel_properties_list:
             if fuel_cat is not None:
                 # get the property of the fuel category
-                fuel_properties_dict[var] = input_dict[Rothermel_SFIRE.metadata[var]["std_name"]][fuel_cat-1]
+                fuel_properties_dict[var] = input_dict[Rothermel_SFIRE.metadata[var]["std_name"]][
+                    fuel_cat - 1
+                ]
             else:
                 # get the property from dict
                 fuel_properties_dict[var] = input_dict[Rothermel_SFIRE.metadata[var]["std_name"]]
@@ -386,8 +386,8 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
     """  # pylint: disable=line-too-long
 
     metadata = {
-        "windrf": {
-            "std_name": svn.FUEL_WIND_REDUCTION_FACTOR,
+        "dead_fuel_ratio": {
+            "std_name": svn.FUEL_LOAD_DEAD_RATIO,
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
@@ -444,8 +444,11 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
     @staticmethod
     def balbi_2022_fixed(
-        fueldata: dict[str, list[float]],
-        fuelclass: int,
+        dead_fuel_ratio: float,
+        fgi: float,
+        fueldepthm: float,
+        fueldens: float,
+        savr: float,
         wind: float,
         slope: float,
         fmc: float,
@@ -456,10 +459,6 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
         Parameters
         ----------
-        fueldata : dict[str, list[float]]
-            Dictionary containing fuel properties. Keys are fuel properties, and values are lists of floats corresponding to different fuel classes.
-        fuelclass : int
-            Selected fuel class (1-based index).
         wind : float
             Wind speed in the normal direction at 6.1m (20ft) [m/s].
         slope : float
@@ -469,8 +468,6 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
         Optional Parameters
         -------------------
-        dead_fuel_load_ratio : float, optional
-            dead fuel load ratio, ie sigma_d/sigma_t, between 0 and 1 (default 1).
         max_ite : int, optional
             maximum number of iteration for the fixed point method.
 
@@ -508,10 +505,10 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         fmc *= 0.01
 
         # Add moisture to oven dry fuel load
-        sigma_t = fueldata["fgi"][fuelclass] * (1 + fmc)
+        sigma_t = fgi * (1 + fmc)
 
         # dead fuel load
-        sigma_d = sigma_t * opt.get("dead_fuel_load_ratio", 1)
+        sigma_d = sigma_t * dead_fuel_ratio
 
         # max number of iteration
         maxite = opt.get("max_ite", 20)
@@ -520,14 +517,12 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         alpha_rad = np.deg2rad(slope)
 
         # Packing ratios
-        beta = sigma_d / (fueldata["fueldepthm"][fuelclass] * fueldata["fueldens"][fuelclass])  # dead fuel
-        beta_t = sigma_t / (
-            fueldata["fueldepthm"][fuelclass] * fueldata["fueldens"][fuelclass]
-        )  # total fuel
+        beta = sigma_d / (fueldepthm * fueldens)  # dead fuel
+        beta_t = sigma_t / (fueldepthm * fueldens)  # total fuel
 
         # Leaf areas
-        lai = fueldata["savr"][fuelclass] * fueldata["fueldepthm"][fuelclass] * beta  # dead fuel
-        lai_t = fueldata["savr"][fuelclass] * fueldata["fueldepthm"][fuelclass] * beta_t  # total fuel
+        lai = savr * fueldepthm * beta  # dead fuel
+        lai_t = savr * fueldepthm * beta_t  # total fuel
 
         ## Heat sink
         q = Cp * (Ti - Ta) + fmc * (delta_h + Cpw * (Tvap - Ta))
@@ -536,26 +531,13 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         Tflame = Ta + (delta_H * (1 - chi0)) / (Cpa * (1 + st))
 
         # Base flame radiation
-        Rb = (
-            min(lai_t / (2 * np.pi), 1)
-            * (lai / lai_t) ** 2
-            * boltz
-            * Tflame**4
-            / (beta * fueldata["fueldens"][fuelclass] * q)
-        )
+        Rb = min(lai_t / (2 * np.pi), 1) * (lai / lai_t) ** 2 * boltz * Tflame**4 / (beta * fueldens * q)
 
         # Radiant factor
         A = min(lai / (2 * np.pi), lai / lai_t) * chi0 * delta_H / (4 * q)
 
         # vertical velocity
-        u0 = (
-            2
-            * (st + 1)
-            * fueldata["fueldens"][fuelclass]
-            * Tflame
-            * min(lai, 2 * np.pi * lai / lai_t)
-            / (tau0 * rhoa * Ta)
-        )
+        u0 = 2 * (st + 1) * fueldens * Tflame * min(lai, 2 * np.pi * lai / lai_t) / (tau0 * rhoa * Ta)
 
         # tilt angle
         gamma = max(0, np.arctan(np.tan(alpha_rad) + wind / u0))
@@ -568,7 +550,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         view_factor = 1 - np.sin(gamma) + np.cos(gamma)
 
         # Rr denom term
-        denom_term_Rr = np.cos(gamma) / (fueldata["savr"][fuelclass] * r00)
+        denom_term_Rr = np.cos(gamma) / (savr * r00)
 
         # main term Rc
         main_term_Rc = (
@@ -577,9 +559,9 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             * delta_H
             * rhoa
             * Ta
-            * fueldata["savr"][fuelclass]
-            * np.sqrt(fueldata["fueldepthm"][fuelclass])
-            / (2 * q * (1 + st) * fueldata["fueldens"][fuelclass] * Tflame)
+            * savr
+            * np.sqrt(fueldepthm)
+            / (2 * q * (1 + st) * fueldens * Tflame)
         )
 
         # second term
@@ -587,7 +569,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             min(2 * np.pi * lai / lai_t, lai)
             * np.tan(gamma)
             * (1 + st)
-            * fueldata["fueldens"][fuelclass]
+            * fueldens
             * Tflame
             / (rhoa * Ta * tau0)
         )
@@ -624,6 +606,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
     @staticmethod
     def compute_ros(
         input_dict: dict[str, list[float]],
+        fuel_cat: int = None,
         **opt,
     ) -> float:
         """
@@ -646,20 +629,26 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         float
             The computed rate of spread of fire [m/s].
         """
-        fuel_dict_list_vars = [
-            "windrf",
+        fuel_properties_list = [
+            "dead_fuel_ratio",
             "fgi",
             "fueldepthm",
             "fueldens",
             "savr",
         ]
-        fuel_dict = {}
-        for var in fuel_dict_list_vars:
-            fuel_dict[var] = input_dict[Balbi_2022_fixed_SFIRE.metadata[var]["std_name"]]
+        fuel_properties_dict = {}
+        for var in fuel_properties_list:
+            if fuel_cat is not None:
+                # get the property of the fuel category
+                fuel_properties_dict[var] = input_dict[Balbi_2022_fixed_SFIRE.metadata[var]["std_name"]][
+                    fuel_cat - 1
+                ]
+            else:
+                # get the property from dict
+                fuel_properties_dict[var] = input_dict[Balbi_2022_fixed_SFIRE.metadata[var]["std_name"]]
 
         return Balbi_2022_fixed_SFIRE.balbi_2022_fixed(
-            fueldata=fuel_dict,
-            fuelclass=input_dict[svn.FUEL_CLASS],
+            **fuel_properties_dict,
             wind=input_dict[svn.WIND_SPEED],
             slope=input_dict[svn.SLOPE_ANGLE],
             fmc=input_dict[svn.FUEL_MOISTURE_CONTENT],
