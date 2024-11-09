@@ -28,6 +28,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_FRACTION_CONSUMED_FLAME_ZONE`: Fuel fraction consumed flame zone [-]
 - `FUEL_HEAT_CONTENT`: Fuel heat content [J kg-1]
 - `FUEL_HEIGHT`: Fuel height [m]
+- `FUEL_LOAD_DEAD_RATIO`: Dead fuel load ratio [-]
 - `FUEL_LOAD_FINE`: Fine fuels load [kg m-2]
 - `FUEL_LOAD_FINE_DEAD`: Dead fine fuels load [kg m-2]
 - `FUEL_LOAD_FINE_LIVE`: Live fine fuels load [kg m-2]
