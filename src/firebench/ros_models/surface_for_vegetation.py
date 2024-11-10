@@ -498,9 +498,6 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         Ta = 300.0  # Air temperature                           [K]
         rhoa = 1.125  # Air density                             [kg m-3]
 
-        # index starts at 0
-        fuelclass -= 1
-
         # fmc from percent to real
         fmc *= 0.01
 
