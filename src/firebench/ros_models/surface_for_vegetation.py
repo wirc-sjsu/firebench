@@ -115,7 +115,6 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         wind: float,
         slope: float,
         fmc: float,
-        **opt,
     ) -> float:
         """
         Compute the rate of spread using Rothermel's model.
