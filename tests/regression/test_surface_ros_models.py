@@ -110,4 +110,4 @@ def test_compute_ros_balbi(input_dict, expected_ros):
     ros = rm.Balbi_2022_fixed_SFIRE.compute_ros(input_dict, fuel_cat=input_dict["fuel_cat"])
     assert np.isclose(ros, expected_ros, atol=1e-4)
     ros = rm.Balbi_2022_fixed_SFIRE.compute_ros(input_dict, fuel_cat=input_dict["fuel_cat"], max_ite=1)
-    assert ros==0
+    assert ros == 0

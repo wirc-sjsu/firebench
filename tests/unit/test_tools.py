@@ -152,6 +152,7 @@ def test_fuel_model_json_file_not_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         custom_fuel_data_directory = temp_dir
         custom_fuel_model_name = "mymodel"
+        fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(
             custom_fuel_data_directory, f"{custom_fuel_model_name}.json"
         )
@@ -160,22 +161,25 @@ def test_fuel_model_json_file_not_exists():
         assert not os.path.isfile(custom_fuel_model_json_path)
 
         with pytest.raises(FileNotFoundError, match="not found"):
-            ft.read_data._get_fuel_model_json_data_file_path(
-                custom_fuel_model_name, local_path_json_fuel_db=custom_fuel_data_directory
+            ft.read_data._get_json_data_file_path(
+                custom_fuel_model_name,
+                fuel_models_path_within_firebench,
+                local_json_path=custom_fuel_data_directory,
             )
 
 
 def test_fuel_model_json_file_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         custom_fuel_model_name = "mymodel"
+        fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
 
         # Create a dummy file
         with open(custom_fuel_model_json_path, "w") as dummy_file:
             dummy_file.write("test content")
 
-        result_path = ft.read_data._get_fuel_model_json_data_file_path(
-            custom_fuel_model_name, local_path_json_fuel_db=temp_dir
+        result_path = ft.read_data._get_json_data_file_path(
+            custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=temp_dir
         )
 
         assert result_path == custom_fuel_model_json_path
@@ -185,6 +189,7 @@ def test_fuel_model_default_json_file_not_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         os.environ["FIREBENCH_DATA_PATH"] = temp_dir
         custom_fuel_model_name = "mymodel"
+        fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(
             temp_dir, "fuel_models", f"{custom_fuel_model_name}.json"
         )
@@ -193,8 +198,8 @@ def test_fuel_model_default_json_file_not_exists():
         assert not os.path.isfile(custom_fuel_model_json_path)
 
         with pytest.raises(FileNotFoundError, match="not found"):
-            ft.read_data._get_fuel_model_json_data_file_path(
-                custom_fuel_model_name, local_path_json_fuel_db=None
+            ft.read_data._get_json_data_file_path(
+                custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=None
             )
 
 
@@ -202,14 +207,15 @@ def test_fuel_model_default_json_file_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         os.environ["FIREBENCH_DATA_PATH"] = temp_dir
         custom_fuel_model_name = "mymodel"
+        fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
 
         # Create a dummy file
         with open(custom_fuel_model_json_path, "w") as dummy_file:
             dummy_file.write("test content")
 
-        result_path = ft.read_data._get_fuel_model_json_data_file_path(
-            custom_fuel_model_name, local_path_json_fuel_db=temp_dir
+        result_path = ft.read_data._get_json_data_file_path(
+            custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=temp_dir
         )
 
         assert result_path == custom_fuel_model_json_path
