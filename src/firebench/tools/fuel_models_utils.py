@@ -41,7 +41,7 @@ def find_closest_fuel_class_by_properties(
         If a property key in `properties_to_test` is not found in `fuel_model_dict`.
     ValueError
         If units cannot be converted between the fuel model and the properties to test.
-    """
+    """  # pylint: disable=line-too-long
     # Initialize variables
     fuel_model_converted = {}
     default_weights = {}
@@ -142,7 +142,7 @@ def add_scott_and_burgan_total_fuel_load(fuel_data_dict, overwrite=False):
 
     print(fuel_data[svn.FUEL_LOAD_DRY_TOTAL])  # Outputs: 1.5
     ```
-    """
+    """  # pylint: disable=line-too-long
     total_key = svn.FUEL_LOAD_DRY_TOTAL
 
     if total_key in fuel_data_dict:
@@ -167,3 +167,97 @@ def add_scott_and_burgan_total_fuel_load(fuel_data_dict, overwrite=False):
     except KeyError as e:
         missing_key = e.args[0]
         raise KeyError(f"Missing required key '{missing_key}' in fuel_data_dict.") from e
+
+
+def add_scott_and_burgan_total_savr(fuel_data_dict, overwrite=False):
+    """
+    Add the total Surface Area to Volume Ratio (SAVR) to the fuel data dictionary by computing
+    the weighted average of individual SAVRs according to the Scott and Burgan 40 fuel model.
+
+    The total SAVR is calculated using the weighted average formula:
+
+        total_SAVR = (Σ(fuel_load_i * SAVR_i)) / Σ(fuel_load_i)
+
+    where:
+    - `fuel_load_i` is the fuel load of the i-th component
+    - `SAVR_i` is the surface area to volume ratio of the i-th component
+
+    The components considered are:
+    - `FUEL_LOAD_DRY_1H` with `FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD_1H`
+    - `FUEL_LOAD_DRY_LIVE_HERB` with `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB`
+    - `FUEL_LOAD_DRY_LIVE_WOODY` with `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY`
+
+    The result is stored under the key `FUEL_SURFACE_AREA_VOLUME_RATIO` in `fuel_data_dict`.
+
+    Parameters
+    ----------
+    fuel_data_dict : dict
+        Dictionary containing individual fuel load and SAVR values with specific keys.
+    overwrite : bool, optional
+        If `True`, overwrites the existing total SAVR if it exists.
+        If `False` and the total SAVR already exists, raises a `ValueError`. Default is `False`.
+
+    Raises
+    ------
+    ValueError
+        If `FUEL_SURFACE_AREA_VOLUME_RATIO` already exists in `fuel_data_dict` and `overwrite` is `False`.
+    KeyError
+        If any required keys are missing from `fuel_data_dict`.
+
+    Notes
+    -----
+    This function assumes that `fuel_data_dict` contains the required keys defined in the
+    Scott and Burgan 40 fuel model constants.
+
+    Examples
+    --------
+    ```python
+    from your_module import svn
+
+    fuel_data = {
+        svn.FUEL_LOAD_DRY_1H: 0.1,
+        svn.FUEL_LOAD_DRY_LIVE_HERB: 0.2,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY: 0.3,
+        svn.FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD_1H: 2000,
+        svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB: 1500,
+        svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY: 1800,
+    }
+
+    add_scott_and_burgan_total_savr(fuel_data)
+
+    print(fuel_data[svn.FUEL_SURFACE_AREA_VOLUME_RATIO])  # Outputs the total SAVR
+    ```
+    """  # pylint: disable=line-too-long
+    total_key = svn.FUEL_SURFACE_AREA_VOLUME_RATIO
+
+    if total_key in fuel_data_dict:
+        if not overwrite:
+            raise ValueError(
+                f"Key '{total_key}' already exists in fuel_data_dict. Use overwrite=True to overwrite it."
+            )
+        logger.info(f"Key '{total_key}' exists and will be overwritten.")
+
+    # Lists of fuel load and SAVR keys
+    savr_keys = [
+        svn.FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD_1H,
+        svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB,
+        svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY,
+    ]
+    for key in savr_keys:
+        if key not in fuel_data_dict.keys():
+            raise KeyError(f"Missing required key '{key}' in fuel_data_dict.")
+    fuel_load_keys = [
+        svn.FUEL_LOAD_DRY_1H,
+        svn.FUEL_LOAD_DRY_LIVE_HERB,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY,
+    ]
+    for key in fuel_load_keys:
+        if key not in fuel_data_dict.keys():
+            raise KeyError(f"Missing required key '{key}' in fuel_data_dict.")
+
+    # Calculate the numerator and denominator for the weighted average
+    num = sum(fuel_data_dict[fuel_load_keys[k]] * fuel_data_dict[savr_keys[k]] for k in range(3))
+    denom = sum(fuel_data_dict[fuel_load_keys[k]] for k in range(3))
+
+    # Store the total SAVR in the dictionary
+    fuel_data_dict[total_key] = num / denom

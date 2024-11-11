@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `ScottandBurgan40` fuel model
 - Scott and Burgan utility function
   - `add_scott_and_burgan_total_fuel_load`: aggregate the fuel load per element size to the total fuel load
+  - `add_scott_and_burgan_total_savr`: calculate the total surface area to volume ratio as weighted average of the savr of the fuel elements described in SB40.
 - Fuel model utility functions:
   - `find_closest_fuel_class_by_properties`: retrieve the fuel class having the closest properties to a target set of properties.
 - Wind reduction factor functions
