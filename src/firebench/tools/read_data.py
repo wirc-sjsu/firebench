@@ -36,10 +36,37 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
     # fuel models are in data/fuel_models/example_fuel_model.json
     fuel_models_path_within_firebench = "fuel_models"
 
+    return read_data_file(fuel_model_name, fuel_models_path_within_firebench, local_path_json_fuel_db)
+
+
+def read_data_file(dataset_name: str, path_within_firebench: str, local_json_path: str = None):
+    """
+    Reads a CSV data file and its corresponding metadata JSON file to produce a dictionary
+    of data with Pint quantities.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset to retrieve.
+    path_within_firebench : str
+        Path leading to the data within firebench from the data directory.
+    local_json_path : str, optional
+        The local path to the JSON fuel database. If not provided, the function will use the default package path.
+
+
+    Returns
+    -------
+    dict
+        A dictionary where the keys are standard variable names (Enum members) and the
+        values are numpy arrays with Pint quantities.
+
+    Raises
+    ------
+    ValueError
+        If there is an issue with the variable name in the metadata.
+    """  # pylint: disable=line-too-long
     # Load metadata
-    json_file_path = _get_json_data_file_path(
-        fuel_model_name, fuel_models_path_within_firebench, local_path_json_fuel_db
-    )
+    json_file_path = _get_json_data_file_path(dataset_name, path_within_firebench, local_json_path)
     with open(json_file_path, "r") as f:
         metadata = json.load(f)
 
