@@ -5,6 +5,7 @@ from .sensitivity_doe import (
 from .namespace import StandardVariableNames
 from .units import ureg
 from .read_data import (
+    read_data_file,
     read_fuel_data_file,
     get_firebench_data_directory,
 )
