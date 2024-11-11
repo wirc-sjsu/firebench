@@ -1,6 +1,8 @@
 import numpy as np
 from pint import Quantity
 from pint.errors import DimensionalityError
+from .namespace import StandardVariableNames as svn
+from .logging_config import logger
 
 
 def find_closest_fuel_class_by_properties(
@@ -87,3 +89,81 @@ def find_closest_fuel_class_by_properties(
     # Return the one-based index of the fuel class with the minimum total distance
     closest_index = np.argmin(np.sum(distances, axis=0)) + 1  # Return 1-based index
     return closest_index
+
+
+def add_scott_and_burgan_total_fuel_load(fuel_data_dict, overwrite=False):
+    """
+    Add the total dry fuel load to the fuel data dictionary by summing individual dry fuel loads
+    according to the Scott and Burgan 40 fuel model.
+
+    The total dry fuel load is calculated as the sum of the following individual fuel loads:
+    - `FUEL_LOAD_DRY_1H`
+    - `FUEL_LOAD_DRY_10H`
+    - `FUEL_LOAD_DRY_100H`
+    - `FUEL_LOAD_DRY_LIVE_HERB`
+    - `FUEL_LOAD_DRY_LIVE_WOODY`
+
+    The result is stored under the key `FUEL_LOAD_DRY_TOTAL` in `fuel_data_dict`.
+
+    Parameters
+    ----------
+    fuel_data_dict : dict
+        Dictionary containing individual fuel load values with specific keys.
+    overwrite : bool, optional
+        If `True`, overwrites the existing total fuel load if it exists.
+        If `False` and the total fuel load already exists, raises a `ValueError`. Default is `False`.
+
+    Raises
+    ------
+    ValueError
+        If `FUEL_LOAD_DRY_TOTAL` already exists in `fuel_data_dict` and `overwrite` is `False`.
+    KeyError
+        If any required individual fuel load keys are missing from `fuel_data_dict`.
+
+    Notes
+    -----
+    This function assumes that `fuel_data_dict` contains the required keys defined in the
+    Scott and Burgan 40 fuel model constants.
+
+    Examples
+    --------
+    ```python
+    from your_module import svn  # Assuming svn contains the required constants
+
+    fuel_data = {
+        svn.FUEL_LOAD_DRY_1H: 0.1,
+        svn.FUEL_LOAD_DRY_10H: 0.2,
+        svn.FUEL_LOAD_DRY_100H: 0.3,
+        svn.FUEL_LOAD_DRY_LIVE_HERB: 0.4,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY: 0.5,
+    }
+
+    add_scott_and_burgan_total_fuel_load(fuel_data)
+
+    print(fuel_data[svn.FUEL_LOAD_DRY_TOTAL])  # Outputs: 1.5
+    ```
+    """
+    total_key = svn.FUEL_LOAD_DRY_TOTAL
+
+    if total_key in fuel_data_dict:
+        if not overwrite:
+            raise ValueError(
+                f"Key '{total_key}' already exists in fuel_data_dict. Use overwrite=True to overwrite it."
+            )
+        logger.info(f"Key '{total_key}' exists and will be overwritten.")
+
+    # List of individual fuel load keys to sum
+    individual_keys = [
+        svn.FUEL_LOAD_DRY_1H,
+        svn.FUEL_LOAD_DRY_10H,
+        svn.FUEL_LOAD_DRY_100H,
+        svn.FUEL_LOAD_DRY_LIVE_HERB,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY,
+    ]
+
+    try:
+        # Sum individual fuel loads to calculate total fuel load
+        fuel_data_dict[total_key] = sum(fuel_data_dict[key] for key in individual_keys)
+    except KeyError as e:
+        missing_key = e.args[0]
+        raise KeyError(f"Missing required key '{missing_key}' in fuel_data_dict.") from e

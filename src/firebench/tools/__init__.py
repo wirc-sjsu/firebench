@@ -28,4 +28,4 @@ from .logging_config import (
     set_logging_level,
 )
 from .input_info import ParameterType
-from .fuel_models_utils import find_closest_fuel_class_by_properties
+from .fuel_models_utils import find_closest_fuel_class_by_properties, add_scott_and_burgan_total_fuel_load
