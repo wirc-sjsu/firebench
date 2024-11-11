@@ -33,8 +33,13 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
     ValueError
         If there is an issue with the variable name in the metadata.
     """  # pylint: disable=line-too-long
+    # fuel models are in data/fuel_models/example_fuel_model.json
+    fuel_models_path_within_firebench = "fuel_models"
+
     # Load metadata
-    json_file_path = _get_fuel_model_json_data_file_path(fuel_model_name, local_path_json_fuel_db)
+    json_file_path = _get_json_data_file_path(
+        fuel_model_name, fuel_models_path_within_firebench, local_path_json_fuel_db
+    )
     with open(json_file_path, "r") as f:
         metadata = json.load(f)
 
@@ -94,17 +99,21 @@ def __add_suffix(filename: str, suffix: str) -> str:
     return filename
 
 
-def _get_fuel_model_json_data_file_path(fuel_model_name: str, local_path_json_fuel_db: str = None) -> str:
+def _get_json_data_file_path(
+    dataset_name: str, path_within_firebench: str, local_json_path: str = None
+) -> str:
     """
     Get the path to the JSON metadata file. The function first checks the local path, if provided.
     If the file is not found locally, it checks the default package data path.
 
     Parameters
     ----------
-    fuel_model_name : str
-        The name of the fuel model.
-    local_path_json_fuel_db : str, optional
-        The local path to the JSON fuel database. If not provided, the function will use the default package path.
+    dataset_name : str
+        The name of the dataset to retrieve.
+    path_within_firebench : str
+        Path leading to the data within firebench from the data directory.
+    local_json_path : str, optional
+        The local path to the JSON dataset. If not provided, the function will use the default package path.
 
     Returns
     -------
@@ -117,17 +126,17 @@ def _get_fuel_model_json_data_file_path(fuel_model_name: str, local_path_json_fu
         If the JSON file is not found in the local or default paths.
     """  # pylint: disable=line-too-long
     # Add json suffix if needed
-    json_filename = __add_suffix(fuel_model_name, "json")
+    json_filename = __add_suffix(dataset_name, "json")
 
-    if local_path_json_fuel_db is None:
+    if local_json_path is None:
         # Use default path to data
         firebench_data_path = get_firebench_data_directory()
-        json_file_path = os.path.join(firebench_data_path, "fuel_models", json_filename)
+        json_file_path = os.path.join(firebench_data_path, path_within_firebench, json_filename)
         if not os.path.isfile(json_file_path):
             raise FileNotFoundError(f"File {json_file_path} not found in the package data path.")
     else:
         # Use specified local path to data
-        json_file_path = os.path.join(local_path_json_fuel_db, json_filename)
+        json_file_path = os.path.join(local_json_path, json_filename)
         if not os.path.isfile(json_file_path):
             raise FileNotFoundError(f"File {json_filename} not found in the local path: {json_file_path}")
 
