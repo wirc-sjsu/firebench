@@ -1,7 +1,9 @@
 import firebench.tools as ft
+import numpy as np
 import pytest
 from firebench import svn
 from pint import Quantity
+
 
 # add_scott_and_burgan_total_fuel_load
 # -------------------------------
@@ -21,7 +23,7 @@ def test_add_total_fuel_load_success():
     expected_total = sum(fuel_data_dict.values())
     ft.add_scott_and_burgan_total_fuel_load(fuel_data_dict)
     assert svn.FUEL_LOAD_DRY_TOTAL in fuel_data_dict
-    assert fuel_data_dict[svn.FUEL_LOAD_DRY_TOTAL] == expected_total
+    assert np.isclose(fuel_data_dict[svn.FUEL_LOAD_DRY_TOTAL], expected_total)
 
 
 def test_add_total_fuel_load_overwrite_false():
@@ -67,7 +69,7 @@ def test_add_total_fuel_load_overwrite_true(caplog):
     with caplog.at_level(ft.logging.INFO):
         ft.add_scott_and_burgan_total_fuel_load(fuel_data_dict, overwrite=True)
         assert svn.FUEL_LOAD_DRY_TOTAL in fuel_data_dict
-        assert fuel_data_dict[svn.FUEL_LOAD_DRY_TOTAL] == expected_total
+        assert np.isclose(fuel_data_dict[svn.FUEL_LOAD_DRY_TOTAL], expected_total)
         # Check if the log message is present
         assert any("exists and will be overwritten" in record.message for record in caplog.records)
 
@@ -130,7 +132,7 @@ def test_add_total_savr_success():
     ft.add_scott_and_burgan_total_savr(fuel_data_dict)
 
     assert svn.FUEL_SURFACE_AREA_VOLUME_RATIO in fuel_data_dict
-    assert fuel_data_dict[svn.FUEL_SURFACE_AREA_VOLUME_RATIO] == expected_total_savr
+    assert np.isclose(fuel_data_dict[svn.FUEL_SURFACE_AREA_VOLUME_RATIO], expected_total_savr)
 
 
 def test_add_total_savr_overwrite_false():
@@ -186,7 +188,7 @@ def test_add_total_savr_overwrite_true(caplog):
     with caplog.at_level(ft.logging.INFO):
         ft.add_scott_and_burgan_total_savr(fuel_data_dict, overwrite=True)
         assert svn.FUEL_SURFACE_AREA_VOLUME_RATIO in fuel_data_dict
-        assert fuel_data_dict[svn.FUEL_SURFACE_AREA_VOLUME_RATIO] == expected_total_savr
+        assert np.isclose(fuel_data_dict[svn.FUEL_SURFACE_AREA_VOLUME_RATIO], expected_total_savr)
         # Check if the log message is present
         assert any(
             f"Key '{svn.FUEL_SURFACE_AREA_VOLUME_RATIO}' exists and will be overwritten." in record.message
