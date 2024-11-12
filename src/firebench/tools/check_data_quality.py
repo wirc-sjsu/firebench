@@ -111,6 +111,35 @@ def check_validity_range(input_data: dict, metadata_dict: dict):
                 )
 
 
+def extract_magnitudes(input_dict):
+    """
+    Extract magnitudes from a dictionary of quantities.
+
+    Parameters
+    ----------
+    input_dict : dict
+        A dictionary where each value is expected to have a 'magnitude' attribute (from pint.Quantity).
+
+    Returns
+    -------
+    dict
+        A new dictionary with the same keys as `input_dict`, where each value is the
+        'magnitude' attribute of the corresponding value in `input_dict`.
+
+    Notes
+    -----
+    If accessing 'value.magnitude' raises an exception, a warning is logged, and the key is kept identical.
+    """
+    final_input = {}
+    for key, value in input_dict.items():
+        try:
+            final_input[key] = value.magnitude
+        except Exception as e:
+            logger.warning(f"Failed to get magnitude for key '{key}': {e}")
+            final_input[key] = value
+    return final_input
+
+
 def check_data_quality_ros_model(input_dict: dict[str, Quantity], ros_model: RateOfSpreadModel) -> dict:
     """
     Check and process the input data quality for a Rate of Spread (ROS) model.
@@ -145,6 +174,6 @@ def check_data_quality_ros_model(input_dict: dict[str, Quantity], ros_model: Rat
     check_validity_range(input_converted, ros_model.metadata)
 
     # Create final input dictionary with magnitudes
-    final_input = {key: value.magnitude for key, value in input_converted.items()}
+    final_input = extract_magnitudes(input_converted)
 
     return final_input
