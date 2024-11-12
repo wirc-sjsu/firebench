@@ -5,6 +5,7 @@ from .sensitivity_doe import (
 from .namespace import StandardVariableNames
 from .units import ureg
 from .read_data import (
+    read_data_file,
     read_fuel_data_file,
     get_firebench_data_directory,
 )
@@ -13,6 +14,7 @@ from .check_data_quality import (
     convert_input_data_units,
     check_validity_range,
     check_data_quality_ros_model,
+    extract_magnitudes,
 )
 from .local_db_management import (
     get_local_db_path,
@@ -21,4 +23,14 @@ from .local_db_management import (
     generate_file_path_in_record,
     get_file_path_in_record,
 )
-from .logging_config import logger, logging
+from .logging_config import (
+    logger,
+    logging,
+    set_logging_level,
+)
+from .input_info import ParameterType
+from .fuel_models_utils import (
+    find_closest_fuel_class_by_properties,
+    add_scott_and_burgan_total_fuel_load,
+    add_scott_and_burgan_total_savr,
+)

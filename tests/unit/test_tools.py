@@ -152,6 +152,7 @@ def test_fuel_model_json_file_not_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         custom_fuel_data_directory = temp_dir
         custom_fuel_model_name = "mymodel"
+        fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(
             custom_fuel_data_directory, f"{custom_fuel_model_name}.json"
         )
@@ -160,22 +161,25 @@ def test_fuel_model_json_file_not_exists():
         assert not os.path.isfile(custom_fuel_model_json_path)
 
         with pytest.raises(FileNotFoundError, match="not found"):
-            ft.read_data._get_fuel_model_json_data_file_path(
-                custom_fuel_model_name, local_path_json_fuel_db=custom_fuel_data_directory
+            ft.read_data._get_json_data_file_path(
+                custom_fuel_model_name,
+                fuel_models_path_within_firebench,
+                local_json_path=custom_fuel_data_directory,
             )
 
 
 def test_fuel_model_json_file_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         custom_fuel_model_name = "mymodel"
+        fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
 
         # Create a dummy file
         with open(custom_fuel_model_json_path, "w") as dummy_file:
             dummy_file.write("test content")
 
-        result_path = ft.read_data._get_fuel_model_json_data_file_path(
-            custom_fuel_model_name, local_path_json_fuel_db=temp_dir
+        result_path = ft.read_data._get_json_data_file_path(
+            custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=temp_dir
         )
 
         assert result_path == custom_fuel_model_json_path
@@ -185,6 +189,7 @@ def test_fuel_model_default_json_file_not_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         os.environ["FIREBENCH_DATA_PATH"] = temp_dir
         custom_fuel_model_name = "mymodel"
+        fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(
             temp_dir, "fuel_models", f"{custom_fuel_model_name}.json"
         )
@@ -193,8 +198,8 @@ def test_fuel_model_default_json_file_not_exists():
         assert not os.path.isfile(custom_fuel_model_json_path)
 
         with pytest.raises(FileNotFoundError, match="not found"):
-            ft.read_data._get_fuel_model_json_data_file_path(
-                custom_fuel_model_name, local_path_json_fuel_db=None
+            ft.read_data._get_json_data_file_path(
+                custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=None
             )
 
 
@@ -202,26 +207,27 @@ def test_fuel_model_default_json_file_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         os.environ["FIREBENCH_DATA_PATH"] = temp_dir
         custom_fuel_model_name = "mymodel"
+        fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
 
         # Create a dummy file
         with open(custom_fuel_model_json_path, "w") as dummy_file:
             dummy_file.write("test content")
 
-        result_path = ft.read_data._get_fuel_model_json_data_file_path(
-            custom_fuel_model_name, local_path_json_fuel_db=temp_dir
+        result_path = ft.read_data._get_json_data_file_path(
+            custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=temp_dir
         )
 
         assert result_path == custom_fuel_model_json_path
 
 
-def test_check_input_completeness():
+def test_check_input_completeness(caplog):
     # Test case with complete data
     input_data = {"wind_speed": 5, "temperature": 25, "humidity": 60}
     metadata_dict = {
-        "wind": {"std_name": "wind_speed"},
-        "temp": {"std_name": "temperature"},
-        "hum": {"std_name": "humidity"},
+        "wind": {"std_name": "wind_speed", "type": ft.ParameterType.input},
+        "temp": {"std_name": "temperature", "type": ft.ParameterType.input},
+        "hum": {"std_name": "humidity", "type": ft.ParameterType.input},
     }
     ft.check_input_completeness(input_data, metadata_dict)
 
@@ -239,22 +245,22 @@ def test_check_input_completeness():
     empty_metadata_dict = {}
     ft.check_input_completeness(input_data, empty_metadata_dict)
 
-    # Test case with 'output_' keys in metadata
+    # Test case with output types in metadata
     input_data_with_output = {"wind_speed": 5, "temperature": 25, "humidity": 60}
     metadata_with_output = {
-        "wind": {"std_name": "wind_speed"},
-        "temp": {"std_name": "temperature"},
-        "hum": {"std_name": "humidity"},
-        "output_wind_speed": {"std_name": "output_wind_speed"},  # Should be ignored
+        "wind": {"std_name": "wind_speed", "type": ft.ParameterType.input},
+        "temp": {"std_name": "temperature", "type": ft.ParameterType.input},
+        "hum": {"std_name": "humidity", "type": ft.ParameterType.input},
+        "ros": {"std_name": "ros", "type": ft.ParameterType.output},  # Should be ignored
     }
     ft.check_input_completeness(input_data_with_output, metadata_with_output)
 
-    # Test case with missing data but with 'output_' key in metadata
+    # Test case with missing data but with output type in metadata
     incomplete_input_data_with_output = {"wind_speed": 5, "temperature": 25}
     metadata_with_output_incomplete = {
-        "wind": {"std_name": "wind_speed"},
-        "temp": {"std_name": "temperature"},
-        "output_wind_speed": {"std_name": "output_wind_speed"},  # Should be ignored
+        "wind": {"std_name": "wind_speed", "type": ft.ParameterType.input},
+        "temp": {"std_name": "temperature", "type": ft.ParameterType.input},
+        "ros": {"std_name": "ros", "type": ft.ParameterType.output},  # Should be ignored
     }
     # This should not raise KeyError since 'humidity' is not in metadata_with_output_incomplete
     ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output_incomplete)
@@ -263,6 +269,37 @@ def test_check_input_completeness():
     with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
         ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output)
 
+    # Change the logging level for the next tests
+    ft.set_logging_level(ft.logging.INFO)
+
+    # Test with optional input in input dict
+    input_data_with_optional = {"wind_speed": 5, "temperature": 25}
+    metadata_with_optional = {
+        "wind": {"std_name": "wind_speed", "type": ft.ParameterType.input},
+        "temp": {"std_name": "temperature", "type": ft.ParameterType.optional},
+    }
+    with caplog.at_level(ft.logging.INFO):
+        ft.check_input_completeness(input_data_with_optional, metadata_with_optional)
+        # As optional input is in input dict, no info in log
+        assert (
+            f"The optional data temperature is missing in the input dict. Default value will be used."
+            not in caplog.text
+        )
+
+    # Test with optional input not in input dict
+    input_data_with_optional = {"wind_speed": 5}
+    metadata_with_optional = {
+        "wind": {"std_name": "wind_speed", "type": ft.ParameterType.input},
+        "temp": {"std_name": "temperature", "type": ft.ParameterType.optional},
+    }
+    with caplog.at_level(ft.logging.INFO):
+        ft.check_input_completeness(input_data_with_optional, metadata_with_optional)
+        # As optional input not is in input dict, info in log
+        assert (
+            f"The optional data temperature is missing in the input dict. Default value will be used."
+            in caplog.text
+        )
+
 
 @pytest.mark.parametrize(
     "input_data, metadata_dict, expected_output",
@@ -270,24 +307,36 @@ def test_check_input_completeness():
         (
             {"temperature": ureg.Quantity(25, ureg.celsius)},
             {
-                "temp": {"std_name": "temperature", "units": "kelvin"},
-                "output_test": {"std_name": "output_value", "units": "some_units"},
+                "temp": {"std_name": "temperature", "units": "kelvin", "type": ft.ParameterType.input},
+                "output_test": {
+                    "std_name": "value",
+                    "units": "some_units",
+                    "type": ft.ParameterType.output,
+                },
             },
             {"temperature": ureg.Quantity(298.15, ureg.kelvin)},
         ),
         (
             {"distance": ureg.Quantity(1000, ureg.meter)},
             {
-                "dist": {"std_name": "distance", "units": "kilometer"},
-                "output_test": {"std_name": "output_value", "units": "some_units"},
+                "dist": {"std_name": "distance", "units": "kilometer", "type": ft.ParameterType.input},
+                "output_test": {
+                    "std_name": "value",
+                    "units": "some_units",
+                    "type": ft.ParameterType.output,
+                },
             },
             {"distance": ureg.Quantity(1, ureg.kilometer)},
         ),
         (
             {"speed": ureg.Quantity(100, ureg.kph)},
             {
-                "spd": {"std_name": "speed", "units": "m/s"},
-                "output_test": {"std_name": "output_value", "units": "some_units"},
+                "spd": {"std_name": "speed", "units": "m/s", "type": ft.ParameterType.input},
+                "output_test": {
+                    "std_name": "value",
+                    "units": "some_units",
+                    "type": ft.ParameterType.output,
+                },
             },
             {"speed": ureg.Quantity(27.77777778, ureg.m / ureg.s)},
         ),
@@ -305,24 +354,55 @@ def test_convert_input_data_units(input_data, metadata_dict, expected_output):
     [
         (
             {"temperature": ureg.Quantity([20, 25, 30], ureg.celsius)},
-            {"temp": {"std_name": "temperature", "units": "celsius", "range": (15, 35)}},
+            {
+                "temp": {
+                    "std_name": "temperature",
+                    "units": "celsius",
+                    "range": (15, 35),
+                    "type": ft.ParameterType.input,
+                }
+            },
             False,
         ),
         (
             {"temperature": ureg.Quantity([10, 25, 30], ureg.celsius)},
-            {"temp": {"std_name": "temperature", "units": "celsius", "range": (15, 35)}},
+            {
+                "temp": {
+                    "std_name": "temperature",
+                    "units": "celsius",
+                    "range": (15, 35),
+                    "type": ft.ParameterType.input,
+                }
+            },
             True,
         ),
         (
             {"temperature": ureg.Quantity([20, 25, 40], ureg.celsius)},
-            {"temp": {"std_name": "temperature", "units": "celsius", "range": (15, 35)}},
+            {
+                "temp": {
+                    "std_name": "temperature",
+                    "units": "celsius",
+                    "range": (15, 35),
+                    "type": ft.ParameterType.input,
+                }
+            },
             True,
         ),
         (
             {"temperature": ureg.Quantity([20, 25, 30], ureg.celsius)},
             {
-                "temp": {"std_name": "temperature", "units": "celsius", "range": (15, 35)},
-                "output_test": {"std_name": "output_value", "units": "some_units", "range": (0, 100)},
+                "temp": {
+                    "std_name": "temperature",
+                    "units": "celsius",
+                    "range": (15, 35),
+                    "type": ft.ParameterType.input,
+                },
+                "test": {
+                    "std_name": "value",
+                    "units": "some_units",
+                    "range": (0, 100),
+                    "type": ft.ParameterType.output,
+                },
             },
             False,
         ),

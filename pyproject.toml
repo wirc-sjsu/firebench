@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "firebench"
-version = "0.3.0.alpha"
+version = "0.3.0a1"
 authors = [
     {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
 ]
@@ -29,7 +29,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
 
     # Specify the Python versions you support here.
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -45,6 +44,9 @@ dev = [
     "bandit",
     "pylint",
     "black",
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "myst-parser",
 ]
 [tool.hatch.envs.default]
 features = ["dev"]

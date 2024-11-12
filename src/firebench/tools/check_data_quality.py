@@ -2,6 +2,8 @@ import numpy as np
 from pint import Quantity
 
 from ..ros_models import RateOfSpreadModel
+from .input_info import ParameterType
+from .logging_config import logger
 
 
 def check_input_completeness(input_data: dict, metadata_dict: dict):
@@ -22,11 +24,21 @@ def check_input_completeness(input_data: dict, metadata_dict: dict):
         If any standard name specified in the metadata is missing in the input data.
     """  # pylint: disable=line-too-long
     for key, item in metadata_dict.items():
-        if key.startswith("output_"):
-            continue
-        std_name_metadata = item["std_name"]
-        if std_name_metadata not in input_data:
-            raise KeyError(f"The data '{std_name_metadata}' is missing in the input dict")
+        # check that mandatory input is present
+        if item["type"] == ParameterType.input:
+            std_name_metadata = item["std_name"]
+            if std_name_metadata not in input_data:
+                logger.error("The data %s is missing in the input dict", std_name_metadata)
+                raise KeyError(f"The data '{std_name_metadata}' is missing in the input dict")
+
+        # check if optional input is present
+        if item["type"] == ParameterType.optional:
+            std_name_metadata = item["std_name"]
+            if std_name_metadata not in input_data:
+                logger.info(
+                    "The optional data %s is missing in the input dict. Default value will be used.",
+                    std_name_metadata,
+                )
 
 
 def convert_input_data_units(input_data: dict, metadata_dict: dict) -> dict:
@@ -53,11 +65,12 @@ def convert_input_data_units(input_data: dict, metadata_dict: dict) -> dict:
     """  # pylint: disable=line-too-long
     output_dict = {}
     for key, item in metadata_dict.items():
-        if key.startswith("output_"):
+        if item["type"] == ParameterType.output:
             continue
         std_name_metadata = item["std_name"]
-        data: Quantity = input_data[std_name_metadata]
-        output_dict[std_name_metadata] = data.to(item["units"])
+        if std_name_metadata in input_data.keys():
+            data: Quantity = input_data[std_name_metadata]
+            output_dict[std_name_metadata] = data.to(item["units"])
     return output_dict
 
 
@@ -79,22 +92,52 @@ def check_validity_range(input_data: dict, metadata_dict: dict):
         If any value in the input data is outside the specified validity range in the metadata.
     """  # pylint: disable=line-too-long
     for key, item in metadata_dict.items():
-        if key.startswith("output_"):
+        if item["type"] == ParameterType.output:
             continue
         std_name_metadata = item["std_name"]
-        data: Quantity = input_data[std_name_metadata]
-        data_min = np.nanmin(data.magnitude)
-        if data_min < item["range"][0]:
-            raise ValueError(
-                f"min value of input variable {std_name_metadata}: {data_min:.2e} {item['units']} "
-                f"lower than lower bound of validity range {item['range'][0]:.2e}."
-            )
-        data_max = np.nanmax(data.magnitude)
-        if data_max > item["range"][1]:
-            raise ValueError(
-                f"max value of input variable {std_name_metadata}: {data_max:.2e} {item['units']} "
-                f"greater than upper bound of validity range {item['range'][1]:.2e}."
-            )
+        if std_name_metadata in input_data.keys():
+            data: Quantity = input_data[std_name_metadata]
+            data_min = np.nanmin(data.magnitude)
+            if data_min < item["range"][0]:
+                raise ValueError(
+                    f"min value of input variable {std_name_metadata}: {data_min:.2e} {item['units']} "
+                    f"lower than lower bound of validity range {item['range'][0]:.2e}."
+                )
+            data_max = np.nanmax(data.magnitude)
+            if data_max > item["range"][1]:
+                raise ValueError(
+                    f"max value of input variable {std_name_metadata}: {data_max:.2e} {item['units']} "
+                    f"greater than upper bound of validity range {item['range'][1]:.2e}."
+                )
+
+
+def extract_magnitudes(input_dict):
+    """
+    Extract magnitudes from a dictionary of quantities.
+
+    Parameters
+    ----------
+    input_dict : dict
+        A dictionary where each value is expected to have a 'magnitude' attribute (from pint.Quantity).
+
+    Returns
+    -------
+    dict
+        A new dictionary with the same keys as `input_dict`, where each value is the
+        'magnitude' attribute of the corresponding value in `input_dict`.
+
+    Notes
+    -----
+    If accessing 'value.magnitude' raises an exception, a warning is logged, and the key is kept identical.
+    """  # pylint: disable=line-too-long
+    final_input = {}
+    for key, value in input_dict.items():
+        try:
+            final_input[key] = value.magnitude
+        except (AttributeError, TypeError, ValueError) as e:
+            logger.warning("Failed to get magnitude for key '%s': %s", key, e)
+            final_input[key] = value
+    return final_input
 
 
 def check_data_quality_ros_model(input_dict: dict[str, Quantity], ros_model: RateOfSpreadModel) -> dict:
@@ -131,6 +174,6 @@ def check_data_quality_ros_model(input_dict: dict[str, Quantity], ros_model: Rat
     check_validity_range(input_converted, ros_model.metadata)
 
     # Create final input dictionary with magnitudes
-    final_input = {key: value.magnitude for key, value in input_converted.items()}
+    final_input = extract_magnitudes(input_converted)
 
     return final_input
