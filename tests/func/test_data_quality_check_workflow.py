@@ -16,12 +16,8 @@ def test_check_data_quality_ros_model():
     }
     input_dict = ft.merge_dictionaries(fuel_data, input_vars_info)
 
-    print(input_dict)
-
     # Run the function
     final_input = ft.check_data_quality_ros_model(input_dict, ros_model)
-
-    print(final_input)
 
     # Check the completeness of the final input
     ft.check_input_completeness(input_dict, ros_model.metadata)

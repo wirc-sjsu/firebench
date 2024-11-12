@@ -14,6 +14,7 @@ from .check_data_quality import (
     convert_input_data_units,
     check_validity_range,
     check_data_quality_ros_model,
+    extract_magnitudes,
 )
 from .local_db_management import (
     get_local_db_path,

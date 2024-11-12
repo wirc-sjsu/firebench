@@ -1,8 +1,7 @@
 import firebench.tools as ft
 import pytest
-from firebench import svn, ureg
+from firebench import svn
 from pint import Quantity
-from pint.errors import DimensionalityError
 
 # add_scott_and_burgan_total_fuel_load
 # -------------------------------
