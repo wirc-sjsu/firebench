@@ -28,7 +28,7 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.6819304"
-     inkscape:cx="143.88229"
+     inkscape:cx="94.236955"
      inkscape:cy="163.79988"
      inkscape:window-width="1470"
      inkscape:window-height="891"
@@ -507,22 +507,21 @@
          transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.257668,133.79004)" />
     </g>
     <g
-       id="g553"
-       transform="translate(-0.04398671,-0.64888904)">
+       id="g362">
       <text
          xml:space="preserve"
          style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.264999"
-         x="76.672577"
-         y="139.12262"
+         x="76.628593"
+         y="138.47372"
          id="text938-2-6"><tspan
            sodipodi:role="line"
            id="tspan936-39-6"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke-width:0.265"
-           x="76.672577"
-           y="139.12262">ignition length [m]</tspan></text>
+           x="76.628593"
+           y="138.47372">ignition length [m]</tspan></text>
       <path
          sodipodi:type="star"
-         style="fill:#0066ff;stroke:none;stroke-width:0.264999"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
          id="path1906-8-59-9-7"
          inkscape:flatsided="false"
          sodipodi:sides="3"
@@ -537,7 +536,7 @@
          d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
          inkscape:transform-center-x="-0.32434232"
          inkscape:transform-center-y="-0.011150072"
-         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.17118,129.46127)" />
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127193,128.81238)" />
     </g>
     <g
        id="g860"
