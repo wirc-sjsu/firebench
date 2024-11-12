@@ -103,6 +103,21 @@ def test_compute_ros_rothermel(input_dict, expected_ros):
             },
             0.4441852112687365,  # Expected ROS value (adjust this to the expected value)
         ),
+        (
+            {
+                svn.FUEL_LOAD_DEAD_RATIO: [0.8],
+                svn.FUEL_LOAD_DRY_TOTAL: [1],
+                svn.FUEL_HEIGHT: [1.0],
+                svn.FUEL_DENSITY: [300.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: [4500.0],
+                svn.WIND_SPEED: 1.0,
+                svn.SLOPE_ANGLE: 0.0,
+                svn.FUEL_MOISTURE_CONTENT: 10.0,
+                svn.IGNITION_LENGTH: 50,
+                "fuel_cat": 1,
+            },
+            0.4441852112687365,  # Expected ROS value (adjust this to the expected value)
+        ),
         # Add more test cases as needed
     ],
 )
@@ -111,3 +126,30 @@ def test_compute_ros_balbi(input_dict, expected_ros):
     assert np.isclose(ros, expected_ros, atol=1e-4)
     ros = rm.Balbi_2022_fixed_SFIRE.compute_ros(input_dict, fuel_cat=input_dict["fuel_cat"], max_ite=1)
     assert ros == 0
+
+
+@pytest.mark.parametrize(
+    "dead_fuel_ratio,fgi,fueldepthm,fueldens,savr,w0,wind,slope,fmc,expected_ros",
+    [
+        (0.8, 0.7, 1, 300, 4500, 50, 1, 0, 10, 0.4643753930790799),
+        (0.8, 0.7, 1, 300, 4500, 30, 1, 0, 10, 0.3881006880449338),
+        (0.8, 0.7, 1, 300, 4500, 50, 0, 0, 10, 0.3455042235417564),
+        (0.8, 0.7, 1, 300, 4500, 50, -1, 0, 10, 0.3455042235417564),
+        (0.8, 0.7, 1, 300, 4500, 50, 0, 10, 10, 0.3387330641766883),
+    ],
+)
+def test_compute_ros_regression_balbi(
+    dead_fuel_ratio, fgi, fueldepthm, fueldens, savr, w0, wind, slope, fmc, expected_ros
+):
+    ros = rm.Balbi_2022_fixed_SFIRE.balbi_2022_fixed(
+        dead_fuel_ratio,
+        fgi,
+        fueldepthm,
+        fueldens,
+        savr,
+        w0,
+        wind,
+        slope,
+        fmc,
+    )
+    assert np.isclose(ros, expected_ros)
