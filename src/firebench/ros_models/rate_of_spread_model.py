@@ -54,7 +54,7 @@ class RateOfSpreadModel:
         -------
         dict
             The fuel properties dictionary prepared for the rate of spread computation.
-        """ # pylint: disable=line-too-long
+        """  # pylint: disable=line-too-long
         fuel_properties_dict = {}
 
         for var, var_info in metadata.items():
