@@ -2,6 +2,7 @@ import firebench.tools as ft
 import pytest
 from firebench import svn, ureg
 from pint import Quantity
+from pint.errors import DimensionalityError
 
 # add_scott_and_burgan_total_fuel_load
 # -------------------------------
@@ -239,3 +240,190 @@ def test_add_total_savr_zero_denominator():
     }
     with pytest.raises(ZeroDivisionError):
         ft.add_scott_and_burgan_total_savr(fuel_data_dict)
+
+
+# find_closest_fuel_class_by_properties
+# -------------------------------------
+def test_find_closest_fuel_class_success():
+    """
+    Test that the function correctly identifies the closest fuel class based on the properties provided.
+    """
+    # Define the fuel model dictionary with properties for each fuel class
+    fuel_model_dict = {
+        "density": Quantity(
+            [
+                100,
+                150,
+                200,
+            ],
+            "kg/m^3",
+        ),
+        "moisture_content": Quantity(
+            [
+                10,
+                15,
+                20,
+            ],
+            "percent",
+        ),
+    }
+
+    # Define the target properties
+    properties_to_test = {
+        "density": Quantity(160, "kg/m^3"),
+        "moisture_content": Quantity(14, "percent"),
+    }
+
+    # Expected index (1-based) of the closest fuel class
+    expected_index = 2  # Second fuel class is closest
+
+    result_index = ft.find_closest_fuel_class_by_properties(fuel_model_dict, properties_to_test)
+
+    assert result_index == expected_index
+
+
+def test_find_closest_fuel_class_missing_property_key():
+    """
+    Test that the function raises a KeyError when a property key in properties_to_test
+    is not found in fuel_model_dict.
+    """
+    fuel_model_dict = {
+        "density": Quantity(
+            [
+                100,
+                150,
+            ],
+            "kg/m^3",
+        ),
+    }
+
+    properties_to_test = {
+        "density": Quantity(120, "kg/m^3"),
+        "moisture_content": Quantity(15, "percent"),  # Missing in fuel_model_dict
+    }
+
+    with pytest.raises(KeyError, match="Property 'moisture_content' not found in fuel_model_dict."):
+        ft.find_closest_fuel_class_by_properties(fuel_model_dict, properties_to_test)
+
+
+def test_find_closest_fuel_class_incompatible_units():
+    """
+    Test that the function raises a ValueError when units cannot be converted between
+    fuel_model_dict and properties_to_test.
+    """
+    fuel_model_dict = {
+        "density": Quantity(
+            [
+                100,
+                150,
+            ],
+            "kg/m^3",
+        ),
+    }
+
+    properties_to_test = {
+        "density": Quantity(120, "joule"),  # Incompatible unit
+    }
+
+    with pytest.raises(ValueError, match="Cannot convert units for property 'density'"):
+        ft.find_closest_fuel_class_by_properties(fuel_model_dict, properties_to_test)
+
+
+def test_find_closest_fuel_class_with_weights():
+    """
+    Test that the function correctly identifies the closest fuel class when custom weights are provided.
+    """
+    fuel_model_dict = {
+        "density": Quantity(
+            [
+                100,
+                200,
+            ],
+            "kg/m^3",
+        ),
+        "moisture_content": Quantity(
+            [
+                5,
+                25,
+            ],
+            "percent",
+        ),
+    }
+
+    properties_to_test = {
+        "density": Quantity(125, "kg/m^3"),
+        "moisture_content": Quantity(20, "percent"),
+    }
+
+    # Expected index (1-based) of the closest fuel class
+    expected_index = 2  # Second fuel class is closer when defautl weights are applied
+    result_index = ft.find_closest_fuel_class_by_properties(
+        fuel_model_dict, properties_to_test, weights=None
+    )
+    assert result_index == expected_index
+
+    # Custom weights emphasizing density over moisture_content
+    weights = {
+        "density": 2,
+        "moisture_content": 1,
+    }
+    # Expected index (1-based) of the closest fuel class
+    expected_index = 1  # First fuel class is closer when density is weighted more
+    result_index = ft.find_closest_fuel_class_by_properties(
+        fuel_model_dict, properties_to_test, weights=weights
+    )
+    assert result_index == expected_index
+
+
+def test_find_closest_fuel_class_weights_key_mismatch():
+    """
+    Test that the function raises a ValueError when the weights keys do not match
+    the properties_to_test keys.
+    """
+    fuel_model_dict = {
+        "density": Quantity(
+            [
+                100,
+                200,
+            ],
+            "kg/m^3",
+        ),
+    }
+
+    properties_to_test = {
+        "density": Quantity(150, "kg/m^3"),
+    }
+
+    # Weights key does not match properties_to_test
+    weights = {
+        "moisture_content": 1.0,
+    }
+
+    with pytest.raises(ValueError, match="Weights must have the same keys as properties_to_test."):
+        ft.find_closest_fuel_class_by_properties(fuel_model_dict, properties_to_test, weights=weights)
+
+
+def test_find_closest_fuel_class_zero_magnitude():
+    """
+    Test that the function handles properties with zero magnitude without division by zero errors.
+    """
+    fuel_model_dict = {
+        "density": Quantity(
+            [
+                0,
+                50,
+            ],
+            "kg/m^3",
+        ),
+    }
+
+    properties_to_test = {
+        "density": Quantity(0, "kg/m^3"),
+    }
+
+    # Expected index (1-based)
+    expected_index = 1
+
+    result_index = ft.find_closest_fuel_class_by_properties(fuel_model_dict, properties_to_test)
+
+    assert result_index == expected_index
