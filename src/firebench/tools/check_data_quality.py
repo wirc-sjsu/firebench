@@ -129,7 +129,7 @@ def extract_magnitudes(input_dict):
     Notes
     -----
     If accessing 'value.magnitude' raises an exception, a warning is logged, and the key is kept identical.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     final_input = {}
     for key, value in input_dict.items():
         try:

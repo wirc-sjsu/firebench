@@ -1,10 +1,10 @@
 import numpy as np
 
+from ..tools.input_info import ParameterType
 from ..tools.namespace import StandardVariableNames as svn
 from ..tools.units import ureg
-from ..tools.input_info import ParameterType
-
 from .rate_of_spread_model import RateOfSpreadModel
+from ..tools.logging_config import logger
 
 
 class Rothermel_SFIRE(RateOfSpreadModel):
@@ -33,48 +33,56 @@ class Rothermel_SFIRE(RateOfSpreadModel):
             "units": ureg.kilogram / ureg.meter**2,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "fueldepthm": {
             "std_name": svn.FUEL_HEIGHT,
             "units": ureg.meter,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "fueldens": {
             "std_name": svn.FUEL_DENSITY,
             "units": ureg.pound / ureg.foot**3,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "savr": {
             "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
             "units": 1 / ureg.foot,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "fuelmce": {
             "std_name": svn.FUEL_MOISTURE_EXTINCTION,
             "units": ureg.percent,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "st": {
             "std_name": svn.FUEL_MINERAL_CONTENT_TOTAL,
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "se": {
             "std_name": svn.FUEL_MINERAL_CONTENT_EFFECTIVE,
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "ichap": {
             "std_name": svn.FUEL_CHAPARRAL_FLAG,
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "wind": {
             "std_name": svn.WIND_SPEED,
@@ -244,7 +252,6 @@ class Rothermel_SFIRE(RateOfSpreadModel):
     def compute_ros(
         input_dict: dict[str, float | int | list[float] | list[int]],
         fuel_cat: int = None,
-        **opt,
     ) -> float:
         """
         Compute the rate of spread of fire using Rothermel's model.
@@ -328,34 +335,13 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         ```
 
         """
-        # list properties linked to fuel category
-        fuel_properties_list = [
-            "fgi",
-            "fueldepthm",
-            "fueldens",
-            "savr",
-            "fuelmce",
-            "st",
-            "se",
-            "ichap",
-        ]
-        fuel_properties_dict = {}
-        for var in fuel_properties_list:
-            if fuel_cat is not None:
-                # get the property of the fuel category
-                fuel_properties_dict[var] = input_dict[Rothermel_SFIRE.metadata[var]["std_name"]][
-                    fuel_cat - 1
-                ]
-            else:
-                # get the property from dict
-                fuel_properties_dict[var] = input_dict[Rothermel_SFIRE.metadata[var]["std_name"]]
+        # Prepare fuel properties using the base class method
+        fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
+            input_dict=input_dict, metadata=Rothermel_SFIRE.metadata, fuel_cat=fuel_cat
+        )
 
         return Rothermel_SFIRE.rothermel(
             **fuel_properties_dict,
-            wind=input_dict[svn.WIND_SPEED],
-            slope=input_dict[svn.SLOPE_ANGLE],
-            fmc=input_dict[svn.FUEL_MOISTURE_CONTENT],
-            **opt,
         )
 
 
@@ -390,30 +376,42 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "fgi": {
             "std_name": svn.FUEL_LOAD_DRY_TOTAL,
             "units": ureg.kilogram / ureg.meter**2,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "fueldepthm": {
             "std_name": svn.FUEL_HEIGHT,
             "units": ureg.meter,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "fueldens": {
             "std_name": svn.FUEL_DENSITY,
             "units": ureg.kilogram / ureg.meter**3,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
         },
         "savr": {
             "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
             "units": 1 / ureg.meter,
             "range": (0, np.inf),
             "type": ParameterType.input,
+            "is_fuel_model_variable": True,
+        },
+        "w0": {
+            "std_name": svn.IGNITION_LENGTH,
+            "units": ureg.meter,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 50,
         },
         "wind": {
             "std_name": svn.WIND_SPEED,
@@ -448,6 +446,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         fueldepthm: float,
         fueldens: float,
         savr: float,
+        w0: float,
         wind: float,
         slope: float,
         fmc: float,
@@ -464,6 +463,8 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             Slope angle [degrees].
         fmc : float
             Fuel moisture content [%].
+        w0 : float
+            Ignition line width [m].
 
         Optional Parameters
         -------------------
@@ -492,7 +493,6 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         tol = 1e-4  # tolerance for fixed point method          [-]
         r00 = 2.5e-5  # Model parameter
         chi0 = 0.3  # Radiative factor                          [-]
-        w0 = 50  # Ignition line width                           [m]
         ## Atm
         Ta = 300.0  # Air temperature                           [K]
         rhoa = 1.125  # Air density                             [kg m-3]
@@ -625,28 +625,12 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         float
             The computed rate of spread of fire [m/s].
         """
-        fuel_properties_list = [
-            "dead_fuel_ratio",
-            "fgi",
-            "fueldepthm",
-            "fueldens",
-            "savr",
-        ]
-        fuel_properties_dict = {}
-        for var in fuel_properties_list:
-            if fuel_cat is not None:
-                # get the property of the fuel category
-                fuel_properties_dict[var] = input_dict[Balbi_2022_fixed_SFIRE.metadata[var]["std_name"]][
-                    fuel_cat - 1
-                ]
-            else:
-                # get the property from dict
-                fuel_properties_dict[var] = input_dict[Balbi_2022_fixed_SFIRE.metadata[var]["std_name"]]
+        # Prepare fuel properties using the base class method
+        fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
+            input_dict=input_dict, metadata=Balbi_2022_fixed_SFIRE.metadata, fuel_cat=fuel_cat
+        )
 
         return Balbi_2022_fixed_SFIRE.balbi_2022_fixed(
             **fuel_properties_dict,
-            wind=input_dict[svn.WIND_SPEED],
-            slope=input_dict[svn.SLOPE_ANGLE],
-            fmc=input_dict[svn.FUEL_MOISTURE_CONTENT],
             **opt,
         )
