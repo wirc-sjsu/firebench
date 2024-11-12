@@ -243,15 +243,12 @@ def add_scott_and_burgan_total_savr(fuel_data_dict, overwrite=False):
         svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB,
         svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY,
     ]
-    for key in savr_keys:
-        if key not in fuel_data_dict.keys():
-            raise KeyError(f"Missing required key '{key}' in fuel_data_dict.")
     fuel_load_keys = [
         svn.FUEL_LOAD_DRY_1H,
         svn.FUEL_LOAD_DRY_LIVE_HERB,
         svn.FUEL_LOAD_DRY_LIVE_WOODY,
     ]
-    for key in fuel_load_keys:
+    for key in savr_keys + fuel_load_keys:
         if key not in fuel_data_dict.keys():
             raise KeyError(f"Missing required key '{key}' in fuel_data_dict.")
 
