@@ -134,8 +134,8 @@ def extract_magnitudes(input_dict):
     for key, value in input_dict.items():
         try:
             final_input[key] = value.magnitude
-        except Exception as e:
-            logger.warning(f"Failed to get magnitude for key '{key}': {e}")
+        except (AttributeError, TypeError, ValueError) as e:
+            logger.warning("Failed to get magnitude for key '%s': %s", key, e)
             final_input[key] = value
     return final_input
 

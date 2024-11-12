@@ -4,7 +4,6 @@ from ..tools.input_info import ParameterType
 from ..tools.namespace import StandardVariableNames as svn
 from ..tools.units import ureg
 from .rate_of_spread_model import RateOfSpreadModel
-from ..tools.logging_config import logger
 
 
 class Rothermel_SFIRE(RateOfSpreadModel):
@@ -252,6 +251,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
     def compute_ros(
         input_dict: dict[str, float | int | list[float] | list[int]],
         fuel_cat: int = None,
+        **opt,
     ) -> float:
         """
         Compute the rate of spread of fire using Rothermel's model.
@@ -601,7 +601,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
     @staticmethod
     def compute_ros(
-        input_dict: dict[str, list[float]],
+        input_dict: dict[str, float | int | list[float] | list[int]],
         fuel_cat: int = None,
         **opt,
     ) -> float:
@@ -612,7 +612,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
         Parameters
         ----------
-        input_dict : dict[str, list[float]]
+        input_dict : dict[str, float | int | list[float] | list[int]]
             Dictionary containing the input data for various fuel properties.
 
         Optional Parameters

@@ -150,7 +150,7 @@ def add_scott_and_burgan_total_fuel_load(fuel_data_dict, overwrite=False):
             raise ValueError(
                 f"Key '{total_key}' already exists in fuel_data_dict. Use overwrite=True to overwrite it."
             )
-        logger.info(f"Key '{total_key}' exists and will be overwritten.")
+        logger.info("Key '%s' exists and will be overwritten.", total_key)
 
     # List of individual fuel load keys to sum
     individual_keys = [
@@ -235,7 +235,7 @@ def add_scott_and_burgan_total_savr(fuel_data_dict, overwrite=False):
             raise ValueError(
                 f"Key '{total_key}' already exists in fuel_data_dict. Use overwrite=True to overwrite it."
             )
-        logger.info(f"Key '{total_key}' exists and will be overwritten.")
+        logger.info("Key '%s' exists and will be overwritten.", total_key)
 
     # Lists of fuel load and SAVR keys
     savr_keys = [

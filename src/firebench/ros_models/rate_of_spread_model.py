@@ -13,7 +13,7 @@ class RateOfSpreadModel:
     metadata = {}
 
     @staticmethod
-    def compute_ros(input_dict: dict[str, list[float]], **opt) -> float:
+    def compute_ros(input_dict: dict[str, float | int | list[float] | list[int]], **opt) -> float:
         """
         Compute the rate of spread of fire using the specific model.
 
@@ -21,7 +21,7 @@ class RateOfSpreadModel:
 
         Parameters
         ----------
-        input_dict : dict[str, list[float]]
+        input_dict : dict[str, float | int | list[float] | list[int]]
             Dictionary containing the input data for various fuel properties.
 
         Optional Parameters
@@ -65,13 +65,12 @@ class RateOfSpreadModel:
             # Get value from input dict
             try:
                 value = input_dict[key]
-            except KeyError:
+            except KeyError as exc:
                 if var_info.get("type") == ParameterType.optional:
-                    logger.info(f"{key} not found in input. Using default value.")
+                    logger.info("%s not found in input. Using default value.", key)
                     fuel_properties_dict[var] = var_info["default"]
                     continue
-                else:
-                    raise KeyError(f"Mandatory key '{key}' not found in input_dict.")
+                raise KeyError(f"Mandatory key '{key}' not found in input_dict.") from exc
 
             # Check if fuel model variables need to be extracted
             if var_info.get("is_fuel_model_variable", False) and fuel_cat is not None:
