@@ -14,7 +14,7 @@ def find_closest_fuel_class_by_properties(
     Find the fuel class index that has the closest properties to the given set of properties.
 
     This function compares a set of fuel classes defined in `fuel_model_dict` with a target set of properties
-    provided in `properties_to_test`. It calculates a weighted Euclidean distance between the properties of each
+    provided in `properties_to_test`. It calculates a weighted L1 distance between the properties of each
     fuel class and the target properties, returning the index (1-based) of the fuel class that is closest.
 
     Parameters
@@ -83,7 +83,7 @@ def find_closest_fuel_class_by_properties(
         weight = weights[prop_key]
         for class_index in range(nb_fuel_classes):
             distances[idx, class_index] = weight * (
-                (fuel_model_converted[prop_key][class_index].magnitude - target_magnitude) ** 2
+                abs(fuel_model_converted[prop_key][class_index].magnitude - target_magnitude)
             )
 
     # Return the one-based index of the fuel class with the minimum total distance
