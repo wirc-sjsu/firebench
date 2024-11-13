@@ -1,9 +1,8 @@
 import numpy as np
 
 from ..tools.namespace import StandardVariableNames as svn
+from ..tools.rate_of_spread_model import RateOfSpreadModel
 from ..tools.units import ureg
-
-from .rate_of_spread_model import RateOfSpreadModel
 
 
 class Hamada_1(RateOfSpreadModel):

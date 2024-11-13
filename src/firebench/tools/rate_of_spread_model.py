@@ -1,5 +1,5 @@
-from ..tools.logging_config import logger
-from ..tools.input_info import ParameterType
+from .logging_config import logger
+from .input_info import ParameterType
 
 
 class RateOfSpreadModel:

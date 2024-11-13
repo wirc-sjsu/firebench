@@ -1,7 +1,7 @@
 import numpy as np
 from pint import Quantity
 
-from ..ros_models import RateOfSpreadModel
+from .rate_of_spread_model import RateOfSpreadModel
 from .input_info import ParameterType
 from .logging_config import logger
 

@@ -2,8 +2,8 @@ import numpy as np
 
 from ..tools.input_info import ParameterType
 from ..tools.namespace import StandardVariableNames as svn
+from ..tools.rate_of_spread_model import RateOfSpreadModel
 from ..tools.units import ureg
-from .rate_of_spread_model import RateOfSpreadModel
 
 
 class Rothermel_SFIRE(RateOfSpreadModel):
