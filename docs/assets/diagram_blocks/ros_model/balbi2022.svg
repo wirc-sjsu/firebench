@@ -3,8 +3,8 @@
 
 <svg
    width="70.997375mm"
-   height="89.66806mm"
-   viewBox="0 0 70.997375 89.66806"
+   height="83.847618mm"
+   viewBox="0 0 70.997375 83.847618"
    version="1.1"
    id="svg5"
    inkscape:version="1.2.1 (9c6d41e, 2022-07-14)"
@@ -28,7 +28,7 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.6819304"
-     inkscape:cx="94.236955"
+     inkscape:cx="41.02429"
      inkscape:cy="163.79988"
      inkscape:window-width="1470"
      inkscape:window-height="891"
@@ -42,15 +42,15 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-73.727208,-57.486964)">
+     transform="translate(-73.727208,-57.486965)">
     <rect
-       style="fill:#f4d7d7;stroke:#000000;stroke-width:0.321109"
+       style="fill:#f4d7d7;stroke:#000000;stroke-width:0.310517"
        id="rect234"
-       width="70.577789"
-       height="89.346954"
-       x="73.887772"
-       y="57.647518"
-       ry="1.311588" />
+       width="70.588379"
+       height="83.537102"
+       x="73.882477"
+       y="57.642223"
+       ry="1.2263011" />
     <text
        xml:space="preserve"
        style="font-size:3.175px;fill:#000000;stroke:none;stroke-width:0.264999"
@@ -141,7 +141,7 @@
        transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,137.02608,62.913569)" />
     <g
        id="g839"
-       transform="translate(9.2918086e-6,-0.25707922)">
+       transform="translate(9.2918086e-6,-0.23914966)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -174,7 +174,7 @@
     </g>
     <g
        id="g844"
-       transform="translate(9.2918086e-6,-0.50781079)">
+       transform="translate(9.2918086e-6,-0.47195167)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.264999"
@@ -207,7 +207,7 @@
     </g>
     <g
        id="g849"
-       transform="translate(9.2918086e-6,-0.35262042)">
+       transform="translate(9.2918086e-6,-0.29883174)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -240,7 +240,7 @@
     </g>
     <g
        id="g854"
-       transform="translate(9.2918086e-6,-0.60970727)">
+       transform="translate(9.2918086e-6,-0.53798904)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -273,7 +273,7 @@
     </g>
     <g
        id="g865"
-       transform="translate(9.2918086e-6,-0.76852547)">
+       transform="translate(9.2918086e-6,-0.66094812)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -306,7 +306,7 @@
     </g>
     <g
        id="g870"
-       transform="translate(9.2918086e-6,-0.5752339)">
+       transform="translate(9.2918086e-6,-0.44972699)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -338,41 +338,8 @@
          transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,101.91068)" />
     </g>
     <g
-       id="g875"
-       transform="translate(9.2918086e-6,-0.42004234)">
-      <text
-         xml:space="preserve"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
-         x="76.688904"
-         y="116.90459"
-         id="text664"><tspan
-           sodipodi:role="line"
-           id="tspan662"
-           style="stroke-width:0.265"
-           x="76.688904"
-           y="116.90459">fire ignition line length [m]</tspan></text>
-      <path
-         sodipodi:type="star"
-         style="fill:#008000;stroke:none;stroke-width:0.264999"
-         id="path1906-8-9"
-         inkscape:flatsided="false"
-         sodipodi:sides="3"
-         sodipodi:cx="29.254669"
-         sodipodi:cy="42.491577"
-         sodipodi:r1="5.8964772"
-         sodipodi:r2="2.9482386"
-         sodipodi:arg1="-0.018865686"
-         sodipodi:arg2="1.0283319"
-         inkscape:rounded="0"
-         inkscape:randomized="0"
-         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
-         inkscape:transform-center-x="-0.32434232"
-         inkscape:transform-center-y="-0.011150072"
-         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,107.22423)" />
-    </g>
-    <g
        id="g880"
-       transform="translate(9.2918086e-6,-0.63902036)">
+       transform="translate(9.2918086e-6,-6.0024054)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -405,7 +372,7 @@
     </g>
     <g
        id="g885"
-       transform="translate(9.2918086e-6,-0.48382236)">
+       transform="translate(9.2918086e-6,-5.8292779)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -438,7 +405,7 @@
     </g>
     <g
        id="g891"
-       transform="translate(9.2918086e-6,-0.32864073)">
+       transform="translate(9.2918086e-6,-5.6561667)">
       <g
          id="g792"
          transform="translate(0,5.8208336)">
@@ -475,7 +442,7 @@
     </g>
     <g
        id="g548"
-       transform="translate(-0.13047471,0.52916663)">
+       transform="translate(-0.13047471,-4.7625002)">
       <text
          xml:space="preserve"
          style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.264999"
@@ -507,7 +474,8 @@
          transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.257668,133.79004)" />
     </g>
     <g
-       id="g362">
+       id="g362"
+       transform="translate(0,-5.3095902)">
       <text
          xml:space="preserve"
          style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.264999"
@@ -540,7 +508,7 @@
     </g>
     <g
        id="g860"
-       transform="translate(2.8908253e-6,-0.52250633)">
+       transform="translate(2.8908253e-6,-0.43285854)">
       <g
          id="g792-9"
          transform="translate(6.4009833e-6,-26.91193)">
