@@ -10,9 +10,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.3.0.alpha] - 2024 / -- / --
+## [0.3.0a1] - 2024 / -- / --
 ### Added
-- Scott and Burgan 40 fuel model
+- `ScottandBurgan40` fuel model
+- Scott and Burgan utility function
+  - `add_scott_and_burgan_total_fuel_load`: aggregate the fuel load per element size to the total fuel load
+  - `add_scott_and_burgan_total_savr`: calculate the total surface area to volume ratio as weighted average of the savr of the fuel elements described in SB40.
+- Fuel model utility functions:
+  - `find_closest_fuel_class_by_properties`: retrieve the fuel class having the closest properties to a target set of properties.
+- Wind reduction factor functions
+  - `use_wind_reduction_factor` from value, fuel model dictionary, or list
+  - `Baughman_20ft_wind_reduction_factor_unsheltered` from Baughman, R. G., & Albini, F. A. (1980) 
+  - `Baughman_generalized_wind_reduction_factor_unsheltered`: Generalized wind reduction factor derived from Albini (1979)
+
+### Changed
+- External management of wind reduction factor (no more present in rate of spread models)
+
+### Documentation
+- Add Fire Models information and Dataset and fire experiment information sections
+- Add pages for:
+  - Rothermel_SFIRE
+  - Balbi_2022_fixed_SFIRE
+  - Anderson13
+  - ScottandBurgan40
+  - Wind reduction factor methods
 
 ## [0.2.0] - 2024 / 10 / 17
 ### Added

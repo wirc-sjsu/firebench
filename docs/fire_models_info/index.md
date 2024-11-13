@@ -10,6 +10,7 @@ This section provides information on models used in the `FireBench`project.
 The models are grouped by type:
 - Fuel models
 - Rate of spread models
+- Wind reduction factor
 - Uncoupled fire speard models
 - Coupled atmosphere fire models
 

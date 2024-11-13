@@ -120,7 +120,7 @@ for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
     sobol_indices[i, 3, :] = sobol_results["ST_conf"]
 
 # Assign unit to ROS
-ros_quantity = ureg.Quantity(ros, ros_model.metadata["output_rate_of_spread"]["units"])
+ros_quantity = ureg.Quantity(ros, ros_model.metadata["rate_of_spread"]["units"])
 # convert to user defined output unit
 ros_quantity = ureg.Quantity(ros_quantity, output_ros_unit)
 
