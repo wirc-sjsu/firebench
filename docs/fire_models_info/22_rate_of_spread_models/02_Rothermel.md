@@ -89,6 +89,44 @@ It also uses the wind reduction factor from Anderson fuel model.
     </em>
 </p>
 
+An example of use of Anderson fuel model with Rothermel_SFIRE:
+```python
+import firebench as fb
+
+# Define constant values as fb.Quantity (not pint.Quantity that does not share the same unit registry)
+wind_speed_20ft = fb.Quantity(3.0, "m/s")
+fuel_moisture = fb.Quantity(12, "percent")
+slope = fb.Quantity(0, "degree")
+fuel_class = 3  # one based index of the fuel class
+
+# Select the rate of spread model class
+ros_model = fb.ros_models.Rothermel_SFIRE
+
+# Import Anderson data
+fuel_data = fb.tools.read_fuel_data_file("Anderson13")
+
+# Use wind reduction factor from fuel model
+wind_speed_midflame = fb.wind_interpolation.apply_wind_reduction_factor(
+    wind_speed_20ft, fuel_dict=fuel_data, fuel_cat=fuel_class
+)
+
+# Merge the fuel dict and the constant inputs
+input_dict = fb.tools.merge_dictionaries(
+    {
+        fb.svn.WIND_SPEED: wind_speed_midflame,
+        fb.svn.FUEL_MOISTURE_CONTENT: fuel_moisture,
+        fb.svn.SLOPE_ANGLE: slope,
+    },
+    fuel_data,
+)
+
+# perform checks, conversion and magnitude extraction
+final_input = fb.tools.check_data_quality_ros_model(input_dict, ros_model)
+
+# compute the rate of spread
+ros = ros_model.compute_ros(final_input, fuel_cat=fuel_class)
+```
+
 ### Use with Scott and Burgan fuel model
 
 
