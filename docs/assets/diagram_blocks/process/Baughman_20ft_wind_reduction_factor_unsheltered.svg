@@ -2,13 +2,13 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="102.46607mm"
-   height="29.734945mm"
-   viewBox="0 0 102.46607 29.734946"
+   width="110.79568mm"
+   height="29.734943mm"
+   viewBox="0 0 110.79567 29.734944"
    version="1.1"
    id="svg5"
    inkscape:version="1.2.1 (9c6d41e, 2022-07-14)"
-   sodipodi:docname="Baughman_20ft_wind_reduction_factor.svg"
+   sodipodi:docname="Baughman_20ft_wind_reduction_factor_unsheltered.svg"
    inkscape:export-filename="rothermel.png"
    inkscape:export-xdpi="96"
    inkscape:export-ydpi="96"
@@ -28,12 +28,12 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.6517384"
-     inkscape:cx="164.67499"
-     inkscape:cy="172.24277"
+     inkscape:cx="250.64502"
+     inkscape:cy="155.89636"
      inkscape:window-width="1470"
      inkscape:window-height="891"
      inkscape:window-x="1285"
-     inkscape:window-y="521"
+     inkscape:window-y="493"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1" />
   <defs
@@ -42,15 +42,15 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-0.50988165,-0.98059342)">
+     transform="translate(-0.50988176,-0.98059352)">
     <rect
-       style="fill:#f4e3d7;stroke:#000000;stroke-width:0.222127"
+       style="fill:#f4e3d7;stroke:#000000;stroke-width:0.230954"
        id="rect234"
-       width="102.24394"
-       height="29.512817"
-       x="0.62094516"
-       y="1.0916569"
-       ry="0.43323982" />
+       width="110.56472"
+       height="29.50399"
+       x="0.62535876"
+       y="1.0960705"
+       ry="0.43311024" />
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#784421;stroke:none;stroke-width:0.264999"
@@ -64,7 +64,7 @@
          y="4.7842746">BAUGHMAN 20FT WIND REDUCTION FACTOR UNSHELTERED</tspan></text>
     <g
        id="g1765"
-       transform="translate(-34.256615,-56.396894)">
+       transform="translate(-25.92701,-56.396894)">
       <g
          id="g1890"
          transform="translate(-7.3935382,-4.4046611)">
@@ -78,7 +78,7 @@
              id="tspan682"
              style="text-align:end;text-anchor:end;stroke-width:0.265"
              x="140.86482"
-             y="72.568466">average wind speed over flame height[L T-1]</tspan></text>
+             y="72.568466">wrf for average wind speed over flame height [L T-1]</tspan></text>
         <path
            sodipodi:type="star"
            style="fill:#d40000;stroke:none;stroke-width:0.264999"
@@ -232,8 +232,8 @@
          transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.084134,74.557559)" />
     </g>
     <path
-       style="fill:#333333;stroke:#000000;stroke-width:0.424114;stroke-dasharray:none"
-       d="M 0.66861311,6.5935807 102.79504,6.5622545"
+       style="fill:#333333;stroke:#000000;stroke-width:0.440968;stroke-dasharray:none"
+       d="M 0.67690601,6.5963487 111.11455,6.5650319"
        id="path2362"
        sodipodi:nodetypes="cc" />
   </g>

@@ -28,14 +28,14 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.6517384"
-     inkscape:cx="208.26543"
-     inkscape:cy="154.68551"
+     inkscape:cx="158.31805"
+     inkscape:cy="155.29093"
      inkscape:window-width="1470"
      inkscape:window-height="891"
      inkscape:window-x="1316"
-     inkscape:window-y="521"
+     inkscape:window-y="493"
      inkscape:window-maximized="0"
-     inkscape:current-layer="layer1" />
+     inkscape:current-layer="g1890" />
   <defs
      id="defs2" />
   <g
@@ -111,7 +111,7 @@
              id="tspan682"
              style="text-align:end;text-anchor:end;stroke-width:0.265"
              x="140.86482"
-             y="72.568466">average wind speed over flame height[L T-1]</tspan></text>
+             y="72.568466">wrf for average wind speed over flame height [L T-1]</tspan></text>
         <path
            sodipodi:type="star"
            style="fill:#d40000;stroke:none;stroke-width:0.264999"
