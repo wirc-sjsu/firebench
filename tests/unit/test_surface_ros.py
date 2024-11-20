@@ -25,7 +25,6 @@ sample_metadata = {
     "fm_var_1": {
         "std_name": "svn_var_1",
         "type": ParameterType.input,
-        "is_fuel_model_variable": True,
     },
     "var_2": {
         "std_name": "svn_var_2",
@@ -34,7 +33,6 @@ sample_metadata = {
     "fm_var_3": {
         "std_name": "svn_var_3",
         "type": ParameterType.optional,
-        "is_fuel_model_variable": True,
         "default": 1,
     },
     "var_4": {
