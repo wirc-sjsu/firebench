@@ -33,7 +33,8 @@ def test_extract_magnitudes_no_quantities(caplog):
         "description": "ten meters",
     }
     expected_output = input_dict.copy()
-    with caplog.at_level(ft.logging.WARNING):
+    ft.set_logging_level(ft.logging.INFO)
+    with caplog.at_level(ft.logging.INFO):
         result = ft.extract_magnitudes(input_dict)
         assert result == expected_output
         # Verify that warnings are logged

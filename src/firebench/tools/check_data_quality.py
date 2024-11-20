@@ -135,7 +135,7 @@ def extract_magnitudes(input_dict):
         try:
             final_input[key] = value.magnitude
         except (AttributeError, TypeError, ValueError) as e:
-            logger.warning("Failed to get magnitude for key '%s': %s", key, e)
+            logger.info("Failed to get magnitude for key '%s': %s", key, e)
             final_input[key] = value
     return final_input
 

@@ -10,9 +10,15 @@ class TestRateOfSpreadModel(RateOfSpreadModel):
 
 
 # Test cases
-def test_base_class_not_implemented():
+def test_base_class_not_implemented_compute_ros():
     with pytest.raises(NotImplementedError):
         RateOfSpreadModel.compute_ros({})
+
+
+# Test cases
+def test_base_class_not_implemented_compute_ros_with_units():
+    with pytest.raises(NotImplementedError):
+        RateOfSpreadModel.compute_ros_with_units({})
 
 
 def test_subclass_implementation():

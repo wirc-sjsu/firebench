@@ -1,7 +1,8 @@
 import firebench.ros_models as rm
 import numpy as np
 import pytest
-from firebench import svn
+from firebench import Quantity, svn
+
 
 ## Rothermel
 @pytest.mark.parametrize(
@@ -69,6 +70,51 @@ def test_compute_ros_regression_rothermel(
 def test_compute_ros_rothermel(input_dict, expected_ros):
     ros = rm.Rothermel_SFIRE.compute_ros(input_dict, fuel_cat=input_dict["fuel_cat"])
     assert np.isclose(ros, expected_ros, atol=1e-4)
+
+
+@pytest.mark.parametrize(
+    "input_dict, expected_ros",
+    [
+        (
+            {
+                svn.FUEL_LOAD_DRY_TOTAL: Quantity(0.5, "kg/m^2"),
+                svn.FUEL_HEIGHT: Quantity(1.0, "m"),
+                svn.FUEL_DENSITY: Quantity(32.0, "lb/ft^3"),
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: Quantity(1500.0, "1/ft"),
+                svn.FUEL_MOISTURE_EXTINCTION: Quantity(20.0, "percent"),
+                svn.FUEL_MINERAL_CONTENT_TOTAL: Quantity(0.0555, "dimensionless"),
+                svn.FUEL_MINERAL_CONTENT_EFFECTIVE: Quantity(0.01, "dimensionless"),
+                svn.FUEL_CHAPARRAL_FLAG: Quantity(0, "dimensionless"),
+                svn.WIND_SPEED: Quantity(1.0, "m/s"),
+                svn.SLOPE_ANGLE: Quantity(0.0, "degree"),
+                svn.FUEL_MOISTURE_CONTENT: Quantity(10.0, "percent"),
+                "fuel_cat": None,
+            },
+            Quantity(0.436663860541543, "m/s"),  # Expected ROS value (adjust this to the expected value)
+        ),
+        (
+            {
+                svn.FUEL_LOAD_DRY_TOTAL: Quantity([0.5], "kg/m^2"),
+                svn.FUEL_HEIGHT: Quantity([1.0], "m"),
+                svn.FUEL_DENSITY: Quantity([32.0], "lb/ft^3"),
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: Quantity([1500.0], "1/ft"),
+                svn.FUEL_MOISTURE_EXTINCTION: Quantity([20.0], "percent"),
+                svn.FUEL_MINERAL_CONTENT_TOTAL: Quantity([0.0555], "dimensionless"),
+                svn.FUEL_MINERAL_CONTENT_EFFECTIVE: Quantity([0.01], "dimensionless"),
+                svn.FUEL_CHAPARRAL_FLAG: Quantity([0], "dimensionless"),
+                svn.WIND_SPEED: Quantity([1.0], "m/s"),
+                svn.SLOPE_ANGLE: Quantity([0.0], "degree"),
+                svn.FUEL_MOISTURE_CONTENT: Quantity([10.0], "percent"),
+                "fuel_cat": 1,
+            },
+            Quantity(0.436663860541543, "m/s"),  # Expected ROS value (adjust this to the expected value)
+        ),
+        # Add more test cases as needed
+    ],
+)
+def test_compute_ros_with_units_rothermel(input_dict, expected_ros):
+    ros = rm.Rothermel_SFIRE.compute_ros_with_units(input_dict, fuel_cat=input_dict["fuel_cat"])
+    assert np.isclose(ros.magnitude, expected_ros.magnitude, atol=1e-4)
 
 
 ## Balbi

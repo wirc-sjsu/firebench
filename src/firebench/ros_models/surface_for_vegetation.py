@@ -1,5 +1,6 @@
 import numpy as np
 
+from ..tools.check_data_quality import extract_magnitudes
 from ..tools.input_info import ParameterType
 from ..tools.namespace import StandardVariableNames as svn
 from ..tools.rate_of_spread_model import RateOfSpreadModel
@@ -242,15 +243,15 @@ class Rothermel_SFIRE(RateOfSpreadModel):
     @staticmethod
     def compute_ros(
         input_dict: dict[str, float | int | list[float] | list[int]],
-        fuel_cat: int = None,
+        fuel_cat: int = 0,
         **opt,
     ) -> float:
         """
-        Compute the rate of spread of fire using Rothermel's model.
+        Compute the rate of spread of fire using `Rothermel`'s model.
 
-        This function serves as a wrapper that prepares the fuel data dictionary and calls the `rothermel` method.
-        It extracts the necessary fuel properties from `input_dict`, optionally selecting a specific fuel category,
-        and computes the rate of spread (ROS) of the fire.
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the ROS. Input data must be provided in standard units without `pint.Quantity` objects.
+        For unit-aware calculations, use `compute_ros_with_units`.
 
         Parameters
         ----------
@@ -270,18 +271,13 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         Returns
         -------
         float
-            The computed rate of spread of fire [m/s].
+            The computed rate of spread of fire.
 
         Notes
         -----
         - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
           When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-        - This function assumes that all necessary error handling (such as checking for missing keys,
-          valid indices, or correct data types) has been performed prior to calling it.
-        - The function expects that the keys in `input_dict` correspond to the standard variable names
-          defined in `Rothermel_SFIRE.metadata` for each fuel property.
-        - The `rothermel` method computes the rate of spread using the provided fuel properties,
-          wind speed (`wind`), slope angle (`slope`), and fuel moisture content (`fmc`).
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), compliant with units specified in the metadata dictionary.
 
         Examples
         --------
@@ -302,7 +298,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
             svn.FUEL_MOISTURE_CONTENT: 10.0,
         }
         ros = Rothermel_SFIRE.compute_ros(input_data)
-        print(f"The rate of spread is {ros:.4f} m/s")
+        print(f"The rate of spread is {ros:.4f}")
         ```
 
         **Example with fuel categories:**
@@ -323,17 +319,56 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         }
         fuel_category = 2  # One-based index
         ros = Rothermel_SFIRE.compute_ros(input_data, fuel_cat=fuel_category)
-        print(f"The rate of spread for fuel category {fuel_category} is {ros:.4f} m/s")
+        print(f"The rate of spread for fuel category {fuel_category} is {ros:.4f}")
         ```
-
-        """
+        """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
-        fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
+        fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
             input_dict=input_dict, metadata=Rothermel_SFIRE.metadata, fuel_cat=fuel_cat
         )
 
-        return Rothermel_SFIRE.rothermel(
-            **fuel_properties_dict,
+        # Calculate the rate of spread
+        return Rothermel_SFIRE.rothermel(**fuel_properties)
+
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int]],
+        fuel_cat: int = 0,
+        **opt,
+    ):
+        """
+        Compute the rate of spread (ROS) of fire using Rothermel's model with unit handling.
+
+        This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
+        computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
+            Keys should match the variable names defined in `Rothermel_SFIRE.metadata`.
+
+        fuel_cat : int, optional
+            One-based index for selecting a specific fuel category from lists in `input_dict`.
+            Defaults to 0, indicating scalar inputs.
+
+        **opt : dict
+            Additional optional parameters passed to `compute_ros`.
+
+        Returns
+        -------
+        ureg.Quantity
+            Computed rate of spread (ROS) with units (e.g., meters per second).
+
+        Notes
+        -----
+        - Use this function when working with `pint.Quantity` objects in `input_dict`.
+        - Units for the ROS are defined in `Rothermel_SFIRE.metadata["rate_of_spread"]["units"]`.
+        """  # pylint: disable=line-too-long
+        input_dict_no_units = extract_magnitudes(input_dict)
+
+        return ureg.Quantity(
+            Rothermel_SFIRE.compute_ros(input_dict_no_units, fuel_cat, **opt),
+            Rothermel_SFIRE.metadata["rate_of_spread"]["units"],
         )
 
 
@@ -589,7 +624,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
     @staticmethod
     def compute_ros(
         input_dict: dict[str, float | int | list[float] | list[int]],
-        fuel_cat: int = None,
+        fuel_cat: int = 0,
         **opt,
     ) -> float:
         """
