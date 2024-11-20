@@ -148,40 +148,11 @@ def test_Baughman_wrf_unsheltered_list():
     assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
 
 
-def test_Baughman_wrf_unsheltered_fuel_dict_and_fuelcat():
-    flame_height = 6.0
-    fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
-    fuel_cat = 2
-    veg_height = fuel_dict[svn.FUEL_HEIGHT][fuel_cat - 1]
-    expected_wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(
-        flame_height, veg_height
-    )
-
-    result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
-        flame_height=flame_height, fuel_dict=fuel_dict, fuel_cat=fuel_cat
-    )
-    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
-
-
-def test_Baughman_wrf_unsheltered_fuel_dict():
-    flame_height = 6.0
-    fuel_dict = {svn.FUEL_HEIGHT: 2.0}
-    veg_height = fuel_dict[svn.FUEL_HEIGHT]
-    expected_wrf = fwi.wind_reduction_factor.__Baughman_20ft_wind_reduction_factor_unsheltered(
-        flame_height, veg_height
-    )
-
-    result = fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
-        flame_height=flame_height, fuel_dict=fuel_dict
-    )
-    assert np.isclose(result, expected_wrf), f"Expected {expected_wrf}, got {result}"
-
-
 def test_Baughman_wrf_unsheltered_missing_fuel_cat_with_list():
     flame_height = 6.0
     vegetation_heights = [1.5, 2.0, 2.5]
 
-    with pytest.raises(ValueError, match="fuel_cat must be provided when vegetation_height is a list."):
+    with pytest.raises(ValueError, match="category_index must be an integer greater than or equal to 1."):
         fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
             flame_height=flame_height, vegetation_height=vegetation_heights
         )
@@ -191,50 +162,12 @@ def test_Baughman_wrf_unsheltered_invalid_fuel_cat_with_list():
     flame_height = 6.0
     vegetation_heights = [1.5, 2.0, 2.5]
     fuel_cat = 5  # Index out of range
+    expected_message = f"One-based index {fuel_cat} not found in {vegetation_heights}."
 
-    with pytest.raises(
-        IndexError, match=f"Fuel category {fuel_cat-1} not found in vegetation_height array."
-    ):
+    with pytest.raises(IndexError, match=re.escape(expected_message)):
         fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
             flame_height=flame_height, vegetation_height=vegetation_heights, fuel_cat=fuel_cat
         )
-
-
-def test_Baughman_wrf_unsheltered_fuel_dict_wrong_key_fuel_cat():
-    flame_height = 6.0
-    fuel_dict = {"other_key": [1.5, 2.0, 2.5]}
-    fuel_cat = 2
-
-    with pytest.raises(KeyError, match=f"Key {svn.FUEL_HEIGHT} not found in fuel_dict."):
-        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
-            flame_height=flame_height, fuel_dict=fuel_dict, fuel_cat=fuel_cat
-        )
-
-
-def test_Baughman_wrf_unsheltered_invalid_fuel_cat_with_fuel_dict():
-    flame_height = 6.0
-    fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
-    fuel_cat = 5  # Index out of range
-
-    with pytest.raises(IndexError, match=f"Fuel category {fuel_cat-1} not found in fuel_dict."):
-        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(
-            flame_height=flame_height, fuel_dict=fuel_dict, fuel_cat=fuel_cat
-        )
-
-
-def test_Baughman_wrf_unsheltered_fuel_dict_wrong_key():
-    flame_height = 6.0
-    fuel_dict = {"other_key": 2.0}
-
-    with pytest.raises(KeyError, match=f"Key {svn.FUEL_HEIGHT} not found in fuel_dict."):
-        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(flame_height=flame_height, fuel_dict=fuel_dict)
-
-
-def test_Baughman_wrf_unsheltered_insufficient_parameters():
-    flame_height = 6.0
-
-    with pytest.raises(ValueError, match="Insufficient parameters provided"):
-        fwi.Baughman_20ft_wind_reduction_factor_unsheltered(flame_height=flame_height)
 
 
 ## Baughman_20ft_wrf_unsheltered validation
