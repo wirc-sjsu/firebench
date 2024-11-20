@@ -173,7 +173,4 @@ def check_data_quality_ros_model(input_dict: dict[str, Quantity], ros_model: Rat
     # Validity range check
     check_validity_range(input_converted, ros_model.metadata)
 
-    # Create final input dictionary with magnitudes
-    final_input = extract_magnitudes(input_converted)
-
-    return final_input
+    return input_converted
