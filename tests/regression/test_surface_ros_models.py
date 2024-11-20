@@ -102,9 +102,9 @@ def test_compute_ros_rothermel(input_dict, expected_ros):
                 svn.FUEL_MINERAL_CONTENT_TOTAL: Quantity([0.0555], "dimensionless"),
                 svn.FUEL_MINERAL_CONTENT_EFFECTIVE: Quantity([0.01], "dimensionless"),
                 svn.FUEL_CHAPARRAL_FLAG: Quantity([0], "dimensionless"),
-                svn.WIND_SPEED: Quantity([1.0], "m/s"),
-                svn.SLOPE_ANGLE: Quantity([0.0], "degree"),
-                svn.FUEL_MOISTURE_CONTENT: Quantity([10.0], "percent"),
+                svn.WIND_SPEED: Quantity(1.0, "m/s"),
+                svn.SLOPE_ANGLE: Quantity(0.0, "degree"),
+                svn.FUEL_MOISTURE_CONTENT: Quantity(10.0, "percent"),
                 "fuel_cat": 1,
             },
             Quantity(0.436663860541543, "m/s"),  # Expected ROS value (adjust this to the expected value)
@@ -172,6 +172,65 @@ def test_compute_ros_balbi(input_dict, expected_ros):
     assert np.isclose(ros, expected_ros, atol=1e-4)
     ros = rm.Balbi_2022_fixed_SFIRE.compute_ros(input_dict, fuel_cat=input_dict["fuel_cat"], max_ite=1)
     assert ros == 0
+
+
+## Balbi
+@pytest.mark.parametrize(
+    "input_dict, expected_ros",
+    [
+        (
+            {
+                svn.FUEL_LOAD_DEAD_RATIO: Quantity(0.8, "dimensionless"),
+                svn.FUEL_LOAD_DRY_TOTAL: Quantity(1, "kg/m^2"),
+                svn.FUEL_HEIGHT: Quantity(1.0, "m"),
+                svn.FUEL_DENSITY: Quantity(300.0, "kg/m^3"),
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: Quantity(4500.0, "1/m"),
+                svn.WIND_SPEED: Quantity(1.0, "m/s"),
+                svn.SLOPE_ANGLE: Quantity(0.0, "degree"),
+                svn.FUEL_MOISTURE_CONTENT: Quantity(10.0, "percent"),
+                "fuel_cat": None,
+            },
+            Quantity(0.4441852112687365, "m/s"),  # Expected ROS value (adjust this to the expected value)
+        ),
+        (
+            {
+                svn.FUEL_LOAD_DEAD_RATIO: Quantity([0.8], "dimensionless"),
+                svn.FUEL_LOAD_DRY_TOTAL: Quantity([1], "kg/m^2"),
+                svn.FUEL_HEIGHT: Quantity([1.0], "m"),
+                svn.FUEL_DENSITY: Quantity([300.0], "kg/m^3"),
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: Quantity([4500.0], "1/m"),
+                svn.WIND_SPEED: Quantity(1.0, "m/s"),
+                svn.SLOPE_ANGLE: Quantity(0.0, "degree"),
+                svn.FUEL_MOISTURE_CONTENT: Quantity(10.0, "percent"),
+                "fuel_cat": 1,
+            },
+            Quantity(0.4441852112687365, "m/s"),  # Expected ROS value (adjust this to the expected value)
+        ),
+        (
+            {
+                svn.FUEL_LOAD_DEAD_RATIO: Quantity([0.8], "dimensionless"),
+                svn.FUEL_LOAD_DRY_TOTAL: Quantity([1], "kg/m^2"),
+                svn.FUEL_HEIGHT: Quantity([1.0], "m"),
+                svn.FUEL_DENSITY: Quantity([300.0], "kg/m^3"),
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: Quantity([4500.0], "1/m"),
+                svn.WIND_SPEED: Quantity(1.0, "m/s"),
+                svn.SLOPE_ANGLE: Quantity(0.0, "degree"),
+                svn.FUEL_MOISTURE_CONTENT: Quantity(10.0, "percent"),
+                svn.IGNITION_LENGTH: Quantity(50, "m"),
+                "fuel_cat": 1,
+            },
+            Quantity(0.4441852112687365, "m/s"),  # Expected ROS value (adjust this to the expected value)
+        ),
+        # Add more test cases as needed
+    ],
+)
+def test_compute_ros_with_units_balbi(input_dict, expected_ros):
+    ros = rm.Balbi_2022_fixed_SFIRE.compute_ros_with_units(input_dict, fuel_cat=input_dict["fuel_cat"])
+    assert np.isclose(ros.magnitude, expected_ros.magnitude, atol=1e-4)
+    ros = rm.Balbi_2022_fixed_SFIRE.compute_ros_with_units(
+        input_dict, fuel_cat=input_dict["fuel_cat"], max_ite=1
+    )
+    assert ros.magnitude == 0
 
 
 @pytest.mark.parametrize(

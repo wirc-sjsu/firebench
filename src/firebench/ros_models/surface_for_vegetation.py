@@ -1,4 +1,5 @@
 import numpy as np
+from pint import Quantity
 
 from ..tools.check_data_quality import extract_magnitudes
 from ..tools.input_info import ParameterType
@@ -330,11 +331,12 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         # Calculate the rate of spread
         return Rothermel_SFIRE.rothermel(**fuel_properties)
 
+    @staticmethod
     def compute_ros_with_units(
-        input_dict: dict[str, float | int | list[float] | list[int]],
+        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
         fuel_cat: int = 0,
         **opt,
-    ):
+    ) -> Quantity:
         """
         Compute the rate of spread (ROS) of fire using Rothermel's model with unit handling.
 
@@ -655,4 +657,46 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         return Balbi_2022_fixed_SFIRE.balbi_2022_fixed(
             **fuel_properties_dict,
             **opt,
+        )
+
+    @staticmethod
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> Quantity:
+        """
+        Compute the rate of spread (ROS) of fire using Balbi's 2022 model with unit handling.
+
+        This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
+        computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
+            Keys should match the variable names defined in `Balbi_2022_fixed_SFIRE.metadata`.
+
+        fuel_cat : int, optional
+            One-based index for selecting a specific fuel category from lists in `input_dict`.
+            Defaults to 0, indicating scalar inputs.
+
+        **opt : dict
+            Additional optional parameters passed to `compute_ros`.
+
+        Returns
+        -------
+        ureg.Quantity
+            Computed rate of spread (ROS) with units (e.g., meters per second).
+
+        Notes
+        -----
+        - Use this function when working with `pint.Quantity` objects in `input_dict`.
+        - Units for the ROS are defined in `Balbi_2022_fixed_SFIRE.metadata["rate_of_spread"]["units"]`.
+        """  # pylint: disable=line-too-long
+        input_dict_no_units = extract_magnitudes(input_dict)
+
+        return ureg.Quantity(
+            Balbi_2022_fixed_SFIRE.compute_ros(input_dict_no_units, fuel_cat, **opt),
+            Balbi_2022_fixed_SFIRE.metadata["rate_of_spread"]["units"],
         )
