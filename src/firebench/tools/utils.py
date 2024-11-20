@@ -1,6 +1,5 @@
 import numpy as np
 from pint import Quantity
-from .logging_config import logger
 
 
 def is_scalar_quantity(x: any):
@@ -57,10 +56,10 @@ def get_value_by_category(x: any, category_index: int):
     """  # pylint: disable=line-too-long
     if is_scalar_quantity(x):
         return x
-    else:
-        if category_index < 1:
-            raise ValueError("category_index must be an integer greater than or equal to 1.")
-        try:
-            return x[category_index - 1]
-        except IndexError as exc:
-            raise IndexError(f"One-based index {category_index} not found in {x}.") from exc
+
+    if category_index < 1:
+        raise ValueError("category_index must be an integer greater than or equal to 1.")
+    try:
+        return x[category_index - 1]
+    except IndexError as exc:
+        raise IndexError(f"One-based index {category_index} not found in {x}.") from exc

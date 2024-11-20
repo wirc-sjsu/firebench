@@ -152,6 +152,7 @@ class Hamada_1(RateOfSpreadModel):
     def compute_ros(
         input_dict: dict[str, float | int | list[float] | list[int]],
         fuel_cat: int = 0,
+        **opt,
     ) -> float:
         """
         Compute the rate of spread of fire using the `Hamada's` model.
@@ -412,6 +413,7 @@ class Hamada_2(RateOfSpreadModel):
     def compute_ros(
         input_dict: dict[str, float | int | list[float] | list[int]],
         fuel_cat: int = 0,
+        **opt,
     ) -> float:
         """
         Compute the rate of spread of fire using the `Hamada's` model.

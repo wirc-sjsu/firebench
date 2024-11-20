@@ -1,7 +1,6 @@
 import numpy as np
 
-from ..tools.namespace import StandardVariableNames as svn
-from ..tools import is_scalar_quantity, get_value_by_category
+from ..tools import get_value_by_category
 
 
 def apply_wind_reduction_factor(
