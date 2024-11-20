@@ -630,25 +630,40 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         **opt,
     ) -> float:
         """
-        Compute the rate of spread of fire using the Balbi's 2022 model.
+        Compute the rate of spread of fire using the `Balbi's 2022` model.
 
-        This is a wrapper function that prepares the fuel data dictionary and calls the `balbi_2022_fixed` method.
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the rate of spread (ROS) of fire using the `balbi_2022_fixed` method.
+        Input data must be provided in standard units without `pint.Quantity` objects.
+        For unit-aware calculations, use `compute_ros_with_units`.
 
         Parameters
         ----------
-        input_dict : dict[str, float | int | list[float] | list[int]]
+        input_dict : dict
             Dictionary containing the input data for various fuel properties.
+            The keys should be the standard variable names as defined in `Balbi_2022_fixed_SFIRE.metadata`.
+            Each value can be a single float/int or a list/array of floats/ints.
 
-        Optional Parameters
-        -------------------
+        fuel_cat : int, optional
+            Fuel category index (one-based). If provided, fuel properties are expected to be lists or arrays,
+            and the function will extract the properties corresponding to the specified fuel category.
+            If not provided, fuel properties are expected to be scalar values.
+
         **opt : dict
-            Optional parameters for the `balbi_2022_fixed` method.
+            Additional optional parameters to be passed to the `balbi_2022_fixed` method.
 
         Returns
         -------
         float
-            The computed rate of spread of fire [m/s].
-        """
+            The computed rate of spread of fire.
+
+        Notes
+        -----
+        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
+        When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), 
+        compliant with units specified in the metadata dictionary.
+        """ # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
             input_dict=input_dict, metadata=Balbi_2022_fixed_SFIRE.metadata, fuel_cat=fuel_cat
