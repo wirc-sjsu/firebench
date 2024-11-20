@@ -118,59 +118,23 @@ class Hamada_1(RateOfSpreadModel):
         wind = np.hypot(wind_u, wind_v)
         # rate of spread along specific directions
         t_d = (
-            (1 - fire_resistant_ratio)
-            * (
-                3
-                + 0.375 * side_length
-                + 8 * separation / (25 + 2.5 * wind)
-            )
-            + fire_resistant_ratio
-            * (
-                5
-                + 0.625 * side_length
-                + 16 * separation / (25 + 2.5 * wind)
-            )
+            (1 - fire_resistant_ratio) * (3 + 0.375 * side_length + 8 * separation / (25 + 2.5 * wind))
+            + fire_resistant_ratio * (5 + 0.625 * side_length + 16 * separation / (25 + 2.5 * wind))
         ) / (1.5 * (1 + 0.1 * wind + 0.007 * wind**2))
         t_o = (
-            (1 - fire_resistant_ratio)
-            * (
-                3
-                + 0.375 * side_length
-                + 8 * separation / (5 + 0.25 * wind)
-            )
-            + fire_resistant_ratio
-            * (
-                5
-                + 0.625 * side_length
-                + 16 * separation / (5 + 0.25 * wind)
-            )
+            (1 - fire_resistant_ratio) * (3 + 0.375 * side_length + 8 * separation / (5 + 0.25 * wind))
+            + fire_resistant_ratio * (5 + 0.625 * side_length + 16 * separation / (5 + 0.25 * wind))
         ) / (1 + 0.005 * wind**2)
         t_u = (
-            (1 - fire_resistant_ratio)
-            * (
-                3
-                + 0.375 * side_length
-                + 8 * separation / (5 + 0.2 * wind)
-            )
-            + fire_resistant_ratio
-            * (
-                5
-                + 0.625 * side_length
-                + 16 * separation / (5 + 0.2 * wind)
-            )
+            (1 - fire_resistant_ratio) * (3 + 0.375 * side_length + 8 * separation / (5 + 0.2 * wind))
+            + fire_resistant_ratio * (5 + 0.625 * side_length + 16 * separation / (5 + 0.2 * wind))
         ) / (1 + 0.002 * wind**2)
         # downwind ros
-        ros_d = (
-            side_length + separation
-        ) / t_d
+        ros_d = (side_length + separation) / t_d
         # orthogonal ros
-        ros_o = (
-            side_length + separation
-        ) / t_o
+        ros_o = (side_length + separation) / t_o
         # upwind ros
-        ros_u = (
-            side_length + separation
-        ) / t_u
+        ros_u = (side_length + separation) / t_u
 
         # ellipse parameters as a function of spread direction
         k = 1
@@ -194,8 +158,8 @@ class Hamada_1(RateOfSpreadModel):
 
         This function processes input fuel properties, optionally selects a specific fuel category,
         and calculates the rate of spread (ROS) of fire using the `hamada_1` method.
-        Missing keys in the input dictionary are replaced with their default values, 
-        as specified in `Hamada_1.metadata`. Input data must be provided in standard units 
+        Missing keys in the input dictionary are replaced with their default values,
+        as specified in `Hamada_1.metadata`. Input data must be provided in standard units
         without `pint.Quantity` objects.
         For unit-aware calculations, use `compute_ros_with_units`.
 
@@ -220,9 +184,9 @@ class Hamada_1(RateOfSpreadModel):
         -----
         - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
         When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), 
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects),
         compliant with units specified in the metadata dictionary.
-        """ # pylint: disable=line-too-long
+        """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
             input_dict=input_dict, metadata=Hamada_1.metadata, fuel_cat=fuel_cat
@@ -230,7 +194,7 @@ class Hamada_1(RateOfSpreadModel):
 
         # Calculate the rate of spread
         return Hamada_1.hamada_1(**fuel_properties)
-    
+
     @staticmethod
     def compute_ros_with_units(
         input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
@@ -238,7 +202,7 @@ class Hamada_1(RateOfSpreadModel):
         **opt,
     ) -> Quantity:
         """
-        Compute the rate of spread (ROS) of fire using Hamada's 2022 model with unit handling.
+        Compute the rate of spread (ROS) of fire using modified Hamada's model with unit handling.
 
         This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
         computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
@@ -247,7 +211,7 @@ class Hamada_1(RateOfSpreadModel):
         ----------
         input_dict : dict
             Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
-            Keys should match the variable names defined in `Hamada.metadata`.
+            Keys should match the variable names defined in `Hamada_1.metadata`.
 
         fuel_cat : int, optional
             One-based index for selecting a specific fuel category from lists in `input_dict`.
@@ -298,63 +262,78 @@ class Hamada_2(RateOfSpreadModel):
             "std_name": svn.BUILDING_LENGTH_SIDE,
             "units": ureg.meter,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "separation": {
             "std_name": svn.BUILDING_LENGTH_SEPARATION,
             "units": ureg.meter,
             "range": (0, np.inf),
+            "type": ParameterType.input,
         },
         "wind_u": {
             "std_name": svn.WIND_SPEED_U,
             "units": ureg.meter / ureg.second,
             "range": (-np.inf, np.inf),
+            "type": ParameterType.input,
         },
         "wind_v": {
             "std_name": svn.WIND_SPEED_V,
             "units": ureg.meter / ureg.second,
             "range": (-np.inf, np.inf),
+            "type": ParameterType.input,
         },
         "normal_vector_x": {
             "std_name": svn.NORMAL_SPREAD_DIR_X,
             "units": ureg.dimensionless,
             "range": (-1, 1),
+            "type": ParameterType.input,
         },
         "normal_vector_y": {
             "std_name": svn.NORMAL_SPREAD_DIR_Y,
             "units": ureg.dimensionless,
             "range": (-1, 1),
+            "type": ParameterType.input,
         },
         "fire_resistant_ratio": {
             "std_name": svn.BUILDING_RATIO_FIRE_RESISTANT,
             "units": ureg.dimensionless,
             "range": (0, 1),
+            "type": ParameterType.optional,
+            "default": 0.6,
         },
         "bare_structure_ratio": {
             "std_name": svn.BUILDING_RATIO_STRUCTURE_WOOD_BARE,
             "units": ureg.dimensionless,
             "range": (0, 1),
+            "type": ParameterType.optional,
+            "default": 0.2,
         },
         "mortar_structure_ratio": {
             "std_name": svn.BUILDING_RATIO_STRUCTURE_WOOD_MORTAR,
             "units": ureg.dimensionless,
             "range": (0, 1),
+            "type": ParameterType.optional,
+            "default": 0.2,
         },
         "beta": {
             "std_name": svn.BETA,
             "units": ureg.dimensionless,
-            "range": (0, np.inf),
+            "range": (2, np.inf),
+            "type": ParameterType.optional,
+            "default": 5,
         },
-        "output_rate_of_spread": {
+        "rate_of_spread": {
             "std_name": svn.RATE_OF_SPREAD,
             "units": ureg.meter / ureg.second,
             "range": (0, np.inf),
+            "type": ParameterType.output,
         },
     }
 
     @staticmethod
     def hamada_2(
-        fuel_data: dict,
-        fuel_class_index: int,
+        side_length: float,
+        separation: float,
         wind_u: float,
         wind_v: float,
         normal_vector_x: float,
@@ -369,35 +348,32 @@ class Hamada_2(RateOfSpreadModel):
 
         Parameters
         ----------
-        fuel_data : dict
-            A dictionary containing fuel properties such as side length and separation.
-        fuel_class_index : int
-            The fuel class index (1-based) to be used for the computation.
+        side_length : float
+            Building side length [m].
+        separation : float
+            Buildings separation distance [m].
         wind_u : float
-            The U component of the wind speed.
+            The U component of the wind speed [m s-1].
         wind_v : float
-            The V component of the wind speed.
+            The V component of the wind speed [m s-1].
         normal_vector_x : float
-            The X component of the normalized spread direction vector.
+            The X component of the normalized spread direction vector [-].
         wind_direction_y : float
-            The Y component of the normalized spread direction vector.
+            The Y component of the normalized spread direction vector [-].
         fire_resistant_ratio : float
-            The ratio of fire-resistant buildings.
+            The ratio of fire-resistant buildings [-].
         bare_structure_ratio : float
-            The ratio of buildings with bare structural materials.
+            The ratio of buildings with bare structural materials [-].
         mortar_structure_ratio : float
-            The ratio of buildings with mortar.
+            The ratio of buildings with mortar [-].
         beta : float
-            The beta parameter for the model (>2 for stability).
+            The beta parameter for the model (>2 for stability) [-].
 
         Returns
         -------
         float
             The computed urban rate of spread in meters per second.
-        """
-        # Convert 1-based index to 0-based
-        fuel_class_index -= 1
-
+        """  # pylint: disable=line-too-long
         # Calculate wind speed magnitude
         wind_speed = np.hypot(wind_u, wind_v)
 
@@ -405,15 +381,11 @@ class Hamada_2(RateOfSpreadModel):
         downwind_ros = (
             (bare_structure_ratio + mortar_structure_ratio)
             * (1 - fire_resistant_ratio)
-            * (fuel_data["side_length"][fuel_class_index] + fuel_data["separation"][fuel_class_index])
+            * (side_length + separation)
             * (1 + 0.1 * wind_speed + 0.007 * wind_speed**2)
             / (
                 (bare_structure_ratio + 5 * mortar_structure_ratio / 3)
-                * (
-                    3
-                    + 3 * fuel_data["side_length"][fuel_class_index] / 8
-                    + 8 * fuel_data["separation"][fuel_class_index] / (1.15 * beta * (5 + 0.5 * wind_speed))
-                )
+                * (3 + 3 * side_length / 8 + 8 * separation / (1.15 * beta * (5 + 0.5 * wind_speed)))
             )
         )
 
@@ -421,15 +393,11 @@ class Hamada_2(RateOfSpreadModel):
         orthogonal_ros = (
             (bare_structure_ratio + mortar_structure_ratio)
             * (1 - fire_resistant_ratio)
-            * (fuel_data["side_length"][fuel_class_index] + fuel_data["separation"][fuel_class_index])
+            * (side_length + separation)
             * (1 + 0.002 * wind_speed**2)
             / (
                 (bare_structure_ratio + 5 * mortar_structure_ratio / 3)
-                * (
-                    3
-                    + 3 * fuel_data["side_length"][fuel_class_index] / 8
-                    + 8 * fuel_data["separation"][fuel_class_index] / (1.15 * (5 + 0.5 * wind_speed))
-                )
+                * (3 + 3 * side_length / 8 + 8 * separation / (1.15 * (5 + 0.5 * wind_speed)))
             )
         )
         cos_theta = 0
@@ -442,59 +410,89 @@ class Hamada_2(RateOfSpreadModel):
 
     @staticmethod
     def compute_ros(
-        input_dict: dict[str, list[float]],
-        **opt,
+        input_dict: dict[str, float | int | list[float] | list[int]],
+        fuel_cat: int = 0,
     ) -> float:
         """
-        Compute the rate of spread of fire using the Hamada's model.
+        Compute the rate of spread of fire using the `Hamada's` model.
 
-        This is a wrapper function that prepares the fuel data dictionary and calls the `hamada_1` method.
-
-        If the one or more of the following keys are missing from the input dict, the default value are used:
-        - svn.BUILDING_RATIO_FIRE_RESISTANT: 0.6
-        - svn.BUILDING_RATIO_STRUCTURE_WOOD_BARE: 0.2
-        - svn.BUILDING_RATIO_STRUCTURE_WOOD_MORTAR: 0.2
-        - svn.BETA: 5
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the rate of spread (ROS) of fire using the `hamada_2` method.
+        Missing keys in the input dictionary are replaced with their default values,
+        as specified in `Hamada_2.metadata`. Input data must be provided in standard units
+        without `pint.Quantity` objects.
+        For unit-aware calculations, use `compute_ros_with_units`.
 
         Parameters
         ----------
-        input_dict : dict[str, list[float]]
+        input_dict : dict
             Dictionary containing the input data for various fuel properties.
+            The keys should match the standard variable names as defined in `Hamada_2.metadata`.
+            Each value can be a single float/int or a list/array of floats/ints.
 
-        Optional Parameters
-        -------------------
-        **opt : dict
-            Optional parameters for the `rothermel` method.
+        fuel_cat : int, optional
+            Fuel category index (one-based). If provided, fuel properties are expected to be lists or arrays,
+            and the function will extract the properties corresponding to the specified fuel category.
+            If not provided, fuel properties are expected to be scalar values.
 
         Returns
         -------
         float
-            The computed rate of spread of fire [m/s].
+            The computed rate of spread of fire.
+
+        Notes
+        -----
+        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
+        When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects),
+        compliant with units specified in the metadata dictionary.
+        """  # pylint: disable=line-too-long
+        # Prepare fuel properties using the base class method
+        fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
+            input_dict=input_dict, metadata=Hamada_2.metadata, fuel_cat=fuel_cat
+        )
+
+        # Calculate the rate of spread
+        return Hamada_2.hamada_2(**fuel_properties)
+
+    @staticmethod
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> Quantity:
         """
-        fuel_dict_list_vars = [
-            "side_length",
-            "separation",
-        ]
-        fuel_dict = {}
-        for var in fuel_dict_list_vars:
-            fuel_dict[var] = input_dict[Hamada_2.metadata[var]["std_name"]]
+        Compute the rate of spread (ROS) of fire using modified Hamada's model with unit handling.
 
-        # Set default values for low importance inputs
-        fire_resistant_ratio = input_dict.get(svn.BUILDING_RATIO_FIRE_RESISTANT, 0.6)
-        bare_structure_ratio = input_dict.get(svn.BUILDING_RATIO_STRUCTURE_WOOD_BARE, 0.2)
-        mortar_structure_ratio = input_dict.get(svn.BUILDING_RATIO_STRUCTURE_WOOD_MORTAR, 0.2)
-        beta = input_dict.get(svn.BETA, 5)
+        This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
+        computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
 
-        return Hamada_2.hamada_2(
-            fuel_dict,
-            input_dict[svn.FUEL_CLASS],
-            input_dict[svn.WIND_SPEED_U],
-            input_dict[svn.WIND_SPEED_V],
-            input_dict[svn.NORMAL_SPREAD_DIR_X],
-            input_dict[svn.NORMAL_SPREAD_DIR_Y],
-            fire_resistant_ratio=fire_resistant_ratio,
-            bare_structure_ratio=bare_structure_ratio,
-            mortar_structure_ratio=mortar_structure_ratio,
-            beta=beta,
-            **opt,
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
+            Keys should match the variable names defined in `Hamada_2.metadata`.
+
+        fuel_cat : int, optional
+            One-based index for selecting a specific fuel category from lists in `input_dict`.
+            Defaults to 0, indicating scalar inputs.
+
+        **opt : dict
+            Additional optional parameters passed to `compute_ros`.
+
+        Returns
+        -------
+        ureg.Quantity
+            Computed rate of spread (ROS) with units (e.g., meters per second).
+
+        Notes
+        -----
+        - Use this function when working with `pint.Quantity` objects in `input_dict`.
+        - Units for the ROS are defined in `Hamada_2.metadata["rate_of_spread"]["units"]`.
+        """  # pylint: disable=line-too-long
+        input_dict_no_units = extract_magnitudes(input_dict)
+
+        return ureg.Quantity(
+            Hamada_2.compute_ros(input_dict_no_units, fuel_cat, **opt),
+            Hamada_2.metadata["rate_of_spread"]["units"],
         )

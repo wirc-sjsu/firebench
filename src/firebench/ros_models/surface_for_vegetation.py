@@ -661,9 +661,9 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         -----
         - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
         When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), 
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects),
         compliant with units specified in the metadata dictionary.
-        """ # pylint: disable=line-too-long
+        """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
             input_dict=input_dict, metadata=Balbi_2022_fixed_SFIRE.metadata, fuel_cat=fuel_cat
