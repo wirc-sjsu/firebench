@@ -5,185 +5,101 @@ from ..tools import is_scalar_quantity, get_value_by_category
 
 
 def apply_wind_reduction_factor(
-    wind_speed: float,
-    wind_reduction_factor: float | list | np.ndarray = None,
-    fuel_dict: dict = None,
-    fuel_cat: int = None,
+    wind_speed: float | list | np.ndarray,
+    wind_reduction_factor: float | list | np.ndarray,
+    fuel_cat: int = 0,
 ):
     """
-    Calculate the wind speed at a different height using the wind reduction factor.
+    Calculate the wind speed at a different height by applying a wind reduction factor.
 
-    This function computes the wind speed at a new height (h2) by applying a wind reduction factor to the wind speed at the initial height (h1).
-    It is designed to handle various types of inputs for the wind reduction factor, offering flexibility in how the factor is provided.
-
-    The function uses polymorphism to handle different input scenarios:
-
-    - If `wind_reduction_factor` is provided as a float, it uses this value directly.
-    - If `wind_reduction_factor` is provided as a list or numpy array, it uses `fuel_cat` to select the appropriate factor from the list or array.
-    - If `wind_reduction_factor` is not provided, it retrieves the factor from `fuel_dict`:
-        - If the value in `fuel_dict` at key `svn.FUEL_WIND_REDUCTION_FACTOR` is a list or numpy array, then `fuel_cat` is mandatory to select the factor.
-        - If it's a float, then `fuel_cat` is not needed.
+    This function computes the wind speed at a new height by multiplying the input wind speed
+    by a wind reduction factor. It handles various types of inputs for the wind speed and wind
+    reduction factor, including floats, lists, and NumPy arrays, pint.Quantity. If the inputs are lists or arrays,
+    the function uses `fuel_cat` to select the appropriate value.
 
     Parameters
     ----------
-    wind_speed : float
-        The wind speed at the initial height h1.
+    wind_speed : float, list, or np.ndarray
+        The wind speed at the initial height. If a list or array, `fuel_cat` is used to select
+        the appropriate value.
 
-    wind_reduction_factor : float or list or np.ndarray, optional
-        The wind reduction factor from height h1 to h2. If a float, it is used directly.
-        If a list or numpy array, it should contain wind reduction factors indexed by fuel category.
-
-    fuel_dict : dict, optional
-        A dictionary containing fuel parameters, including the key `svn.FUEL_WIND_REDUCTION_FACTOR` as described in `StandardVariableNames`. This key should map to either a float or a list/numpy array of wind reduction factors.
+    wind_reduction_factor : float, list, or np.ndarray
+        The wind reduction factor to apply. If a list or array, `fuel_cat` is used to select
+        the appropriate value.
 
     fuel_cat : int, optional
-        The fuel category index used to retrieve the wind reduction factor from a list or array when `wind_reduction_factor` or `fuel_dict` contains multiple values.
+        The fuel category index used to select values from list or array inputs.
+        Uses one-based indexing (i.e., the first category is `fuel_cat=1`).
+        Required if any of the inputs are lists or arrays.
 
     Returns
     -------
     float
-        The wind speed at the new height h2, calculated by applying the wind reduction factor.
+        The wind speed at the new height, calculated by applying the wind reduction factor.
 
     Raises
     ------
     ValueError
-        If insufficient parameters are provided to compute the wind reduction factor.
+        If `fuel_cat` is not provided when required, or if inputs are invalid.
+
     IndexError
-        If `fuel_cat` is out of bounds for the provided list or array.
-    KeyError
-        If the required keys are missing in `fuel_dict`.
+        If `fuel_cat` is out of bounds for the provided list or array inputs.
 
     Notes
     -----
-    **Wind Reduction Factor Application:**
+    **One-Based Indexing:**
+    `fuel_cat` uses one-based indexing to align with natural fuel category numbering
+    (i.e., the first fuel category is `fuel_cat=1`).
 
-    The wind reduction factor adjusts the wind speed from one height to another, accounting for the change in wind speed due to atmospheric conditions and surface roughness.
+    **Data Types:**
+    The function accepts `wind_speed` and `wind_reduction_factor` as floats, lists, or NumPy arrays.
+    Ensure that your inputs are of the correct type.
 
-    **Input Scenarios:**
-
-    - **Direct Factor Provided:**
-        - When `wind_reduction_factor` is a float:
-          ```python
-          new_wind_speed = wind_speed * wind_reduction_factor
-          ```
-    - **Factor List or Array with Fuel Category:**
-        - When `wind_reduction_factor` is a list or array, and `fuel_cat` is provided:
-          ```python
-          factor = wind_reduction_factor[fuel_cat]
-          new_wind_speed = wind_speed * factor
-          ```
-    - **Factor Retrieved from `fuel_dict`:**
-        - When `wind_reduction_factor` is not provided, but `fuel_dict` is:
-            - If `fuel_dict[svn.FUEL_WIND_REDUCTION_FACTOR]` is a float:
-              ```python
-              factor = fuel_dict[svn.FUEL_WIND_REDUCTION_FACTOR]
-              new_wind_speed = wind_speed * factor
-              ```
-            - If it is a list or array and `fuel_cat` is provided:
-              ```python
-              factor = fuel_dict[svn.FUEL_WIND_REDUCTION_FACTOR][fuel_cat]
-              new_wind_speed = wind_speed * factor
-              ```
-            - If `fuel_cat` is not provided when required, a `ValueError` is raised.
+    **Units Consistency:**
+    Make sure that the units of `wind_speed` are consistent with your application.
+    The wind reduction factor is dimensionless.
 
     **Example Usage:**
 
     ```python
-    # Example 1: Using a direct wind reduction factor
-    new_wind_speed = use_wind_reduction_factor(
+    # Example 1: Using scalar inputs
+    new_wind_speed = apply_wind_reduction_factor(
         wind_speed=10.0,
         wind_reduction_factor=0.8
     )
     # Result: new_wind_speed = 8.0
 
-    # Example 2: Using wind reduction factors from a list with a fuel category
+    # Example 2: Using list inputs with a fuel category
+    wind_speeds = [10.0, 12.0, 15.0]
     wind_reduction_factors = [0.7, 0.8, 0.9]
-    fuel_cat = 2
-    new_wind_speed = use_wind_reduction_factor(
-        wind_speed=10.0,
+    new_wind_speed = apply_wind_reduction_factor(
+        wind_speed=wind_speeds,
         wind_reduction_factor=wind_reduction_factors,
-        fuel_cat=fuel_cat
+        fuel_cat=2
     )
-    # Result: new_wind_speed = 8.0 (using factor 0.8 from index 1)
+    # Result: new_wind_speed = 12.0 * 0.8 = 9.6
 
-    # Example 3: Using a fuel dictionary with a fuel category
-    fuel_dict = {svn.FUEL_WIND_REDUCTION_FACTOR: [0.7, 0.8, 0.9]}
-    fuel_cat = 2
-    new_wind_speed = use_wind_reduction_factor(
-        wind_speed=10.0,
-        fuel_dict=fuel_dict,
-        fuel_cat=fuel_cat
+    # Example 3: Using NumPy arrays
+    import numpy as np
+    wind_speeds = np.array([10.0, 12.0, 15.0])
+    wind_reduction_factors = np.array([0.7, 0.8, 0.9])
+    new_wind_speed = apply_wind_reduction_factor(
+        wind_speed=wind_speeds,
+        wind_reduction_factor=wind_reduction_factors,
+        fuel_cat=3
     )
-    # Result: new_wind_speed = 8.0
-
-    # Example 4: Using a fuel dictionary without a fuel category
-    fuel_dict = {svn.FUEL_WIND_REDUCTION_FACTOR: 0.8}
-    new_wind_speed = use_wind_reduction_factor(
-        wind_speed=10.0,
-        fuel_dict=fuel_dict
-    )
-    # Result: new_wind_speed = 8.0
+    # Result: new_wind_speed = 15.0 * 0.9 = 13.5
     ```
 
     **Error Handling:**
-
-    - A `ValueError` is raised if insufficient parameters are provided to compute the wind reduction factor.
-    - An `IndexError` is raised if `fuel_cat` is provided but out of range for the list or array.
-    - A `KeyError` is raised if the expected key `svn.FUEL_WIND_REDUCTION_FACTOR` is missing in `fuel_dict`.
-
-    **Important Considerations:**
-
-    - **One-Based Indexing:** Note that `fuel_cat` uses one-based indexing to align with natural fuel category numbering (i.e., the first fuel category is `fuel_cat = 1`).
-    - **Data Types:** The function accepts `wind_reduction_factor` as a float, list, or numpy array. Ensure that your inputs are of the correct type.
-    - **Units Consistency:** Make sure that the units of `wind_speed` and the wind reduction factor are consistent. Typically, wind speeds are in meters per second (m/s) or miles per hour (mph), and the wind reduction factor is dimensionless.
-
-    References
-    ----------
-    StandardVariableNames module provides standardized keys for fuel parameters.
+    - A `ValueError` is raised if `fuel_cat` is not provided when required.
+    - An `IndexError` is raised if `fuel_cat` is out of range for the list or array inputs.
 
     """  # pylint: disable=line-too-long
-    if isinstance(wind_reduction_factor, float):
-        # Case 1: wind_reduction_factor is provided directly as a float
-        return wind_speed * wind_reduction_factor
+    wind_speed_value = get_value_by_category(wind_speed, fuel_cat)
+    wind_reduction_factor_value = get_value_by_category(wind_reduction_factor, fuel_cat)
 
-    if isinstance(wind_reduction_factor, (list, np.ndarray)):
-        # Case 2: wind_reduction_factor is a dict; use fuel_cat to get the factor
-        if fuel_cat is None:
-            raise ValueError("fuel_cat must be provided when wind_reduction_factor is a list.")
-        try:
-            factor = wind_reduction_factor[fuel_cat - 1]
-        except IndexError as exc:
-            raise IndexError(
-                f"Fuel category {fuel_cat-1} not found in wind_reduction_factor array."
-            ) from exc
-        return wind_speed * factor
-
-    if fuel_dict is not None and fuel_cat is not None:
-        # Case 3: Retrieve wind_reduction_factor from fuel_dict using fuel_cat
-        try:
-            list_wrf = fuel_dict[svn.FUEL_WIND_REDUCTION_FACTOR]
-        except KeyError as exc:
-            raise KeyError(f"Key {svn.FUEL_WIND_REDUCTION_FACTOR} not found in fuel_dict.") from exc
-        try:
-            factor = list_wrf[fuel_cat - 1]
-        except IndexError as exc:
-            raise IndexError(f"Fuel category {fuel_cat-1} not found in fuel_dict.") from exc
-        return wind_speed * factor
-
-    if fuel_dict is not None and fuel_cat is None:
-        # Case 4: Retrieve wind_reduction_factor from fuel_dict
-        try:
-            factor = fuel_dict[svn.FUEL_WIND_REDUCTION_FACTOR]
-        except KeyError as exc:
-            raise KeyError(f"Key {svn.FUEL_WIND_REDUCTION_FACTOR} not found in fuel_dict.") from exc
-        return wind_speed * factor
-
-    # Insufficient parameters provided
-    raise ValueError(
-        "Insufficient parameters provided. Please provide either "
-        "`wind_reduction_factor` as a float, or as a dict with `fuel_cat`, "
-        "or provide `fuel_dict` with `fuel_cat`."
-    )
+    return wind_speed_value * wind_reduction_factor_value
 
 
 def Baughman_20ft_wind_reduction_factor_unsheltered(
