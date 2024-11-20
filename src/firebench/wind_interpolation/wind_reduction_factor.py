@@ -1,6 +1,7 @@
 import numpy as np
 
 from ..tools.namespace import StandardVariableNames as svn
+from ..tools import is_scalar_quantity, get_value_by_category
 
 
 def apply_wind_reduction_factor(
@@ -356,113 +357,113 @@ def __Baughman_20ft_wind_reduction_factor_unsheltered(
 
 
 def Baughman_generalized_wind_reduction_factor_unsheltered(
-    input_wind_height: float,
-    flame_height: float,
-    vegetation_height: float | list | np.ndarray = None,
-    fuel_dict: dict = None,
-    fuel_cat: int = None,
+    input_wind_height: float | list | np.ndarray,
+    flame_height: float | list | np.ndarray,
+    vegetation_height: float | list | np.ndarray,
+    fuel_cat: int = 0,
     is_source_wind_height_above_veg: bool = False,
 ):
     r"""
     Calculate the wind reduction factor in unsheltered land based on Baughman and Albini (1980).
 
-    This function computes the wind reduction factor for converting a wind speed at a certain height (defined hereafter) to the average wind between the top of the vegetation layer and the top of the flame.
-    The midflame wind is then the average wind between `h` and `h+h_f`.
-    The calculation is the generalization of the method presented in Baughman and Albini (1980) and Albini (1979).
-
-    If `is_source_wind_height_above_veg=True`, then the input wind is considered at height h + h_u, where h_u is given by `input_wind_height`.
-    If the flag is set to False, the input wind is
-
-    The function uses polymorphism to handle different types of input for the vegetation height:
-
-    - If `vegetation_height` is provided as a float, it uses it directly.
-    - If `vegetation_height` is provided as a list or numpy array, it uses `fuel_cat` to retrieve the vegetation height corresponding to the specific fuel category.
-    - If `vegetation_height` is not provided, it retrieves the vegetation height from `fuel_dict`:
-        - If the value in `fuel_dict` at key `svn.FUEL_HEIGHT` is a list or numpy array, then `fuel_cat` is mandatory.
-        - If it's a float, then `fuel_cat` is not needed.
+    This function computes the wind reduction factor for converting a wind speed at a specified height
+    to the average wind speed between the top of the vegetation layer and the top of the flame.
+    The calculation generalizes the method presented in Baughman and Albini (1980) and Albini (1979).
 
     Parameters
     ----------
-    input_wind_height : float
-        The height at which the input wind is given `h_u` (any length unit).
+    input_wind_height : float, list, or np.ndarray
+        The height at which the input wind speed is given (`h_u`). If a list or array, `fuel_cat`
+        is used to select the appropriate value.
 
-    flame_height : float
-        The height at which to calculate the wind speed (any length unit).
+    flame_height : float, list, or np.ndarray
+        The flame height (`h_f`). If a list or array, `fuel_cat` is used to select the appropriate value.
 
-    vegetation_height : float or list or np.ndarray, optional
-        The vegetation height (any length unit). If a float, it is used directly.
-        If a list or numpy array, it should contain vegetation heights indexed by fuel category.
-
-    fuel_dict : dict, optional
-        A dictionary containing fuel parameters, including the key `svn.FUEL_HEIGHT` as described in `StandardVariableNames`. This key should map to either a float or a list/numpy array of vegetation heights.
+    vegetation_height : float, list, or np.ndarray
+        The vegetation height (`h`). If a list or array, `fuel_cat` is used to select the appropriate value.
 
     fuel_cat : int, optional
-        The fuel category index used to retrieve the vegetation height from a list or array when `vegetation_height` or `fuel_dict` contains multiple values.
+        The fuel category index used to select values from list or array inputs.
+        Uses one-based indexing (i.e., the first category is `fuel_cat=1`).
+        Required if any of the inputs are lists or arrays.
 
     is_source_wind_height_above_veg : bool, optional
-        Consider that the input wind hieght is given above vegetation top if set to True. Default: False.
+        If `True`, the input wind height is considered to be above the vegetation top (i.e., at `h + h_u`).
+        If `False` (default), the input wind height is considered to be from the ground level (i.e., at `h_u`).
 
     Returns
     -------
     float
-        The wind reduction factor between the input wind height wind and the wind at the specified interpolation height.
+        The wind reduction factor between the input wind height and the average wind at the midflame height.
 
     Raises
     ------
     ValueError
-        If insufficient parameters are provided to compute the wind reduction factor.
+        If `fuel_cat` is not provided when required, or if inputs are invalid.
+
     IndexError
-        If `fuel_cat` is out of bounds for the provided list or array.
-    KeyError
-        If the required keys are missing in `fuel_dict`.
+        If `fuel_cat` is out of bounds for the provided list or array inputs.
 
     Notes
     -----
-
     **Reference Heights:**
 
-    - **Input Wind Height:** Wind speed at `h + h_u` if `is_source_wind_height_above_veg` set to True, at `h_u` else.
-    - **Flame Height:** Typically the flame height where the fire is burning.
+    - **Input Wind Height (`h_u`):** The height at which the input wind speed is given.
+      If `is_source_wind_height_above_veg` is `True`, the input wind height is `h + h_u`.
+      Otherwise, it is `h_u`.
+
+    - **Vegetation Height (`h`):** The height of the vegetation.
+
+    - **Flame Height (`h_f`):** The height of the flame.
+
+    The midflame wind speed is calculated as the average wind speed between the top of the vegetation
+    (`h`) and the top of the flame (`h + h_f`).
+
+    **Data Types:**
+
+    - The function accepts `input_wind_height`, `flame_height`, and `vegetation_height` as floats,
+      lists, or numpy arrays. If they are lists or arrays, `fuel_cat` must be provided to select
+      the appropriate value.
+
+    - The function uses one-based indexing for `fuel_cat`.
 
     **Example Usage:**
 
     ```python
-    # Example 1: Using a direct vegetation height
-    wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
+    # Example 1: Using scalar inputs
+    wrf = Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height=10.0,
         flame_height=6.0,
         vegetation_height=2.0
     )
 
-    # Example 2: Using vegetation heights from a list with a fuel category
+    # Example 2: Using list inputs with a fuel category
+    input_wind_heights = [10.0, 15.0, 20.0]
+    flame_heights = [5.0, 6.0, 7.0]
     vegetation_heights = [1.5, 2.0, 2.5]
-    wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
-        flame_height=6.0,
+    wrf = Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height=input_wind_heights,
+        flame_height=flame_heights,
         vegetation_height=vegetation_heights,
         fuel_cat=2
     )
 
-    # Example 3: Using a fuel dictionary with a fuel category
-    fuel_dict = {svn.FUEL_HEIGHT: [1.5, 2.0, 2.5]}
-    wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
-        flame_height=6.0,
-        fuel_dict=fuel_dict,
+    # Example 3: Using pint list inputs with a fuel category
+    input_wind_heights = firebench.Quantity([10.0, 15.0, 20.0])
+    flame_heights = 3
+    vegetation_heights = [1.5, 2.0, 2.5]
+    wrf = Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height=input_wind_heights,
+        flame_height=flame_heights,
+        vegetation_height=vegetation_heights,
         fuel_cat=2
-    )
-
-    # Example 4: Using a fuel dictionary without a fuel category
-    fuel_dict = {svn.FUEL_HEIGHT: 2.0}
-    wrf = Baughman_20ft_wind_reduction_factor_unsheltered(
-        flame_height=6.0,
-        fuel_dict=fuel_dict
     )
     ```
 
-    **Important Considerations:**
+    **Units Consistency:**
 
-    - **One-Based Indexing:** Note that `fuel_cat` uses one-based indexing to align with natural fuel category numbering (i.e., the first fuel category is `fuel_cat = 1`).
-    - **Inout wind height:** Make sure that the input wind height has been set up correctly using the flag `is_source_wind_height_above_veg`.
-    - **Data Types:** The function accepts `vegetation_height` as a float, list, or numpy array. Ensure that your inputs are of the correct type.
-    - **Units Consistency:** Make sure that the units of `vegetation_height`, `flame_height`, and `input_wind_height` are consistent (meter or feet valid).
+    - Ensure that all height inputs (`input_wind_height`, `flame_height`, and `vegetation_height`)
+      are provided in consistent units (e.g., all in meters or all in feet).
 
     References
     ----------
@@ -472,55 +473,17 @@ def Baughman_generalized_wind_reduction_factor_unsheltered(
 
     Albini, F. A. (1979). Estimating windspeeds for predicting wildland fire behavior (Vol. 221).
     Intermountain Forest and Range Experiment Station, Forest Service, US Department of Agriculture.
-
     """  # pylint: disable=line-too-long
-    # Case 1: vegetation_height is provided directly as a float
-    if isinstance(vegetation_height, float):
-        return __Baughman_generalized_wind_reduction_factor_unsheltered(
-            input_wind_height, flame_height, vegetation_height, is_source_wind_height_above_veg
-        )
+    # Extract scalar values using get_value_by_category
+    vegetation_height_value = get_value_by_category(vegetation_height, fuel_cat)
+    input_wind_height_value = get_value_by_category(input_wind_height, fuel_cat)
+    flame_height_value = get_value_by_category(flame_height, fuel_cat)
 
-    # Case 2: wind_reduction_factor is a dict; use fuel_cat to get the factor
-    if isinstance(vegetation_height, (list, np.ndarray)):
-        if fuel_cat is None:
-            raise ValueError("fuel_cat must be provided when vegetation_height is a list.")
-        try:
-            veg_height = vegetation_height[fuel_cat - 1]
-        except IndexError as exc:
-            raise IndexError(f"Fuel category {fuel_cat-1} not found in vegetation_height array.") from exc
-        return __Baughman_generalized_wind_reduction_factor_unsheltered(
-            input_wind_height, flame_height, veg_height, is_source_wind_height_above_veg
-        )
-
-    # Case 3: Retrieve vegetation_height from fuel_dict using fuel_cat
-    if fuel_dict is not None and fuel_cat is not None:
-        try:
-            list_wrf = fuel_dict[svn.FUEL_HEIGHT]
-        except KeyError as exc:
-            raise KeyError(f"Key {svn.FUEL_HEIGHT} not found in fuel_dict.") from exc
-        try:
-            veg_height = list_wrf[fuel_cat - 1]
-        except IndexError as exc:
-            raise IndexError(f"Fuel category {fuel_cat-1} not found in fuel_dict.") from exc
-        return __Baughman_generalized_wind_reduction_factor_unsheltered(
-            input_wind_height, flame_height, veg_height, is_source_wind_height_above_veg
-        )
-
-    # Case 4: Retrieve vegetation_height from fuel_dict
-    if fuel_dict is not None and fuel_cat is None:
-        try:
-            veg_height = fuel_dict[svn.FUEL_HEIGHT]
-        except KeyError as exc:
-            raise KeyError(f"Key {svn.FUEL_HEIGHT} not found in fuel_dict.") from exc
-        return __Baughman_generalized_wind_reduction_factor_unsheltered(
-            input_wind_height, flame_height, veg_height, is_source_wind_height_above_veg
-        )
-
-    # Insufficient parameters provided
-    raise ValueError(
-        "Insufficient parameters provided. Please provide either "
-        "`vegetation_height` as a float, or as a dict with `fuel_cat`, "
-        "or provide `fuel_dict` with `fuel_cat`."
+    return __Baughman_generalized_wind_reduction_factor_unsheltered(
+        input_wind_height_value,
+        flame_height_value,
+        vegetation_height_value,
+        is_source_wind_height_above_veg,
     )
 
 

@@ -34,3 +34,7 @@ from .fuel_models_utils import (
     add_scott_and_burgan_total_fuel_load,
     add_scott_and_burgan_total_savr,
 )
+from .utils import (
+    is_scalar_quantity,
+    get_value_by_category,
+)
