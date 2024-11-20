@@ -190,28 +190,39 @@ class Hamada_1(RateOfSpreadModel):
         fuel_cat: int = 0,
     ) -> float:
         """
-        Compute the rate of spread of fire using the Hamada's model.
+        Compute the rate of spread of fire using the `Hamada's` model.
 
-        This is a wrapper function that prepares the fuel data dictionary and calls the `hamada_1` method.
-
-        If the one or more of the following keys are missing from the input dict, the default values are used:
-        - svn.BUILDING_RATIO_FIRE_RESISTANT: 0.6
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the rate of spread (ROS) of fire using the `hamada_1` method.
+        Missing keys in the input dictionary are replaced with their default values, 
+        as specified in `Hamada_1.metadata`. Input data must be provided in standard units 
+        without `pint.Quantity` objects.
+        For unit-aware calculations, use `compute_ros_with_units`.
 
         Parameters
         ----------
-        input_dict : dict[str, list[float]]
+        input_dict : dict
             Dictionary containing the input data for various fuel properties.
+            The keys should match the standard variable names as defined in `Hamada_1.metadata`.
+            Each value can be a single float/int or a list/array of floats/ints.
 
-        Optional Parameters
-        -------------------
-        **opt : dict
-            Optional parameters for the `Hamada` method.
+        fuel_cat : int, optional
+            Fuel category index (one-based). If provided, fuel properties are expected to be lists or arrays,
+            and the function will extract the properties corresponding to the specified fuel category.
+            If not provided, fuel properties are expected to be scalar values.
 
         Returns
         -------
         float
-            The computed rate of spread of fire [m/s].
-        """
+            The computed rate of spread of fire.
+
+        Notes
+        -----
+        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
+        When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), 
+        compliant with units specified in the metadata dictionary.
+        """ # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
             input_dict=input_dict, metadata=Hamada_1.metadata, fuel_cat=fuel_cat
