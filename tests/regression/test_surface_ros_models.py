@@ -234,23 +234,38 @@ def test_compute_ros_with_units_balbi(input_dict, expected_ros):
 
 
 @pytest.mark.parametrize(
-    "dead_fuel_ratio,fgi,fueldepthm,fueldens,savr,w0,wind,slope,fmc,expected_ros",
+    "dead_fuel_ratio,fgi,fueldepthm,fueldens,temp_ign,temp_air,dens_air,savr,w0,wind,slope,fmc,expected_ros",
     [
-        (0.8, 0.7, 1, 300, 4500, 50, 1, 0, 10, 0.4643753930790799),
-        (0.8, 0.7, 1, 300, 4500, 30, 1, 0, 10, 0.3881006880449338),
-        (0.8, 0.7, 1, 300, 4500, 50, 0, 0, 10, 0.3455042235417564),
-        (0.8, 0.7, 1, 300, 4500, 50, -1, 0, 10, 0.3455042235417564),
-        (0.8, 0.7, 1, 300, 4500, 50, 0, 10, 10, 0.3387330641766883),
+        (0.8, 0.7, 1, 300, 600, 300, 1.125, 4500, 50, 1, 0, 10, 0.4643753930790799),
+        (0.8, 0.7, 1, 300, 600, 300, 1.125, 4500, 30, 1, 0, 10, 0.3881006880449338),
+        (0.8, 0.7, 1, 300, 600, 300, 1.125, 4500, 50, 0, 0, 10, 0.3455042235417564),
+        (0.8, 0.7, 1, 300, 600, 300, 1.125, 4500, 50, -1, 0, 10, 0.3455042235417564),
+        (0.8, 0.7, 1, 300, 600, 300, 1.125, 4500, 50, 0, 10, 10, 0.3387330641766883),
     ],
 )
 def test_compute_ros_regression_balbi(
-    dead_fuel_ratio, fgi, fueldepthm, fueldens, savr, w0, wind, slope, fmc, expected_ros
+    dead_fuel_ratio,
+    fgi,
+    fueldepthm,
+    fueldens,
+    temp_ign,
+    temp_air,
+    dens_air,
+    savr,
+    w0,
+    wind,
+    slope,
+    fmc,
+    expected_ros,
 ):
     ros = rm.Balbi_2022_fixed_SFIRE.balbi_2022_fixed(
         dead_fuel_ratio,
         fgi,
         fueldepthm,
         fueldens,
+        temp_ign,
+        temp_air,
+        dens_air,
         savr,
         w0,
         wind,
