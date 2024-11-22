@@ -12,7 +12,7 @@ nav_order: 1
 This workflow aims to evaluate the sensitivity of a specific rate of spread (ROS) model to its environmental inputs.
 The environmental parameters are defined as all the non-internal parameters that are not present in a Fuel Model.
 These parameters can vary from one rate of spread model to the other.
-It computes the `First and Total Order Sobol indices` with respect to environmental variable for each fuel class in a specific [Fuel Model](../../../../tutorials/change_fuel_model_ros.md).
+It computes the `First and Total Order Sobol indices` with respect to environmental variable for each fuel class in a specific [Fuel Model](../../../tutorials/change_fuel_model_ros.md).
 Environmental variables can be fuel moisture content, terrain slope angle in the spread direction, midflame wind speed in the spread direction, air temperature and density, or fuel ignition temperature. 
 
 **Fig.1**  shows an example of the benchmark for `Anderson13` fuel model, `Rothermel_SFIRE` with three environmental parameters (moisture, slope, wind).
