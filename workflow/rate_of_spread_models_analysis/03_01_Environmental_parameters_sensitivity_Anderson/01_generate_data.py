@@ -1,25 +1,10 @@
-"""
-Workflow: 03_01_sensitivity_env_var
-Category: Sensitivity Analysis
-Version: 1.0
-
-Description:
-This workflow performs a sensitivity analysis on rate of spread models using a static fuel database (e.g., Anderson, Scott & Burgan).
-The analysis considers the impact of environmental variables on fire behavior, specifically focusing on:
-- Wind
-- Slope
-- Fuel Moisture
-
-Documentation page: https://wirc-sjsu.github.io/firebench/workflows/sensitivity/ros_sensitivity.html
-"""
-
 from datetime import datetime
 
 import firebench.ros_models as rm
 import firebench.tools as ft
 import h5py
 import numpy as np
-from firebench import svn, ureg
+from firebench import svn, Quantity
 from SALib.analyze import sobol
 
 #######################################################################################
@@ -28,55 +13,56 @@ from SALib.analyze import sobol
 #######################################################################################
 
 # Workflow Configuration
-workflow_record_name = "Sensitivity_env_var_Anderson13_Rothermel"
-overwrite_files_in_record = True
-output_filename = "Rothermel_SFIRE"
-
-# Fuel Model Configuration
-## Vegetation fuel models
-##   - Anderson13
-## Urban fuel models
-##   - WUDAPT_urban
-fuel_model_name = "Anderson13"
-local_path_json_fuel_db = None
+output_data_filename = "Balbi"
+logging_level = 10  # DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
 
 # Rate of Spread Model as RateOfSpreadModel class
 ## Vegetation ROS models
 ##   - rm.Rothermel_SFIRE
 ##   - rm.Balbi_2022_fixed_SFIRE
-## Urban  ROS models
-##   - rm.Hamada_1
-##   - rm.Hamada_2
-ros_model = rm.Rothermel_SFIRE
-output_ros_unit = ureg.meter / ureg.second
+ros_model = rm.Balbi_2022_fixed_SFIRE
 
-# Sobol Sequence Configuration
-num_sobol_points = 2**13  # Number of points for Sobol sequence, better if 2^N
-
-# Input Variables Configuration
-# use firebecnh unit registry ureg to define units
+# Environmental variables to check for the rate of spread models (can differ for each tested model)
+# Typical variables for Rothermel
 input_vars_info = {
-    svn.WIND_SPEED: {"unit": ureg.meter / ureg.second, "range": [-15, 15]},
-    svn.SLOPE_ANGLE: {"unit": ureg.degree, "range": [-45, 45]},
-    svn.FUEL_MOISTURE_CONTENT: {"unit": ureg.percent, "range": [1, 50]},
+    svn.WIND_SPEED: {"unit": "m/s", "range": [-15, 15]},
+    svn.SLOPE_ANGLE: {"unit": "degree", "range": [-45, 45]},
+    svn.FUEL_MOISTURE_CONTENT: {"unit": "percent", "range": [1, 50]},
 }
 
-# Logging Configuration
-# set logging level, from lower to higher: NOTSET (0), DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
-ft.logger.setLevel(0)
+# Typical variables for Balbi
+input_vars_info = {
+    svn.WIND_SPEED: {"unit": "m/s", "range": [-15, 15]},
+    svn.SLOPE_ANGLE: {"unit": "degree", "range": [-45, 45]},
+    svn.FUEL_MOISTURE_CONTENT: {"unit": "percent", "range": [1, 50]},
+    svn.FUEL_TEMPERATURE_IGNITION: {"unit": "K", "range": [450, 700]},
+    svn.TEMPERATURE_AIR: {"unit": "K", "range": [263, 318]},
+    svn.DENSITY_AIR: {"unit": "kg/m^3", "range": [1, 1.3]},
+}
 
 #######################################################################################
 #                             STEP 1: DESIGN OF EXPERIMENT
 #######################################################################################
+# Sobol Sequence Configuration
+num_sobol_points = 2**8  # Number of points for Sobol sequence, better if 2^N
 
-# Create workflow record directory
-ft.create_record_directory(workflow_record_name)
+# Fuel Model Configuration
+fuel_model_name = "Anderson13"
+local_path_json_fuel_db = None
 
-# Copy script file to record
-ft.copy_file_to_workflow_record(workflow_record_name, __file__, overwrite=overwrite_files_in_record)
+# Input Variables Configuration
+# use firebecnh unit registry ureg to define units
+
+
+# create logging file
+ft.logging_config.create_file_handler("firebench.log")
+ft.set_logging_level(logging_level)
 
 # Import fuel data
 fuel_data = ft.read_fuel_data_file(fuel_model_name, local_path_json_fuel_db=local_path_json_fuel_db)
+
+# Add conatant missing data
+fuel_data[svn.FUEL_LOAD_DEAD_RATIO] = Quantity(1, "dimensionless")
 
 # Create Sobol sequence and final data dictionary
 input_vars_dict, sobol_problem, num_total_points = ft.sobol_seq(num_sobol_points, input_vars_info)
@@ -86,7 +72,8 @@ input_dict = ft.merge_dictionaries(fuel_data, input_vars_dict)
 #                             STEP 2: DATA QUALITY CHECK
 #######################################################################################
 
-final_input = ft.check_data_quality_ros_model(input_dict=input_dict, ros_model=ros_model)
+input_checked = ft.check_data_quality_ros_model(input_dict=input_dict, ros_model=ros_model)
+final_input = ft.extract_magnitudes(input_checked)
 
 #######################################################################################
 #                             STEP 3: ROS MODEL
@@ -99,16 +86,12 @@ sobol_indices = np.zeros((fuel_data["nb_fuel_classes"], 4, len(input_vars_info))
 ros = np.zeros((num_total_points, fuel_data["nb_fuel_classes"]))
 model_inputs = final_input.copy()
 for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
-
-    # Add fuel class to inputs
-    model_inputs[svn.FUEL_CLASS] = fuel_class
-
     # select variable from sobol sequence
     for k in range(num_total_points):
         for key in input_vars_info.keys():
             model_inputs[key] = final_input[key][k]
 
-        ros[k, i] = ros_model.compute_ros(model_inputs)
+        ros[k, i] = ros_model.compute_ros(model_inputs, fuel_cat=fuel_class)
 
     # Perform Sobol analysis
     sobol_results = sobol.analyze(sobol_problem, ros[:, i], print_to_console=False)
@@ -119,19 +102,18 @@ for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
     sobol_indices[i, 2, :] = sobol_results["ST"]
     sobol_indices[i, 3, :] = sobol_results["ST_conf"]
 
-# Assign unit to ROS
-ros_quantity = ureg.Quantity(ros, ros_model.metadata["rate_of_spread"]["units"])
-# convert to user defined output unit
-ros_quantity = ureg.Quantity(ros_quantity, output_ros_unit)
+# Assign unit to ROS and convert to m/s
+ros_quantity = Quantity(ros, ros_model.metadata["rate_of_spread"]["units"]).to("m/s")
 
 #######################################################################################
 #                             STEP 4: SAVE DATA
 #######################################################################################
 
 # Generate output file path
-output_file_path = ft.generate_file_path_in_record(
-    f"output_{output_filename}.h5", workflow_record_name, overwrite_files_in_record
-)
+if output_data_filename.endswith(".h5"):
+    output_file_path = output_data_filename
+else:
+    output_file_path = f"{output_data_filename}.h5"
 
 with h5py.File(output_file_path, "w") as f:
     # Add file attributes
