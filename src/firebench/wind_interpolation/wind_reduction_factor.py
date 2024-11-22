@@ -189,7 +189,7 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
     References
     ----------
     Baughman, R. G., & Albini, F. A. (1980).
-    Estimating midflame windspeeds.
+    Estimating midflame wind speeds.
     In Proceedings, Sixth Conference on Fire and Forest Meteorology, Seattle, WA (pp. 88-92).
     """  # pylint: disable=line-too-long
     # Extract scalar values using get_value_by_category
