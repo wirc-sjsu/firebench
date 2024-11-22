@@ -20,6 +20,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `CANOPY_DENSITY_BULK`: Canopy bulk density [kg m-3]
 - `CANOPY_HEIGHT_BOTTOM`: Canopy height bottom [m]
 - `CANOPY_HEIGHT_TOP`: Canopy height top [m]
+- `DENSITY_AIR`: Air density [kg m-3]
 - `FUEL_CLASS`: Fuel class (int)
 - `FUEL_CHAPARRAL_FLAG`: Fuel chaparral flag (int)
 - `FUEL_COVER`: Fuel cover [%]
@@ -57,6 +58,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD_1H`: Fuel surface area volume ratio for dead 1h fuel [m-1]
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB`: Fuel surface area volume ratio for live herb fuel [m-1]
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY`: Fuel surface area volume ratio for live woody fuel [m-1]
+- `FUEL_TEMPERATURE_IGNITION`: Fuel igntiion temperature [K]
 - `FUEL_THERMAL_CONDUCTIVITY`: Fuel thermal conductivity [W kg-1 K-1]
 - `FUEL_TREE_CLASS`: Fuel tree class (int)
 - `FUEL_WIND_HEIGHT`: Fuel wind height [m]
@@ -67,5 +69,6 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `RELATIVE_HUMIDITY`: Relative Humidity [m s-1]
 - `SLOPE_ANGLE`: Slope angle [deg]
 - `TEMPERATURE`: Temperature [K]
+- `TEMPERATURE_AIR`: Air temperature [K]
 - `TIME`: Time [s]
 - `WIND_SPEED`: Wind [m s-1]
