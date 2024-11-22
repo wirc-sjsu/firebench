@@ -43,6 +43,10 @@ When considering that the reference wind speed is 20 ft above the fuel top, the 
 where $$h$$ is the fuel height [ft], and $$h_f$$ is the flame height [ft].
 This wind reduction factor does not interpolate the value to midflame height but allows to calculate the average wind speed over the flame length.
 
+<div style="text-align: center;">
+    <img src="../../assets/diagram_blocks/process/Baughman_20ft_wind_reduction_factor_unsheltered.svg" alt="Block Baughman_20ft_wind_reduction_factor_unsheltered"/>
+</div>
+
 **Note**
 This formula can be applied to [Anderson](../21_fuel_models/02_Anderson.md) fuel model, considering $$h_f/h=1$$, to retrieve the wind reduction factor contained in the dataset. However, the values for fuel category 7 and 8 are different from the values in [1], where the value 0.36 is given in [1] whereas the formula gives 0.28. 
 
@@ -59,6 +63,9 @@ where
 
 \\[ \mathcal F (z) = (z - D_0) \ln \left( \frac{z - D_0}{z_0} \right ) - z.\\]
 
+<div style="text-align: center;">
+    <img src="../../assets/diagram_blocks/process/Baughman_generalized_wind_reduction_factor_unsheltered.svg" alt="Block Baughman_generalized_wind_reduction_factor_unsheltered"/>
+</div>
 
 #### Reference height is defined above the ground level
 
