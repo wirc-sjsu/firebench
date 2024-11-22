@@ -437,6 +437,27 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             "type": ParameterType.optional,
             "default": 50,
         },
+        "temp_ign": {
+            "std_name": svn.FUEL_TEMPERATURE_IGNITION,
+            "units": ureg.kelvin,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 600,
+        },
+        "temp_air": {
+            "std_name": svn.TEMPERATURE_AIR,
+            "units": ureg.kelvin,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 300,
+        },
+        "dens_air": {
+            "std_name": svn.DENSITY_AIR,
+            "units": ureg.kilogram / ureg.meter**3,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 1.125,
+        },
         "wind": {
             "std_name": svn.WIND_SPEED,
             "units": ureg.meter / ureg.second,
@@ -469,6 +490,9 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         fgi: float,
         fueldepthm: float,
         fueldens: float,
+        temp_ign: float,
+        temp_air: float,
+        dens_air: float,
         savr: float,
         w0: float,
         wind: float,
@@ -510,16 +534,12 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         Cpw = 4180.0  # Specific heat of liquid water           [J kg-1 K-1]
         delta_h = 2.3e6  # Heat of latent evaporation           [J kg-1]
         delta_H = 1.7433e07  # Heat of combustion               [J kg-1]
-        Ti = 600.0  # Ignition temperature                      [K]
         ## Model parameter
         st = 17.0  # Stoichiometric coefficient                 [-]
         scal_am = 0.025  # scaling factor am                    [-]
         tol = 1e-4  # tolerance for fixed point method          [-]
         r00 = 2.5e-5  # Model parameter
         chi0 = 0.3  # Radiative factor                          [-]
-        ## Atm
-        Ta = 300.0  # Air temperature                           [K]
-        rhoa = 1.125  # Air density                             [kg m-3]
 
         # fmc from percent to real
         fmc *= 0.01
@@ -545,10 +565,10 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         lai_t = savr * fueldepthm * beta_t  # total fuel
 
         ## Heat sink
-        q = Cp * (Ti - Ta) + fmc * (delta_h + Cpw * (Tvap - Ta))
+        q = Cp * (temp_ign - temp_air) + fmc * (delta_h + Cpw * (Tvap - temp_air))
 
         # Flame temperature
-        Tflame = Ta + (delta_H * (1 - chi0)) / (Cpa * (1 + st))
+        Tflame = temp_air + (delta_H * (1 - chi0)) / (Cpa * (1 + st))
 
         # Base flame radiation
         Rb = min(lai_t / (2 * np.pi), 1) * (lai / lai_t) ** 2 * boltz * Tflame**4 / (beta * fueldens * q)
@@ -557,13 +577,20 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         A = min(lai / (2 * np.pi), lai / lai_t) * chi0 * delta_H / (4 * q)
 
         # vertical velocity
-        u0 = 2 * (st + 1) * fueldens * Tflame * min(lai, 2 * np.pi * lai / lai_t) / (tau0 * rhoa * Ta)
+        u0 = (
+            2
+            * (st + 1)
+            * fueldens
+            * Tflame
+            * min(lai, 2 * np.pi * lai / lai_t)
+            / (tau0 * dens_air * temp_air)
+        )
 
         # tilt angle
         gamma = max(0, np.arctan(np.tan(alpha_rad) + wind / u0))
 
         # flame height and length
-        flame_height = (u0**2) / (g * (Tflame / Ta - 1) * np.cos(alpha_rad) ** 2)
+        flame_height = (u0**2) / (g * (Tflame / temp_air - 1) * np.cos(alpha_rad) ** 2)
         flame_length = flame_height / np.cos(gamma - alpha_rad)
 
         # view factor
@@ -577,8 +604,8 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             scal_am
             * min(w0 / 50, 1)
             * delta_H
-            * rhoa
-            * Ta
+            * dens_air
+            * temp_air
             * savr
             * np.sqrt(fueldepthm)
             / (2 * q * (1 + st) * fueldens * Tflame)
@@ -591,7 +618,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             * (1 + st)
             * fueldens
             * Tflame
-            / (rhoa * Ta * tau0)
+            / (dens_air * temp_air * tau0)
         )
 
         # exp term
