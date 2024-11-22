@@ -1,15 +1,15 @@
 ---
 layout: default
 title: "ROS Sensitivity to Environmental Variables"
-parent: "Sensitivity"
-grand_parent: "Workflows"
+parent: "Rate of spread models workflows"
+grand_parent: "0D models"
 nav_order: 1
 ---
 
 # ROS Sensitivity to Environmental Variables
 ## Objectives
 
-This workflow aims to evaluate the sensitivity of a specific rate of spread (ROS) model to its environmental inputs. It computes the `First and Total Order Sobol indices` with respect to environmental variable for each fuel class in a specific [Fuel Model](../../tutorials/change_fuel_model_ros.md).
+This workflow aims to evaluate the sensitivity of a specific rate of spread (ROS) model to its environmental inputs. It computes the `First and Total Order Sobol indices` with respect to environmental variable for each fuel class in a specific [Fuel Model](../../../../tutorials/change_fuel_model_ros.md).
 The environmental variables are:
 - Total fuel moisture content
 - Terrain slope angle in the spread direction
@@ -17,7 +17,7 @@ The environmental variables are:
 
 The following figure shows the workflow architecture:
 <div style="text-align: center;">
-    <img src="../../images/Benchmark_0d_sensitivity_ros.png" alt="workflow rate of spread sensitivity to environmental variables" style="width: 100%; max-width: 1200px;"/>
+    <img src="/images/Benchmark_0d_sensitivity_ros.png" alt="workflow rate of spread sensitivity to environmental variables" style="width: 100%; max-width: 1200px;"/>
 </div>
 
 
@@ -30,22 +30,22 @@ The workflow is organized around two Python scripts:
 
 ### Workflow record setup
 
-The workflow outputs will be stored in a local database’s directory called a `record`. The path to the local database has been set up through the environment variable `FIREBENCH_LOCAL_DB` (See [Installation](../../index.md)).
+The workflow outputs will be stored in a local database’s directory called a `record`. The path to the local database has been set up through the environment variable `FIREBENCH_LOCAL_DB` (See [Installation](../../../../index.md)).
 The record directory name is set using `workflow_record_name`. You can force the overwriting of files in the record through `overwrite_files_in_record`.
 
 ### Import fuel model data
 
-The fuel properties necessary to compute the rate of spread are generally stored in a database called a Fuel Model. `FireBench` contains some popular [Fuel Models](../../content.md).
+The fuel properties necessary to compute the rate of spread are generally stored in a database called a Fuel Model. `FireBench` contains some popular [Fuel Models](../../../../content.md).
 To load a Fuel Model available in `FireBench`, use its name for `fuel_model_name`.
-If you want to use a custom Fuel Model ([How to Use Fuel Models](../../tutorials/change_fuel_model_ros.md)), you have to define the path to the `json` metadata file representing the Fuel Model in `local_path_json_fuel_db`.
+If you want to use a custom Fuel Model ([How to Use Fuel Models](../../../../tutorials/change_fuel_model_ros.md)), you have to define the path to the `json` metadata file representing the Fuel Model in `local_path_json_fuel_db`.
 
 ### Select the rate of spread model
 
-To select the rate of spread model for the analysis, you can change the `ros_model` variable in the setup section. This variable should be a `firebench.ros_models.surface_for_vegetation.RateOfSpreadModel` class ([How to customize a rate of spread model](../../tutorials/new_ros_model.md)).
+To select the rate of spread model for the analysis, you can change the `ros_model` variable in the setup section. This variable should be a `firebench.ros_models.surface_for_vegetation.RateOfSpreadModel` class ([How to customize a rate of spread model](../../../../tutorials/new_ros_model.md)).
 
 ### Generate Sobol sequence for environmental inputs
 
-The inputs (using the [standard variable namespace](../../namespace.md)) for this workflow are:
+The inputs (using the [standard variable namespace](../../../../namespace.md)) for this workflow are:
 - `FUEL_MOISTURE_CONTENT`: Total fuel moisture content
 - `SLOPE_ANGLE`: Terrain slope angle in the spread direction
 - `WIND_SPEED`: Wind speed in the spread direction
@@ -152,7 +152,6 @@ output_filename = "Rothermel_SFIRE"
 figure_name = "sobol_index.png"
 overwrite_figure = True
 ```
-
 
 ## Data
 
