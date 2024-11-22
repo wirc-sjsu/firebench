@@ -39,19 +39,20 @@ input_vars_info = {
     svn.TEMPERATURE_AIR: {"unit": "K", "range": [263, 318]},
     svn.DENSITY_AIR: {"unit": "kg/m^3", "range": [1, 1.3]},
 }
+ 
+# Sobol Sequence Configuration
+num_sobol_points = 2**8  # Number of points for Sobol sequence, better if 2^N
 
 #######################################################################################
 #                             STEP 1: DESIGN OF EXPERIMENT
 #######################################################################################
-# Sobol Sequence Configuration
-num_sobol_points = 2**8  # Number of points for Sobol sequence, better if 2^N
 
 # Fuel Model Configuration
 fuel_model_name = "Anderson13"
 local_path_json_fuel_db = None
 
 # Input Variables Configuration
-# use firebecnh unit registry ureg to define units
+# use firebench unit registry ureg to define units
 
 
 # create logging file
@@ -61,7 +62,7 @@ ft.set_logging_level(logging_level)
 # Import fuel data
 fuel_data = ft.read_fuel_data_file(fuel_model_name, local_path_json_fuel_db=local_path_json_fuel_db)
 
-# Add conatant missing data
+# Add constant missing data
 fuel_data[svn.FUEL_LOAD_DEAD_RATIO] = Quantity(1, "dimensionless")
 
 # Create Sobol sequence and final data dictionary
