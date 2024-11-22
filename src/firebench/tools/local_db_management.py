@@ -189,9 +189,6 @@ def create_record_directory(workflow_record_name: str):
     # Create the new record directory
     os.makedirs(record_path, exist_ok=True)
 
-    # Create log file
-    create_file_handler(os.path.join(record_path, "firebench.log"))
-
 
 def get_local_db_path():
     """
