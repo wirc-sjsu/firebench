@@ -53,6 +53,7 @@ The total order indices are higher than the first order indices, indicating coup
 
 ## Data
 <!-- Add path or source of the record used for the test and its record -->
+- path to data: `firebench/data/workflow_results/0D_models/rate_of_spread/sensitivity_anderson13/Rothermel_SFIRE.zip`
 <!-- firebench-hash-list -->
 - **01_generate_data.py**: `35465abd1b8503c7782131805cc8923bbcf2bae447ca685955e41a9570951ab4`
 - **02_plot_data.py**: `26f50288582c32274544245aae4f64fe78724068c016b60f0ac4f4db59ce2dc4`

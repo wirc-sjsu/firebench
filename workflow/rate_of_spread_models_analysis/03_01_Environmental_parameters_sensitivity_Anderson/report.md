@@ -36,5 +36,6 @@ The environmental variables chosen for this test are:
 
 ## Data
 <!-- Add path or source of the record used for the test and its record -->
+- path to data:
 <!-- firebench-hash-list -->
 <!-- end of firebench-hash-list -->
