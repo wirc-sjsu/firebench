@@ -56,6 +56,5 @@ This script provides an example of post-processing, and users are encouraged to 
 The workflow has been run with the following models and parameters:
 
 <!-- the name of the workflow test, commit hash of the code that generated this data, generation date, other info on the library used (with commit hash if possible), inputs  -->
-- Rothermel (SFIRE version): `firebench/data/workflow/Sensitivity_env_var_Anderson13_Rothermel.zip`
-
+- [Rothermel (SFIRE version)](Rothermel/Rothermel.html)
 If you don't find the content in the `data` directory, try `git lfs pull`.
