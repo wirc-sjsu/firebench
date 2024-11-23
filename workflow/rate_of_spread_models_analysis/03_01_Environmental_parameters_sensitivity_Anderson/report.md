@@ -30,7 +30,7 @@ The environmental variables chosen for this test are:
     </strong>
     :
     <em>
-        Sensitivity analysis of Rothermel_SFIRE rate of spread model for Anderson 13 fuel model. 
+        Sensitivity analysis of ... rate of spread model for ... fuel model. 
     </em>
 </p>
 
