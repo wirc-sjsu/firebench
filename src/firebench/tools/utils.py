@@ -1,5 +1,8 @@
+import hashlib
+
 import numpy as np
 from pint import Quantity
+from .logging_config import logger
 
 
 def is_scalar_quantity(x: any):
@@ -63,3 +66,35 @@ def get_value_by_category(x: any, category_index: int):
         return x[category_index - 1]
     except IndexError as exc:
         raise IndexError(f"One-based index {category_index} not found in {x}.") from exc
+
+
+def _calculate_sha256(file_path):
+    """
+    Calculate the SHA-256 hash of a file's contents.
+
+    Parameters:
+    -----------
+    file_path : str
+        The path to the file for which the SHA-256 hash is to be calculated.
+
+    Returns:
+    --------
+    str
+        The SHA-256 hash as a hexadecimal string if the file is successfully processed, and an empty string if not.
+    """  # pylint: disable=line-too-long
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(file_path, "rb") as file:
+            # Read the file in chunks to handle large files efficiently
+            for byte_block in iter(lambda: file.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
+    except FileNotFoundError:
+        logger.error("File not found: '%s'. Unable to calculate SHA-256 hash.", file_path)
+    except PermissionError:
+        logger.error(
+            "Permission denied when accessing file: '%s'. Unable to calculate SHA-256 hash.", file_path
+        )
+    except OSError as e:
+        logger.error("OS error occurred while processing file '%s': %s", file_path, e)
+    return ""

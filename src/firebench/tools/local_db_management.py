@@ -2,8 +2,8 @@ import logging
 import os
 import shutil
 
-from .logging_config import create_file_handler, logger
-
+from .logging_config import logger
+from .utils import _calculate_sha256
 
 def _check_source_file_exists(file_path: str):
     """
@@ -165,9 +165,14 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
     # Handle existing destination file
     _handle_existing_destination_file(destination_file_path, overwrite)
 
+    # get hash of file for traceability
+    hash_file = _calculate_sha256(file_path)
+
     # Copy file to workflow record directory
     shutil.copy2(file_path, destination_file_path)
     logger.debug("file %s copied to %s", file_path, destination_file_path)
+
+    return hash_file
 
 
 def create_record_directory(workflow_record_name: str):
@@ -214,3 +219,66 @@ def get_local_db_path():
             "Firebench local database path is not set. Define the path using 'export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db'"
         )
     return local_db_path
+
+
+def update_markdown_with_hashes(markdown_path, hash_dict):
+    """
+    Updates the 'firebench-hash-list' section of a markdown file with file names and their hashes.
+
+    Parameters:
+    -----------
+    markdown_path : str
+        Path to the markdown file to be updated.
+
+    hash_dict : dict
+        Dictionary where keys are filenames and values are their hashes.
+    """
+    # Read the existing markdown content
+    with open(markdown_path, 'r') as file:
+        markdown_lines = file.readlines()
+
+    # Prepare the new hash list section
+    hash_list = "\n".join([f"- **{filename}**: `{hash_value}`" for filename, hash_value in hash_dict.items()])
+    new_section = f"<!-- firebench-hash-list -->\n{hash_list}\n<!-- end of firebench-hash-list -->"
+
+    # Replace the existing hash list section
+    inside_hash_section = False
+    new_markdown_lines = []
+    for line in markdown_lines:
+        if line.strip() == "<!-- firebench-hash-list -->":
+            inside_hash_section = True
+            new_markdown_lines.append(new_section)
+        elif line.strip() == "<!-- end of firebench-hash-list -->":
+            inside_hash_section = False
+        elif not inside_hash_section:
+            new_markdown_lines.append(line)
+
+    # Write the updated markdown back to the file
+    with open(markdown_path, 'w') as file:
+        file.writelines(new_markdown_lines)
+
+# Add the current date to the "Date of record creation" line in the markdown file
+def update_date_in_markdown(markdown_path, date):
+    """
+    Updates the "Date of record creation" line in the markdown file with the given date.
+
+    Parameters:
+    -----------
+    markdown_path : str
+        Path to the markdown file to be updated.
+
+    date : str
+        The date string to add to the line.
+    """
+    with open(markdown_path, "r") as file:
+        lines = file.readlines()
+
+    updated_lines = []
+    for line in lines:
+        if line.strip().startswith("- Date of record creation:"):
+            updated_lines.append(f"- Date of record creation: {date}\n")
+        else:
+            updated_lines.append(line)
+
+    with open(markdown_path, "w") as file:
+        file.writelines(updated_lines)

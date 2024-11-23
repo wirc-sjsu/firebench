@@ -13,14 +13,14 @@ from SALib.analyze import sobol
 #######################################################################################
 
 # Workflow Configuration
-output_data_filename = "Balbi"
-logging_level = 10  # DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
+output_data_filename = "output_data"
+logging_level = 20  # DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
 
 # Rate of Spread Model as RateOfSpreadModel class
 ## Vegetation ROS models
 ##   - rm.Rothermel_SFIRE
 ##   - rm.Balbi_2022_fixed_SFIRE
-ros_model = rm.Balbi_2022_fixed_SFIRE
+ros_model = rm.Rothermel_SFIRE
 
 # Environmental variables to check for the rate of spread models (can differ for each tested model)
 # Typical variables for Rothermel
@@ -29,19 +29,9 @@ input_vars_info = {
     svn.SLOPE_ANGLE: {"unit": "degree", "range": [-45, 45]},
     svn.FUEL_MOISTURE_CONTENT: {"unit": "percent", "range": [1, 50]},
 }
-
-# Typical variables for Balbi
-input_vars_info = {
-    svn.WIND_SPEED: {"unit": "m/s", "range": [-15, 15]},
-    svn.SLOPE_ANGLE: {"unit": "degree", "range": [-45, 45]},
-    svn.FUEL_MOISTURE_CONTENT: {"unit": "percent", "range": [1, 50]},
-    svn.FUEL_TEMPERATURE_IGNITION: {"unit": "K", "range": [450, 700]},
-    svn.TEMPERATURE_AIR: {"unit": "K", "range": [263, 318]},
-    svn.DENSITY_AIR: {"unit": "kg/m^3", "range": [1, 1.3]},
-}
  
 # Sobol Sequence Configuration
-num_sobol_points = 2**8  # Number of points for Sobol sequence, better if 2^N
+num_sobol_points = 2**15  # Number of points for Sobol sequence, better if 2^N
 
 #######################################################################################
 #                             STEP 1: DESIGN OF EXPERIMENT
@@ -50,10 +40,6 @@ num_sobol_points = 2**8  # Number of points for Sobol sequence, better if 2^N
 # Fuel Model Configuration
 fuel_model_name = "Anderson13"
 local_path_json_fuel_db = None
-
-# Input Variables Configuration
-# use firebench unit registry ureg to define units
-
 
 # create logging file
 ft.logging_config.create_file_handler("firebench.log")

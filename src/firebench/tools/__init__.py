@@ -22,6 +22,8 @@ from .local_db_management import (
     copy_file_to_workflow_record,
     generate_file_path_in_record,
     get_file_path_in_record,
+    update_markdown_with_hashes,
+    update_date_in_markdown,
 )
 from .logging_config import (
     logger,
