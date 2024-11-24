@@ -10,6 +10,8 @@ class StandardVariableNames(Enum):  # pragma: no cover
     clarity across the codebase and related data files.
     """
 
+    AIR_DENSITY = "air_density"
+    AIR_TEMPERATURE = "air_temperature"
     ALPHA = "alpha"
     BETA = "beta"
     BUILDING_RATIO_FIRE_RESISTANT = "building_ratio_fire_resistant"
@@ -20,7 +22,6 @@ class StandardVariableNames(Enum):  # pragma: no cover
     CANOPY_DENSITY_BULK = "canopy_density_bulk"
     CANOPY_HEIGHT_BOTTOM = "canopy_height_bottom"
     CANOPY_HEIGHT_TOP = "canopy_height_top"
-    DENSITY_AIR = "density_air"
     DIRECTION = "direction"
     FUEL_CLASS = "fuel_class"
     FUEL_CHAPARRAL_FLAG = "fuel_chaparral_flag"
@@ -73,7 +74,6 @@ class StandardVariableNames(Enum):  # pragma: no cover
     RELATIVE_HUMIDITY = "relative_humidity"
     SLOPE_ANGLE = "slope_angle"
     TEMPERATURE = "temperature"
-    TEMPERATURE_AIR = "temperature_air"
     TIME = "time"
     WIND_SPEED = "wind_speed"
     WIND_SPEED_U = "wind_speed_u"

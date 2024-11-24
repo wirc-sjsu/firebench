@@ -15,12 +15,13 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 
 ## Standard Variable Names
 
+- `AIR_DENSITY`: Air density [kg m-3]
+- `AIR_TEMPERATURE`: Air temperature [K]
 - `ALPHA`: Alpha
 - `BETA`: Beta
 - `CANOPY_DENSITY_BULK`: Canopy bulk density [kg m-3]
 - `CANOPY_HEIGHT_BOTTOM`: Canopy height bottom [m]
 - `CANOPY_HEIGHT_TOP`: Canopy height top [m]
-- `DENSITY_AIR`: Air density [kg m-3]
 - `FUEL_CLASS`: Fuel class (int)
 - `FUEL_CHAPARRAL_FLAG`: Fuel chaparral flag (int)
 - `FUEL_COVER`: Fuel cover [%]
@@ -69,6 +70,5 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `RELATIVE_HUMIDITY`: Relative Humidity [m s-1]
 - `SLOPE_ANGLE`: Slope angle [deg]
 - `TEMPERATURE`: Temperature [K]
-- `TEMPERATURE_AIR`: Air temperature [K]
 - `TIME`: Time [s]
 - `WIND_SPEED`: Wind [m s-1]
