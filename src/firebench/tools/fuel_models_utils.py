@@ -258,3 +258,92 @@ def add_scott_and_burgan_total_savr(fuel_data_dict, overwrite=False):
 
     # Store the total SAVR in the dictionary
     fuel_data_dict[total_key] = num / denom
+
+
+def add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict, overwrite=False):
+    """
+    Calculate and add the dead fuel load ratio to a fuel data dictionary based on the 
+    Scott and Burgan 40 fuel model.
+
+    The dead fuel load ratio represents the fraction of the total fuel load that is 
+    attributed to dead fuels. It is calculated as the ratio of the sum of specific 
+    dead fuel loads to the sum of all fuel loads (dead and live). 
+
+    Dead fuel loads considered:
+    - `FUEL_LOAD_DRY_1H`
+    - `FUEL_LOAD_DRY_10H`
+    - `FUEL_LOAD_DRY_100H`
+
+    Live fuel loads considered:
+    - `FUEL_LOAD_DRY_LIVE_HERB`
+    - `FUEL_LOAD_DRY_LIVE_WOODY`
+
+    The result is stored under the key `FUEL_LOAD_DEAD_RATIO` in `fuel_data_dict`.
+
+    Parameters
+    ----------
+    fuel_data_dict : dict
+        Dictionary containing individual fuel load values with specific keys.
+    overwrite : bool, optional
+        If `True`, overwrites the existing total fuel load if it exists.
+        If `False` and the total fuel load already exists, raises a `ValueError`. Default is `False`.
+
+    Raises
+    ------
+    ValueError
+        If `FUEL_LOAD_DEAD_RATIO` already exists in `fuel_data_dict` and `overwrite` is `False`.
+    KeyError
+        If any required individual fuel load keys are missing from `fuel_data_dict`.
+
+    Notes
+    -----
+    This function assumes that `fuel_data_dict` contains the required keys defined in the
+    Scott and Burgan 40 fuel model constants.
+
+    Examples
+    --------
+    ```python
+    from your_module import svn  # Assuming svn contains the required constants
+
+    fuel_data = {
+        svn.FUEL_LOAD_DRY_1H: 0.1,
+        svn.FUEL_LOAD_DRY_10H: 0.2,
+        svn.FUEL_LOAD_DRY_100H: 0.3,
+        svn.FUEL_LOAD_DRY_LIVE_HERB: 0.4,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY: 0.5,
+    }
+
+    add_scott_and_burgan_dead_fuel_ratio(fuel_data)
+
+    print(fuel_data[svn.FUEL_LOAD_DEAD_RATIO])  # Outputs: 0.4
+    ```
+    """  # pylint: disable=line-too-long
+    total_key = svn.FUEL_LOAD_DEAD_RATIO
+
+    if total_key in fuel_data_dict:
+        if not overwrite:
+            raise ValueError(
+                f"Key '{total_key}' already exists in fuel_data_dict. Use overwrite=True to overwrite it."
+            )
+        logger.info("Key '%s' exists and will be overwritten.", total_key)
+
+    # List of individual fuel load keys to sum
+    dead_fuels_keys = [
+        svn.FUEL_LOAD_DRY_1H,
+        svn.FUEL_LOAD_DRY_10H,
+        svn.FUEL_LOAD_DRY_100H,
+    ]
+    live_fuels_keys = [
+        svn.FUEL_LOAD_DRY_LIVE_HERB,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY,
+    ]
+
+    for key in dead_fuels_keys + live_fuels_keys:
+        if key not in fuel_data_dict.keys():
+            raise KeyError(f"Missing required key '{key}' in fuel_data_dict.")
+        
+    # Calculate the numerator and denominator
+    dead_load = sum(fuel_data_dict[dead_fuel] for dead_fuel in dead_fuels_keys)
+    live_load = sum(fuel_data_dict[live_fuel] for live_fuel in live_fuels_keys)
+    
+    fuel_data_dict[total_key] = dead_load / (dead_load + live_load)
