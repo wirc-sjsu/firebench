@@ -11,9 +11,9 @@ from matplotlib.lines import Line2D
 
 # Workflow Configuration
 input_data_filename = "output_data.h5"  # Name of the input data file
-figure_name = "sobol_index.png"         # Output figure filename
+figure_name = "sobol_index.png"  # Output figure filename
 figure_title = "Rothermel_SFIRE ros model"  # Title for the figure
-overwrite_figure = True                # Whether to overwrite the figure if it exists
+overwrite_figure = True  # Whether to overwrite the figure if it exists
 
 #######################################################################################
 #                             DATA RETRIEVAL
@@ -30,7 +30,7 @@ output_dict = {}  # Dictionary to store output data
 with h5py.File(output_file_path, "r") as f:
     outputs_grp = f["outputs"]
     fuel_model_name = f["fuel"].attrs["fuel_model_name"]  # Retrieve fuel model name
-    
+
     # Keys for Sobol indices datasets
     sobol_keys = [
         "Sobol_first_order",
@@ -58,7 +58,7 @@ parameters = np.array(output_dict["Sobol_first_order"]["column_names"], dtype=st
 
 # Configure matplotlib settings
 mpl.rcParams.update({"font.size": 7})  # Set default font size
-plt.rcParams["text.usetex"] = True    # Enable LaTeX for text rendering
+plt.rcParams["text.usetex"] = True  # Enable LaTeX for text rendering
 
 # Create figure and axes
 fig, axes = plt.subplots(2, 1, figsize=(5, 6), constrained_layout=True, sharex=False)
@@ -83,9 +83,9 @@ for i, param in enumerate(parameters):
         x_positions + i * bar_width,
         output_dict["Sobol_first_order"]["data"][:, i],
         yerr=output_dict["Sobol_first_order_confidence"]["data"][:, i],
-        fmt="",  
-        ecolor="k",  
-        elinewidth=0.6,  
+        fmt="",
+        ecolor="k",
+        elinewidth=0.6,
         capsize=1.5,
         linestyle="none",
     )
@@ -102,9 +102,9 @@ for i, param in enumerate(parameters):
         x_positions + i * bar_width,
         output_dict["Sobol_total_order"]["data"][:, i],
         yerr=output_dict["Sobol_total_order_confidence"]["data"][:, i],
-        fmt="",  
-        ecolor="k",  
-        elinewidth=0.6,  
+        fmt="",
+        ecolor="k",
+        elinewidth=0.6,
         capsize=1.5,
         linestyle="none",
     )

@@ -29,7 +29,7 @@ input_vars_info = {
     svn.SLOPE_ANGLE: {"unit": "degree", "range": [-45, 45]},
     svn.FUEL_MOISTURE_CONTENT: {"unit": "percent", "range": [1, 50]},
 }
- 
+
 # Sobol Sequence Configuration
 num_sobol_points = 2**15  # Number of points for Sobol sequence, better if 2^N
 

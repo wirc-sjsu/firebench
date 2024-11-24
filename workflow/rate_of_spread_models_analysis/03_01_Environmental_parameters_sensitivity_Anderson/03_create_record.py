@@ -9,9 +9,9 @@ import firebench.tools as ft
 
 # Record and file configuration
 record_name = "Sensitivity_Rothermel"  # Name of the record directory to be created
-data_filename = "output_data.h5"       # Name of the data file to include in the record
-figure_filename = "sobol_index.png"    # Name of the figure file to include in the record
-overwrite_existing_record = True       # Whether to overwrite existing files in the record
+data_filename = "output_data.h5"  # Name of the data file to include in the record
+figure_filename = "sobol_index.png"  # Name of the figure file to include in the record
+overwrite_existing_record = True  # Whether to overwrite existing files in the record
 
 # List of mandatory files to include in the record
 mandatory_files = [
