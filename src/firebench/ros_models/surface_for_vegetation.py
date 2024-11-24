@@ -445,14 +445,14 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             "default": 600,
         },
         "temp_air": {
-            "std_name": svn.TEMPERATURE_AIR,
+            "std_name": svn.AIR_TEMPERATURE,
             "units": ureg.kelvin,
             "range": (0, np.inf),
             "type": ParameterType.optional,
             "default": 300,
         },
         "dens_air": {
-            "std_name": svn.DENSITY_AIR,
+            "std_name": svn.AIR_DENSITY,
             "units": ureg.kilogram / ureg.meter**3,
             "range": (0, np.inf),
             "type": ParameterType.optional,
