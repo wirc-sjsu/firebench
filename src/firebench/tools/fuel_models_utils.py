@@ -262,12 +262,12 @@ def add_scott_and_burgan_total_savr(fuel_data_dict, overwrite=False):
 
 def add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict, overwrite=False):
     """
-    Calculate and add the dead fuel load ratio to a fuel data dictionary based on the 
+    Calculate and add the dead fuel load ratio to a fuel data dictionary based on the
     Scott and Burgan 40 fuel model.
 
-    The dead fuel load ratio represents the fraction of the total fuel load that is 
-    attributed to dead fuels. It is calculated as the ratio of the sum of specific 
-    dead fuel loads to the sum of all fuel loads (dead and live). 
+    The dead fuel load ratio represents the fraction of the total fuel load that is
+    attributed to dead fuels. It is calculated as the ratio of the sum of specific
+    dead fuel loads to the sum of all fuel loads (dead and live).
 
     Dead fuel loads considered:
     - `FUEL_LOAD_DRY_1H`
@@ -341,9 +341,9 @@ def add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict, overwrite=False):
     for key in dead_fuels_keys + live_fuels_keys:
         if key not in fuel_data_dict.keys():
             raise KeyError(f"Missing required key '{key}' in fuel_data_dict.")
-        
+
     # Calculate the numerator and denominator
     dead_load = sum(fuel_data_dict[dead_fuel] for dead_fuel in dead_fuels_keys)
     live_load = sum(fuel_data_dict[live_fuel] for live_fuel in live_fuels_keys)
-    
+
     fuel_data_dict[total_key] = dead_load / (dead_load + live_load)

@@ -5,6 +5,7 @@ import shutil
 from .logging_config import logger
 from .utils import _calculate_sha256
 
+
 def _check_source_file_exists(file_path: str):
     """
     Check if the source file exists.
@@ -234,11 +235,13 @@ def update_markdown_with_hashes(markdown_path, hash_dict):
         Dictionary where keys are filenames and values are their hashes.
     """
     # Read the existing markdown content
-    with open(markdown_path, 'r') as file:
+    with open(markdown_path, "r") as file:
         markdown_lines = file.readlines()
 
     # Prepare the new hash list section
-    hash_list = "\n".join([f"- **{filename}**: `{hash_value}`" for filename, hash_value in hash_dict.items()])
+    hash_list = "\n".join(
+        [f"- **{filename}**: `{hash_value}`" for filename, hash_value in hash_dict.items()]
+    )
     new_section = f"<!-- firebench-hash-list -->\n{hash_list}\n<!-- end of firebench-hash-list -->"
 
     # Replace the existing hash list section
@@ -254,8 +257,9 @@ def update_markdown_with_hashes(markdown_path, hash_dict):
             new_markdown_lines.append(line)
 
     # Write the updated markdown back to the file
-    with open(markdown_path, 'w') as file:
+    with open(markdown_path, "w") as file:
         file.writelines(new_markdown_lines)
+
 
 # Add the current date to the "Date of record creation" line in the markdown file
 def update_date_in_markdown(markdown_path, date):

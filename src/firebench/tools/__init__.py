@@ -35,6 +35,7 @@ from .fuel_models_utils import (
     find_closest_fuel_class_by_properties,
     add_scott_and_burgan_total_fuel_load,
     add_scott_and_burgan_total_savr,
+    add_scott_and_burgan_dead_fuel_ratio,
 )
 from .utils import (
     is_scalar_quantity,
