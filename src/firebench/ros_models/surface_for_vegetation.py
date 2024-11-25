@@ -1,9 +1,11 @@
 import numpy as np
+from pint import Quantity
 
+from ..tools.check_data_quality import extract_magnitudes
 from ..tools.input_info import ParameterType
 from ..tools.namespace import StandardVariableNames as svn
+from ..tools.rate_of_spread_model import RateOfSpreadModel
 from ..tools.units import ureg
-from .rate_of_spread_model import RateOfSpreadModel
 
 
 class Rothermel_SFIRE(RateOfSpreadModel):
@@ -32,56 +34,48 @@ class Rothermel_SFIRE(RateOfSpreadModel):
             "units": ureg.kilogram / ureg.meter**2,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "fueldepthm": {
             "std_name": svn.FUEL_HEIGHT,
             "units": ureg.meter,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "fueldens": {
             "std_name": svn.FUEL_DENSITY,
             "units": ureg.pound / ureg.foot**3,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "savr": {
             "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
             "units": 1 / ureg.foot,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "fuelmce": {
             "std_name": svn.FUEL_MOISTURE_EXTINCTION,
             "units": ureg.percent,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "st": {
             "std_name": svn.FUEL_MINERAL_CONTENT_TOTAL,
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "se": {
             "std_name": svn.FUEL_MINERAL_CONTENT_EFFECTIVE,
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "ichap": {
             "std_name": svn.FUEL_CHAPARRAL_FLAG,
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "wind": {
             "std_name": svn.WIND_SPEED,
@@ -250,15 +244,15 @@ class Rothermel_SFIRE(RateOfSpreadModel):
     @staticmethod
     def compute_ros(
         input_dict: dict[str, float | int | list[float] | list[int]],
-        fuel_cat: int = None,
+        fuel_cat: int = 0,
         **opt,
     ) -> float:
         """
-        Compute the rate of spread of fire using Rothermel's model.
+        Compute the rate of spread of fire using `Rothermel`'s model.
 
-        This function serves as a wrapper that prepares the fuel data dictionary and calls the `rothermel` method.
-        It extracts the necessary fuel properties from `input_dict`, optionally selecting a specific fuel category,
-        and computes the rate of spread (ROS) of the fire.
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the ROS. Input data must be provided in standard units without `pint.Quantity` objects.
+        For unit-aware calculations, use `compute_ros_with_units`.
 
         Parameters
         ----------
@@ -278,18 +272,13 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         Returns
         -------
         float
-            The computed rate of spread of fire [m/s].
+            The computed rate of spread of fire.
 
         Notes
         -----
         - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
           When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-        - This function assumes that all necessary error handling (such as checking for missing keys,
-          valid indices, or correct data types) has been performed prior to calling it.
-        - The function expects that the keys in `input_dict` correspond to the standard variable names
-          defined in `Rothermel_SFIRE.metadata` for each fuel property.
-        - The `rothermel` method computes the rate of spread using the provided fuel properties,
-          wind speed (`wind`), slope angle (`slope`), and fuel moisture content (`fmc`).
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), compliant with units specified in the metadata dictionary.
 
         Examples
         --------
@@ -310,7 +299,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
             svn.FUEL_MOISTURE_CONTENT: 10.0,
         }
         ros = Rothermel_SFIRE.compute_ros(input_data)
-        print(f"The rate of spread is {ros:.4f} m/s")
+        print(f"The rate of spread is {ros:.4f}")
         ```
 
         **Example with fuel categories:**
@@ -331,17 +320,57 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         }
         fuel_category = 2  # One-based index
         ros = Rothermel_SFIRE.compute_ros(input_data, fuel_cat=fuel_category)
-        print(f"The rate of spread for fuel category {fuel_category} is {ros:.4f} m/s")
+        print(f"The rate of spread for fuel category {fuel_category} is {ros:.4f}")
         ```
-
-        """
+        """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
-        fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
+        fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
             input_dict=input_dict, metadata=Rothermel_SFIRE.metadata, fuel_cat=fuel_cat
         )
 
-        return Rothermel_SFIRE.rothermel(
-            **fuel_properties_dict,
+        # Calculate the rate of spread
+        return Rothermel_SFIRE.rothermel(**fuel_properties)
+
+    @staticmethod
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> Quantity:
+        """
+        Compute the rate of spread (ROS) of fire using Rothermel's model with unit handling.
+
+        This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
+        computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
+            Keys should match the variable names defined in `Rothermel_SFIRE.metadata`.
+
+        fuel_cat : int, optional
+            One-based index for selecting a specific fuel category from lists in `input_dict`.
+            Defaults to 0, indicating scalar inputs.
+
+        **opt : dict
+            Additional optional parameters passed to `compute_ros`.
+
+        Returns
+        -------
+        ureg.Quantity
+            Computed rate of spread (ROS) with units (e.g., meters per second).
+
+        Notes
+        -----
+        - Use this function when working with `pint.Quantity` objects in `input_dict`.
+        - Units for the ROS are defined in `Rothermel_SFIRE.metadata["rate_of_spread"]["units"]`.
+        """  # pylint: disable=line-too-long
+        input_dict_no_units = extract_magnitudes(input_dict)
+
+        return ureg.Quantity(
+            Rothermel_SFIRE.compute_ros(input_dict_no_units, fuel_cat, **opt),
+            Rothermel_SFIRE.metadata["rate_of_spread"]["units"],
         )
 
 
@@ -376,35 +405,30 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             "units": ureg.dimensionless,
             "range": (0, 1),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "fgi": {
             "std_name": svn.FUEL_LOAD_DRY_TOTAL,
             "units": ureg.kilogram / ureg.meter**2,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "fueldepthm": {
             "std_name": svn.FUEL_HEIGHT,
             "units": ureg.meter,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "fueldens": {
             "std_name": svn.FUEL_DENSITY,
             "units": ureg.kilogram / ureg.meter**3,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "savr": {
             "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
             "units": 1 / ureg.meter,
             "range": (0, np.inf),
             "type": ParameterType.input,
-            "is_fuel_model_variable": True,
         },
         "w0": {
             "std_name": svn.IGNITION_LENGTH,
@@ -412,6 +436,27 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             "range": (0, np.inf),
             "type": ParameterType.optional,
             "default": 50,
+        },
+        "temp_ign": {
+            "std_name": svn.FUEL_TEMPERATURE_IGNITION,
+            "units": ureg.kelvin,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 600,
+        },
+        "temp_air": {
+            "std_name": svn.AIR_TEMPERATURE,
+            "units": ureg.kelvin,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 300,
+        },
+        "dens_air": {
+            "std_name": svn.AIR_DENSITY,
+            "units": ureg.kilogram / ureg.meter**3,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 1.125,
         },
         "wind": {
             "std_name": svn.WIND_SPEED,
@@ -445,6 +490,9 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         fgi: float,
         fueldepthm: float,
         fueldens: float,
+        temp_ign: float,
+        temp_air: float,
+        dens_air: float,
         savr: float,
         w0: float,
         wind: float,
@@ -486,16 +534,12 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         Cpw = 4180.0  # Specific heat of liquid water           [J kg-1 K-1]
         delta_h = 2.3e6  # Heat of latent evaporation           [J kg-1]
         delta_H = 1.7433e07  # Heat of combustion               [J kg-1]
-        Ti = 600.0  # Ignition temperature                      [K]
         ## Model parameter
         st = 17.0  # Stoichiometric coefficient                 [-]
         scal_am = 0.025  # scaling factor am                    [-]
         tol = 1e-4  # tolerance for fixed point method          [-]
         r00 = 2.5e-5  # Model parameter
         chi0 = 0.3  # Radiative factor                          [-]
-        ## Atm
-        Ta = 300.0  # Air temperature                           [K]
-        rhoa = 1.125  # Air density                             [kg m-3]
 
         # fmc from percent to real
         fmc *= 0.01
@@ -521,10 +565,10 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         lai_t = savr * fueldepthm * beta_t  # total fuel
 
         ## Heat sink
-        q = Cp * (Ti - Ta) + fmc * (delta_h + Cpw * (Tvap - Ta))
+        q = Cp * (temp_ign - temp_air) + fmc * (delta_h + Cpw * (Tvap - temp_air))
 
         # Flame temperature
-        Tflame = Ta + (delta_H * (1 - chi0)) / (Cpa * (1 + st))
+        Tflame = temp_air + (delta_H * (1 - chi0)) / (Cpa * (1 + st))
 
         # Base flame radiation
         Rb = min(lai_t / (2 * np.pi), 1) * (lai / lai_t) ** 2 * boltz * Tflame**4 / (beta * fueldens * q)
@@ -533,13 +577,20 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         A = min(lai / (2 * np.pi), lai / lai_t) * chi0 * delta_H / (4 * q)
 
         # vertical velocity
-        u0 = 2 * (st + 1) * fueldens * Tflame * min(lai, 2 * np.pi * lai / lai_t) / (tau0 * rhoa * Ta)
+        u0 = (
+            2
+            * (st + 1)
+            * fueldens
+            * Tflame
+            * min(lai, 2 * np.pi * lai / lai_t)
+            / (tau0 * dens_air * temp_air)
+        )
 
         # tilt angle
         gamma = max(0, np.arctan(np.tan(alpha_rad) + wind / u0))
 
         # flame height and length
-        flame_height = (u0**2) / (g * (Tflame / Ta - 1) * np.cos(alpha_rad) ** 2)
+        flame_height = (u0**2) / (g * (Tflame / temp_air - 1) * np.cos(alpha_rad) ** 2)
         flame_length = flame_height / np.cos(gamma - alpha_rad)
 
         # view factor
@@ -553,8 +604,8 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             scal_am
             * min(w0 / 50, 1)
             * delta_H
-            * rhoa
-            * Ta
+            * dens_air
+            * temp_air
             * savr
             * np.sqrt(fueldepthm)
             / (2 * q * (1 + st) * fueldens * Tflame)
@@ -567,7 +618,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             * (1 + st)
             * fueldens
             * Tflame
-            / (rhoa * Ta * tau0)
+            / (dens_air * temp_air * tau0)
         )
 
         # exp term
@@ -602,29 +653,44 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
     @staticmethod
     def compute_ros(
         input_dict: dict[str, float | int | list[float] | list[int]],
-        fuel_cat: int = None,
+        fuel_cat: int = 0,
         **opt,
     ) -> float:
         """
-        Compute the rate of spread of fire using the Balbi's 2022 model.
+        Compute the rate of spread of fire using the `Balbi's 2022` model.
 
-        This is a wrapper function that prepares the fuel data dictionary and calls the `balbi_2022_fixed` method.
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the rate of spread (ROS) of fire using the `balbi_2022_fixed` method.
+        Input data must be provided in standard units without `pint.Quantity` objects.
+        For unit-aware calculations, use `compute_ros_with_units`.
 
         Parameters
         ----------
-        input_dict : dict[str, float | int | list[float] | list[int]]
+        input_dict : dict
             Dictionary containing the input data for various fuel properties.
+            The keys should be the standard variable names as defined in `Balbi_2022_fixed_SFIRE.metadata`.
+            Each value can be a single float/int or a list/array of floats/ints.
 
-        Optional Parameters
-        -------------------
+        fuel_cat : int, optional
+            Fuel category index (one-based). If provided, fuel properties are expected to be lists or arrays,
+            and the function will extract the properties corresponding to the specified fuel category.
+            If not provided, fuel properties are expected to be scalar values.
+
         **opt : dict
-            Optional parameters for the `balbi_2022_fixed` method.
+            Additional optional parameters to be passed to the `balbi_2022_fixed` method.
 
         Returns
         -------
         float
-            The computed rate of spread of fire [m/s].
-        """
+            The computed rate of spread of fire.
+
+        Notes
+        -----
+        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
+        When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects),
+        compliant with units specified in the metadata dictionary.
+        """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
             input_dict=input_dict, metadata=Balbi_2022_fixed_SFIRE.metadata, fuel_cat=fuel_cat
@@ -633,4 +699,46 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         return Balbi_2022_fixed_SFIRE.balbi_2022_fixed(
             **fuel_properties_dict,
             **opt,
+        )
+
+    @staticmethod
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> Quantity:
+        """
+        Compute the rate of spread (ROS) of fire using Balbi's 2022 model with unit handling.
+
+        This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
+        computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
+            Keys should match the variable names defined in `Balbi_2022_fixed_SFIRE.metadata`.
+
+        fuel_cat : int, optional
+            One-based index for selecting a specific fuel category from lists in `input_dict`.
+            Defaults to 0, indicating scalar inputs.
+
+        **opt : dict
+            Additional optional parameters passed to `compute_ros`.
+
+        Returns
+        -------
+        ureg.Quantity
+            Computed rate of spread (ROS) with units (e.g., meters per second).
+
+        Notes
+        -----
+        - Use this function when working with `pint.Quantity` objects in `input_dict`.
+        - Units for the ROS are defined in `Balbi_2022_fixed_SFIRE.metadata["rate_of_spread"]["units"]`.
+        """  # pylint: disable=line-too-long
+        input_dict_no_units = extract_magnitudes(input_dict)
+
+        return ureg.Quantity(
+            Balbi_2022_fixed_SFIRE.compute_ros(input_dict_no_units, fuel_cat, **opt),
+            Balbi_2022_fixed_SFIRE.metadata["rate_of_spread"]["units"],
         )

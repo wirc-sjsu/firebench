@@ -22,6 +22,8 @@ from .local_db_management import (
     copy_file_to_workflow_record,
     generate_file_path_in_record,
     get_file_path_in_record,
+    update_markdown_with_hashes,
+    update_date_in_markdown,
 )
 from .logging_config import (
     logger,
@@ -33,4 +35,9 @@ from .fuel_models_utils import (
     find_closest_fuel_class_by_properties,
     add_scott_and_burgan_total_fuel_load,
     add_scott_and_burgan_total_savr,
+    add_scott_and_burgan_dead_fuel_ratio,
+)
+from .utils import (
+    is_scalar_quantity,
+    get_value_by_category,
 )

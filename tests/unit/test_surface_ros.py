@@ -10,9 +10,15 @@ class TestRateOfSpreadModel(RateOfSpreadModel):
 
 
 # Test cases
-def test_base_class_not_implemented():
+def test_base_class_not_implemented_compute_ros():
     with pytest.raises(NotImplementedError):
         RateOfSpreadModel.compute_ros({})
+
+
+# Test cases
+def test_base_class_not_implemented_compute_ros_with_units():
+    with pytest.raises(NotImplementedError):
+        RateOfSpreadModel.compute_ros_with_units({})
 
 
 def test_subclass_implementation():
@@ -25,7 +31,6 @@ sample_metadata = {
     "fm_var_1": {
         "std_name": "svn_var_1",
         "type": ParameterType.input,
-        "is_fuel_model_variable": True,
     },
     "var_2": {
         "std_name": "svn_var_2",
@@ -34,7 +39,6 @@ sample_metadata = {
     "fm_var_3": {
         "std_name": "svn_var_3",
         "type": ParameterType.optional,
-        "is_fuel_model_variable": True,
         "default": 1,
     },
     "var_4": {

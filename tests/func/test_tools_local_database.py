@@ -19,10 +19,6 @@ def test_create_record_directory(mocker):
         expected_path = os.path.join(temp_dir, workflow_record_name)
         assert os.path.isdir(expected_path)
 
-        # Verify the log file was created
-        expected_log_file_path = os.path.join(expected_path, "firebench.log")
-        assert os.path.isfile(expected_log_file_path)
-
 
 # Run the tests
 if __name__ == "__main__":

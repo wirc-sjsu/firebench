@@ -10,6 +10,8 @@ class StandardVariableNames(Enum):  # pragma: no cover
     clarity across the codebase and related data files.
     """
 
+    AIR_DENSITY = "air_density"
+    AIR_TEMPERATURE = "air_temperature"
     ALPHA = "alpha"
     BETA = "beta"
     BUILDING_RATIO_FIRE_RESISTANT = "building_ratio_fire_resistant"
@@ -58,6 +60,7 @@ class StandardVariableNames(Enum):  # pragma: no cover
     FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD_1H = "fuel_surface_area_volume_ratio_dead_1h"
     FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB = "fuel_surface_area_volume_ratio_live_herb"
     FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY = "fuel_surface_area_volume_ratio_live_woody"
+    FUEL_TEMPERATURE_IGNITION = "fuel_temperature_ignition"
     FUEL_THERMAL_CONDUCTIVITY = "fuel_thermal_conductivity"
     FUEL_TREE_CLASS = "fuel_tree_class"
     FUEL_WIND_HEIGHT = "fuel_wind_height"

@@ -428,3 +428,119 @@ def test_find_closest_fuel_class_zero_magnitude():
     result_index = ft.find_closest_fuel_class_by_properties(fuel_model_dict, properties_to_test)
 
     assert result_index == expected_index
+
+
+# add_scott_and_burgan_dead_fuel_ratio
+# -------------------------------
+
+
+def test_add_dead_fuel_ratio_success():
+    """
+    Test that the function correctly calculates the dead fuel load ratio and
+    adds 'FUEL_LOAD_DEAD_RATIO' to the dictionary when it doesn't already exist.
+    """
+    fuel_loads = {
+        svn.FUEL_LOAD_DRY_1H: 1.0,
+        svn.FUEL_LOAD_DRY_10H: 2.0,
+        svn.FUEL_LOAD_DRY_100H: 3.0,
+        svn.FUEL_LOAD_DRY_LIVE_HERB: 4.0,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY: 5.0,
+    }
+    fuel_data_dict = fuel_loads.copy()
+    dead_load = sum(
+        [
+            fuel_data_dict[svn.FUEL_LOAD_DRY_1H],
+            fuel_data_dict[svn.FUEL_LOAD_DRY_10H],
+            fuel_data_dict[svn.FUEL_LOAD_DRY_100H],
+        ]
+    )
+    live_load = sum(
+        [
+            fuel_data_dict[svn.FUEL_LOAD_DRY_LIVE_HERB],
+            fuel_data_dict[svn.FUEL_LOAD_DRY_LIVE_WOODY],
+        ]
+    )
+    expected_ratio = dead_load / (dead_load + live_load)
+    ft.add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict)
+    assert svn.FUEL_LOAD_DEAD_RATIO in fuel_data_dict
+    assert np.isclose(fuel_data_dict[svn.FUEL_LOAD_DEAD_RATIO], expected_ratio)
+
+
+def test_add_dead_fuel_ratio_overwrite_false():
+    """
+    Test that the function raises a ValueError when 'FUEL_LOAD_DEAD_RATIO' exists
+    and overwrite is False.
+    """
+    fuel_data_dict = {
+        svn.FUEL_LOAD_DRY_1H: 1.0,
+        svn.FUEL_LOAD_DRY_10H: 2.0,
+        svn.FUEL_LOAD_DRY_100H: 3.0,
+        svn.FUEL_LOAD_DRY_LIVE_HERB: 4.0,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY: 5.0,
+        svn.FUEL_LOAD_DEAD_RATIO: 0.5,
+    }
+    with pytest.raises(ValueError, match="already exists in fuel_data_dict"):
+        ft.add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict, overwrite=False)
+
+
+def test_add_dead_fuel_ratio_overwrite_true(caplog):
+    """
+    Test that the function overwrites 'FUEL_LOAD_DEAD_RATIO' when overwrite is True
+    and logs an informational message.
+    """
+    fuel_data_dict = {
+        svn.FUEL_LOAD_DRY_1H: 1.0,
+        svn.FUEL_LOAD_DRY_10H: 2.0,
+        svn.FUEL_LOAD_DRY_100H: 3.0,
+        svn.FUEL_LOAD_DRY_LIVE_HERB: 4.0,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY: 5.0,
+        svn.FUEL_LOAD_DEAD_RATIO: 0.999,  # Incorrect existing ratio
+    }
+    dead_load = sum(
+        [
+            fuel_data_dict[svn.FUEL_LOAD_DRY_1H],
+            fuel_data_dict[svn.FUEL_LOAD_DRY_10H],
+            fuel_data_dict[svn.FUEL_LOAD_DRY_100H],
+        ]
+    )
+    live_load = sum(
+        [
+            fuel_data_dict[svn.FUEL_LOAD_DRY_LIVE_HERB],
+            fuel_data_dict[svn.FUEL_LOAD_DRY_LIVE_WOODY],
+        ]
+    )
+    expected_ratio = dead_load / (dead_load + live_load)
+    ft.set_logging_level(ft.logging.INFO)
+    with caplog.at_level(ft.logging.INFO):
+        ft.add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict, overwrite=True)
+        assert svn.FUEL_LOAD_DEAD_RATIO in fuel_data_dict
+        assert np.isclose(fuel_data_dict[svn.FUEL_LOAD_DEAD_RATIO], expected_ratio)
+        # Check if the log message is present
+        assert any("exists and will be overwritten" in record.message for record in caplog.records)
+
+
+@pytest.mark.parametrize(
+    "missing_key",
+    [
+        svn.FUEL_LOAD_DRY_1H,
+        svn.FUEL_LOAD_DRY_10H,
+        svn.FUEL_LOAD_DRY_100H,
+        svn.FUEL_LOAD_DRY_LIVE_HERB,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY,
+    ],
+)
+def test_add_dead_fuel_ratio_missing_keys(missing_key):
+    """
+    Test that the function raises a KeyError when any of the required individual
+    fuel load keys are missing.
+    """
+    fuel_data_dict = {
+        svn.FUEL_LOAD_DRY_1H: 1.0,
+        svn.FUEL_LOAD_DRY_10H: 2.0,
+        svn.FUEL_LOAD_DRY_100H: 3.0,
+        svn.FUEL_LOAD_DRY_LIVE_HERB: 4.0,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY: 5.0,
+    }
+    fuel_data_dict.pop(missing_key)
+    with pytest.raises(KeyError, match=f"Missing required key '{missing_key}'"):
+        ft.add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict)

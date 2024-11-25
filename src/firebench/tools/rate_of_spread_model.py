@@ -1,5 +1,6 @@
-from ..tools.logging_config import logger
-from ..tools.input_info import ParameterType
+from .logging_config import logger
+from .input_info import ParameterType
+from .utils import get_value_by_category
 
 
 class RateOfSpreadModel:
@@ -37,7 +38,35 @@ class RateOfSpreadModel:
         raise NotImplementedError("Subclasses should implement this method")
 
     @staticmethod
-    def prepare_fuel_properties(input_dict, metadata, fuel_cat=None):
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int]], **opt
+    ) -> float:
+        """
+        Compute the rate of spread of fire using the specific model.
+
+        This function handles unit dictionary with pint.Quantity objects and return a pint.Quantity object with the model output unit.
+
+        This method should be overridden by subclasses.
+
+        Parameters
+        ----------
+        input_dict : dict[str, float | int | list[float] | list[int]]
+            Dictionary containing the input data for various fuel properties.
+
+        Optional Parameters
+        -------------------
+        **opt : dict
+            Optional parameters for the fire spread rate model.
+
+        Returns
+        -------
+        pint.Quantity
+            The computed rate of spread of fire.
+        """  # pylint: disable=line-too-long
+        raise NotImplementedError("Subclasses should implement this method")
+
+    @staticmethod
+    def prepare_fuel_properties(input_dict, metadata, fuel_cat: int = 0):
         """
         Prepare the fuel properties dictionary for the rate of spread computation.
 
@@ -72,12 +101,6 @@ class RateOfSpreadModel:
                     continue
                 raise KeyError(f"Mandatory key '{key}' not found in input_dict.") from exc
 
-            # Check if fuel model variables need to be extracted
-            if var_info.get("is_fuel_model_variable", False) and fuel_cat is not None:
-                # Get the property of the fuel category
-                fuel_properties_dict[var] = value[fuel_cat - 1]
-            else:
-                # Use the value directly
-                fuel_properties_dict[var] = value
+            fuel_properties_dict[var] = get_value_by_category(value, fuel_cat)
 
         return fuel_properties_dict

@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="70.997375mm"
-   height="89.66806mm"
-   viewBox="0 0 70.997375 89.66806"
+   width="70.99736mm"
+   height="87.937675mm"
+   viewBox="0 0 70.99736 87.937675"
    version="1.1"
    id="svg5"
    inkscape:version="1.2.1 (9c6d41e, 2022-07-14)"
@@ -28,12 +28,12 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.6819304"
-     inkscape:cx="94.236955"
-     inkscape:cy="163.79988"
-     inkscape:window-width="1470"
-     inkscape:window-height="891"
-     inkscape:window-x="2560"
-     inkscape:window-y="521"
+     inkscape:cx="-11.891098"
+     inkscape:cy="164.98899"
+     inkscape:window-width="1720"
+     inkscape:window-height="1387"
+     inkscape:window-x="0"
+     inkscape:window-y="25"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1" />
   <defs
@@ -42,15 +42,15 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-73.727208,-57.486964)">
+     transform="translate(-73.727217,-57.486963)">
     <rect
-       style="fill:#f4d7d7;stroke:#000000;stroke-width:0.321109"
+       style="fill:#f4d7d7;stroke:#000000;stroke-width:0.317997"
        id="rect234"
-       width="70.577789"
-       height="89.346954"
-       x="73.887772"
-       y="57.647518"
-       ry="1.311588" />
+       width="70.580902"
+       height="87.619675"
+       x="73.886215"
+       y="57.645962"
+       ry="1.2862319" />
     <text
        xml:space="preserve"
        style="font-size:3.175px;fill:#000000;stroke:none;stroke-width:0.264999"
@@ -89,38 +89,6 @@
          style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.265"
          x="99.94059"
          y="61.290203">ROS MODEL</tspan></text>
-    <g
-       id="g834">
-      <text
-         xml:space="preserve"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
-         x="76.688904"
-         y="72.506172"
-         id="text676"><tspan
-           sodipodi:role="line"
-           id="tspan674"
-           style="stroke-width:0.265"
-           x="76.688904"
-           y="72.506172">fuel chaparral flag (int)</tspan></text>
-      <path
-         sodipodi:type="star"
-         style="fill:#008000;stroke:none;stroke-width:0.264999"
-         id="path1280"
-         inkscape:flatsided="false"
-         sodipodi:sides="3"
-         sodipodi:cx="29.254669"
-         sodipodi:cy="42.491577"
-         sodipodi:r1="5.8964772"
-         sodipodi:r2="2.9482386"
-         sodipodi:arg1="-0.018865686"
-         sodipodi:arg2="1.0283319"
-         inkscape:rounded="0"
-         inkscape:randomized="0"
-         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
-         inkscape:transform-center-x="-0.32434232"
-         inkscape:transform-center-y="-0.011150072"
-         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,62.844821)" />
-    </g>
     <path
        sodipodi:type="star"
        style="fill:#d40000;stroke:none;stroke-width:0.264999"
@@ -141,7 +109,7 @@
        transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,137.02608,62.913569)" />
     <g
        id="g839"
-       transform="translate(9.2918086e-6,-0.25707922)">
+       transform="translate(9.2918086e-6,0.04761153)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -174,7 +142,7 @@
     </g>
     <g
        id="g844"
-       transform="translate(9.2918086e-6,-0.50781079)">
+       transform="translate(9.2918086e-6,0.0773767)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.264999"
@@ -207,7 +175,7 @@
     </g>
     <g
        id="g849"
-       transform="translate(9.2918086e-6,-0.35262042)">
+       transform="translate(9.2918086e-6,0.51306381)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -239,22 +207,22 @@
          transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,79.717906)" />
     </g>
     <g
-       id="g854"
-       transform="translate(9.2918086e-6,-0.60970727)">
+       id="g589"
+       transform="translate(0,0.83067245)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
-         x="76.688904"
-         y="95.143166"
+         x="76.688911"
+         y="123.70936"
          id="text658"><tspan
            sodipodi:role="line"
            id="tspan656"
            style="stroke-width:0.265"
-           x="76.688904"
-           y="95.143166">fuel ignition temperature [K]</tspan></text>
+           x="76.688911"
+           y="123.70936">fuel ignition temperature [K]</tspan></text>
       <path
          sodipodi:type="star"
-         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         style="fill:#0066ff;stroke:none;stroke-width:0.264999"
          id="path1906-8-2"
          inkscape:flatsided="false"
          sodipodi:sides="3"
@@ -269,25 +237,25 @@
          d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
          inkscape:transform-center-x="-0.32434232"
          inkscape:transform-center-y="-0.011150072"
-         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,85.462765)" />
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127193,114.02895)" />
     </g>
     <g
-       id="g865"
-       transform="translate(9.2918086e-6,-0.76852547)">
+       id="g599"
+       transform="translate(0,1.3558031)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
-         x="76.688904"
-         y="106.27753"
+         x="76.688911"
+         y="134.72076"
          id="text668"><tspan
            sodipodi:role="line"
            id="tspan666"
            style="stroke-width:0.265"
-           x="76.688904"
-           y="106.27753">air density [kg m-3]</tspan></text>
+           x="76.688911"
+           y="134.72076">air density [kg m-3]</tspan></text>
       <path
          sodipodi:type="star"
-         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         style="fill:#0066ff;stroke:none;stroke-width:0.264999"
          id="path1906-8-80"
          inkscape:flatsided="false"
          sodipodi:sides="3"
@@ -302,25 +270,25 @@
          d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
          inkscape:transform-center-x="-0.32434232"
          inkscape:transform-center-y="-0.011150072"
-         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,96.597139)" />
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127193,125.04037)" />
     </g>
     <g
-       id="g870"
-       transform="translate(9.2918086e-6,-0.5752339)">
+       id="g594"
+       transform="translate(0,0.66517854)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
-         x="76.688904"
-         y="111.59106"
+         x="76.688911"
+         y="129.66217"
          id="text672"><tspan
            sodipodi:role="line"
            id="tspan670"
            style="stroke-width:0.265"
-           x="76.688904"
-           y="111.59106">air temperature [K]</tspan></text>
+           x="76.688911"
+           y="129.66217">air temperature [K]</tspan></text>
       <path
          sodipodi:type="star"
-         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         style="fill:#0066ff;stroke:none;stroke-width:0.264999"
          id="path1906-8-20"
          inkscape:flatsided="false"
          sodipodi:sides="3"
@@ -335,44 +303,11 @@
          d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
          inkscape:transform-center-x="-0.32434232"
          inkscape:transform-center-y="-0.011150072"
-         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,101.91068)" />
-    </g>
-    <g
-       id="g875"
-       transform="translate(9.2918086e-6,-0.42004234)">
-      <text
-         xml:space="preserve"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
-         x="76.688904"
-         y="116.90459"
-         id="text664"><tspan
-           sodipodi:role="line"
-           id="tspan662"
-           style="stroke-width:0.265"
-           x="76.688904"
-           y="116.90459">fire ignition line length [m]</tspan></text>
-      <path
-         sodipodi:type="star"
-         style="fill:#008000;stroke:none;stroke-width:0.264999"
-         id="path1906-8-9"
-         inkscape:flatsided="false"
-         sodipodi:sides="3"
-         sodipodi:cx="29.254669"
-         sodipodi:cy="42.491577"
-         sodipodi:r1="5.8964772"
-         sodipodi:r2="2.9482386"
-         sodipodi:arg1="-0.018865686"
-         sodipodi:arg2="1.0283319"
-         inkscape:rounded="0"
-         inkscape:randomized="0"
-         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
-         inkscape:transform-center-x="-0.32434232"
-         inkscape:transform-center-y="-0.011150072"
-         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,107.22423)" />
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127193,119.98179)" />
     </g>
     <g
        id="g880"
-       transform="translate(9.2918086e-6,-0.63902036)">
+       transform="translate(9.2918086e-6,-21.201529)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -405,7 +340,7 @@
     </g>
     <g
        id="g885"
-       transform="translate(9.2918086e-6,-0.48382236)">
+       transform="translate(9.2918086e-6,-20.765834)">
       <text
          xml:space="preserve"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
@@ -438,7 +373,7 @@
     </g>
     <g
        id="g891"
-       transform="translate(9.2918086e-6,-0.32864073)">
+       transform="translate(9.2918086e-6,-20.330156)">
       <g
          id="g792"
          transform="translate(0,5.8208336)">
@@ -475,7 +410,7 @@
     </g>
     <g
        id="g548"
-       transform="translate(-0.13047471,0.52916663)">
+       transform="translate(-0.13047471,-1.5875)">
       <text
          xml:space="preserve"
          style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.264999"
@@ -507,21 +442,22 @@
          transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.257668,133.79004)" />
     </g>
     <g
-       id="g362">
+       id="g584"
+       transform="translate(0,1.4635812)">
       <text
          xml:space="preserve"
          style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.264999"
          x="76.628593"
-         y="138.47372"
+         y="117.28913"
          id="text938-2-6"><tspan
            sodipodi:role="line"
            id="tspan936-39-6"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke-width:0.265"
            x="76.628593"
-           y="138.47372">ignition length [m]</tspan></text>
+           y="117.28913">ignition length [m]</tspan></text>
       <path
          sodipodi:type="star"
-         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         style="fill:#0066ff;stroke:none;stroke-width:0.264999"
          id="path1906-8-59-9-7"
          inkscape:flatsided="false"
          sodipodi:sides="3"
@@ -536,11 +472,11 @@
          d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
          inkscape:transform-center-x="-0.32434232"
          inkscape:transform-center-y="-0.011150072"
-         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127193,128.81238)" />
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127193,107.62778)" />
     </g>
     <g
        id="g860"
-       transform="translate(2.8908253e-6,-0.52250633)">
+       transform="translate(2.8908253e-6,-27.99432)">
       <g
          id="g792-9"
          transform="translate(6.4009833e-6,-26.91193)">
@@ -574,6 +510,39 @@
            inkscape:transform-center-y="-0.011150072"
            transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,117.81337)" />
       </g>
+    </g>
+    <g
+       id="g792-9-6"
+       transform="translate(9.2918086e-6,-31.795077)">
+      <text
+         xml:space="preserve"
+         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.264999"
+         x="76.628578"
+         y="127.47472"
+         id="text938-3-5"><tspan
+           sodipodi:role="line"
+           id="tspan936-3-5"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke-width:0.265"
+           x="76.628578"
+           y="127.47472">fuel surface area volume ratio [m-1]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-59-7-8"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,117.81337)" />
     </g>
     <path
        style="fill:#333333;stroke:none;stroke-width:0.264999"
