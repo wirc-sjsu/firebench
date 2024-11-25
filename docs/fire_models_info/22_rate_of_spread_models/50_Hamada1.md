@@ -10,7 +10,7 @@ nav_order: 50
 # Hamada version 1
 ## Description
 
-The Hamada 1 model is an empirical urban rate of spread model, modified by WIRC-SJSU to account for wind directionality.
+The Hamada 1 model is an empirical urban rate of spread model, based on [1] and modified by WIRC-SJSU to account for wind directionality.
 
 ## Parameters
 ### Input table
@@ -128,8 +128,4 @@ WUDAPT_urban            | Fuel model        | Full
 
 ## References
 
-[1] [Balbi, J. H., Morandini, F., Silvani, X., Filippi, J. B., & Rinieri, F. (2009). A physical model for wildland fires. Combustion and Flame, 156(12), 2217-2230.](https://doi.org/10.1016/j.combustflame.2009.07.010)
-
-[2] [Balbi, J. H., Chatelon, F. J., Morvan, D., Rossi, J. L., Marcelli, T., & Morandini, F. (2020). A convective–radiative propagation model for wildland fires. International journal of wildland fire, 29(8), 723-738.](https://doi.org/10.1071/WF19103)
-
-[3] [Chatelon, F. J., Balbi, J. H., Cruz, M. G., Morvan, D., Rossi, J. L., Awad, C., ... & Marcelli, T. (2022). Extension of the Balbi fire spread model to include the field scale conditions of shrubland fires. International journal of wildland fire, 31(2), 176-192.](https://doi.org/10.1071/WF21082)
+[1] [Himoto, K., & Tanaka, T. (2008). Development and validation of a physics-based urban fire spread model. Fire Safety Journal, 43(7), 477-494.](https://doi.org/10.1016/j.firesaf.2007.12.008)
