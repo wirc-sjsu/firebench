@@ -92,7 +92,7 @@ All fuel properties are contained within the Anderson Fuel Model, which makes it
     </em>
 </p>
 
-An example of use of Anderson fuel model with Rothermel_SFIRE:
+An example of use of Anderson fuel model with Rothermel_SFIRE, corresponding the **Fig. 1** diagram:
 ```python
 import firebench as fb
 
@@ -129,7 +129,7 @@ input_dict = fb.tools.merge_dictionaries(
 final_input = fb.tools.check_data_quality_ros_model(input_dict, ros_model)
 
 # compute the rate of spread
-ros = ros_model.compute_ros(final_input, fuel_cat=fuel_class)
+ros = ros_model.compute_ros_with_units(final_input, fuel_cat=fuel_class)
 ```
 
 ### Use with Scott and Burgan fuel model
@@ -159,7 +159,7 @@ Therefore, the same values are used, and the compatibility with Rothermel_SFIRE 
     </em>
 </p>
 
-An example of use of Scott and Burgan fuel model with Rothermel_SFIRE:
+An example of use of Scott and Burgan fuel model with Rothermel_SFIRE, corresponding the **Fig. 2** diagram:
 ```python
 import firebench as fb
 
@@ -220,7 +220,7 @@ input_dict = fb.tools.merge_dictionaries(
 final_input = fb.tools.check_data_quality_ros_model(input_dict, ros_model)
 
 # compute the rate of spread
-ros = ros_model.compute_ros(final_input, fuel_cat=fuel_class)
+ros = ros_model.compute_ros_with_units(final_input, fuel_cat=fuel_class)
 ```
 
 ## Compatibility with fire models
