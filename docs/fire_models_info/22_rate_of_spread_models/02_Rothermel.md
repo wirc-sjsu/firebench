@@ -241,6 +241,8 @@ ScottandBurgan40        | Fuel model        | Full
 
 ## Benchmarks and workflows
 
+- [Sensitivity to environmental variables for Anderson 13 categories](/worflows_0D_models/rate_of_spread_models/sensitivity/Rothermel/Rothermel.html)
+
 ## References
 
 [1] Rothermel, R. C. (1972). A mathematical model for predicting fire spread in wildland fuels (Vol. 115). Intermountain Forest & Range Experiment Station, Forest Service, US Department of Agriculture.
