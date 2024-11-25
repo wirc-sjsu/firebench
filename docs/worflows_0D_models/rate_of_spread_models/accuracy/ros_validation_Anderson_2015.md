@@ -9,14 +9,17 @@ nav_order: 2
 # ROS validation using Anderson 2015 dataset
 ## Objectives
 
-We want to evaluate the accuracy of rate of spread models by comparing the computed rate of spread with observation from the `Anderson 2015 dataset`.
+The goal is to assess the accuracy of various rate of spread (ROS) models by comparing their computed ROS values against observed data from the Anderson 2015 dataset.
 
 ## Description of the benchmark
 
-- Input dataset: `firebench/data/ros_model_validation/Anderson_2015`, Table A1
-- Complementary fuel data from Scott and Burgan 40.
-- If fuel data is missing, use `firebench.tools.find_closest_fuel_class_by_properties` to retrieve the closest fuel category using total fuel load and fuel height with default weights.
-- Use `Baughman_generalized_wind_reduction_factor_unsheltered` to compute wind reduction factor considering that the input wind height is above vegetation.
+- **Input Dataset**: Utilize Table A1 from the Anderson 2015 dataset, located at `firebench/data/ros_model_validation/Anderson_2015`. 
+
+- **Complementary Fuel Data**: Incorporate fuel data from the Scott and Burgan 40 fuel models.
+
+- **Handling Missing Fuel Data**: If specific fuel data is unavailable, employ the `firebench.tools.find_closest_fuel_class_by_properties` function to identify the nearest fuel category. This function uses total fuel load and fuel height, applying default weights to determine similarity.
+
+- **Wind Reduction Factor Calculation**: Apply the `Baughman_generalized_wind_reduction_factor_unsheltered` method to compute the wind reduction factor, considering that the input wind measurements are taken above the vegetation canopy. 
 
 ### Output file
 
