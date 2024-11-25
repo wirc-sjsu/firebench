@@ -28,14 +28,14 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.6819304"
-     inkscape:cx="140.90952"
-     inkscape:cy="189.9603"
+     inkscape:cx="91.264181"
+     inkscape:cy="190.55485"
      inkscape:window-width="1470"
      inkscape:window-height="891"
      inkscape:window-x="2560"
      inkscape:window-y="521"
      inkscape:window-maximized="0"
-     inkscape:current-layer="layer1" />
+     inkscape:current-layer="g503" />
   <defs
      id="defs2" />
   <g
@@ -251,7 +251,7 @@
            id="tspan656"
            style="stroke-width:0.265"
            x="76.688904"
-           y="95.143166">fuel surface area ratio [ft-1]</tspan></text>
+           y="95.143166">fuel surface area volume ratio [ft-1]</tspan></text>
       <path
          sodipodi:type="star"
          style="fill:#008000;stroke:none;stroke-width:0.264999"

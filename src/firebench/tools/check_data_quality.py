@@ -1,7 +1,7 @@
 import numpy as np
 from pint import Quantity
 
-from ..ros_models import RateOfSpreadModel
+from .rate_of_spread_model import RateOfSpreadModel
 from .input_info import ParameterType
 from .logging_config import logger
 
@@ -135,7 +135,7 @@ def extract_magnitudes(input_dict):
         try:
             final_input[key] = value.magnitude
         except (AttributeError, TypeError, ValueError) as e:
-            logger.warning("Failed to get magnitude for key '%s': %s", key, e)
+            logger.info("Failed to get magnitude for key '%s': %s", key, e)
             final_input[key] = value
     return final_input
 
@@ -173,7 +173,4 @@ def check_data_quality_ros_model(input_dict: dict[str, Quantity], ros_model: Rat
     # Validity range check
     check_validity_range(input_converted, ros_model.metadata)
 
-    # Create final input dictionary with magnitudes
-    final_input = extract_magnitudes(input_converted)
-
-    return final_input
+    return input_converted

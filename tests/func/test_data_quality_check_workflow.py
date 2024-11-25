@@ -23,6 +23,8 @@ def test_check_data_quality_ros_model():
     ft.check_input_completeness(input_dict, ros_model.metadata)
 
     # Check specific values in the final input (example)
-    assert final_input[svn.WIND_SPEED] == 3, "WIND value mismatch"
-    assert final_input[svn.SLOPE_ANGLE] == 0, "SLOPE_ANGLE value mismatch"
-    assert final_input[svn.FUEL_MOISTURE_CONTENT] == 10, "FUEL_MOISTURE_CONTENT value mismatch"
+    assert final_input[svn.WIND_SPEED] == 3 * ureg.meter / ureg.second, "WIND value mismatch"
+    assert final_input[svn.SLOPE_ANGLE] == 0 * ureg.degree, "SLOPE_ANGLE value mismatch"
+    assert (
+        final_input[svn.FUEL_MOISTURE_CONTENT] == 10 * ureg.percent
+    ), "FUEL_MOISTURE_CONTENT value mismatch"

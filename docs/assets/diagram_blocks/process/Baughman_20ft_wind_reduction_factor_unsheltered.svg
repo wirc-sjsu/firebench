@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="110.79568mm"
+   height="24.769217mm"
+   viewBox="0 0 110.79568 24.769217"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.1 (9c6d41e, 2022-07-14)"
+   sodipodi:docname="Baughman_20ft_wind_reduction_factor_unsheltered.svg"
+   inkscape:export-filename="rothermel.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="1.6517384"
+     inkscape:cx="146.20959"
+     inkscape:cy="157.1072"
+     inkscape:window-width="1470"
+     inkscape:window-height="891"
+     inkscape:window-x="1285"
+     inkscape:window-y="437"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-0.50988159,-0.98059336)">
+    <rect
+       style="fill:#f4e3d7;stroke:#000000;stroke-width:0.21073"
+       id="rect234"
+       width="110.58495"
+       height="24.558487"
+       x="0.61524659"
+       y="1.0859584"
+       ry="0.36051163" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#784421;stroke:none;stroke-width:0.264999"
+       x="6.0007663"
+       y="4.7842746"
+       id="text832"><tspan
+         sodipodi:role="line"
+         id="tspan830"
+         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#784421;stroke:none;stroke-width:0.265"
+         x="6.0007663"
+         y="4.7842746">BAUGHMAN 20FT WIND REDUCTION FACTOR UNSHELTERED</tspan></text>
+    <g
+       id="g1765"
+       transform="translate(-25.92701,-56.396894)">
+      <g
+         id="g1890"
+         transform="translate(-7.3935382,-4.4046611)">
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';text-align:end;text-anchor:end;fill:#000000;stroke:none;stroke-width:0.264999"
+           x="140.86482"
+           y="72.568466"
+           id="text684"><tspan
+             sodipodi:role="line"
+             id="tspan682"
+             style="text-align:end;text-anchor:end;stroke-width:0.265"
+             x="140.86482"
+             y="72.568466">wrf for average wind speed over flame height [L T-1]</tspan></text>
+        <path
+           sodipodi:type="star"
+           style="fill:#d40000;stroke:none;stroke-width:0.264999"
+           id="path1280-2"
+           inkscape:flatsided="false"
+           sodipodi:sides="3"
+           sodipodi:cx="29.254669"
+           sodipodi:cy="42.491577"
+           sodipodi:r1="5.8964772"
+           sodipodi:r2="2.9482386"
+           sodipodi:arg1="-0.018865686"
+           sodipodi:arg2="1.0283319"
+           inkscape:rounded="0"
+           inkscape:randomized="0"
+           d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+           inkscape:transform-center-x="-0.32434232"
+           inkscape:transform-center-y="-0.011150072"
+           transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,137.02608,62.888065)" />
+      </g>
+    </g>
+    <g
+       id="g409"
+       transform="translate(-73.217326,-66.503162)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="78.270073"
+         id="text646"><tspan
+           sodipodi:role="line"
+           id="tspan644"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="78.270073">flame height [L]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,68.605547)" />
+    </g>
+    <g
+       id="g452">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="3.471575"
+         y="17.271536"
+         id="text646-1-9"><tspan
+           sodipodi:role="line"
+           id="tspan644-6-0"
+           style="stroke-width:0.265"
+           x="3.471575"
+           y="17.271536">vegetation height [L]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-1-5"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,-5.090142,7.60701)" />
+    </g>
+    <g
+       id="g602-5"
+       transform="translate(-73.174276,-61.445925)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.645851"
+         y="84.222084"
+         id="text646-1-6"><tspan
+           sodipodi:role="line"
+           id="tspan644-6-3"
+           style="stroke-width:0.265"
+           x="76.645851"
+           y="84.222084">fuel cat (int)</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#0066ff;stroke:none;stroke-width:0.264999"
+         id="path1906-1-2"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.084134,74.557559)" />
+    </g>
+    <path
+       style="fill:#333333;stroke:#000000;stroke-width:0.440968;stroke-dasharray:none"
+       d="M 0.67690601,6.5963487 111.11455,6.5650319"
+       id="path2362"
+       sodipodi:nodetypes="cc" />
+  </g>
+</svg>

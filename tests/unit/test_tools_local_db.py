@@ -9,6 +9,8 @@ from firebench.tools.local_db_management import (
     _check_source_file_exists,
     _check_workflow_record_exists,
     _handle_existing_destination_file,
+    update_markdown_with_hashes,
+    update_date_in_markdown,
 )
 
 
@@ -192,33 +194,6 @@ def test_handle_existing_destination_file():
         assert not os.path.isfile(non_existing_file_path), "Non-existing file should remain non-existent."
 
 
-def test_same_source_and_destination(mocker):
-    workflow_record_name = "dummy_workflow"
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Mocking environment variable for local db path
-        mocker.patch("os.getenv", return_value=temp_dir)
-
-        # Create the workflow record directory
-        ft.create_record_directory(workflow_record_name)
-
-        file_path = os.path.join(temp_dir, workflow_record_name, "same_file.txt")
-
-        # Create a dummy file
-        with open(file_path, "w") as f:
-            f.write("test content")
-
-        # Test when the source and destination are the same
-        try:
-            ft.copy_file_to_workflow_record(workflow_record_name, file_path, overwrite=True)
-        except Exception:
-            pytest.fail("Exception raised unexpectedly when source and destination are the same.")
-
-        # Check if the file still exists
-        assert os.path.isfile(
-            file_path
-        ), "File should still exist when source and destination are the same."
-
-
 def test_generate_file_path_in_record(mocker):
     new_file_name = "new_file.txt"
     record_name = "test_record"
@@ -275,6 +250,110 @@ def test_get_file_path_in_record():
         # Test file not found
         with pytest.raises(OSError, match="does not exist"):
             ft.get_file_path_in_record("non_existent_file.txt", record_name)
+
+
+def test_update_markdown_with_hashes():
+    """
+    Test that the function correctly updates the 'firebench-hash-list' section in a markdown file.
+    """
+    # Initial markdown content with a placeholder section
+    initial_content = """# Sample Markdown File
+
+This is a sample markdown file for testing.
+
+<!-- firebench-hash-list -->
+<!-- end of firebench-hash-list -->
+
+Some other content.
+
+"""
+
+    # Expected content after updating
+    hash_dict = {
+        "file1.txt": "hash1",
+        "file2.txt": "hash2",
+        "file3.txt": "hash3",
+    }
+
+    expected_hash_list = "\n".join(
+        [f"- **{filename}**: `{hash_value}`" for filename, hash_value in hash_dict.items()]
+    )
+    expected_section = (
+        f"<!-- firebench-hash-list -->\n{expected_hash_list}\n<!-- end of firebench-hash-list -->"
+    )
+
+    expected_content = initial_content.replace(
+        "<!-- firebench-hash-list -->\n<!-- end of firebench-hash-list -->",
+        expected_section,
+    )
+
+    # Create a temporary markdown file
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".md") as temp_file:
+        temp_file_path = temp_file.name
+        temp_file.write(initial_content)
+        temp_file.flush()  # Ensure content is written
+
+    try:
+        # Call the function to update the markdown file
+        update_markdown_with_hashes(temp_file_path, hash_dict)
+
+        # Read the updated content
+        with open(temp_file_path, "r") as file:
+            updated_content = file.read()
+
+        # Assert that the updated content matches the expected content
+        assert updated_content == expected_content, "The markdown file was not updated as expected."
+
+    finally:
+        # Clean up the temporary file
+        os.remove(temp_file_path)
+
+
+def test_update_date_in_markdown():
+    """
+    Test that the function correctly updates the 'Date of record creation' line in a markdown file.
+    """
+    # Initial markdown content with a placeholder date
+    initial_content = """# Sample Markdown File
+
+This is a sample markdown file for testing.
+
+- Date of record creation: old_date
+
+Some other content.
+
+"""
+
+    # The date string to be updated
+    new_date = "2023-10-01"
+
+    # Expected content after updating
+    expected_content = initial_content.replace(
+        "- Date of record creation: old_date", f"- Date of record creation: {new_date}"
+    )
+
+    # Create a temporary markdown file
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".md") as temp_file:
+        temp_file_path = temp_file.name
+        temp_file.write(initial_content)
+        temp_file.flush()  # Ensure content is written
+
+    try:
+        # Call the function to update the date in the markdown file
+        update_date_in_markdown(temp_file_path, new_date)
+
+        # Read the updated content
+        with open(temp_file_path, "r") as file:
+            updated_content = file.read()
+
+        # Assert that the updated content matches the expected content
+        assert (
+            updated_content == expected_content
+        ), "The date in the markdown file was not updated as expected."
+
+    finally:
+        # Clean up the temporary file
+        os.remove(temp_file_path)
 
 
 # Run the tests

@@ -74,6 +74,12 @@ def read_data_file(dataset_name: str, path_within_firebench: str, local_json_pat
     with open(path.join(path.dirname(json_file_path), metadata["data_path"]), "r") as file:
         content = file.readlines()
 
+    # get no data value
+    if "no_data_value" in metadata.keys():
+        no_data_value = metadata["no_data_value"]
+    else:
+        no_data_value = np.nan
+
     # Process header to get field names
     fields = content[0].strip().split(",")
     data_dict = {field: [] for field in fields}
@@ -82,7 +88,10 @@ def read_data_file(dataset_name: str, path_within_firebench: str, local_json_pat
     for line in content[1:]:
         values = line.strip().split(",")
         for field, value in zip(fields, values):
-            data_dict[field].append(value)
+            if value == no_data_value:
+                data_dict[field].append(np.nan)
+            else:
+                data_dict[field].append(value)
 
     # Convert data to numpy arrays and apply units
     output_data = {}

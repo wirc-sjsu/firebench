@@ -15,6 +15,8 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 
 ## Standard Variable Names
 
+- `AIR_DENSITY`: Air density [kg m-3]
+- `AIR_TEMPERATURE`: Air temperature [K]
 - `ALPHA`: Alpha
 - `BETA`: Beta
 - `CANOPY_DENSITY_BULK`: Canopy bulk density [kg m-3]
@@ -57,6 +59,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD_1H`: Fuel surface area volume ratio for dead 1h fuel [m-1]
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB`: Fuel surface area volume ratio for live herb fuel [m-1]
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY`: Fuel surface area volume ratio for live woody fuel [m-1]
+- `FUEL_TEMPERATURE_IGNITION`: Fuel igntiion temperature [K]
 - `FUEL_THERMAL_CONDUCTIVITY`: Fuel thermal conductivity [W kg-1 K-1]
 - `FUEL_TREE_CLASS`: Fuel tree class (int)
 - `FUEL_WIND_HEIGHT`: Fuel wind height [m]

@@ -39,6 +39,10 @@ fuel_data = ft.read_fuel_data_file("Anderson13")
 ```
 The data is stored in the dictionnary `fuel_data`. The keys are the standard variable names and the values are numpy array associated with pint unit.
 
+<div style="text-align: center;">
+    <img src="../../assets/diagram_blocks/fuel_model/anderson13.svg" alt="Block Anderson"/>
+</div>
+
 ## Compatibility with fire models
 
 Compatibility levels:

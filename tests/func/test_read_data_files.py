@@ -21,7 +21,7 @@ def test_read_fuel_data_file_local():
     # Run the function
     output_data = ft.read_fuel_data_file(fuel_model_name)
 
-    # Known values from Anderson13.csv
+    # Known values from data_Anderson13.csv
     known_values = {
         "fuel_load_dry_total": [
             0.166,
@@ -45,6 +45,39 @@ def test_read_fuel_data_file_local():
         std_var = svn(key)
         np.testing.assert_array_equal(output_data[std_var].magnitude, np.array(expected_values))
         assert output_data[std_var].units == ureg("kg/m**2")
+
+
+def test_read_dummy_fuel_data_file_local():
+
+    # Assuming these files exist in the package
+    json_file_path = os.path.join(ft.get_firebench_data_directory(), "test", "dummy_fuel_model.json")
+    csv_file_path = os.path.join(ft.get_firebench_data_directory(), "test", "data_dummy_fuel_model.csv")
+
+    # Ensure the files exist
+    assert os.path.isfile(json_file_path), f"Missing JSON file: {json_file_path}"
+    assert os.path.isfile(csv_file_path), f"Missing CSV file: {csv_file_path}"
+
+    # Run the function
+    output_data = ft.read_data_file("dummy_fuel_model", "test")
+
+    # Known values from data_dummy_fuel_model.csv
+    known_values = {
+        "fuel_height": [
+            1,
+            2,
+            4,
+        ],
+        "fuel_load_dry_total": [
+            2,
+            4.9,
+            np.nan,
+        ],
+    }
+
+    # Compare the output to the known values
+    for key, expected_values in known_values.items():
+        std_var = svn(key)
+        np.testing.assert_array_equal(output_data[std_var].magnitude, np.array(expected_values))
 
 
 # Run the tests
