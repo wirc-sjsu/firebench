@@ -16,18 +16,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - `use_wind_reduction_factor` from value, fuel model dictionary, or list
   - `Baughman_20ft_wind_reduction_factor_unsheltered` from Baughman, R. G., & Albini, F. A. (1980) 
   - `Baughman_generalized_wind_reduction_factor_unsheltered`: Generalized wind reduction factor derived from Albini (1979)
+- Add hash of file when copying to record
+- Modify the date in report automatically with copying to record
 
 ### Changed
 - External management of wind reduction factor (no more present in rate of spread models)
+- Management of units for rate of spread model simplified using `compute_ros_with_units`
+- Record management to save workflow
 
 ### Documentation
 - Add Fire Models information and Dataset and fire experiment information sections
 - Add pages for:
   - Rothermel_SFIRE
   - Balbi_2022_fixed_SFIRE
+  - Hamada 1
+  - Hamada 2
   - Anderson13
   - ScottandBurgan40
+  - WUDAPT_urban
   - Wind reduction factor methods
+- Add benchmark results for:
+  - Validation Anderson 2015:
+    - Rotherme_SFIRE
+    - Balbi 2022
+  - Sensitivity to environmental variable for Anderson 13 fuel model:
+    - Rotherme_SFIRE
+    - Balbi 2022
 
 ## [0.2.0] - 2024 / 10 / 17
 ### Added
