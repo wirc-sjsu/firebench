@@ -233,7 +233,7 @@ def update_markdown_with_hashes(markdown_path, hash_dict):
 
     hash_dict : dict
         Dictionary where keys are filenames and values are their hashes.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     # Read the existing markdown content
     with open(markdown_path, "r") as file:
         markdown_lines = file.readlines()
@@ -273,7 +273,7 @@ def update_date_in_markdown(markdown_path, date):
 
     date : str
         The date string to add to the line.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     with open(markdown_path, "r") as file:
         lines = file.readlines()
 

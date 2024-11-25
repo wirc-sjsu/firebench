@@ -336,6 +336,53 @@ Some other content.
         os.remove(temp_file_path)
 
 
+def test_update_date_in_markdown():
+    """
+    Test that the function correctly updates the 'Date of record creation' line in a markdown file.
+    """
+    # Initial markdown content with a placeholder date
+    initial_content = """# Sample Markdown File
+
+This is a sample markdown file for testing.
+
+- Date of record creation: old_date
+
+Some other content.
+
+"""
+
+    # The date string to be updated
+    new_date = "2023-10-01"
+
+    # Expected content after updating
+    expected_content = initial_content.replace(
+        "- Date of record creation: old_date", f"- Date of record creation: {new_date}"
+    )
+
+    # Create a temporary markdown file
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".md") as temp_file:
+        temp_file_path = temp_file.name
+        temp_file.write(initial_content)
+        temp_file.flush()  # Ensure content is written
+
+    try:
+        # Call the function to update the date in the markdown file
+        update_date_in_markdown(temp_file_path, new_date)
+
+        # Read the updated content
+        with open(temp_file_path, "r") as file:
+            updated_content = file.read()
+
+        # Assert that the updated content matches the expected content
+        assert (
+            updated_content == expected_content
+        ), "The date in the markdown file was not updated as expected."
+
+    finally:
+        # Clean up the temporary file
+        os.remove(temp_file_path)
+
+
 # Run the tests
 if __name__ == "__main__":
     pytest.main()
