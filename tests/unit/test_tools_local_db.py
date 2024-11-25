@@ -194,33 +194,6 @@ def test_handle_existing_destination_file():
         assert not os.path.isfile(non_existing_file_path), "Non-existing file should remain non-existent."
 
 
-def test_same_source_and_destination(mocker):
-    workflow_record_name = "dummy_workflow"
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Mocking environment variable for local db path
-        mocker.patch("os.getenv", return_value=temp_dir)
-
-        # Create the workflow record directory
-        ft.create_record_directory(workflow_record_name)
-
-        file_path = os.path.join(temp_dir, workflow_record_name, "same_file.txt")
-
-        # Create a dummy file
-        with open(file_path, "w") as f:
-            f.write("test content")
-
-        # Test when the source and destination are the same
-        try:
-            ft.copy_file_to_workflow_record(workflow_record_name, file_path, overwrite=True)
-        except Exception:
-            pytest.fail("Exception raised unexpectedly when source and destination are the same.")
-
-        # Check if the file still exists
-        assert os.path.isfile(
-            file_path
-        ), "File should still exist when source and destination are the same."
-
-
 def test_generate_file_path_in_record(mocker):
     new_file_name = "new_file.txt"
     record_name = "test_record"

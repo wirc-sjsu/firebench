@@ -152,11 +152,6 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
     record_path = os.path.join(get_local_db_path(), workflow_record_name)
     destination_file_path = os.path.join(record_path, os.path.basename(file_path))
 
-    # If the file is already within the record directory
-    if file_path == destination_file_path:
-        logger.debug("source and destination are the same")
-        return
-
     # Check if the source file exists
     _check_source_file_exists(file_path)
 
