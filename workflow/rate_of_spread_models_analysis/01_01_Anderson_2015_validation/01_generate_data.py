@@ -15,7 +15,7 @@ from firebench import Quantity, svn
 
 # Workflow Configuration
 output_filename = "output_data"
-logging_level = 20 # DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
+logging_level = 20  # DEBUG (10), INFO (20), WARNING (30), ERROR (40), CRITICAL (50)
 
 # parameters
 fixed_flame_fuel_height_ratio = 1
@@ -28,7 +28,7 @@ ros_model = rm.Rothermel_SFIRE
 
 # create logging file
 ft.logging_config.create_file_handler("firebench.log")
-ft.set_logging_level(logging_level)  
+ft.set_logging_level(logging_level)
 
 # Import Anderson 2015 dataset
 anderson_2015_data = ft.read_data_file("Table_A1", "ros_model_validation/Anderson_2015")
@@ -84,7 +84,9 @@ for i in range(anderson_2015_data["nb_fuel_classes"]):
     )
     inputs_from_sb40 = {
         svn.FUEL_MOISTURE_EXTINCTION: sb40_data[svn.FUEL_MOISTURE_EXTINCTION][sb40_fuel_cat - 1],
-        svn.FUEL_SURFACE_AREA_VOLUME_RATIO: sb40_data[svn.FUEL_SURFACE_AREA_VOLUME_RATIO][sb40_fuel_cat - 1],
+        svn.FUEL_SURFACE_AREA_VOLUME_RATIO: sb40_data[svn.FUEL_SURFACE_AREA_VOLUME_RATIO][
+            sb40_fuel_cat - 1
+        ],
     }
     ft.logger.debug(
         f"closest SB40 cat {sb40_fuel_cat}: tgt: ({input_dict[svn.FUEL_LOAD_DRY_TOTAL]}, {input_dict[svn.FUEL_HEIGHT]}), SB40 class: ({sb40_data[svn.FUEL_LOAD_DRY_TOTAL][sb40_fuel_cat-1].to('kg/m^2'):.2f}, {sb40_data[svn.FUEL_HEIGHT][sb40_fuel_cat-1].to('m'):.2f})"
@@ -93,7 +95,7 @@ for i in range(anderson_2015_data["nb_fuel_classes"]):
     # Compute wind reduction factor
     wind_height = input_dict[svn.FUEL_WIND_HEIGHT].to("m")
     wind_speed = input_dict[svn.WIND_SPEED].to("m/s")
-    fuel_height = input_dict[svn.FUEL_HEIGHT].to("m")   
+    fuel_height = input_dict[svn.FUEL_HEIGHT].to("m")
     wrf = wi.Baughman_generalized_wind_reduction_factor_unsheltered(
         wind_height.magnitude,
         fixed_flame_fuel_height_ratio * fuel_height.magnitude,
@@ -101,7 +103,9 @@ for i in range(anderson_2015_data["nb_fuel_classes"]):
         is_source_wind_height_above_veg=is_source_wind_height_above_veg,
     )
     input_dict[svn.WIND_SPEED] = wind_speed * wrf
-    ft.logger.debug(f"wind red factor: {wrf:.3f}, source wind speed: {wind_speed:.3f}, midflame wind speed: {input_dict[svn.WIND_SPEED]:.3f}")
+    ft.logger.debug(
+        f"wind red factor: {wrf:.3f}, source wind speed: {wind_speed:.3f}, midflame wind speed: {input_dict[svn.WIND_SPEED]:.3f}"
+    )
 
     # Concatenate input dictionaries
     final_input = {
@@ -116,8 +120,10 @@ for i in range(anderson_2015_data["nb_fuel_classes"]):
     # compute rate of spread
     rate_of_spread_from_model = ros_model.compute_ros_with_units(final_input)
     expected_rate_of_spread = anderson_2015_data[svn.RATE_OF_SPREAD][i].to("m/s")
-    ft.logger.debug(f"expected ros: {expected_rate_of_spread:.2f}, from model: {rate_of_spread_from_model:.2f}")
-    
+    ft.logger.debug(
+        f"expected ros: {expected_rate_of_spread:.2f}, from model: {rate_of_spread_from_model:.2f}"
+    )
+
     expected_ros.append(expected_rate_of_spread.magnitude)
     computed_ros.append(rate_of_spread_from_model.magnitude)
 

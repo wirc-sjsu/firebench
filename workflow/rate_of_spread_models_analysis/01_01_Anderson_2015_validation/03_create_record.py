@@ -8,10 +8,10 @@ import firebench.tools as ft
 #######################################################################################
 
 # Record and file configuration
-record_name = "Anderson_Rothermel" # Name of the record directory to be created
-data_filename = "output_data.h5"       # Name of the data file to include in the record
-figure_filename = "anderson_2015_validation.png"    # Name of the figure file to include in the record
-overwrite_existing_record = True       # Whether to overwrite existing files in the record
+record_name = "Anderson_Rothermel"  # Name of the record directory to be created
+data_filename = "output_data.h5"  # Name of the data file to include in the record
+figure_filename = "anderson_2015_validation.png"  # Name of the figure file to include in the record
+overwrite_existing_record = True  # Whether to overwrite existing files in the record
 
 # List of mandatory files to include in the record
 mandatory_files = [

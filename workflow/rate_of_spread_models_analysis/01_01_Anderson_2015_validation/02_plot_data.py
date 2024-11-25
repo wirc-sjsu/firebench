@@ -12,10 +12,10 @@ import h5py
 #######################################################################################
 
 # Workflow Configuration
-input_data_filename = "output_data.h5"          # Name of the input data file
-figure_name = "anderson_2015_validation.png"    # Output figure filename
-figure_title = "Rothermel_SFIRE ros model"      # Title for the figure
-overwrite_figure = True                         # Whether to overwrite the figure if it exists
+input_data_filename = "output_data.h5"  # Name of the input data file
+figure_name = "anderson_2015_validation.png"  # Output figure filename
+figure_title = "Rothermel_SFIRE ros model"  # Title for the figure
+overwrite_figure = True  # Whether to overwrite the figure if it exists
 
 #######################################################################################
 #                             DATA RETRIEVAL
