@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Rate of spread"
-parent: "0D models"
+parent: "Benchmarks 0D models"
 nav_order: 1
 ---
 
@@ -11,6 +11,8 @@ nav_order: 1
 The list of available benchmarks and workflows is given hereafter, sorted by category.
 
 ## Accuracy
+
+- [Validation of rate of spread model using Anderson 2015 dataset](rate_of_spread_models/accuracy/ros_validation_Anderson_2015.html)
 
 ## Efficiency
 
