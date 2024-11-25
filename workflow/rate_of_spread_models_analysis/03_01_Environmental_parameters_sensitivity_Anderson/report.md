@@ -1,4 +1,4 @@
-# Rate of spread model sensitivity to environmental inputs for Anderson 13 fuel model
+# Rate of spread model validation using Anderson 2015 dataset
 
 ## Workflow information
 
