@@ -25,7 +25,7 @@ nav_order: 1
   - `WIND_SPEED` from -15 m s-1 to 15 m s-1,
   - `SLOPE_ANGLE` from -45 deg to 45 deg,
   - `FUEL_MOISTURE_CONTENT` from 1% to 50%.
-s
+
 ## Results
 
 <!-- Fill in with your results -->
