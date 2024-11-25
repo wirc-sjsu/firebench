@@ -69,6 +69,9 @@ ros = rm.Rothermel_SFIRE.compute_ros(model_inputs)
 # compute the rate of spread with fuel category
 ros = rm.Rothermel_SFIRE.compute_ros(model_inputs, fuel_cat = 1)
 ```
+<div style="text-align: center;">
+    <img src="../../assets/diagram_blocks/ros_model/rothermel.svg" alt="Block rothermel"/>
+</div>
 
 ### Use with Anderson13 fuel model
 
