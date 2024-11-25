@@ -9,6 +9,8 @@ from firebench.tools.local_db_management import (
     _check_source_file_exists,
     _check_workflow_record_exists,
     _handle_existing_destination_file,
+    update_markdown_with_hashes,
+    update_date_in_markdown,
 )
 
 
@@ -275,6 +277,63 @@ def test_get_file_path_in_record():
         # Test file not found
         with pytest.raises(OSError, match="does not exist"):
             ft.get_file_path_in_record("non_existent_file.txt", record_name)
+
+
+def test_update_markdown_with_hashes():
+    """
+    Test that the function correctly updates the 'firebench-hash-list' section in a markdown file.
+    """
+    # Initial markdown content with a placeholder section
+    initial_content = """# Sample Markdown File
+
+This is a sample markdown file for testing.
+
+<!-- firebench-hash-list -->
+<!-- end of firebench-hash-list -->
+
+Some other content.
+
+"""
+
+    # Expected content after updating
+    hash_dict = {
+        "file1.txt": "hash1",
+        "file2.txt": "hash2",
+        "file3.txt": "hash3",
+    }
+
+    expected_hash_list = "\n".join(
+        [f"- **{filename}**: `{hash_value}`" for filename, hash_value in hash_dict.items()]
+    )
+    expected_section = (
+        f"<!-- firebench-hash-list -->\n{expected_hash_list}\n<!-- end of firebench-hash-list -->"
+    )
+
+    expected_content = initial_content.replace(
+        "<!-- firebench-hash-list -->\n<!-- end of firebench-hash-list -->",
+        expected_section,
+    )
+
+    # Create a temporary markdown file
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".md") as temp_file:
+        temp_file_path = temp_file.name
+        temp_file.write(initial_content)
+        temp_file.flush()  # Ensure content is written
+
+    try:
+        # Call the function to update the markdown file
+        update_markdown_with_hashes(temp_file_path, hash_dict)
+
+        # Read the updated content
+        with open(temp_file_path, "r") as file:
+            updated_content = file.read()
+
+        # Assert that the updated content matches the expected content
+        assert updated_content == expected_content, "The markdown file was not updated as expected."
+
+    finally:
+        # Clean up the temporary file
+        os.remove(temp_file_path)
 
 
 # Run the tests

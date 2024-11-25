@@ -233,7 +233,7 @@ def update_markdown_with_hashes(markdown_path, hash_dict):
 
     hash_dict : dict
         Dictionary where keys are filenames and values are their hashes.
-    """
+    """ # pylint: disable=line-too-long
     # Read the existing markdown content
     with open(markdown_path, "r") as file:
         markdown_lines = file.readlines()
@@ -242,7 +242,7 @@ def update_markdown_with_hashes(markdown_path, hash_dict):
     hash_list = "\n".join(
         [f"- **{filename}**: `{hash_value}`" for filename, hash_value in hash_dict.items()]
     )
-    new_section = f"<!-- firebench-hash-list -->\n{hash_list}\n<!-- end of firebench-hash-list -->"
+    new_section = f"<!-- firebench-hash-list -->\n{hash_list}\n<!-- end of firebench-hash-list -->\n"
 
     # Replace the existing hash list section
     inside_hash_section = False
@@ -273,7 +273,7 @@ def update_date_in_markdown(markdown_path, date):
 
     date : str
         The date string to add to the line.
-    """
+    """ # pylint: disable=line-too-long
     with open(markdown_path, "r") as file:
         lines = file.readlines()
 
