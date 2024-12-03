@@ -30,7 +30,8 @@ The output file contains the rate of spread and the execution time.
 The worklow template can be found at `firebench/workflow/rate_of_spread_models_analysis/02_01_execution_time_Anderson` for Anderson fuel model.
 
 The workflow has been run with the following models and parameters:
-
+- [Rothermel with Anderson](Rothermel_anderson/report.html)
+- [Balbi with Anderson](Balbi_anderson/report.html)
 <!-- the name of the workflow test, commit hash of the code that generated this data, generation date, other info on the library used (with commit hash if possible), inputs  -->
 
 If you don't find the content in the `data` directory, try `git lfs pull`.

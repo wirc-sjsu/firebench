@@ -75,14 +75,17 @@ ros = np.zeros((num_total_points, fuel_data["nb_fuel_classes"]))
 time_execution = np.zeros((num_total_points, fuel_data["nb_fuel_classes"]))
 model_inputs = final_input.copy()
 
-for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
+for k in range(num_total_points):
     # select variable from sobol sequence
-    for k in range(num_total_points):
-        for key in input_vars_info.keys():
-            model_inputs[key] = final_input[key][k]
+    for key in input_vars_info.keys():
+        model_inputs[key] = final_input[key][k]
 
-        input_dict_ros_model = ros_model.prepare_fuel_properties(model_inputs,ros_model.metadata, fuel_cat=fuel_class)
-        
+    for i, fuel_class in enumerate(range(1, fuel_data["nb_fuel_classes"] + 1)):
+
+        input_dict_ros_model = ros_model.prepare_fuel_properties(
+            model_inputs, ros_model.metadata, fuel_cat=fuel_class
+        )
+
         # time rate of spread function
         start_time = time.perf_counter()
         ros[k, i] = compute_ros_func(**input_dict_ros_model)

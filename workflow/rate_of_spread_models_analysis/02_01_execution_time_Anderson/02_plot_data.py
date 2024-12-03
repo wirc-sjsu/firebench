@@ -34,12 +34,12 @@ with h5py.File(output_file_path, "r") as file:
     ros_obj = file["outputs"]["rate_of_spread"]
     ros = {
         "unit": ros_obj.attrs["units"],
-        "data": ros_obj[:,:],
+        "data": ros_obj[:, :],
     }
     exec_time_obj = file["outputs"]["time_exec"]
     exec_time = {
         "unit": exec_time_obj.attrs["units"],
-        "data": exec_time_obj[:,:],
+        "data": exec_time_obj[:, :],
     }
 
     nb_fuel_class = file["fuel/nb_fuel_classes"][()]
@@ -52,10 +52,9 @@ print(f"global mean value: {np.mean(data):.3e} s for {np.size(data):,d} sample")
 data.extend([exec_time["data"][:, i] for i in range(nb_fuel_class)])  # Each fuel class
 
 
-
 #######################################################################################
 #                             PLOTTING
-####################################################################################### 
+#######################################################################################
 
 # Configure matplotlib settings
 mpl.rcParams.update({"font.size": 7})  # Set default font size
@@ -66,23 +65,28 @@ fig, ax1 = plt.subplots(1, 1, figsize=(4, 4), constrained_layout=True, sharex=Fa
 
 # Define colors for the bars
 colors = ["r", "y"]
-lw=1
+lw = 1
 
 box_parts = plt.boxplot(data, showmeans=True, patch_artist=True, meanline=True, showfliers=False)
 
 # Customize the median and mean lines
-for mean in box_parts['means']:
+for mean in box_parts["means"]:
     mean.set_color(colors[0])
     mean.set_linewidth(lw)
     mean.set_linestyle("-")
 
-for median in box_parts['medians']:
+for median in box_parts["medians"]:
     median.set_color(colors[1])
     median.set_linewidth(lw)
     median.set_linestyle("--")
 
 # Add labels and title
-ax1.set_xticks(range(1, nb_fuel_class + 2), ["Total"] + [f"Fuel Class {i + 1}" for i in range(nb_fuel_class)], rotation=45, ha="right")
+ax1.set_xticks(
+    range(1, nb_fuel_class + 2),
+    ["Total"] + [f"Fuel Class {i + 1}" for i in range(nb_fuel_class)],
+    rotation=45,
+    ha="right",
+)
 
 ax1.set_ylabel(f"Exec time [{exec_time['unit']}]")
 ax1.set_title(figure_title)
