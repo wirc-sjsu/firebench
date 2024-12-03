@@ -16,6 +16,8 @@ The list of available benchmarks and workflows is given hereafter, sorted by cat
 
 ## Efficiency
 
+- [Rate of spread model execution time](rate_of_spread_models/efficiency/ros_exec_time.html)
+
 ## Sensitivity 
 
 - [Sensitivity to environmental inputs for Anderson 13 fuel model](rate_of_spread_models/sensitivity/ros_sensitivity.html)
