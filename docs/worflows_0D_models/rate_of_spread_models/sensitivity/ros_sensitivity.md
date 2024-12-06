@@ -48,12 +48,19 @@ The output file contains the Fuel Model data, the raw output of the rate of spre
 
 ## Benchmarks available
 
+### Using Anderson fuel model
 The worklow template can be found at `firebench/workflow/rate_of_spread_models_analysis/03_01_Environmental_parameters_sensitivity_Anderson`.
 
 The workflow has been run with the following models and parameters:
-
 <!-- the name of the workflow test, commit hash of the code that generated this data, generation date, other info on the library used (with commit hash if possible), inputs  -->
 - [Balbi 2022](Balbi_2022/Balbi_2022.html)
 - [Rothermel (SFIRE version)](Rothermel/Rothermel.html)
+
+### Using Anderson fuel model
+The worklow template can be found at `firebench/workflow/rate_of_spread_models_analysis/03_02_Environmental_parameters_sensitivity_WUDAPT`.
+
+The workflow has been run with the following models and parameters:
+<!-- the name of the workflow test, commit hash of the code that generated this data, generation date, other info on the library used (with commit hash if possible), inputs  -->
+- [Hamada 1](Hamada_1/report.html)
 
 If you don't find the content in the `data` directory, try `git lfs pull`.
