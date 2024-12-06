@@ -80,14 +80,14 @@ def test_read_dummy_fuel_data_file_local():
         np.testing.assert_array_equal(output_data[std_var].magnitude, np.array(expected_values))
 
 
-@pytest.mark.parametrize("add_complementary_field", [True, False])
-def test_import_scott_burgan_40_fuel_model(add_complementary_field):
-    fuel_data = ft.import_scott_burgan_40_fuel_model(add_complementary_field=add_complementary_field)
+@pytest.mark.parametrize("add_complementary_fields", [True, False])
+def test_import_scott_burgan_40_fuel_model(add_complementary_fields):
+    fuel_data = ft.import_scott_burgan_40_fuel_model(add_complementary_fields=add_complementary_fields)
 
     assert svn.FUEL_HEIGHT in fuel_data, "Total fuel load key is missing"
     assert len(fuel_data[svn.FUEL_HEIGHT]) == 40, "Need to have 40 classes"
 
-    if add_complementary_field:
+    if add_complementary_fields:
         # Check that complementary fields are present
         assert svn.FUEL_LOAD_DRY_TOTAL in fuel_data, "Total fuel load key is missing"
         assert svn.FUEL_SURFACE_AREA_VOLUME_RATIO in fuel_data, "Total SAVR key is missing"

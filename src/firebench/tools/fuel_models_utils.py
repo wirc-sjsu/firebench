@@ -350,7 +350,7 @@ def add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict, overwrite=False):
     fuel_data_dict[total_key] = dead_load / (dead_load + live_load)
 
 
-def import_scott_burgan_40_fuel_model(add_complementary_field=True):
+def import_scott_burgan_40_fuel_model(add_complementary_fields=True):
     """
     Import and return the Scott and Burgan 40 fuel model data, with optional complementary computations.
 
@@ -360,7 +360,7 @@ def import_scott_burgan_40_fuel_model(add_complementary_field=True):
     this function also adds complementary fields that summarize or characterize the data, if
     requested.
 
-    When `add_complementary_field` is `True`, the following additional fields are computed and
+    When `add_complementary_fields` is `True`, the following additional fields are computed and
     included in the returned dictionary:
     - **Total Fuel Load**: The sum of all fuel load values (dead and live) stored under
       `svn.FUEL_LOAD_DRY_TOTAL`.
@@ -371,7 +371,7 @@ def import_scott_burgan_40_fuel_model(add_complementary_field=True):
 
     Parameters
     ----------
-    add_complementary_field : bool, optional
+    add_complementary_fields : bool, optional
         If `True` (default), computes and adds complementary fields (total fuel load, total SAVR,
         and dead fuel ratio) to the returned fuel data dictionary. If `False`, the function returns
         only the raw fuel data as read from the file.
@@ -380,7 +380,7 @@ def import_scott_burgan_40_fuel_model(add_complementary_field=True):
     -------
     dict
         A dictionary containing the Scott and Burgan 40 fuel model data with keys following Standard Variable Namespace convention.
-        If `add_complementary_field` is `True`, it will also include
+        If `add_complementary_fields` is `True`, it will also include
         `svn.FUEL_LOAD_DRY_TOTAL`, `svn.FUEL_SURFACE_AREA_VOLUME_RATIO`, and `svn.FUEL_LOAD_DEAD_RATIO`.
 
     Raises
@@ -403,7 +403,7 @@ def import_scott_burgan_40_fuel_model(add_complementary_field=True):
     True
 
     # Example 2: Import raw data without complementary fields
-    >>> raw_fuel_data = import_scott_burgan_40(add_complementary_field=False)
+    >>> raw_fuel_data = import_scott_burgan_40(add_complementary_fields=False)
     >>> print(svn.FUEL_LOAD_DRY_TOTAL in raw_fuel_data)
     False
     >>> print(svn.FUEL_SURFACE_AREA_VOLUME_RATIO in raw_fuel_data)
@@ -413,7 +413,7 @@ def import_scott_burgan_40_fuel_model(add_complementary_field=True):
     """  # pylint: disable=line-too-long
     DATASET_NAME = "ScottandBurgan40"
     fuel_data = read_fuel_data_file(DATASET_NAME)
-    if add_complementary_field:
+    if add_complementary_fields:
         add_scott_and_burgan_total_fuel_load(fuel_data)
         add_scott_and_burgan_total_savr(fuel_data)
         add_scott_and_burgan_dead_fuel_ratio(fuel_data)
