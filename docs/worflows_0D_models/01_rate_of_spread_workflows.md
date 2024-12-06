@@ -20,4 +20,4 @@ The list of available benchmarks and workflows is given hereafter, sorted by cat
 
 ## Sensitivity 
 
-- [Sensitivity to environmental inputs for Anderson 13 fuel model](rate_of_spread_models/sensitivity/ros_sensitivity.html)
+- [Sensitivity to environmental inputs](rate_of_spread_models/sensitivity/ros_sensitivity.html)
