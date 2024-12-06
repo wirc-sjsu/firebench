@@ -3,6 +3,7 @@ from pint import Quantity
 from pint.errors import DimensionalityError
 from .namespace import StandardVariableNames as svn
 from .logging_config import logger
+from .read_data import read_fuel_data_file
 
 
 def find_closest_fuel_class_by_properties(
@@ -347,3 +348,73 @@ def add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict, overwrite=False):
     live_load = sum(fuel_data_dict[live_fuel] for live_fuel in live_fuels_keys)
 
     fuel_data_dict[total_key] = dead_load / (dead_load + live_load)
+
+
+def import_scott_burgan_40_fuel_model(add_complementary_field=True):
+    """
+    Import and return the Scott and Burgan 40 fuel model data, with optional complementary computations.
+
+    This function serves as a convenient wrapper to read the Scott and Burgan 40 fuel model
+    data from a file and optionally compute additional derived fields. The base dataset contains
+    a set of standard fuel load parameters defined by the Scott and Burgan 40 model. By default,
+    this function also adds complementary fields that summarize or characterize the data, if
+    requested.
+
+    When `add_complementary_field` is `True`, the following additional fields are computed and
+    included in the returned dictionary:
+    - **Total Fuel Load**: The sum of all fuel load values (dead and live) stored under
+      `svn.FUEL_LOAD_DRY_TOTAL`.
+    - **Total SAVR (Surface-Area-to-Volume Ratio)**: An aggregated value of surface-area-to-volume
+      ratios for the various fuel classes stored under `svn.FUEL_SURFACE_AREA_VOLUME_RATIO`.
+    - **Dead Fuel Ratio**: The fraction of the total fuel load that is attributable to dead fuels
+      stored under `svn.FUEL_LOAD_DEAD_RATIO`.
+
+    Parameters
+    ----------
+    add_complementary_field : bool, optional
+        If `True` (default), computes and adds complementary fields (total fuel load, total SAVR,
+        and dead fuel ratio) to the returned fuel data dictionary. If `False`, the function returns
+        only the raw fuel data as read from the file.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the Scott and Burgan 40 fuel model data with keys following Standard Variable Namespace convention.
+        If `add_complementary_field` is `True`, it will also include
+        `svn.FUEL_LOAD_DRY_TOTAL`, `svn.FUEL_SURFACE_AREA_VOLUME_RATIO`, and `svn.FUEL_LOAD_DEAD_RATIO`.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the "ScottandBurgan40" data file cannot be found.
+    KeyError
+        If required keys are missing when computing the complementary fields.
+
+    Examples
+    --------
+    # Example 1: Import with complementary fields
+    >>> from firebench import svn
+    >>> fuel_data = import_scott_burgan_40()
+    >>> print(svn.FUEL_LOAD_DRY_TOTAL in fuel_data)
+    True
+    >>> print(svn.FUEL_SURFACE_AREA_VOLUME_RATIO in fuel_data)
+    True
+    >>> print(svn.FUEL_LOAD_DEAD_RATIO in fuel_data)
+    True
+
+    # Example 2: Import raw data without complementary fields
+    >>> raw_fuel_data = import_scott_burgan_40(add_complementary_field=False)
+    >>> print(svn.FUEL_LOAD_DRY_TOTAL in raw_fuel_data)
+    False
+    >>> print(svn.FUEL_SURFACE_AREA_VOLUME_RATIO in raw_fuel_data)
+    False
+    >>> print(svn.FUEL_LOAD_DEAD_RATIO in raw_fuel_data)
+    False
+    """  # pylint: disable=line-too-long
+    SCOTT_AND_BURGAN_DATASET_NAME = "ScottandBurgan40"
+    fuel_data = read_fuel_data_file(SCOTT_AND_BURGAN_DATASET_NAME)
+    if add_complementary_field:
+        add_scott_and_burgan_total_fuel_load(fuel_data)
+        add_scott_and_burgan_total_savr(fuel_data)
+        add_scott_and_burgan_dead_fuel_ratio(fuel_data)
+    return fuel_data
