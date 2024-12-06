@@ -103,7 +103,14 @@ def test_import_anderson_13_fuel_model():
     fuel_data = ft.import_anderson_13_fuel_model()
 
     assert svn.FUEL_HEIGHT in fuel_data, "Total fuel load key is missing"
-    assert len(fuel_data[svn.FUEL_HEIGHT]) == 13, "Need to have 40 classes"
+    assert len(fuel_data[svn.FUEL_HEIGHT]) == 13, "Need to have 13 classes"
+
+
+def test_import_wudapt_urban_fuel_model():
+    fuel_data = ft.import_wudapt_fuel_model()
+
+    assert svn.BUILDING_LENGTH_SEPARATION in fuel_data, "Building length separation key is missing"
+    assert len(fuel_data[svn.BUILDING_LENGTH_SEPARATION]) == 10, "Need to have 10 classes"
 
 
 # Run the tests

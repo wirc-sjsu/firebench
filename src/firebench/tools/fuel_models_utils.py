@@ -449,3 +449,34 @@ def import_anderson_13_fuel_model():
     DATASET_NAME = "Anderson13"
     fuel_data = read_fuel_data_file(DATASET_NAME)
     return fuel_data
+
+
+def import_wudapt_fuel_model():
+    """
+    Import and return the WUDAPT urban fuel model data.
+
+    This function reads the Anderson 13 fuel model dataset from a file and returns it
+    as a dictionary. The Anderson 13 fuel models are a standardized set of fuel types widely
+    referenced in fire behavior modeling. Each fuel model in this set characterizes a specific
+    configuration of fuel loads, sizes, and other parameters essential for fire behavior prediction.
+
+    The returned dataset includes key-value pairs following a Standard Variable Namespace (SVN)
+    convention, ensuring consistency with other fuel data representations in the codebase.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the Anderson 13 fuel model data. Keys follow the SVN convention.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the "Anderson13" data file cannot be found or accessed.
+
+    Examples
+    --------
+    >>> fuel_data = import_anderson_13_fuel_model()
+    """  # pylint: disable=line-too-long
+    DATASET_NAME = "WUDAPT_urban"
+    fuel_data = read_fuel_data_file(DATASET_NAME)
+    return fuel_data
