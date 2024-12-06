@@ -99,6 +99,13 @@ def test_import_scott_burgan_40_fuel_model(add_complementary_field):
         assert svn.FUEL_LOAD_DEAD_RATIO not in fuel_data, "Dead fuel ratio key should not be present"
 
 
+def test_import_anderson_13_fuel_model():
+    fuel_data = ft.import_anderson_13_fuel_model()
+
+    assert svn.FUEL_HEIGHT in fuel_data, "Total fuel load key is missing"
+    assert len(fuel_data[svn.FUEL_HEIGHT]) == 13, "Need to have 40 classes"
+
+
 # Run the tests
 if __name__ == "__main__":
     pytest.main()
