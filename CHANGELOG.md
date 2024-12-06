@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.3.2a0] - 2024 / - / -
 ### Added 
+- import_scott_burgan_40_fuel_model wrapper function to simplify import of Scott and Burgan fuel model
 - Sensitivity workflow scripts for rate of spread models using WUDAPT urban fuel model.
 
 ### Documentation
