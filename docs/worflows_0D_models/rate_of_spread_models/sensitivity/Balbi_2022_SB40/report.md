@@ -1,4 +1,11 @@
-# Rate of spread model validation using Anderson 2015 dataset
+---
+layout: default
+title: "Balbi 2022 sensitivity to env var for Scott and Burgan"
+parent: "Rate of spread models workflows"
+grand_parent: "0D models"
+nav_order: 1
+---
+# Rate of spread model sensitivity to environmental inputs for Scott and Burgan 40 fuel model
 
 ## Workflow information
 
