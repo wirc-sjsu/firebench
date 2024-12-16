@@ -80,6 +80,39 @@ def test_read_dummy_fuel_data_file_local():
         np.testing.assert_array_equal(output_data[std_var].magnitude, np.array(expected_values))
 
 
+@pytest.mark.parametrize("add_complementary_fields", [True, False])
+def test_import_scott_burgan_40_fuel_model(add_complementary_fields):
+    fuel_data = ft.import_scott_burgan_40_fuel_model(add_complementary_fields=add_complementary_fields)
+
+    assert svn.FUEL_HEIGHT in fuel_data, "Total fuel load key is missing"
+    assert len(fuel_data[svn.FUEL_HEIGHT]) == 40, "Need to have 40 classes"
+
+    if add_complementary_fields:
+        # Check that complementary fields are present
+        assert svn.FUEL_LOAD_DRY_TOTAL in fuel_data, "Total fuel load key is missing"
+        assert svn.FUEL_SURFACE_AREA_VOLUME_RATIO in fuel_data, "Total SAVR key is missing"
+        assert svn.FUEL_LOAD_DEAD_RATIO in fuel_data, "Dead fuel ratio key is missing"
+    else:
+        # Check that complementary fields are NOT present
+        assert svn.FUEL_LOAD_DRY_TOTAL not in fuel_data, "Total fuel load key should not be present"
+        assert svn.FUEL_SURFACE_AREA_VOLUME_RATIO not in fuel_data, "Total SAVR key should not be present"
+        assert svn.FUEL_LOAD_DEAD_RATIO not in fuel_data, "Dead fuel ratio key should not be present"
+
+
+def test_import_anderson_13_fuel_model():
+    fuel_data = ft.import_anderson_13_fuel_model()
+
+    assert svn.FUEL_HEIGHT in fuel_data, "Total fuel load key is missing"
+    assert len(fuel_data[svn.FUEL_HEIGHT]) == 13, "Need to have 13 classes"
+
+
+def test_import_wudapt_urban_fuel_model():
+    fuel_data = ft.import_wudapt_fuel_model()
+
+    assert svn.BUILDING_LENGTH_SEPARATION in fuel_data, "Building length separation key is missing"
+    assert len(fuel_data[svn.BUILDING_LENGTH_SEPARATION]) == 10, "Need to have 10 classes"
+
+
 # Run the tests
 if __name__ == "__main__":
     pytest.main()

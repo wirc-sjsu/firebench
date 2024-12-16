@@ -6,13 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.3.2a0] - 2024 / - / -
 ### Added 
+- import_scott_burgan_40_fuel_model wrapper function to simplify import of Scott and Burgan fuel model
+- import_anderson_13_fuel_model wrapper function to simplify import of Anderson fuel model
+- import_wudapt_fuel_model wrapper function to simplify import of WUDAPT urban fuel model
 - Sensitivity workflow scripts for rate of spread models using WUDAPT urban fuel model.
+
+### Fixed
+- Fuel moisture of extinction unit is `dimensionless` instead of `percent` in Anderson13.json
 
 ### Documentation
 - Add benchmark results for:
   - Rate of spread model sensitivity using WUDAPT urban fuel model:
     - Hamada 1
     - Hamada 2
+  - Rate of spread model sensitivity using Scott and Burgan 40 fuel model:
+    - Rothermel_SFIRE
+    - Balbi 2022
+- Update benchmark results for:
+  - Rate of spread model sensitivity using Anderson 13 fuel model:
+    - Rothermel_SFIRE
 
 ## [0.3.1] - 2024 / 12 / 03
 ### Added

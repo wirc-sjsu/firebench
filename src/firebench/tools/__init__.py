@@ -36,6 +36,9 @@ from .fuel_models_utils import (
     add_scott_and_burgan_total_fuel_load,
     add_scott_and_burgan_total_savr,
     add_scott_and_burgan_dead_fuel_ratio,
+    import_scott_burgan_40_fuel_model,
+    import_anderson_13_fuel_model,
+    import_wudapt_fuel_model,
 )
 from .utils import (
     is_scalar_quantity,

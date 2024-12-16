@@ -11,10 +11,10 @@ nav_order: 2
 ## Workflow information
 
 - Documentation page:
-- Version: 1.0
+- Version: 1.1
 - Date of record creation: 2024-12-03
 - Date of upload to firebench: 2024-12-03
-- Version/tag/commit firebench: 0.3.1a0
+- Version/tag/commit firebench: 0.3.2a0
 
 ## Configuration
 
@@ -38,7 +38,7 @@ nav_order: 2
 <!-- Fill in with your results -->
 **Fig.1**  shows the execution time aggregated for all fuel classes (total) and for each fuel class.
 As fuel category 4 uses a different rate of spread calculation within the SFIRE implementation of Rothermel, a difference in performance is expected.
-Overall, the performance is very similar for each fuel category and a mean execution time of 6.098 $$\mu$$s over 106,496 samples.
+Overall, the performance is very similar for each fuel category and a mean execution time of 6.698 $$\mu$$s over 106,496 samples.
 
 <div style="text-align: center;">
     <img src="efficiency_box.png" alt="Exec time" style="width: 100%; max-width: 1200px;"/>
@@ -60,7 +60,7 @@ Overall, the performance is very similar for each fuel category and a mean execu
 - **01_generate_data.py**: `ab95fdc101ae108b3d1592ec0291febf07621e3001c989b0973f2c9d69e48af1`
 - **02_plot_data.py**: `6e8398298215938a08900555bb04390e4a9281cbb250f6fbc59a66eedb28f854`
 - **03_create_record.py**: `dfb138fe4ccaf999746eefdd9e23cc07453cd5b28ad8247f9eac15d7fa3d84ed`
-- **firebench.log**: `8312985dbee60f749635721a6719ef0381eb2a16d4c0cdecc3cbcf67fb72d66f`
-- **output_data.h5**: `ff3ad2b95c72eb61f13069329f5f0849865d653a28cd9ac0816387dfb612463f`
-- **efficiency_box.png**: `ad49e9ca3f410f9df3cdc2d8dc1bc63cdba8809c149f0bc81b2172f259664235`
+- **firebench.log**: `eb6ad262459db70de254592248239fe256d4e63f3af69bbbe35ac7d7feaae764`
+- **output_data.h5**: `421036734d13f57d84f9bc0e197255bd70523cf5b91e9e02d320ca805f189c04`
+- **efficiency_box.png**: `f1942c22f82c906f84be33c22ff596765e4336727ddfac80c860a470fe37dd7b`
 <!-- end of firebench-hash-list -->
