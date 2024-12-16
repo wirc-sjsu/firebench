@@ -27,7 +27,7 @@ nav_order: 1
 ## Results
 
 <!-- Fill in with your results -->
-**Fig.1**  shows the first and total order Sobol indices for the Rothermel_SFIRE rate of the spread model for each class of the Scott and Burgan 40 fuel model.
+**Fig.1** shows the first and total order Sobol indices for the Rothermel_SFIRE rate of the spread model for each class of the Scott and Burgan 40 fuel model.
 The wind (blue bars) is the most important parameter, with more than 80% of the variance explained.
 Then, the fuel moisture content (green bars) is important for fuel categories representing coarser fuels, which explains less 10% of the rate of spread variance.
 The slope (red bars) is of relatively minor importance for Rothermel and does not significantly affect the rate of spread in the range of input chosen.

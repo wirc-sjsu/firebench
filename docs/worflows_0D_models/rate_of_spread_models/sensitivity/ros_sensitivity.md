@@ -61,6 +61,7 @@ The worklow template can be found at `firebench/workflow/rate_of_spread_models_a
 
 The workflow has been run with the following models and parameters:
 <!-- the name of the workflow test, commit hash of the code that generated this data, generation date, other info on the library used (with commit hash if possible), inputs  -->
+- [Balbi 2022](Balbi_2022_SB40/report.html)
 - [Rothermel (SFIRE version)](Rothermel_SB40/report.html)
 
 ### Using WUDAPT fuel model
