@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.3.2a1] - 2024 / - / -
+## [0.3.2] - 2024 / 12 / 16
 ### Added 
 - import_scott_burgan_40_fuel_model wrapper function to simplify import of Scott and Burgan fuel model
 - import_anderson_13_fuel_model wrapper function to simplify import of Anderson fuel model
