@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - Rate of spread model sensitivity using Scott and Burgan 40 fuel model:
     - Rothermel_SFIRE
     - Balbi 2022
+  - Rate of spread model execution time:
+    - Hamada 1
+    - Hamada 2
 - Update benchmark results for:
   - Rate of spread model sensitivity using Anderson 13 fuel model:
     - Rothermel_SFIRE
