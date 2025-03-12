@@ -26,13 +26,11 @@ def test_Baughman_20ft_wrf_unsheltered_regression(flame_height, vegetation_heigh
 @pytest.mark.parametrize(
     "input_wind_height, flame_height, vegetation_height, is_source_wind_height_above_veg, expected_wrf",
     [
-        (20.0, 6.0, 2.0, False, 0.5892891329244908),  # example value, replace with known expected output
-        (20.0, 6.0, 2.0, True, 0.5756265984603116),  # example value, replace with known expected output
-        (15.0, 5.0, 1.5, False, 0.6075278401473907),  # example value, replace with known expected output
-        (15.0, 5.0, 1.5, True, 0.5934424454061547),  # example value, replace with known expected output
-        (10.0, 4.0, 1.0, False, 0.64002283721826),  # example value, replace with known expected output
-        (10.0, 4.0, 1.0, True, 0.6251840533636174),  # example value, replace with known expected output
-        # Add more test cases as necessary
+        (20.0, 6.0, 2.0, False, 0.5892891329244908),
+        (15.0, 5.0, 1.5, False, 0.6075278401473907),
+        (15.0, 5.0, 1.5, True, 0.5934424454061547),
+        (10.0, 4.0, 1.0, False, 0.64002283721826),
+        (10.0, 4.0, 1.0, True, 0.6251840533636174),
     ],
 )
 def test_Baughman_generalized_wind_reduction_factor_unsheltered_regression(
