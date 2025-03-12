@@ -54,7 +54,7 @@ def Masson_canyon(
     ----------
     Masson, V. (2000). A physically-based scheme for the urban energy budget in atmospheric models.
     Boundary-Layer Meteorology, 94, 357-397.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     h_b = get_value_by_category(building_height, fuel_cat)  # Building height [m]
     d_b = get_value_by_category(building_separation, fuel_cat)  # Building separation [m]
 
