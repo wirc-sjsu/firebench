@@ -31,6 +31,7 @@ Rate fo spread models are contained in `firebench.ros_models`.
 
 - `Baughman_20ft_wind_reduction_factor_unsheltered`: Calculate the wind reduction factor for a wind 20ft above vegetation level [info](./fire_models_info/23_wind_red_factor/index.md)
 - `Baughman_generalized_wind_reduction_factor_unsheltered`: Generalized version of wind reduction factor from Baughman and Albini (1980) [info](./fire_models_info/23_wind_red_factor/index.md)
+- `Masson_canyon`: Urban canyon wind speed Masson (2000)
 
 ## W0D models workflows and benchmarks
 

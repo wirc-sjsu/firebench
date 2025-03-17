@@ -29,6 +29,10 @@ se                          | -  | fuel_mineral_content_effective| float64  | [2
 st                          | -  | fuel_mineral_content_total   | float64   | [2]
 weight                      | -  | fuel_sfireburnup_consumption_cst| float64| [2]
 windrf                      | -  | fuel_wind_reduction_factor   | float64   | [3]
+fuel_load_1h                | ton acre-1| fuel_load_dry_1h      | float64   | [1]
+fuel_load_10h               | ton acre-1| fuel_load_dry_10h     | float64   | [1]
+fuel_load_100h              | ton acre-1| fuel_load_dry_100h    | float64   | [1]
+fuel_load_live              | ton acre-1| fuel_load_dry_live    | float64   | [1]
 
 ## Usage
 
