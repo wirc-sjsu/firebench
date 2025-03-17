@@ -876,7 +876,6 @@ class Santoni_2011(RateOfSpreadModel):
         slope: float,
         fmc_dead: float,
         fmc_live: float,
-        **opt,
     ) -> float:
         """
         Compute the rate of spread using the Santoni's model.
@@ -930,7 +929,8 @@ class Santoni_2011(RateOfSpreadModel):
         base_LAI = 4.0  # Base leaf area index                   [-]
 
         # fmc from percent to real
-        fmc *= 0.01
+        fmc_dead *= 0.01
+        fmc_live *= 0.01
 
         # dead fuel load
         sigma_d = fuel_load_dry_total * dead_fuel_ratio
@@ -951,7 +951,7 @@ class Santoni_2011(RateOfSpreadModel):
         )  # flame gas velocity
         alpha_rad = np.deg2rad(slope)
         tan_gamma = np.tan(alpha_rad) + wind / v_vertical  # tan of tilt angle
-        gamma = np.arctan2(tan_gamma)
+        gamma = np.arctan(tan_gamma)
 
         # no wind no slope ros
         a = delta_h / (Cp * (temp_ign - temp_air))
