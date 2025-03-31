@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added 
 - Urban canyon vertical wind interpolation Masson_canyon
 - Fuel load per element size in Anderson Fuel Model (1h, 10h, 100h, live)
+- Implementation of the `Santoni_2011` rate of spread model
 
 ## [0.3.2] - 2024 / 12 / 16
 ### Added 

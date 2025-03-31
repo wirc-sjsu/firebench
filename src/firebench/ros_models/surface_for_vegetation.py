@@ -761,7 +761,7 @@ class Santoni_2011(RateOfSpreadModel):
     Methods
     -------
     compute_ros(fueldata, fuelclass, wind, slope, fmc, **opt) -> float
-        Compute the rate of spread of fire using Rothermel's model.
+        Compute the rate of spread.
     """  # pylint: disable=line-too-long
 
     metadata = {
@@ -1038,7 +1038,7 @@ class Santoni_2011(RateOfSpreadModel):
         ----------
         input_dict : dict
             Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
-            Keys should match the variable names defined in `Balbi_2022_fixed_SFIRE.metadata`.
+            Keys should match the variable names defined in `Santoni_2011.metadata`.
 
         fuel_cat : int, optional
             One-based index for selecting a specific fuel category from lists in `input_dict`.
