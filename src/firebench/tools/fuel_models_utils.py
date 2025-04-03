@@ -420,7 +420,103 @@ def import_scott_burgan_40_fuel_model(add_complementary_fields=True):
     return fuel_data
 
 
-def import_anderson_13_fuel_model():
+def add_anderson_dead_fuel_ratio(fuel_data_dict, overwrite=False, use_1h_only=False):
+    """
+    Calculate and add the dead fuel load ratio to a fuel data dictionary based on the
+    Anderson 13 fuel model.
+
+    The dead fuel load ratio represents the fraction of the total fuel load that is
+    attributed to dead fuels. It is calculated as the ratio of the sum of specific
+    dead fuel loads to the sum of all fuel loads (dead and live).
+
+    Dead fuel loads considered:
+    - `FUEL_LOAD_DRY_1H`
+    - `FUEL_LOAD_DRY_10H`
+    - `FUEL_LOAD_DRY_100H`
+
+    Live fuel loads considered:
+    - `FUEL_LOAD_DRY_LIVE`
+
+    The result is stored under the key `FUEL_LOAD_DEAD_RATIO` in `fuel_data_dict`.
+
+    Parameters
+    ----------
+    fuel_data_dict : dict
+        Dictionary containing individual fuel load values with specific keys.
+    overwrite : bool, optional
+        If `True`, overwrites the existing total fuel load if it exists.
+        If `False` and the total fuel load already exists, raises a `ValueError`. Default is `False`.
+    use_1h_only : bool, optional
+        If `True`, use only `FUEL_LOAD_DRY_1H` for dead fuel load.
+        If `False` use all dead fuel load keys. Default is `False`.
+
+    Raises
+    ------
+    ValueError
+        If `FUEL_LOAD_DEAD_RATIO` already exists in `fuel_data_dict` and `overwrite` is `False`.
+    KeyError
+        If any required individual fuel load keys are missing from `fuel_data_dict`.
+
+    Notes
+    -----
+    This function assumes that `fuel_data_dict` contains the required keys defined in the
+    Scott and Burgan 40 fuel model constants.
+
+    Examples
+    --------
+    ```python
+    from your_module import svn  # Assuming svn contains the required constants
+
+    fuel_data = {
+        svn.FUEL_LOAD_DRY_1H: 0.1,
+        svn.FUEL_LOAD_DRY_10H: 0.2,
+        svn.FUEL_LOAD_DRY_100H: 0.3,
+        svn.FUEL_LOAD_DRY_LIVE_HERB: 0.4,
+        svn.FUEL_LOAD_DRY_LIVE_WOODY: 0.5,
+    }
+
+    add_scott_and_burgan_dead_fuel_ratio(fuel_data)
+
+    print(fuel_data[svn.FUEL_LOAD_DEAD_RATIO])  # Outputs: 0.4
+    ```
+    """  # pylint: disable=line-too-long
+    total_key = svn.FUEL_LOAD_DEAD_RATIO
+
+    if total_key in fuel_data_dict:
+        if not overwrite:
+            raise ValueError(
+                f"Key '{total_key}' already exists in fuel_data_dict. Use overwrite=True to overwrite it."
+            )
+        logger.info("Key '%s' exists and will be overwritten.", total_key)
+
+    # List of individual fuel load keys to sum
+    dead_fuels_keys = [
+        svn.FUEL_LOAD_DRY_1H,
+        svn.FUEL_LOAD_DRY_10H,
+        svn.FUEL_LOAD_DRY_100H,
+    ]
+    dead_fuels_keys_1h_only = [
+        svn.FUEL_LOAD_DRY_1H,
+    ]
+    live_fuels_keys = [
+        svn.FUEL_LOAD_DRY_LIVE,
+    ]
+
+    for key in dead_fuels_keys + live_fuels_keys:
+        if key not in fuel_data_dict.keys():
+            raise KeyError(f"Missing required key '{key}' in fuel_data_dict.")
+
+    # Calculate the numerator and denominator
+    if use_1h_only:
+        dead_load = sum(fuel_data_dict[dead_fuel] for dead_fuel in dead_fuels_keys_1h_only)
+    else:
+        dead_load = sum(fuel_data_dict[dead_fuel] for dead_fuel in dead_fuels_keys)
+    live_load = sum(fuel_data_dict[live_fuel] for live_fuel in live_fuels_keys)
+
+    fuel_data_dict[total_key] = dead_load / (dead_load + live_load)
+
+
+def import_anderson_13_fuel_model(add_complementary_fields=True, use_1h_only=False):
     """
     Import and return the Anderson 13 fuel model data.
 
@@ -431,6 +527,20 @@ def import_anderson_13_fuel_model():
 
     The returned dataset includes key-value pairs following a Standard Variable Namespace (SVN)
     convention, ensuring consistency with other fuel data representations in the codebase.
+
+    When `add_complementary_fields` is `True`, the following additional fields are computed and
+    included in the returned dictionary:
+    - **Dead Fuel Ratio**: The fraction of the total fuel load that is attributable to dead fuels
+      stored under `svn.FUEL_LOAD_DEAD_RATIO`.
+
+    Parameters
+    ----------
+    add_complementary_fields : bool, optional
+        If `True` (default), computes and adds complementary fields to the returned fuel data dictionary. If `False`, the function returns
+        only the raw fuel data as read from the file.
+    use_1h_only : bool, optional
+        If `True`, use only `FUEL_LOAD_DRY_1H` for dead fuel load for dead fuel ratio calculation.
+        If `False` use all dead fuel load keys. Default is `False`.
 
     Returns
     -------
@@ -448,6 +558,8 @@ def import_anderson_13_fuel_model():
     """  # pylint: disable=line-too-long
     DATASET_NAME = "Anderson13"
     fuel_data = read_fuel_data_file(DATASET_NAME)
+    if add_complementary_fields:
+        add_anderson_dead_fuel_ratio(fuel_data, use_1h_only=use_1h_only)
     return fuel_data
 
 

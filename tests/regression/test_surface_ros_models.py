@@ -273,3 +273,111 @@ def test_compute_ros_regression_balbi(
         fmc,
     )
     assert np.isclose(ros, expected_ros)
+
+
+## Santoni 2011
+@pytest.mark.parametrize(
+    "input_dict, expected_ros",
+    [
+        (
+            {
+                svn.FUEL_LOAD_DRY_TOTAL: 1,
+                svn.FUEL_LOAD_DEAD_RATIO: 0.8,
+                svn.FUEL_HEIGHT: 1.0,
+                svn.FUEL_DENSITY_DEAD: 300.0,
+                svn.FUEL_DENSITY_LIVE: 300.0,
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD: 4500.0,
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE: 4500.0,
+                svn.WIND_SPEED: 1.0,
+                svn.SLOPE_ANGLE: 0.0,
+                svn.FUEL_MOISTURE_CONTENT_DEAD: 10.0,
+                svn.FUEL_MOISTURE_CONTENT_LIVE: 100.0,
+                "fuel_cat": None,
+            },
+            0.5086438204142792,  # Expected ROS value (adjust this to the expected value)
+        ),
+        (
+            {
+                svn.FUEL_LOAD_DRY_TOTAL: [1],
+                svn.FUEL_LOAD_DEAD_RATIO: [0.8],
+                svn.FUEL_HEIGHT: [1.0],
+                svn.FUEL_DENSITY_DEAD: [300.0],
+                svn.FUEL_DENSITY_LIVE: [300.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD: [4500.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE: [4500.0],
+                svn.WIND_SPEED: 1.0,
+                svn.SLOPE_ANGLE: 0.0,
+                svn.FUEL_MOISTURE_CONTENT_DEAD: 10.0,
+                svn.FUEL_MOISTURE_CONTENT_LIVE: 100.0,
+                "fuel_cat": 1,
+            },
+            0.5086438204142792,  # Expected ROS value (adjust this to the expected value)
+        ),
+        (
+            {
+                svn.FUEL_LOAD_DRY_TOTAL: [1],
+                svn.FUEL_LOAD_DEAD_RATIO: [0.8],
+                svn.FUEL_HEIGHT: [1.0],
+                svn.FUEL_DENSITY_DEAD: [300.0],
+                svn.FUEL_DENSITY_LIVE: [300.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD: [4500.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE: [4500.0],
+                svn.WIND_SPEED: 1.0,
+                svn.SLOPE_ANGLE: 0.0,
+                svn.FUEL_MOISTURE_CONTENT_DEAD: 10.0,
+                svn.FUEL_MOISTURE_CONTENT_LIVE: 100.0,
+                svn.AIR_TEMPERATURE: 330,
+                "fuel_cat": 1,
+            },
+            0.5972921793806639,  # Expected ROS value (adjust this to the expected value)
+        ),
+        (
+            {
+                svn.FUEL_LOAD_DRY_TOTAL: [1],
+                svn.FUEL_LOAD_DEAD_RATIO: [0.8],
+                svn.FUEL_HEIGHT: [1.0],
+                svn.FUEL_DENSITY_DEAD: [300.0],
+                svn.FUEL_DENSITY_LIVE: [300.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD: [4500.0],
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE: [4500.0],
+                svn.WIND_SPEED: -1.0,
+                svn.SLOPE_ANGLE: 0.0,
+                svn.FUEL_MOISTURE_CONTENT_DEAD: 10.0,
+                svn.FUEL_MOISTURE_CONTENT_LIVE: 100.0,
+                svn.AIR_TEMPERATURE: 330,
+                "fuel_cat": 1,
+            },
+            0.34929049626422026,  # Expected ROS value (adjust this to the expected value)
+        ),
+    ],
+)
+def test_compute_ros_santoni2011(input_dict, expected_ros):
+    ros = rm.Santoni_2011.compute_ros(input_dict, fuel_cat=input_dict["fuel_cat"])
+    assert np.isclose(ros, expected_ros, atol=1e-4)
+
+
+@pytest.mark.parametrize(
+    "input_dict, expected_ros",
+    [
+        (
+            {
+                svn.FUEL_LOAD_DRY_TOTAL: Quantity(1, "kg/m^2"),
+                svn.FUEL_LOAD_DEAD_RATIO: Quantity(0.8, "dimensionless"),
+                svn.FUEL_HEIGHT: Quantity(1.0, "m"),
+                svn.FUEL_DENSITY_DEAD: Quantity(300.0, "kg/m^3"),
+                svn.FUEL_DENSITY_LIVE: Quantity(300.0, "kg/m^3"),
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD: Quantity(4500.0, "1/m"),
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE: Quantity(4500.0, "1/m"),
+                svn.WIND_SPEED: Quantity(1.0, "m/s"),
+                svn.SLOPE_ANGLE: Quantity(0.0, "degrees"),
+                svn.FUEL_MOISTURE_CONTENT_DEAD: Quantity(10.0, "percent"),
+                svn.FUEL_MOISTURE_CONTENT_LIVE: Quantity(100.0, "percent"),
+                "fuel_cat": None,
+            },
+            Quantity(0.5086438204142792, "m/s"),  # Expected ROS value (adjust this to the expected value)
+        ),
+    ],
+)
+def test_compute_ros_with_units_santoni(input_dict, expected_ros):
+    ros = rm.Santoni_2011.compute_ros_with_units(input_dict, fuel_cat=input_dict["fuel_cat"])
+    assert np.isclose(ros.magnitude, expected_ros.magnitude, atol=1e-4)
