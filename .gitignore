@@ -156,3 +156,4 @@ cython_debug/
 *.DS_Store
 docs/_site/*
 docs/Gemfile.lock
+docs_tmp/
