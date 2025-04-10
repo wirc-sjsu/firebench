@@ -284,6 +284,7 @@ class Hamada_1(RateOfSpreadModel):
 
 
 class Hamada_2(RateOfSpreadModel):
+    # pylint: disable=duplicate-code
     """
     A class to represent the Hamada's model for urban fire spread rate calculation in its version 2.
 
@@ -364,7 +365,7 @@ class Hamada_2(RateOfSpreadModel):
         - Range: ``0 to inf``
         - Type: ``output``
     """  # pylint: disable=line-too-long
-
+    # pylint: enable=duplicate-code
     metadata = {
         "side_length": {
             "std_name": svn.BUILDING_LENGTH_SIDE,
