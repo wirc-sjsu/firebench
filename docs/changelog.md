@@ -1,14 +1,14 @@
----
-layout: default
-title: "Changes"
-nav_order: 96
----
-
-# Changelog
+# 9. Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [0.5.0] - 2025 / 04 / 10
+### Documentation
+- Remove legacy GitHub Pages & Jekyll documentation.
+- Move the documentation to ReadTheDocs.
+- Add API documentation using Sphinx
 
 ## [0.4.0] - 2025 / 04 / 03
 ### Added 

@@ -1,12 +1,10 @@
----
-layout: default
-title: "Tutorials"
-nav_order: 5
-has_children: true
----
-# Tutorials
+# 4. Tutorials
 
-This section provides some tutorials to guide the use of thr Firebench package.
+This section provides some tutorials to guide the use of the Firebench package.
 
-1. [How to use Fuel Models](./change_fuel_model_ros.md)
-2. [How to customize a rate of spread model](./new_ros_model.md)
+```{toctree}
+:maxdepth: 1
+
+change_fuel_model_ros.md
+new_ros_model.md
+```

@@ -1,12 +1,3 @@
----
-layout: default
-title: "Santoni 2011"
-parent: "Rate of spread models"
-grand_parent: "Fire Models information"
-math: mathjax
-nav_order: 4
----
-
 # Santoni2011
 ## Description
 
@@ -72,33 +63,11 @@ ros = rm.Santoni_2011.compute_ros(model_inputs)
 # compute the rate of spread with fuel category
 ros = rm.Santoni_2011.compute_ros(model_inputs, fuel_cat = 1)
 ```
-<div style="text-align: center;">
-    <img src="../../assets/diagram_blocks/ros_model/santoni2011.svg" alt="Block santoni"/>
-</div>
+![blockdiagram](../../_static/diagram_blocks/ros_model/santoni2011.svg)
 ### Use with Anderson13 fuel model
 
-The [Anderson13](../21_fuel_models/02_Anderson.md) fuel model provides a set of fuel properties that can be linked to Santoni's inputs. The following diagram shows the workflow that can be used to connect Anderson fuel model and Santoni2011 rate of spread model.
-
-**Fig. 1** shows an example of usage with Anderson’s fuel model.
-It uses constant environmental inputs for wind, slope, and fuel moisture. 
-It also uses the wind reduction factor from the Anderson fuel model, considering the wind input height to be *20ft above vegetation level*.
-All fuel properties are contained within the Anderson Fuel Model, which makes it fully compatible with Rothermel’s rate of spread model.
-
-<!-- <div style="text-align: center;">
-    <img src="../../images/fire_models_info/diagram_Balbi_Anderson.png" alt="Diagram Balbi Anderson"/>
-</div>
-<p style="text-align: center;">
-    <strong>
-        Fig. 1
-    </strong>
-    :
-    <em>
-        Usage of Anderson fuel model for Santoni_2011 rate of spread model. 
-    </em>
-</p> -->
-
-
-An example of use of Anderson fuel model with Santoni_2011, corresponding the **Fig. 1** diagram:
+The [Anderson13](../21_fuel_models/02_Anderson.md) fuel model provides a set of fuel properties that can be linked to Santoni's inputs. 
+An example of use of Anderson fuel model with Santoni_2011:
 ```python
 import firebench as fb
 

@@ -8,6 +8,19 @@ class RateOfSpreadModel:
     A base class for fire spread rate models.
 
     This class provides common functionalities and attributes for different fire spread rate models.
+
+    Metadata
+    --------
+    The `metadata` dictionary defines the required fuel parameters for the model.
+
+    Each key in the dictionary represents a model variable (e.g., `side_length`, `wind_u`, etc.).
+    Each value is a dictionary with:
+
+    - **std_name**: standardized variable name (used in input dicts)
+    - **units**: pint-compatible physical units
+    - **range**: a (min, max) tuple indicating valid value range
+    - **type**: input, output, or optional
+    - **default** (optional): default value, used only if `type == optional`
     """  # pylint: disable=line-too-long
 
     # metada dict containing information about inputs and outputs (std_name, units, range)

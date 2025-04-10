@@ -1,10 +1,4 @@
----
-layout: default
-title: "Licenses and legal info"
-nav_order: 97
----
-
-# FireBench lience 
+# 11. Lience 
 
                                     Apache License
                             Version 2.0, January 2004

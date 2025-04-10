@@ -1,0 +1,48 @@
+import os
+import sys
+
+# Add src/ to the path so Sphinx can find your code
+sys.path.insert(0, os.path.abspath('../src'))
+
+project = 'Firebench'
+author = 'WIRC SJSU'
+release = '0.4.0'
+
+extensions = [
+    'myst_parser',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.autosummary',
+]
+
+templates_path = ['_templates']
+exclude_patterns = []
+
+html_theme = 'sphinx_rtd_theme'
+html_static_path = ['_static']
+
+# Enable Markdown features (MyST)
+myst_enable_extensions = [
+    "deflist",
+    "fieldlist",
+    "attrs_block",
+    "colon_fence",
+    "substitution",
+    "tasklist",
+    "amsmath",
+    "dollarmath",
+]
+
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "show-inheritance": True,
+}
+
+autosummary_generate = True
+napoleon_numpy_docstring = True
+
+html_logo = "_static/images/firebench_logo.png"
+html_static_path = ["_static"]

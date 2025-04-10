@@ -1,10 +1,3 @@
----
-layout: default
-title: "Anderson 2015"
-parent: "Datasets and fire experiment information"
-nav_order: 1
----
-
 # Anderson 2015 validation dataset
 
 ## Description
@@ -77,10 +70,8 @@ anderson_dataset_8 = ft.read_data_file("Table_8", "ros_model_validation/Anderson
 The data is stored in the dictionnary `anderson_dataset_A1` for the data of Table A1 and `anderson_dataset_8` for the data of Table 8.
 The keys are the standard variable names and the values are numpy array associated with pint unit.
 
-<div style="text-align: center;">
-    <img src="../../assets/diagram_blocks/dataset/anderson2015_A1.svg" alt="Block A1" style="margin-right: 10px;"/>
-    <img src="../../assets/diagram_blocks/dataset/anderson2015_8.svg" alt="Block A1" style="margin-left: 10px;"/>
-</div>
+![blockdiagram](../_static/diagram_blocks/dataset/anderson2015_A1.svg)
+![blockdiagram](../_static/diagram_blocks/dataset/anderson2015_8.svg)
 
 ## Reference
 

@@ -1,11 +1,3 @@
----
-layout: default
-title: "WUDAPT 10"
-parent: "Fuel models"
-grand_parent: "Fire Models information"
-nav_order: 50
----
-
 # WUDAPT 10 fuel model
 ## Description
 
@@ -25,13 +17,11 @@ separation                  | m     | building_length_separation| float64   | [1
 Import the WUDAPT fuel model data using `FireBench` with:
 ```python
 import firebench.tools as ft
-fuel_data = ft.read_fuel_data_file("WUDAPT_urban")
+fuel_data = ft.import_wudapt_fuel_model()
 ```
 The data is stored in the dictionnary `fuel_data`. The keys are the standard variable names and the values are numpy array associated with pint unit.
 
-<div style="text-align: center;">
-    <img src="../../assets/diagram_blocks/fuel_model/WUDAPT_urban.svg" alt="Block wudapt"/>
-</div>
+![blockdiagram](../../_static/diagram_blocks/fuel_model/WUDAPT_urban.svg)
 
 ## Compatibility with fire models
 

@@ -1,9 +1,4 @@
----
-layout: default
-title: "Dependencies"
-nav_order: 99
----
-# Dependencies
+# 10. Dependencies
 
 ## Required
 

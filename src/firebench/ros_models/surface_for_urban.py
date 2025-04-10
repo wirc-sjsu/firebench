@@ -15,16 +15,59 @@ class Hamada_1(RateOfSpreadModel):
     This class provides metadata for various fuel properties and a static method to compute the rate of spread (ROS) of fire
     using the Hamada's model. The metadata includes descriptions, units, and acceptable ranges for each property.
 
-    Attributes
-    ----------
-    metadata : dict
-        A dictionary containing metadata for various fuel properties such as building separation and side_length.
-        Each entry in the dictionary provides a description, units, and acceptable range for the property.
+    Metadata
+    --------
+    The model uses the following fuel parameters:
 
-    Methods
-    -------
-    compute_ros
-        Compute the rate of spread of fire using Hamada's model.
+    - ``side_length``
+        - Standard name: ``BUILDING_LENGTH_SIDE``
+        - Units: ``meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``separation``
+        - Standard name: ``BUILDING_LENGTH_SEPARATION``
+        - Units: ``meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``wind_u``
+        - Standard name: ``WIND_SPEED_U``
+        - Units: ``meter / second``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``wind_v``
+        - Standard name: ``WIND_SPEED_V``
+        - Units: ``meter / second``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``normal_vector_x``
+        - Standard name: ``NORMAL_SPREAD_DIR_X``
+        - Units: ``dimensionless``
+        - Range: ``-1 to 1``
+        - Type: ``input``
+
+    - ``normal_vector_y``
+        - Standard name: ``NORMAL_SPREAD_DIR_Y``
+        - Units: ``dimensionless``
+        - Range: ``-1 to 1``
+        - Type: ``input``
+
+    - ``fire_resistant_ratio``
+        - Standard name: ``BUILDING_RATIO_FIRE_RESISTANT``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``optional``
+        - Default: ``0.6``
+
+    - ``rate_of_spread``
+        - Standard name: ``RATE_OF_SPREAD``
+        - Units: ``meter / second``
+        - Range: ``0 to inf``
+        - Type: ``output``
+
     """  # pylint: disable=line-too-long
 
     metadata = {
@@ -113,6 +156,7 @@ class Hamada_1(RateOfSpreadModel):
         -------
         float
             The computed urban rate of spread in meters per second.
+
         """
         # norm of the wind
         wind = np.hypot(wind_u, wind_v)
@@ -183,10 +227,9 @@ class Hamada_1(RateOfSpreadModel):
 
         Notes
         -----
-        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
-        When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects),
-        compliant with units specified in the metadata dictionary.
+        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering. When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), compliant with units specified in the metadata dictionary.
+
         """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
@@ -230,6 +273,7 @@ class Hamada_1(RateOfSpreadModel):
         -----
         - Use this function when working with `pint.Quantity` objects in `input_dict`.
         - Units for the ROS are defined in `Hamada_1.metadata["rate_of_spread"]["units"]`.
+
         """  # pylint: disable=line-too-long
         input_dict_no_units = extract_magnitudes(input_dict)
 
@@ -240,24 +284,88 @@ class Hamada_1(RateOfSpreadModel):
 
 
 class Hamada_2(RateOfSpreadModel):
+    # pylint: disable=duplicate-code
     """
     A class to represent the Hamada's model for urban fire spread rate calculation in its version 2.
 
     This class provides metadata for various fuel properties and a static method to compute the rate of spread (ROS) of fire
     using the Hamada's model. The metadata includes descriptions, units, and acceptable ranges for each property.
 
-    Attributes
-    ----------
-    metadata : dict
-        A dictionary containing metadata for various fuel properties such as as building separation and side_length.
-        Each entry in the dictionary provides a description, units, and acceptable range for the property.
+    Metadata
+    --------
+    The model uses the following fuel parameters:
 
-    Methods
-    -------
-    compute_ros
-        Compute the rate of spread of fire using Hamada's model.
+    - ``side_length``
+        - Standard name: ``BUILDING_LENGTH_SIDE``
+        - Units: ``meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``separation``
+        - Standard name: ``BUILDING_LENGTH_SEPARATION``
+        - Units: ``meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``wind_u``
+        - Standard name: ``WIND_SPEED_U``
+        - Units: ``meter / second``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``wind_v``
+        - Standard name: ``WIND_SPEED_V``
+        - Units: ``meter / second``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``normal_vector_x``
+        - Standard name: ``NORMAL_SPREAD_DIR_X``
+        - Units: ``dimensionless``
+        - Range: ``-1 to 1``
+        - Type: ``input``
+
+    - ``normal_vector_y``
+        - Standard name: ``NORMAL_SPREAD_DIR_Y``
+        - Units: ``dimensionless``
+        - Range: ``-1 to 1``
+        - Type: ``input``
+
+    - ``fire_resistant_ratio``
+        - Standard name: ``BUILDING_RATIO_FIRE_RESISTANT``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``optional``
+        - Default: ``0.6``
+
+    - ``bare_structure_ratio``
+        - Standard name: ``BUILDING_RATIO_STRUCTURE_WOOD_BARE``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``optional``
+        - Default: ``0.2``
+
+    - ``mortar_structure_ratio``
+        - Standard name: ``BUILDING_RATIO_STRUCTURE_WOOD_MORTAR``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``optional``
+        - Default: ``0.2``
+
+    - ``beta``
+        - Standard name: ``BETA``
+        - Units: ``dimensionless``
+        - Range: ``2 to inf``
+        - Type: ``optional``
+        - Default: ``5``
+
+    - ``rate_of_spread``
+        - Standard name: ``RATE_OF_SPREAD``
+        - Units: ``meter / second``
+        - Range: ``0 to inf``
+        - Type: ``output``
     """  # pylint: disable=line-too-long
-
+    # pylint: enable=duplicate-code
     metadata = {
         "side_length": {
             "std_name": svn.BUILDING_LENGTH_SIDE,
@@ -444,10 +552,9 @@ class Hamada_2(RateOfSpreadModel):
 
         Notes
         -----
-        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
-        When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects),
-        compliant with units specified in the metadata dictionary.
+        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering. When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
+        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), compliant with units specified in the metadata dictionary.
+
         """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties = RateOfSpreadModel.prepare_fuel_properties(

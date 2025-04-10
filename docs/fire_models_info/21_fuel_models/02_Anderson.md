@@ -1,11 +1,3 @@
----
-layout: default
-title: "Anderson 13"
-parent: "Fuel models"
-grand_parent: "Fire Models information"
-nav_order: 2
----
-
 # Anderson 13 fuel model
 ## Description
 The Anderson 13 fuel model, also known as the Albini 13, is a widely recognized system used in wildfire modeling to categorize vegetation types based on their burning characteristics. Developed by Hal Anderson in the 1980s [1], these models classify surface fuels into 13 groups based on parameters such as fuel load, moisture content, and expected fire behavior. Each fuel model provides an idealized description of vegetation structure, from fine grasses and brush to timber and logging slash, enabling prediction of flame length, fire spread rate, and intensity under given environmental conditions. 
@@ -39,13 +31,11 @@ fuel_load_live              | ton acre-1| fuel_load_dry_live    | float64   | [1
 Import the Anderson fuel model data using `FireBench` with:
 ```python
 import firebench.tools as ft
-fuel_data = ft.read_fuel_data_file("Anderson13")
+fuel_data = ft.import_anderson_13_fuel_model()
 ```
 The data is stored in the dictionnary `fuel_data`. The keys are the standard variable names and the values are numpy array associated with pint unit.
 
-<div style="text-align: center;">
-    <img src="../../assets/diagram_blocks/fuel_model/anderson13.svg" alt="Block Anderson"/>
-</div>
+![blockdiagram](../../_static/diagram_blocks/fuel_model/anderson13.svg)
 
 ## Compatibility with fire models
 

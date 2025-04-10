@@ -1,12 +1,3 @@
----
-layout: default
-title: "Hamada 2"
-parent: "Rate of spread models"
-grand_parent: "Fire Models information"
-math: mathjax
-nav_order: 51
----
-
 # Hamada version 2
 ## Description
 
@@ -52,9 +43,7 @@ ros = rm.Hamada_2.compute_ros(model_inputs)
 # compute the rate of spread with fuel category
 ros = rm.Hamada_2.compute_ros(model_inputs, fuel_cat = 1)
 ```
-<div style="text-align: center;">
-    <img src="../../assets/diagram_blocks/ros_model/hamada_2.svg" alt="Block ros"/>
-</div>
+![blockdiagram](../../_static/diagram_blocks/ros_model/hamada_2.svg)
 
 ### Use with WUDAPT fuel model
 
@@ -65,9 +54,7 @@ The wind input is separated by zonal and meridian components (u and v, respectiv
 The direction of spread, corresponding to the components of the fire front normal unit vector, is separated by west-east and south-north components (x and y, respectively).
 The default value of the building fire resistant ratio is used.
 
-<div style="text-align: center;">
-    <img src="../../images/fire_models_info/diagram_Hamada_2_WUDAPT.png" alt="Diagram Hamada Wudapt"/>
-</div>
+![blockdiagram](../../_static/images/fire_models_info/diagram_Hamada_2_WUDAPT.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

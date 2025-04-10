@@ -1,9 +1,4 @@
----
-layout: default
-title: "Variable namespace"
-nav_order: 95
----
-# Standard Namespace
+# 5. Standard Namespace
 
 This page lists the standard variable names used in the FireBench project. These names ensure consistency and clarity across the codebase and related data files.
 The standard names are structured from left to right from the broader category to the highest details. For example, the dry fuel load variables all start with `FUEL_LOAD_DRY` even if you would say `dry fuel load`.

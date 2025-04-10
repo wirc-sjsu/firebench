@@ -1,10 +1,3 @@
----
-layout: default
-title: How to customize a rate of spread model
-parent: Tutorials
-nav_order: 2
----
-
 # How to customize a rate of spread model
 
 In `FireBench,` a rate-of-spread model is a class inherited from `firebench.ros_models.RateOfSpreadModel`.
