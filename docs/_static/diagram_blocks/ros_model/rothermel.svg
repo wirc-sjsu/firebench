@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="70.997375mm"
+   height="77.712547mm"
+   viewBox="0 0 70.997375 77.712547"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.1 (9c6d41e, 2022-07-14)"
+   sodipodi:docname="rothermel.svg"
+   inkscape:export-filename="rothermel.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="1.6819304"
+     inkscape:cx="91.264181"
+     inkscape:cy="190.55485"
+     inkscape:window-width="1470"
+     inkscape:window-height="891"
+     inkscape:window-x="2560"
+     inkscape:window-y="521"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="g503" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-73.727204,-57.486964)">
+    <rect
+       style="fill:#f4d7d7;stroke:#000000;stroke-width:0.298944"
+       id="rect234"
+       width="70.599953"
+       height="77.413605"
+       x="73.876678"
+       y="57.636436"
+       ry="1.13641" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;fill:#000000;stroke:none;stroke-width:0.264999"
+       x="98.984917"
+       y="67.013901"
+       id="text588"><tspan
+         sodipodi:role="line"
+         id="tspan586"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Bold';fill:#000000;stroke:none;stroke-width:0.265"
+         x="98.984917"
+         y="67.013901">ROTHERMEL</tspan><tspan
+         sodipodi:role="line"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Bold';fill:#000000;stroke:none;stroke-width:0.265"
+         x="98.984917"
+         y="70.982651"
+         id="tspan828" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+       x="111.39033"
+       y="72.568466"
+       id="text684"><tspan
+         sodipodi:role="line"
+         id="tspan682"
+         style="stroke-width:0.265"
+         x="111.39033"
+         y="72.568466">rate of spread [m s-1]</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#f4d7d7;stroke:none;stroke-width:0.264999"
+       x="99.94059"
+       y="61.290203"
+       id="text832"><tspan
+         sodipodi:role="line"
+         id="tspan830"
+         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.265"
+         x="99.94059"
+         y="61.290203">ROS MODEL</tspan></text>
+    <g
+       id="g523">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="72.506172"
+         id="text676"><tspan
+           sodipodi:role="line"
+           id="tspan674"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="72.506172">fuel chaparral flag (int)</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1280"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,62.844821)" />
+    </g>
+    <path
+       sodipodi:type="star"
+       style="fill:#d40000;stroke:none;stroke-width:0.264999"
+       id="path1280-2"
+       inkscape:flatsided="false"
+       sodipodi:sides="3"
+       sodipodi:cx="29.254669"
+       sodipodi:cy="42.491577"
+       sodipodi:r1="5.8964772"
+       sodipodi:r2="2.9482386"
+       sodipodi:arg1="-0.018865686"
+       sodipodi:arg2="1.0283319"
+       inkscape:rounded="0"
+       inkscape:randomized="0"
+       d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+       inkscape:transform-center-x="-0.32434232"
+       inkscape:transform-center-y="-0.011150072"
+       transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,137.02608,62.913569)" />
+    <g
+       id="g518"
+       transform="translate(0,-0.29233185)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="78.270073"
+         id="text646"><tspan
+           sodipodi:role="line"
+           id="tspan644"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="78.270073">fuel load dry total [kg m-2]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,68.605547)" />
+    </g>
+    <g
+       id="g513"
+       transform="translate(0,-0.57831603)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:Arial;-inkscape-font-specification:Arial;fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="84.027626"
+         id="text642"><tspan
+           sodipodi:role="line"
+           id="tspan640"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.265"
+           x="76.688904"
+           y="84.027626">fuel density [lb ft-3]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,74.366275)" />
+    </g>
+    <g
+       id="g508"
+       transform="translate(0,-0.46472829)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="89.379257"
+         id="text654"><tspan
+           sodipodi:role="line"
+           id="tspan652"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="89.379257">fuel height [m]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-8"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,79.717906)" />
+    </g>
+    <g
+       id="g503"
+       transform="translate(0,-0.75706776)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="95.143166"
+         id="text658"><tspan
+           sodipodi:role="line"
+           id="tspan656"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="95.143166">fuel surface area volume ratio [ft-1]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-2"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,85.462765)" />
+    </g>
+    <g
+       id="g498"
+       transform="translate(0,-0.63713645)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="100.4567"
+         id="text668"><tspan
+           sodipodi:role="line"
+           id="tspan666"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="100.4567">fuel mineral content total [-]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-80"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,90.776302)" />
+    </g>
+    <g
+       id="g493"
+       transform="translate(0,-0.5171975)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="105.77023"
+         id="text672"><tspan
+           sodipodi:role="line"
+           id="tspan670"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="105.77023">fuel mineral content effective [-]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-20"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,96.089832)" />
+    </g>
+    <g
+       id="g488"
+       transform="translate(0,-0.39725856)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="111.08376"
+         id="text664"><tspan
+           sodipodi:role="line"
+           id="tspan662"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="111.08376">fuel moisture extinction [%]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-9"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,101.40336)" />
+    </g>
+    <g
+       id="g483"
+       transform="translate(0,-0.68958921)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.673027"
+         y="116.80956"
+         id="text680"><tspan
+           sodipodi:role="line"
+           id="tspan678"
+           style="stroke-width:0.265"
+           x="76.673027"
+           y="116.80956">wind speed height midflame [m s-1]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-5"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,107.14821)" />
+    </g>
+    <g
+       id="g478"
+       transform="translate(0,-0.56964383)">
+      <text
+         xml:space="preserve"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke:none;stroke-width:0.264999"
+         x="76.688904"
+         y="122.16119"
+         id="text692"><tspan
+           sodipodi:role="line"
+           id="tspan690"
+           style="stroke-width:0.265"
+           x="76.688904"
+           y="122.16119">fuel moisture content [%]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-3"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,112.48079)" />
+    </g>
+    <g
+       id="g473"
+       transform="translate(0,-0.44970489)">
+      <text
+         xml:space="preserve"
+         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.264999"
+         x="76.628578"
+         y="127.47472"
+         id="text938"><tspan
+           sodipodi:role="line"
+           id="tspan936"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke-width:0.265"
+           x="76.628578"
+           y="127.47472">slope angle [deg]</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#008000;stroke:none;stroke-width:0.264999"
+         id="path1906-8-59"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.127184,117.81337)" />
+    </g>
+    <g
+       id="g468"
+       transform="translate(-0.44510607,-0.78654662)">
+      <text
+         xml:space="preserve"
+         style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.175px;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue Italic';fill:#800000;stroke:none;stroke-width:0.264999"
+         x="77.073685"
+         y="133.28313"
+         id="text938-9"><tspan
+           sodipodi:role="line"
+           id="tspan936-9"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Helvetica Neue';-inkscape-font-specification:'Helvetica Neue';fill:#000000;stroke-width:0.265"
+           x="77.073685"
+           y="133.28313">fuel class (int)</tspan></text>
+      <path
+         sodipodi:type="star"
+         style="fill:#0066ff;stroke:none;stroke-width:0.264999"
+         id="path1906-8-59-9"
+         inkscape:flatsided="false"
+         sodipodi:sides="3"
+         sodipodi:cx="29.254669"
+         sodipodi:cy="42.491577"
+         sodipodi:r1="5.8964772"
+         sodipodi:r2="2.9482386"
+         sodipodi:arg1="-0.018865686"
+         sodipodi:arg2="1.0283319"
+         inkscape:rounded="0"
+         inkscape:randomized="0"
+         d="m 35.150097,42.380343 -4.373405,2.636221 -4.373405,2.636221 -0.09633,-5.105591 -0.09633,-5.10559 4.469737,2.469369 z"
+         inkscape:transform-center-x="-0.32434232"
+         inkscape:transform-center-y="-0.011150072"
+         transform="matrix(0.22450892,0.00761069,-0.00687787,0.20289145,68.572286,123.62178)" />
+    </g>
+    <path
+       style="fill:#333333;stroke:none;stroke-width:0.264999"
+       d="M 74.092691,65.156802 H 144.72458"
+       id="path2248" />
+    <path
+       style="fill:#333333;stroke:#000000;stroke-width:0.352778;stroke-dasharray:none"
+       d="m 73.86265,63.072513 70.61267,-0.03135"
+       id="path2362"
+       sodipodi:nodetypes="cc" />
+  </g>
+</svg>
