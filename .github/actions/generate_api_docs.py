@@ -7,9 +7,11 @@ MODULE_PREFIX = "firebench"
 
 DOCS_API.mkdir(parents=True, exist_ok=True)
 
+
 def relative_module_path(py_path: Path) -> str:
     parts = py_path.with_suffix("").relative_to(PACKAGE_ROOT).parts
     return ".".join((MODULE_PREFIX,) + parts)
+
 
 def generate_module_block(module: str) -> str:
     return f""".. automodule:: {module}
@@ -17,6 +19,7 @@ def generate_module_block(module: str) -> str:
    :undoc-members:
    :show-inheritance:
 """
+
 
 def write_api_file(group: str, py_files: list[Path]):
     filename = DOCS_API / f"{group}.rst"
@@ -30,15 +33,13 @@ def write_api_file(group: str, py_files: list[Path]):
             f.write("\n")
     print(f"Wrote {filename}")
 
+
 def main():
     grouped = {}
     for root, dirs, files in os.walk(PACKAGE_ROOT):
         if "__pycache__" in root:
             continue
-        py_files = [
-            f for f in files
-            if f.endswith(".py") and f != "__init__.py" and not f.startswith("_")
-        ]
+        py_files = [f for f in files if f.endswith(".py") and f != "__init__.py" and not f.startswith("_")]
         if not py_files:
             continue
         rel_parts = Path(root).relative_to(PACKAGE_ROOT).parts
@@ -61,6 +62,7 @@ def main():
         for group in sorted(grouped):
             f.write(f"   {group}.rst\n")
     print(f"Wrote {index_file}")
+
 
 if __name__ == "__main__":
     main()

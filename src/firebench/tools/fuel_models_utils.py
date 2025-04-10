@@ -145,7 +145,7 @@ def add_scott_and_burgan_total_fuel_load(fuel_data_dict, overwrite=False):
         }
         add_scott_and_burgan_total_fuel_load(fuel_data)
         print(fuel_data[svn.FUEL_LOAD_DRY_TOTAL])  # Outputs: 1.5
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     total_key = svn.FUEL_LOAD_DRY_TOTAL
 
     if total_key in fuel_data_dict:
@@ -235,7 +235,7 @@ def add_scott_and_burgan_total_savr(fuel_data_dict, overwrite=False):
         }
         add_scott_and_burgan_total_savr(fuel_data)
         print(fuel_data[svn.FUEL_SURFACE_AREA_VOLUME_RATIO])  # Outputs the total SAVR
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     total_key = svn.FUEL_SURFACE_AREA_VOLUME_RATIO
 
     if total_key in fuel_data_dict:
@@ -327,7 +327,7 @@ def add_scott_and_burgan_dead_fuel_ratio(fuel_data_dict, overwrite=False):
         }
         add_anderson_dead_fuel_ratio(fuel_data)
         print(fuel_data[svn.FUEL_LOAD_DEAD_RATIO])  # Outputs: 0.4
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     total_key = svn.FUEL_LOAD_DEAD_RATIO
 
     if total_key in fuel_data_dict:
@@ -425,7 +425,7 @@ def import_scott_burgan_40_fuel_model(add_complementary_fields=True):
         print(svn.FUEL_LOAD_DRY_TOTAL in raw_fuel_data)  # False
         print(svn.FUEL_SURFACE_AREA_VOLUME_RATIO in raw_fuel_data)  # False
         print(svn.FUEL_LOAD_DEAD_RATIO in raw_fuel_data)  # False
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     DATASET_NAME = "ScottandBurgan40"
     fuel_data = read_fuel_data_file(DATASET_NAME)
     if add_complementary_fields:
@@ -497,7 +497,7 @@ def add_anderson_dead_fuel_ratio(fuel_data_dict, overwrite=False, use_1h_only=Fa
         }
         add_anderson_dead_fuel_ratio(fuel_data)
         print(fuel_data[svn.FUEL_LOAD_DEAD_RATIO])  # Outputs: 0.4
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     total_key = svn.FUEL_LOAD_DEAD_RATIO
 
     if total_key in fuel_data_dict:

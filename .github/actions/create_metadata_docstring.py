@@ -5,6 +5,7 @@ import sys
 from firebench import ureg, svn
 from firebench.tools import ParameterType
 
+
 def format_metadata_bulleted_list(metadata: dict) -> str:
     """Format the metadata dictionary into a nested bullet list."""
     doc = []
@@ -20,7 +21,7 @@ def format_metadata_bulleted_list(metadata: dict) -> str:
             f"    - Standard name: ``{std_name}``",
             f"    - Units: ``{units}``",
             f"    - Range: ``{range_}``",
-            f"    - Type: ``{ptype}``"
+            f"    - Type: ``{ptype}``",
         ]
         if default is not None:
             entry.append(f"    - Default: ``{default}``")
@@ -29,8 +30,11 @@ def format_metadata_bulleted_list(metadata: dict) -> str:
 
     return textwrap.indent("\n\n".join(doc), prefix="    ")
 
+
 def main():
-    print("📦 Paste your metadata dictionary using real Python objects (e.g., ureg.meter, ParameterType.input).")
+    print(
+        "📦 Paste your metadata dictionary using real Python objects (e.g., ureg.meter, ParameterType.input)."
+    )
     print("⌨️  End input with Ctrl-D (Linux/macOS) or Ctrl-Z (Windows) + Enter.\n")
 
     try:
@@ -45,7 +49,7 @@ def main():
         "ParameterType": ParameterType,
         "svn": svn,
         "np": __import__("numpy"),
-        "float": float
+        "float": float,
     }
 
     try:
@@ -58,6 +62,7 @@ def main():
     print("    Metadata\n    --------")
     print("    The model uses the following fuel parameters:\n")
     print(format_metadata_bulleted_list(metadata))
+
 
 if __name__ == "__main__":
     main()

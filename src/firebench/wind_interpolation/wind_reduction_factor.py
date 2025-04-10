@@ -100,7 +100,7 @@ def apply_wind_reduction_factor(
         )
         # Result: new_wind_speed = 15.0 * 0.9 = 13.5
 
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     wind_speed_value = get_value_by_category(wind_speed, fuel_cat)
     wind_reduction_factor_value = get_value_by_category(wind_reduction_factor, fuel_cat)
 
@@ -195,9 +195,9 @@ def Baughman_20ft_wind_reduction_factor_unsheltered(
 
     References
     ----------
-    Baughman, R. G., & Albini, F. A. (1980). *Estimating midflame wind speeds*.  
+    Baughman, R. G., & Albini, F. A. (1980). *Estimating midflame wind speeds*.
     In *Proceedings, Sixth Conference on Fire and Forest Meteorology*, Seattle, WA (pp. 88–92).
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     # Extract scalar values using get_value_by_category
     vegetation_height_value = get_value_by_category(vegetation_height, fuel_cat)
     flame_height_value = get_value_by_category(flame_height, fuel_cat)
@@ -239,7 +239,7 @@ def Baughman_generalized_wind_reduction_factor_unsheltered(
     Parameters
     ----------
     input_wind_height : float, list, or np.ndarray
-        The height at which the wind speed is provided (``h_u``). 
+        The height at which the wind speed is provided (``h_u``).
         If a list or array, ``fuel_cat`` is used to select the appropriate value.
 
     flame_height : float, list, or np.ndarray
@@ -274,7 +274,7 @@ def Baughman_generalized_wind_reduction_factor_unsheltered(
 
     **Reference Heights**
 
-    - **Input Wind Height** (``h_u``): The height where wind is measured. If ``is_source_wind_height_above_veg`` is ``True``, 
+    - **Input Wind Height** (``h_u``): The height where wind is measured. If ``is_source_wind_height_above_veg`` is ``True``,
       it is interpreted as ``h + h_u``; otherwise, it is just ``h_u``.
 
     - **Vegetation Height** (``h``): The height of the vegetation.
@@ -329,13 +329,13 @@ def Baughman_generalized_wind_reduction_factor_unsheltered(
 
     References
     ----------
-    Baughman, R. G., & Albini, F. A. (1980). *Estimating midflame wind speeds*.  
+    Baughman, R. G., & Albini, F. A. (1980). *Estimating midflame wind speeds*.
     In *Proceedings, Sixth Conference on Fire and Forest Meteorology*, Seattle, WA (pp. 88–92).
 
-    Albini, F. A. (1979). *Estimating windspeeds for predicting wildland fire behavior* (Vol. 221).  
+    Albini, F. A. (1979). *Estimating windspeeds for predicting wildland fire behavior* (Vol. 221).
     Intermountain Forest and Range Experiment Station, Forest Service, US Department of Agriculture.
 
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     # Extract scalar values using get_value_by_category
     vegetation_height_value = get_value_by_category(vegetation_height, fuel_cat)
     input_wind_height_value = get_value_by_category(input_wind_height, fuel_cat)
