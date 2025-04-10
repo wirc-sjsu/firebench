@@ -2,7 +2,7 @@ import os
 import sys
 
 # Add src/ to the path so Sphinx can find your code
-sys.path.insert(0, os.path.abspath('../src'))
+sys.path.insert(0, os.path.abspath('../src/firebench'))
 
 project = 'Firebench'
 author = 'WIRC SJSU'
