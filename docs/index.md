@@ -1,15 +1,7 @@
----
-layout: home
-title: "Welcome to the FireBench Project"
-nav_order: 1
----
 # Welcome to the FireBench Project
 
-<div style="text-align: center;">
-    <img src="images/firebench_logo.png" alt="FireBench Logo" width="300"/>
-</div>
+<img src="_static/images/firebench_logo.png" alt="FireBench Logo" width="300px">
 
-<div style="height: 20px;"></div> <!-- Adds a blank space -->
 
 **FireBench** is a Python library designed for the systematic benchmarking and inter-comparison of fire models.
 Recent advancements in fire modeling have introduced complex and varied models, but there is a lack of systematic evaluation regarding their accuracy, efficiency, sensitivity, validity domain, and inter-compatibility.
@@ -22,6 +14,7 @@ FireBench aims to address this gap by providing a framework to assess fire model
 - **Inter-Compatibility**: Integration capabilities with other models.
 
 FireBench offers a dual approach for evaluation: intercomparison without extensive observational data and benchmarking against a validation dataset. This framework aims to enhance fire modeling for both scientific research and operational applications, with results archived in a dedicated database.
+
 
 ## Installation
 
@@ -85,4 +78,22 @@ Feel free to start a new discussion or join existing ones to engage with the com
 
 ## Contributing
 
-We welcome contributions to FireBench! For more information on how to contribute, please see our [contribution guidelines](CONTRIBUTE.md).
+We welcome contributions to FireBench! For more information on how to contribute, please see our [contribution guidelines](contribute.md).
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+dataset_experiments/index.md
+fire_models_info/index.md
+workflows_0D_models/index.md
+tutorials/index.md
+namespace.md
+content.md
+contribute.md
+developers.md
+changelog.md
+dependencies.md
+license.md
+api/index.rst
+```

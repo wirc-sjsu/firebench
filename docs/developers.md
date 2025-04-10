@@ -1,10 +1,4 @@
----
-layout: default
-title: "Developer's Guide"
-nav_order: 98
----
-
-# Developer's Guide
+# 8. Developer's Guide
 
 ## Running Tests
 
@@ -40,6 +34,8 @@ make test-cov
 
 ```bash
 pip install ".[dev]"
+cd docs
+pip install -r requirements.txt
 ```
 
 ### Update Changelog
@@ -48,28 +44,12 @@ pip install ".[dev]"
 make update-docs-changelog
 ```
 
-### Install Ruby and Bundler
-
-- [Install Ruby](https://www.ruby-lang.org/en/)
-- Install Bundler:
-  ```bash
-  gem install bundler
-  ```
-
-### Install Ruby Dependencies
-
-```bash
-cd docs
-bundle install
-```
-
 ### Serve Documentation
 
 ```bash
-bundle exec jekyll serve
+make clean && make docs
 ```
-
-This will build the documentation and provide an address like `http://127.0.0.1:4000/`.
+This will build the documentation in `docs/_build`
 
 ## Linting
 

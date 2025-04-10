@@ -1,12 +1,3 @@
----
-layout: default
-title: "Rothermel"
-parent: "Rate of spread models"
-grand_parent: "Fire Models information"
-math: mathjax
-nav_order: 2
----
-
 # Rothermel_SFIRE
 ## Description
 
@@ -45,16 +36,6 @@ Name in model   | Description               | Unit      | Value
 --------------- | ------------------------- | --------- | ---------
 cmbcnst         | Combustion enthalpy       | J kg-1    | $$17.433 \cdot 10^6$$
 
-<!-- ### Internal unit conversion coefficient
-
-From        | To        | Value
------------ | --------- | -----
-J kg-1      | BTU lb-1  | $$4.30 \cdot 10^{4}$$
-kg m-2      | lb ft-2   | $$0.3048^2 \times 2.205$$
-m           | ft        | $$1 / 0.3048$$
-m s-1       | ft min-1  | $$196.850$$
-ft min-1    | m s-1     | $$0.00508$$ -->
-
 ## Usage
 
 ### General use
@@ -69,9 +50,8 @@ ros = rm.Rothermel_SFIRE.compute_ros(model_inputs)
 # compute the rate of spread with fuel category
 ros = rm.Rothermel_SFIRE.compute_ros(model_inputs, fuel_cat = 1)
 ```
-<div style="text-align: center;">
-    <img src="../../assets/diagram_blocks/ros_model/rothermel.svg" alt="Block rothermel"/>
-</div>
+
+![blockdiagram](../../_static/diagram_blocks/ros_model/rothermel.svg)
 
 ### Use with Anderson13 fuel model
 
@@ -82,9 +62,7 @@ It uses constant environmental inputs for wind, slope, and fuel moisture.
 It also uses the wind reduction factor from the Anderson fuel model, considering the wind input height to be *20ft above vegetation level*.
 All fuel properties are contained within the Anderson Fuel Model, which makes it fully compatible with Rothermel’s rate of spread model.
 
-<div style="text-align: center;">
-    <img src="../../images/fire_models_info/diagram_Rothermel_Anderson.png" alt="Diagram Rothermel Anderson"/>
-</div>
+![blockdiagram](../../_static/images/fire_models_info/diagram_Rothermel_Anderson.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1
@@ -149,9 +127,7 @@ The missing fuel properties (fuel density, total and effective mineral content) 
 These values are not present in SB40 but are constant for each fuel class in A13.
 Therefore, the same values are used, and the compatibility with Rothermel_SFIRE model is considered as full.
 
-<div style="text-align: center;">
-    <img src="../../images/fire_models_info/diagram_Rothermel_SB40.png" alt="Diagram Rothermel SB40"/>
-</div>
+![blockdiagram](../../_static/images/fire_models_info/diagram_Rothermel_SB40.png)
 <p style="text-align: center;">
     <strong>
         Fig. 2
@@ -240,8 +216,6 @@ Anderson13              | Fuel model        | Full
 ScottandBurgan40        | Fuel model        | Full
 
 ## Benchmarks and workflows
-
-- [Sensitivity to environmental variables for Anderson 13 categories](/worflows_0D_models/rate_of_spread_models/sensitivity/Rothermel/Rothermel.html)
 
 ## References
 

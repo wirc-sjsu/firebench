@@ -1,5 +1,5 @@
 # Declare these targets as phony to avoid conflicts with files of the same name
-.PHONY: test test-cov lint update-lint-score code-formatting bandit update-docs-changelog
+.PHONY: test test-cov lint update-lint-score code-formatting bandit update-docs-changelog generate-api-doc docs clean
 
 # Run all tests without coverage report
 test:
@@ -31,3 +31,15 @@ bandit:
 # Update documentation
 update-docs-changelog:
 	python .github/actions/update_changelog_in_docs.py
+
+# Update API documentation
+generate-api-doc:
+	python .github/actions/generate_api_docs.py
+
+# generate local documentation
+docs:
+	sphinx-build -b html docs docs/_build/html
+
+# generate local documentation
+clean:
+	rm -rf docs/_build

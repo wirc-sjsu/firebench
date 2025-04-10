@@ -15,17 +15,81 @@ class Rothermel_SFIRE(RateOfSpreadModel):
     This class provides metadata for various fuel properties and a static method to compute the rate of spread (ROS).
     The metadata includes descriptions, units, and acceptable ranges for each property.
 
-    Attributes
-    ----------
-    metadata : dict
-        A dictionary containing metadata for various fuel properties such as wind reduction factor, dry fuel load, fuel height,
-        fuel density, surface area to volume ratio, fuel moisture content, total mineral content, effective mineral content,
-        and Chaparral flag. Each entry in the dictionary provides a description, units, and acceptable range for the property.
+    Metadata
+    --------
+    The model uses the following fuel parameters:
 
-    Methods
-    -------
-    compute_ros(fueldata, fuelclass, wind, slope, fmc, **opt) -> float
-        Compute the rate of spread of fire using Rothermel's model.
+    - ``fgi``
+        - Standard name: ``FUEL_LOAD_DRY_TOTAL``
+        - Units: ``kilogram / meter ** 2``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``fueldepthm``
+        - Standard name: ``FUEL_HEIGHT``
+        - Units: ``meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``fueldens``
+        - Standard name: ``FUEL_DENSITY``
+        - Units: ``pound / foot ** 3``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``savr``
+        - Standard name: ``FUEL_SURFACE_AREA_VOLUME_RATIO``
+        - Units: ``1 / foot``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``fuelmce``
+        - Standard name: ``FUEL_MOISTURE_EXTINCTION``
+        - Units: ``percent``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``st``
+        - Standard name: ``FUEL_MINERAL_CONTENT_TOTAL``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``se``
+        - Standard name: ``FUEL_MINERAL_CONTENT_EFFECTIVE``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``ichap``
+        - Standard name: ``FUEL_CHAPARRAL_FLAG``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``wind``
+        - Standard name: ``WIND_SPEED``
+        - Units: ``meter / second``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``slope``
+        - Standard name: ``SLOPE_ANGLE``
+        - Units: ``degree``
+        - Range: ``-90 to 90``
+        - Type: ``input``
+
+    - ``fmc``
+        - Standard name: ``FUEL_MOISTURE_CONTENT``
+        - Units: ``percent``
+        - Range: ``0 to 200``
+        - Type: ``input``
+
+    - ``rate_of_spread``
+        - Standard name: ``RATE_OF_SPREAD``
+        - Units: ``meter / second``
+        - Range: ``0 to inf``
+        - Type: ``output``
     """  # pylint: disable=line-too-long
 
     metadata = {
@@ -248,17 +312,17 @@ class Rothermel_SFIRE(RateOfSpreadModel):
         **opt,
     ) -> float:
         """
-        Compute the rate of spread of fire using `Rothermel`'s model.
+        Compute the rate of spread of fire using ``Rothermel``'s model.
 
         This function processes input fuel properties, optionally selects a specific fuel category,
-        and calculates the ROS. Input data must be provided in standard units without `pint.Quantity` objects.
+        and calculates the ROS. Input data must be provided in standard units without ``pint.Quantity`` objects.
         For unit-aware calculations, use `compute_ros_with_units`.
 
         Parameters
         ----------
         input_dict : dict
             Dictionary containing the input data for various fuel properties.
-            The keys should be the standard variable names as defined in `Rothermel_SFIRE.metadata`.
+            The keys should be the standard variable names as defined in ``Rothermel_SFIRE.metadata``.
             Each value can be a single float/int or a list/array of floats/ints.
 
         fuel_cat : int, optional
@@ -267,7 +331,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
             If not provided, fuel properties are expected to be scalar values.
 
         **opt : dict
-            Additional optional parameters to be passed to the `rothermel` method.
+            Additional optional parameters to be passed to the ``rothermel`` method.
 
         Returns
         -------
@@ -276,52 +340,53 @@ class Rothermel_SFIRE(RateOfSpreadModel):
 
         Notes
         -----
-        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
+        - ``fuel_cat`` uses one-based indexing to align with natural fuel category numbering.
           When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects), compliant with units specified in the metadata dictionary.
+
+        - This function assumes ``input_dict`` contains values in standard units (e.g., no ``pint.Quantity`` objects), compliant with units specified in the metadata dictionary.
 
         Examples
         --------
         **Example with scalar fuel properties:**
 
-        ```python
-        input_data = {
-            svn.FUEL_LOAD_DRY_TOTAL: 0.5,           # fgi
-            svn.FUEL_HEIGHT: 0.3,                   # fueldepthm
-            svn.FUEL_DENSITY: 32.0,                 # fueldens
-            svn.FUEL_SURFACE_AREA_VOLUME_RATIO: 2000.0,  # savr
-            svn.FUEL_MOISTURE_EXTINCTION: 30.0,     # fuelmce
-            svn.FUEL_MINERAL_CONTENT_TOTAL: 0.0555, # st
-            svn.FUEL_MINERAL_CONTENT_EFFECTIVE: 0.01,    # se
-            svn.FUEL_CHAPARRAL_FLAG: 0,             # ichap
-            svn.WIND_SPEED: 2.0,
-            svn.SLOPE_ANGLE: 15.0,
-            svn.FUEL_MOISTURE_CONTENT: 10.0,
-        }
-        ros = Rothermel_SFIRE.compute_ros(input_data)
-        print(f"The rate of spread is {ros:.4f}")
-        ```
+        .. code-block:: python
+
+            input_data = {
+                svn.FUEL_LOAD_DRY_TOTAL: 0.5,           # fgi
+                svn.FUEL_HEIGHT: 0.3,                   # fueldepthm
+                svn.FUEL_DENSITY: 32.0,                 # fueldens
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: 2000.0,  # savr
+                svn.FUEL_MOISTURE_EXTINCTION: 30.0,     # fuelmce
+                svn.FUEL_MINERAL_CONTENT_TOTAL: 0.0555, # st
+                svn.FUEL_MINERAL_CONTENT_EFFECTIVE: 0.01,    # se
+                svn.FUEL_CHAPARRAL_FLAG: 0,             # ichap
+                svn.WIND_SPEED: 2.0,
+                svn.SLOPE_ANGLE: 15.0,
+                svn.FUEL_MOISTURE_CONTENT: 10.0,
+            }
+            ros = Rothermel_SFIRE.compute_ros(input_data)
+            print(f"The rate of spread is {ros:.4f}")
 
         **Example with fuel categories:**
 
-        ```python
-        input_data = {
-            svn.FUEL_LOAD_DRY_TOTAL: [0.4, 0.5, 0.6],           # fgi
-            svn.FUEL_HEIGHT: [0.2, 0.3, 0.4],                   # fueldepthm
-            svn.FUEL_DENSITY: [30.0, 32.0, 34.0],               # fueldens
-            svn.FUEL_SURFACE_AREA_VOLUME_RATIO: [1800.0, 2000.0, 2200.0],  # savr
-            svn.FUEL_MOISTURE_EXTINCTION: [25.0, 30.0, 35.0],   # fuelmce
-            svn.FUEL_MINERAL_CONTENT_TOTAL: [0.05, 0.0555, 0.06],     # st
-            svn.FUEL_MINERAL_CONTENT_EFFECTIVE: [0.009, 0.01, 0.011],  # se
-            svn.FUEL_CHAPARRAL_FLAG: [0, 0, 1],                 # ichap
-            svn.WIND_SPEED: 2.0,
-            svn.SLOPE_ANGLE: 15.0,
-            svn.FUEL_MOISTURE_CONTENT: 10.0,
-        }
-        fuel_category = 2  # One-based index
-        ros = Rothermel_SFIRE.compute_ros(input_data, fuel_cat=fuel_category)
-        print(f"The rate of spread for fuel category {fuel_category} is {ros:.4f}")
-        ```
+        .. code-block:: python
+
+            input_data = {
+                svn.FUEL_LOAD_DRY_TOTAL: [0.4, 0.5, 0.6],           # fgi
+                svn.FUEL_HEIGHT: [0.2, 0.3, 0.4],                   # fueldepthm
+                svn.FUEL_DENSITY: [30.0, 32.0, 34.0],               # fueldens
+                svn.FUEL_SURFACE_AREA_VOLUME_RATIO: [1800.0, 2000.0, 2200.0],  # savr
+                svn.FUEL_MOISTURE_EXTINCTION: [25.0, 30.0, 35.0],   # fuelmce
+                svn.FUEL_MINERAL_CONTENT_TOTAL: [0.05, 0.0555, 0.06],     # st
+                svn.FUEL_MINERAL_CONTENT_EFFECTIVE: [0.009, 0.01, 0.011],  # se
+                svn.FUEL_CHAPARRAL_FLAG: [0, 0, 1],                 # ichap
+                svn.WIND_SPEED: 2.0,
+                svn.SLOPE_ANGLE: 15.0,
+                svn.FUEL_MOISTURE_CONTENT: 10.0,
+            }
+            fuel_category = 2  # One-based index
+            ros = Rothermel_SFIRE.compute_ros(input_data, fuel_cat=fuel_category)
+            print(f"The rate of spread for fuel category {fuel_category} is {ros:.4f}")
         """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
@@ -380,23 +445,94 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
     This version is based on Chatelon et al. 2022.
     To prevent negative value of rate of spread, the following modifications have been applied:
-        - the tile angle gamma is bouded to 0
-        - the radiative contribution to ros Rc is bounded to 0
+    - the tile angle gamma is bouded to 0
+    - the radiative contribution to ros Rc is bounded to 0
 
-    This class provides metadata for various fuel properties and a static method to compute the rate of spread (ROS).
-    The metadata includes descriptions, units, and acceptable ranges for each property.
+    Metadata
+    --------
+    The model uses the following fuel parameters:
 
-    Attributes
-    ----------
-    metadata : dict
-        A dictionary containing metadata for various fuel properties such as wind reduction factor, dry fuel load, fuel height,
-        fuel density, surface area to volume ratio, fuel moisture content, total mineral content, effective mineral content,
-        and Chaparral flag. Each entry in the dictionary provides a description, units, and acceptable range for the property.
+    - ``dead_fuel_ratio``
+        - Standard name: ``FUEL_LOAD_DEAD_RATIO``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
 
-    Methods
-    -------
-    compute_ros(fueldata, fuelclass, wind, slope, fmc, **opt) -> float
-        Compute the rate of spread of fire using Rothermel's model.
+    - ``fgi``
+        - Standard name: ``FUEL_LOAD_DRY_TOTAL``
+        - Units: ``kilogram / meter ** 2``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``fueldepthm``
+        - Standard name: ``FUEL_HEIGHT``
+        - Units: ``meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``fueldens``
+        - Standard name: ``FUEL_DENSITY``
+        - Units: ``kilogram / meter ** 3``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``savr``
+        - Standard name: ``FUEL_SURFACE_AREA_VOLUME_RATIO``
+        - Units: ``1 / meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``w0``
+        - Standard name: ``IGNITION_LENGTH``
+        - Units: ``meter``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+        - Default: ``50``
+
+    - ``temp_ign``
+        - Standard name: ``FUEL_TEMPERATURE_IGNITION``
+        - Units: ``kelvin``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+        - Default: ``600``
+
+    - ``temp_air``
+        - Standard name: ``AIR_TEMPERATURE``
+        - Units: ``kelvin``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+        - Default: ``300``
+
+    - ``dens_air``
+        - Standard name: ``AIR_DENSITY``
+        - Units: ``kilogram / meter ** 3``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+        - Default: ``1.125``
+
+    - ``wind``
+        - Standard name: ``WIND_SPEED``
+        - Units: ``meter / second``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``slope``
+        - Standard name: ``SLOPE_ANGLE``
+        - Units: ``degree``
+        - Range: ``-90 to 90``
+        - Type: ``input``
+
+    - ``fmc``
+        - Standard name: ``FUEL_MOISTURE_CONTENT``
+        - Units: ``percent``
+        - Range: ``0 to 200``
+        - Type: ``input``
+
+    - ``rate_of_spread``
+        - Standard name: ``RATE_OF_SPREAD``
+        - Units: ``meter / second``
+        - Range: ``0 to inf``
+        - Type: ``output``
     """  # pylint: disable=line-too-long
 
     metadata = {
@@ -657,18 +793,18 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         **opt,
     ) -> float:
         """
-        Compute the rate of spread of fire using the `Balbi's 2022` model.
+        Compute the rate of spread of fire using the ``Balbi's 2022`` model.
 
         This function processes input fuel properties, optionally selects a specific fuel category,
-        and calculates the rate of spread (ROS) of fire using the `balbi_2022_fixed` method.
-        Input data must be provided in standard units without `pint.Quantity` objects.
-        For unit-aware calculations, use `compute_ros_with_units`.
+        and calculates the rate of spread (ROS) of fire using the ``balbi_2022_fixed`` method.
+        Input data must be provided in standard units without ``pint.Quantity`` objects.
+        For unit-aware calculations, use ``compute_ros_with_units``.
 
         Parameters
         ----------
         input_dict : dict
             Dictionary containing the input data for various fuel properties.
-            The keys should be the standard variable names as defined in `Balbi_2022_fixed_SFIRE.metadata`.
+            The keys should be the standard variable names as defined in ``Balbi_2022_fixed_SFIRE.metadata``.
             Each value can be a single float/int or a list/array of floats/ints.
 
         fuel_cat : int, optional
@@ -677,7 +813,7 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
             If not provided, fuel properties are expected to be scalar values.
 
         **opt : dict
-            Additional optional parameters to be passed to the `balbi_2022_fixed` method.
+            Additional optional parameters to be passed to the ``balbi_2022_fixed`` method.
 
         Returns
         -------
@@ -686,10 +822,11 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
 
         Notes
         -----
-        - `fuel_cat` uses one-based indexing to align with natural fuel category numbering.
-        When accessing lists or arrays in `input_dict`, the index is adjusted accordingly (i.e., `index = fuel_cat - 1`).
-        - This function assumes `input_dict` contains values in standard units (e.g., no `pint.Quantity` objects),
-        compliant with units specified in the metadata dictionary.
+        - ``fuel_cat`` uses one-based indexing to align with natural fuel category numbering.
+          When accessing lists or arrays in ``input_dict``, the index is adjusted accordingly (i.e., ``index = fuel_cat - 1``).
+
+        - This function assumes ``input_dict`` contains values in standard units (e.g., no ``pint.Quantity`` objects),
+          compliant with units specified in the metadata dictionary.
         """  # pylint: disable=line-too-long
         # Prepare fuel properties using the base class method
         fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
@@ -741,4 +878,411 @@ class Balbi_2022_fixed_SFIRE(RateOfSpreadModel):
         return ureg.Quantity(
             Balbi_2022_fixed_SFIRE.compute_ros(input_dict_no_units, fuel_cat, **opt),
             Balbi_2022_fixed_SFIRE.metadata["rate_of_spread"]["units"],
+        )
+
+
+class Santoni_2011(RateOfSpreadModel):
+    """
+    A class to represent the Santoni's model for fire spread rate calculation.
+
+    This version is based on Santoni et al. 2011.
+
+    Metadata
+    --------
+    The model uses the following fuel parameters:
+
+    - ``fuel_load_dry_total``
+        - Standard name: ``FUEL_LOAD_DRY_TOTAL``
+        - Units: ``kilogram / meter ** 2``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``dead_fuel_ratio``
+        - Standard name: ``FUEL_LOAD_DEAD_RATIO``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``fueldepth``
+        - Standard name: ``FUEL_HEIGHT``
+        - Units: ``meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``fuel_dens_dead``
+        - Standard name: ``FUEL_DENSITY_DEAD``
+        - Units: ``kilogram / meter ** 3``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``fuel_dens_live``
+        - Standard name: ``FUEL_DENSITY_LIVE``
+        - Units: ``kilogram / meter ** 3``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``temp_ign``
+        - Standard name: ``FUEL_TEMPERATURE_IGNITION``
+        - Units: ``kelvin``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+        - Default: ``600``
+
+    - ``temp_air``
+        - Standard name: ``AIR_TEMPERATURE``
+        - Units: ``kelvin``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+        - Default: ``300``
+
+    - ``dens_air``
+        - Standard name: ``AIR_DENSITY``
+        - Units: ``kilogram / meter ** 3``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+        - Default: ``1.125``
+
+    - ``savr_dead``
+        - Standard name: ``FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD``
+        - Units: ``1 / meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``savr_live``
+        - Standard name: ``FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE``
+        - Units: ``1 / meter``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``wind``
+        - Standard name: ``WIND_SPEED``
+        - Units: ``meter / second``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``slope``
+        - Standard name: ``SLOPE_ANGLE``
+        - Units: ``degree``
+        - Range: ``-90 to 90``
+        - Type: ``input``
+
+    - ``fmc_dead``
+        - Standard name: ``FUEL_MOISTURE_CONTENT_DEAD``
+        - Units: ``percent``
+        - Range: ``0 to 200``
+        - Type: ``input``
+
+    - ``fmc_live``
+        - Standard name: ``FUEL_MOISTURE_CONTENT_LIVE``
+        - Units: ``percent``
+        - Range: ``0 to 500``
+        - Type: ``input``
+
+    - ``rate_of_spread``
+        - Standard name: ``RATE_OF_SPREAD``
+        - Units: ``meter / second``
+        - Range: ``0 to inf``
+        - Type: ``output``
+    """  # pylint: disable=line-too-long
+
+    metadata = {
+        "fuel_load_dry_total": {
+            "std_name": svn.FUEL_LOAD_DRY_TOTAL,
+            "units": ureg.kilogram / ureg.meter**2,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+        },
+        "dead_fuel_ratio": {
+            "std_name": svn.FUEL_LOAD_DEAD_RATIO,
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+            "type": ParameterType.input,
+        },
+        "fueldepth": {
+            "std_name": svn.FUEL_HEIGHT,
+            "units": ureg.meter,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+        },
+        "fuel_dens_dead": {
+            "std_name": svn.FUEL_DENSITY_DEAD,
+            "units": ureg.kilogram / ureg.meter**3,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+        },
+        "fuel_dens_live": {
+            "std_name": svn.FUEL_DENSITY_LIVE,
+            "units": ureg.kilogram / ureg.meter**3,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+        },
+        "temp_ign": {
+            "std_name": svn.FUEL_TEMPERATURE_IGNITION,
+            "units": ureg.kelvin,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 600,
+        },
+        "temp_air": {
+            "std_name": svn.AIR_TEMPERATURE,
+            "units": ureg.kelvin,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 300,
+        },
+        "dens_air": {
+            "std_name": svn.AIR_DENSITY,
+            "units": ureg.kilogram / ureg.meter**3,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+            "default": 1.125,
+        },
+        "savr_dead": {
+            "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD,
+            "units": 1 / ureg.meter,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+        },
+        "savr_live": {
+            "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE,
+            "units": 1 / ureg.meter,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+        },
+        "wind": {
+            "std_name": svn.WIND_SPEED,
+            "units": ureg.meter / ureg.second,
+            "range": (-np.inf, np.inf),
+            "type": ParameterType.input,
+        },
+        "slope": {
+            "std_name": svn.SLOPE_ANGLE,
+            "units": ureg.degree,
+            "range": (-90, 90),
+            "type": ParameterType.input,
+        },
+        "fmc_dead": {
+            "std_name": svn.FUEL_MOISTURE_CONTENT_DEAD,
+            "units": ureg.percent,
+            "range": (0, 200),
+            "type": ParameterType.input,
+        },
+        "fmc_live": {
+            "std_name": svn.FUEL_MOISTURE_CONTENT_LIVE,
+            "units": ureg.percent,
+            "range": (0, 500),
+            "type": ParameterType.input,
+        },
+        "rate_of_spread": {
+            "std_name": svn.RATE_OF_SPREAD,
+            "units": ureg.meter / ureg.second,
+            "range": (0, np.inf),
+            "type": ParameterType.output,
+        },
+    }
+
+    @staticmethod
+    def santoni_2011(
+        fuel_load_dry_total: float,
+        dead_fuel_ratio: float,
+        fueldepth: float,
+        fuel_dens_dead: float,
+        fuel_dens_live: float,
+        temp_ign: float,
+        temp_air: float,
+        dens_air: float,
+        savr_dead: float,
+        savr_live: float,
+        wind: float,
+        slope: float,
+        fmc_dead: float,
+        fmc_live: float,
+    ) -> float:
+        """
+        Compute the rate of spread using the Santoni's model.
+
+        Parameters
+        ----------
+        fuel_load_dry_total : float
+            total dry fuel load [kg m-2]
+        dead_fuel_ratio : float
+            ratio of dead fuel load to total fuel load [-]
+        fuel_dens_dead : float
+            dead fuel density [kg m-3]
+        fuel_dens_live : float
+            live fuel density [kg m-3]
+        temp_ign : float
+            fuel ignition temperature [K]
+        temp_air : float
+            ambiant air temperature [K]
+        dens_air : float
+            ambiant air density [kg m-3]
+        savr_dead : float
+            dead fuel surface area to volume ratio [m-1]
+        savr_live : float
+            live fuel surface area to volume ratio [m-1]
+        wind : float
+            midflame wind speed [m s-1]
+        slope : float
+            slope angle [degrees]
+        fmc_dead : float
+            dead fuel moisture content [%]
+        fmc_live : float
+            live fuel moisture content [%]
+
+        Returns
+        -------
+        float
+            Rate of spread [m s-1]
+        """  # pylint: disable=line-too-long
+        ## Physical parameters
+        boltz = 5.670373e-8  # Stefan-Boltzman constant         [W m-2 K-4]
+        tau0 = 75591.0  # Anderson's residence time coefficient [s m-1]
+        Cpa = 1150.0  # Specific heat of air                    [J kg-1 K-1]
+        Cp = 1200  # Specific heat of fuel                      [J kg-1 K-1]
+        delta_h = 2.3e6  # Heat of latent evaporation           [J kg-1]
+        delta_H = 1.7433e07  # Heat of combustion               [J kg-1]
+
+        ## Model parameter
+        r00 = 2.5e-5  # Model parameter
+        chi0 = 0.3  # Radiant heat transfer fraction            [-]
+        stoich_coeff = 8.3  # Stoichiometric coefficient         [-]
+        base_LAI = 4.0  # Base leaf area index                   [-]
+
+        # fmc from percent to real
+        fmc_dead *= 0.01
+        fmc_live *= 0.01
+
+        # dead fuel load
+        sigma_d = fuel_load_dry_total * dead_fuel_ratio
+        sigma_l = fuel_load_dry_total - sigma_d
+
+        S_l = savr_live * sigma_l / fuel_dens_live
+        S_d = savr_dead * sigma_d / fuel_dens_dead
+
+        xi = (fmc_live - fmc_dead) * S_l * delta_h / (S_d * delta_H)
+
+        # nominal radiant temperature
+        T_n = temp_air + delta_H * (1 - chi0) * (1 - xi) / (Cpa * (1 + stoich_coeff))
+
+        # Flame tilt angle
+        nu = min(S_d / base_LAI, 1.0)  # absorption coeff
+        v_vertical = (
+            2.0 * nu * base_LAI * (1 + stoich_coeff) * T_n * fuel_dens_dead / (dens_air * temp_air * tau0)
+        )  # flame gas velocity
+        alpha_rad = np.deg2rad(slope)
+        tan_gamma = np.tan(alpha_rad) + wind / v_vertical  # tan of tilt angle
+        gamma = np.arctan(tan_gamma)
+
+        # no wind no slope ros
+        a = delta_h / (Cp * (temp_ign - temp_air))
+        ros_00 = boltz * T_n**4 / (Cp * (temp_ign - temp_air))
+        ros_0 = fueldepth * ros_00 / (sigma_d * (1 + a * fmc_dead)) * (S_d / (S_d + S_l)) ** 2
+
+        if gamma > 0:
+            # positive tilt angle
+            A_0 = 0.25 * chi0 * delta_H / (Cp * (temp_ign - temp_air))
+            A = nu * A_0 * (1 - xi) / (1 + a * fmc_dead)
+            r_0 = savr_dead * r00
+            G = r_0 * (1 + np.sin(gamma) - np.cos(gamma)) / np.cos(gamma)
+            ros_t = ros_0 + A * G - r_0 / np.cos(gamma)
+            ros = 0.5 * (ros_t + np.sqrt(ros_t**2 + 4 * r_0 * ros_0 / np.cos(gamma)))
+        else:
+            ros = ros_0
+
+        return min(ros, 6.0)
+
+    @staticmethod
+    def compute_ros(
+        input_dict: dict[str, float | int | list[float] | list[int]],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> float:
+        """
+        Compute the rate of spread of fire using the ``Santoni's 2011`` model.
+
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the rate of spread (ROS) of fire using the ``santoni_2011`` method.
+        Input data must be provided in standard units without ``pint.Quantity`` objects.
+        For unit-aware calculations, use ``compute_ros_with_units``.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing the input data for various fuel properties.
+            The keys should be the standard variable names as defined in ``santoni_2011.metadata``.
+            Each value can be a single float/int or a list/array of floats/ints.
+
+        fuel_cat : int, optional
+            Fuel category index (one-based). If provided, fuel properties are expected to be lists or arrays,
+            and the function will extract the properties corresponding to the specified fuel category.
+            If not provided, fuel properties are expected to be scalar values.
+
+        **opt : dict
+            Additional optional parameters to be passed to the ``santoni_2011`` method.
+
+        Returns
+        -------
+        float
+            The computed rate of spread of fire.
+
+        Notes
+        -----
+        - ``fuel_cat`` uses one-based indexing to align with natural fuel category numbering.
+          When accessing lists or arrays in ``input_dict``, the index is adjusted accordingly (i.e., ``index = fuel_cat - 1``).
+
+        - This function assumes ``input_dict`` contains values in standard units (e.g., no ``pint.Quantity`` objects),
+          compliant with units specified in the metadata dictionary.
+
+        """  # pylint: disable=line-too-long
+        # Prepare fuel properties using the base class method
+        fuel_properties_dict = RateOfSpreadModel.prepare_fuel_properties(
+            input_dict=input_dict, metadata=Santoni_2011.metadata, fuel_cat=fuel_cat
+        )
+
+        return Santoni_2011.santoni_2011(
+            **fuel_properties_dict,
+            **opt,
+        )
+
+    @staticmethod
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> Quantity:
+        """
+        Compute the rate of spread (ROS) of fire using Santoni's 2011 model with unit handling.
+
+        This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
+        computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
+            Keys should match the variable names defined in `Santoni_2011.metadata`.
+
+        fuel_cat : int, optional
+            One-based index for selecting a specific fuel category from lists in `input_dict`.
+            Defaults to 0, indicating scalar inputs.
+
+        **opt : dict
+            Additional optional parameters passed to `compute_ros`.
+
+        Returns
+        -------
+        ureg.Quantity
+            Computed rate of spread (ROS) with units (e.g., meters per second).
+
+        Notes
+        -----
+        - Use this function when working with `pint.Quantity` objects in `input_dict`.
+        - Units for the ROS are defined in `Balbi_2022_fixed_SFIRE.metadata["rate_of_spread"]["units"]`.
+        """  # pylint: disable=line-too-long
+        input_dict_no_units = extract_magnitudes(input_dict)
+
+        return ureg.Quantity(
+            Santoni_2011.compute_ros(input_dict_no_units, fuel_cat, **opt),
+            Santoni_2011.metadata["rate_of_spread"]["units"],
         )

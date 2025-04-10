@@ -1,10 +1,3 @@
----
-layout: default
-title: How to Use Fuel Models
-parent: Tutorials
-nav_order: 1
----
-
 # How to Use Fuel Models
 
 This guide will walk you through the steps to use fuel models in the FireBench library.
@@ -51,7 +44,7 @@ The metadata file stores the path of the data file in `data_path`. The metadata 
 - `unit` using [Pint library](https://pint.readthedocs.io/en/stable/) standard. The default unit registry (*i.e.* the list of acceptable units) can be found [here](https://github.com/hgrecco/pint/blob/master/pint/default_en.txt).
 
 The CSV data file `data_Anderson13.csv` looks like this:
-```csv
+```
 windrf,fgi,fueldepthm,fueldens,savr,fuelmce,st,se,ichap
 0.45,0.200,0.350,30.0,3600.0,10.0,0.0655,0.02,1
 ```

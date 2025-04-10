@@ -1,9 +1,4 @@
----
-layout: default
-title: "Variable namespace"
-nav_order: 95
----
-# Standard Namespace
+# 5. Standard Namespace
 
 This page lists the standard variable names used in the FireBench project. These names ensure consistency and clarity across the codebase and related data files.
 The standard names are structured from left to right from the broader category to the highest details. For example, the dry fuel load variables all start with `FUEL_LOAD_DRY` even if you would say `dry fuel load`.
@@ -27,6 +22,8 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_COVER`: Fuel cover [%]
 - `FUEL_DENSITY`: Fuel density [kg m-3]
 - `FUEL_DENSITY_BULK`: Fuel bulk density [kg m-3]
+- `FUEL_DENSITY_DEAD`: Dead fuel density [kg m-3]
+- `FUEL_DENSITY_LIVE`: Live fuel density [kg m-3]
 - `FUEL_FRACTION_CONSUMED_FLAME_ZONE`: Fuel fraction consumed flame zone [-]
 - `FUEL_HEAT_CONTENT`: Fuel heat content [J kg-1]
 - `FUEL_HEIGHT`: Fuel height [m]
@@ -49,14 +46,17 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_MOISTURE_CONTENT_10H`: Fuel moisture content 10 hours [%]
 - `FUEL_MOISTURE_CONTENT_100H`: Fuel moisture content 100 hours [%]
 - `FUEL_MOISTURE_CONTENT_1000H`: Fuel moisture content 1000 hours [%]
+- `FUEL_MOISTURE_CONTENT_DEAD`: Dead fuel moisture content [%]
 - `FUEL_MOISTURE_CONTENT_ELEVATED_DEAD`: Dead fuel moisture content elevated [%]
 - `FUEL_MOISTURE_CONTENT_FINE_DEAD`: Dead fine fuel moisture content elevated [%]
-- `FUEL_MOISTURE_CONTENT_LIVE`: Fuel moisture content live [%]
+- `FUEL_MOISTURE_CONTENT_LIVE`: Live fuel moisture content [%]
 - `FUEL_MOISTURE_EXTINCTION`: Fuel moisture extinction [%]
 - `FUEL_ROUGHNESS_HEIGHT`: Fuel roughness height [m]
 - `FUEL_SFIREBURNUP_CONSUMPTION_CST`: Fuel SFIRE BURNUP consumption constant [-]
 - `FUEL_SURFACE_AREA_VOLUME_RATIO`: Fuel surface area volume ratio [m-1]
+- `FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD`: Dead fuel surface area volume ratio [m-1]
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_DEAD_1H`: Fuel surface area volume ratio for dead 1h fuel [m-1]
+- `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE`: Live fuel surface area volume ratio [m-1]
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_HERB`: Fuel surface area volume ratio for live herb fuel [m-1]
 - `FUEL_SURFACE_AREA_VOLUME_RATIO_LIVE_WOODY`: Fuel surface area volume ratio for live woody fuel [m-1]
 - `FUEL_TEMPERATURE_IGNITION`: Fuel igntiion temperature [K]
