@@ -82,7 +82,6 @@ We welcome contributions to FireBench! For more information on how to contribute
 
 ```{toctree}
 :maxdepth: 1
-:hidden:
 
 dataset_experiments/index.md
 fire_models_info/index.md
