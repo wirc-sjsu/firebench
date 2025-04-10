@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 - Remove legacy GitHub Pages & Jekyll documentation.
 - Move the documentation to ReadTheDocs.
+- Add API documentation using Sphinx
 
 ## [0.4.0] - 2025 / 04 / 03
 ### Added 
