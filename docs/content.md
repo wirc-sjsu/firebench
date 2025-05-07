@@ -1,4 +1,4 @@
-# 6. Content of the package
+# 7. Content of the package
 
 This page lists the fuels models, the rate of spread models and the workflows that are contained within the package.
 
