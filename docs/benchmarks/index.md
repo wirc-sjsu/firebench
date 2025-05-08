@@ -72,7 +72,7 @@ Optional indicator for difficulty to run this benchmark:
 ```
 
 ## Run a benchmark and submit your results
-This guide explains how to run an existing benchmark and submit your results to the `FireBench` community. 
+This guide explains how to run an existing benchmark and submit your results to the `FireBench` community. The list of existing benchmarks is shared [here](https://docs.google.com/spreadsheets/d/1Ee2G6FgD-c-5fu-oPcsI3ApyQnPQvxZJwKqVOYqtj28/edit?usp=sharing).
 
 ```markdown
 # FireBench Benchmark Execution Guidelines
