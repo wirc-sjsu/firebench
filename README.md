@@ -1,7 +1,7 @@
 # FireBench
 
 <div style="text-align: center;">
-    <img src="docs/images/firebench_logo.png" alt="FireBench Logo" width="300"/>
+    <img src="docs/_static/images/firebench_logo.png" alt="FireBench Logo" width="300"/>
 </div>
 
 <div style="height: 20px;"></div> <!-- Adds a blank space -->

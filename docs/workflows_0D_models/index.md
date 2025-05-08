@@ -1,4 +1,4 @@
-# 3. 0D model workflows and benchmarks
+# 4. 0D model workflows and benchmarks
 This section groups the workflows, tests, and benchmarks for 0D models (rate of spread, flame geometry, heat fluxes, wind interpolation, etc.).
 
 ## Accuracy benchmarks

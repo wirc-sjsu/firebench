@@ -1,3 +1,7 @@
 sphinx
 myst-parser
 sphinx-rtd-theme
+numpy
+pint
+matplotlib
+scipy

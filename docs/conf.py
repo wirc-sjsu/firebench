@@ -1,12 +1,14 @@
 import os
 import sys
 
-# Add src/ to the path so Sphinx can find your code
-sys.path.insert(0, os.path.abspath('../src'))
+# Add src/ to the path so Sphinx can find the code
+sys.path.insert(0, os.path.abspath('../src/firebench'))
 
 project = 'Firebench'
 author = 'WIRC SJSU'
-release = '0.4.0'
+version = '0.5'
+release = '0.5.0'
+copyright = '%Y, Aurélien Costes, WIRC SJSU'
 
 extensions = [
     'myst_parser',
