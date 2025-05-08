@@ -85,6 +85,7 @@ We welcome contributions to FireBench! For more information on how to contribute
 
 dataset_experiments/index.md
 fire_models_info/index.md
+benchmarks/index.md
 workflows_0D_models/index.md
 tutorials/index.md
 namespace.md
