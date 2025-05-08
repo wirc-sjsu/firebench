@@ -3,18 +3,52 @@
 <img src="_static/images/firebench_logo.png" alt="FireBench Logo" width="300px">
 
 
-**FireBench** is a Python library designed for the systematic benchmarking and inter-comparison of fire models.
-Recent advancements in fire modeling have introduced complex and varied models, but there is a lack of systematic evaluation regarding their accuracy, efficiency, sensitivity, validity domain, and inter-compatibility.
-FireBench aims to address this gap by providing a framework to assess fire models on the following criteria:
+**FireBench** is an open-source Python library for the **systematic benchmarking and intercomparison of fire models**. As fire modeling becomes more sophisticated—spanning physics-based, empirical, and data-driven approaches—there remains a critical need for **standardized, transparent evaluation** of their capabilities.
 
-- **Accuracy**: Precision in predicting fire front positions and plume dynamics.
-- **Efficiency**: Computational resources required for specific computation.
-- **Sensitivity**: Model outputs' responsiveness to input variations, crucial for calibration and data assimilation.
-- **Validity Domain**: Operational input ranges for which models are applicable.
-- **Inter-Compatibility**: Integration capabilities with other models.
+FireBench addresses this gap by providing a flexible framework to assess fire models across key dimensions:
 
-FireBench offers a dual approach for evaluation: intercomparison without extensive observational data and benchmarking against a validation dataset. This framework aims to enhance fire modeling for both scientific research and operational applications, with results archived in a dedicated database.
+- 🔍 **Accuracy** — How precisely the model predicts fire front progression and plume behavior.  
+- ⚙️ **Efficiency** — The computational cost required for simulations under standardized conditions.  
+- 🎯 **Sensitivity** — How model outputs respond to variations in inputs; crucial for calibration and uncertainty analysis.  
+- 📈 **Validity Domain** — The range of environmental and operational conditions where the model remains reliable.  
+- 🔗 **Inter-Compatibility** — The ease of integration with other tools and workflows in fire or environmental modeling chains.
 
+FireBench supports a **dual evaluation strategy**:
+- **Intercomparison** of models under controlled scenarios, even in the absence of observational data.
+- **Benchmarking** against validation datasets where ground truth or reference outputs are available.
+
+All benchmark results are **archived in a dedicated database**, enabling reproducibility, transparency, and cumulative progress in fire modeling—for both scientific research and operational decision-making.
+
+## 🔥 Call for Benchmarks 2025
+
+We invite the community to contribute to the **FireBench Benchmarking Campaign 2025**. Researchers, engineers, and model developers are encouraged to propose new benchmarks that evaluate components or full workflows of fire models.
+
+Benchmarks may cover:
+- Specific fire sub-models (e.g., **rate of spread**, **plume dynamics**, **heat flux**, **terrain/wind interpolation**)
+- 2D or 3D fire dynamics
+- Use-case-driven scenarios (e.g., **WUI**, **risk assessment**, **fuel moisture effects**)
+
+### 📅 2025 Benchmarking Timeline
+
+| Phase                          | Deadline             |
+|-------------------------------|----------------------|
+| 📥 Benchmark Proposal Submission | **July 31, 2025**     |
+| 🔍 Benchmark Review & Feedback   | **August 31, 2025**   |
+| 🚀 Benchmark Execution Results   | **November 30, 2025** |
+
+Accepted benchmarks will be included in the **FireBench Annual Report**, presented at the **AMS 2026 Annual Meeting**, and archived for reproducibility. Contributors may be credited as co-authors or acknowledged participants depending on their involvement.
+
+---
+
+### 📄 How to Submit a Benchmark
+
+1. Review the [Benchmark Proposal Template](benchmarks/index.md) for formatting guidelines.
+2. Fill in your submission using the [Google Doc Template](https://docs.google.com/document/d/19RXwEnl81XxUfCWXOCUENFV-ZB4iz16faCDsJatddc8/edit?usp=sharing).
+3. View ongoing submissions in the [List of Submitted Benchmarks](https://docs.google.com/spreadsheets/d/1Ee2G6FgD-c-5fu-oPcsI3ApyQnPQvxZJwKqVOYqtj28/edit?usp=sharing).
+
+💡 If you're interested in **running** a benchmark (using one or more fire models), check out the [Benchmark Execution Guidelines](benchmarks/index.md) to learn how to evaluate and report results.
+
+We’re excited to see how the community will help shape the future of fire modeling!
 
 ## Installation
 
@@ -85,6 +119,7 @@ We welcome contributions to FireBench! For more information on how to contribute
 
 dataset_experiments/index.md
 fire_models_info/index.md
+benchmarks/index.md
 workflows_0D_models/index.md
 tutorials/index.md
 namespace.md
