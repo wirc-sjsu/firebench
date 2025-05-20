@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use FireBench in your research, please cite it using the following metadata."
+title: "firebench"
+version: "0.6.1"
+authors:
+  - family-names: Costes
+    given-names: Aurélien
+    orcid: 'https://orcid.org/0000-0003-4543-5107'
+  - family-names: Kumaran Selvaraj
+    given-names: Muthu
+    orcid: 'https://orcid.org/0000-0003-1286-6744'
+date-released: 2025-05-20
+repository-code: https://github.com/wirc-sjsu/firebench
+license: Apache-2.0
