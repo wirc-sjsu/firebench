@@ -84,4 +84,4 @@ def merge_dictionaries(dict1: dict, dict2: dict, prefer: int = 0) -> dict:
             conflicts = set(dict1.keys()) & set(dict2.keys())
             if conflicts:
                 raise KeyError(f"Key conflicts detected: {conflicts}")
-            return {**dict2, **dict1}  # dict1 overrides dict2
+            return {**dict2, **dict1} # merge without conflicts

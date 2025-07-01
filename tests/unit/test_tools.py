@@ -114,6 +114,16 @@ def test_merge_dictionaries_key_conflict(dict1, dict2, conflicting_keys):
         ft.merge_dictionaries(dict1, dict2)
     assert str(conflicting_keys) in str(excinfo.value)
 
+@pytest.mark.parametrize(
+    "dict1, dict2, prefer, expected",
+    [
+        ({"a": 1, "b": 2}, {"a": 3, "c": 4}, 1, {"a": 1, "b": 2, "c": 4}),  # dict 1 overrides dict 2
+        ({"a": 1, "b": 2}, {"a": 3, "c": 4}, 2, {"a": 3, "b": 2, "c": 4}),  # dict 2 overrides dict 1
+    ],
+)
+def test_merge_dictionaries_key_conflict_prefered(dict1, dict2, prefer, expected):
+    assert ft.merge_dictionaries(dict1, dict2, prefer=prefer) == expected
+
 
 @pytest.mark.parametrize(
     "filename, suffix, expected",
