@@ -52,9 +52,9 @@ def sobol_seq(
     return output_dict, sobol_problem, N_sobol
 
 
-def merge_dictionaries(dict1: dict, dict2: dict) -> dict:
+def merge_dictionaries(dict1: dict, dict2: dict, prefer: int = 0) -> dict:
     """
-    Merge two dictionaries and check for key conflicts.
+    Merge two dictionaries, resolving key conflicts by favoring one dictionary.
 
     Parameters
     ----------
@@ -62,20 +62,26 @@ def merge_dictionaries(dict1: dict, dict2: dict) -> dict:
         The first dictionary.
     dict2 : dict
         The second dictionary.
+    prefer : int, optional
+        Which dictionary to prefer in case of key conflict (0: raise error if conflicts, 1:'dict1' or 2:'dict2'). Default is 0.
 
     Returns
     -------
     dict
-        The merged dictionary.
+        The merged dictionary with conflicts resolved based on the 'prefer' setting.
 
     Raises
     ------
     KeyError
-        If there is a key conflict between the dictionaries.
-    """  # pylint: disable=line-too-long
-    # Check for key conflicts
-    conflicts = set(dict1.keys()) & set(dict2.keys())
-    if conflicts:
-        raise KeyError(f"Key conflicts detected: {conflicts}")
-
-    return {**dict1, **dict2}
+        If there is a key conflict between the dictionaries and prefer is set to 0.
+    """
+    match prefer:
+        case 1:
+            return {**dict2, **dict1}  # dict1 overrides dict2
+        case 2:
+            return {**dict1, **dict2}  # dict2 overrides dict1
+        case _:
+            conflicts = set(dict1.keys()) & set(dict2.keys())
+            if conflicts:
+                raise KeyError(f"Key conflicts detected: {conflicts}")
+            return {**dict2, **dict1}  # dict1 overrides dict2
