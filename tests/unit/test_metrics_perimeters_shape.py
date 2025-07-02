@@ -97,6 +97,11 @@ def test_jaccard_binary_shape_mismatch():
     with pytest.raises(ValueError, match="Input masks must have the same shape"):
         fbp.jaccard_binary(array1, array2)
 
+def test_jaccard_binary_no_surface():
+    # Build two identical squares (perfect overlap)
+    array1 = np.zeros((10, 10))
+    score = fbp.jaccard_binary(array1, array1)
+    assert score == pytest.approx(1.0, abs=1e-6)
 
 # sorensen_dice_binary
 # ---------------
@@ -125,3 +130,9 @@ def test_sorensen_dice_binary_shape_mismatch():
     array2 = np.zeros((8, 10))
     with pytest.raises(ValueError, match="Input masks must have the same shape"):
         fbp.sorensen_dice_binary(array1, array2)
+
+def test_sorensen_dice_binary_no_surface():
+    # Build two identical squares (perfect overlap)
+    array1 = np.zeros((10, 10))
+    score = fbp.sorensen_dice_binary(array1, array1)
+    assert score == pytest.approx(1.0, abs=1e-6)
