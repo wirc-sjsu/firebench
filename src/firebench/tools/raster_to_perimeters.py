@@ -30,7 +30,7 @@ def array_to_geopolygons(
         Value at which to extract the contour.
     original_crs : str or dict, optional
         CRS of the input coordinate grid.
-        If not specified, defaults to "EPSG:4326" (NAD83 / CONUS Albers Equal Area),
+        If not specified, defaults to "EPSG:4326" (WGS84),
         which is suitable for most WRF output over the continental United States and supports area-preserving polygon construction.
     smooth_sigma : float, optional
         Standard deviation for optional Gaussian smoothing.
