@@ -13,12 +13,13 @@ maintainers = [
 ]
 description = "FireBench is a Python library designed for the systematic benchmarking and inter-comparison of fire models."
 dependencies = [
-    "numpy < 2.0",
+    "numpy < 3.0",
     "pint < 1.0",
     "scipy < 2.0",
     "SALib < 2.0",
     "h5py < 4.0",
-    "geopandas < 2.0"
+    "geopandas < 2.0",
+    "matplotlib > 3.8",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}

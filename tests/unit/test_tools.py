@@ -114,6 +114,7 @@ def test_merge_dictionaries_key_conflict(dict1, dict2, conflicting_keys):
         ft.merge_dictionaries(dict1, dict2)
     assert str(conflicting_keys) in str(excinfo.value)
 
+
 @pytest.mark.parametrize(
     "dict1, dict2, prefer, expected",
     [
