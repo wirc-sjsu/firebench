@@ -47,6 +47,7 @@ dev = [
     "bandit",
     "pylint",
     "black",
+    "shapely",
 ]
 [tool.hatch.envs.default]
 features = ["dev"]

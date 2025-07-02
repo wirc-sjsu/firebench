@@ -39,7 +39,7 @@ def array_to_geopolygons(
     -------
     geopandas.GeoDataFrame
         GeoDataFrame with valid polygons (including holes) representing the iso-contour.
-    """
+    """  # pylint: disable=line-too-long
     if not (lon.shape == lat.shape == field.shape):
         raise ValueError("Input arrays (lon, lat, field) must have the same shape.")
 

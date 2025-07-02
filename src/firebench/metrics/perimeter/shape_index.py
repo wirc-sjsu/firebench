@@ -163,7 +163,6 @@ def sorensen_dice_polygon(
 
     # Calculate the intersection and union
     intersection = gpd.overlay(polygon1, polygon2, how="intersection", keep_geom_type=False)
-    union = gpd.overlay(polygon1, polygon2, how="union", keep_geom_type=False)
 
     # Compute and return sorensen
     return 2 * intersection.area.sum() / (polygon1.area.sum() + polygon2.area.sum())
