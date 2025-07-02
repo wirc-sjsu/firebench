@@ -6,11 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.7.0]
 ### Added
-- Support numpy version >= 2.0
-- Dependency to matplotlib > 3.8
+- `array_to_geopolygons`: Convert an array field into geospatial polygons at a given iso-value, preserving holes.
+- `jaccard_polygon`: Compute the Intersection over Union (IoU), i.e. Jaccard Index, between two fire perimeters described as geospatial polygons.
+- `jaccard_binary`: Compute the IoU, i.e. Jaccard Index, between two fire perimeters described as 2D binary masks.
+- `sorensen_dice_polygon`: Compute the Sorensen-Dice index between two fire perimeters described as geospatial polygons.
+- `sorensen_dice_binary`: Compute the Sorensen-Dice index between two fire perimeters described as 2D binary masks.
 
 ### Documentation
 - Updated developer documentation
+
+### Miscellaneous
+- Support Python 3.13
+- Support numpy version >= 2.0
+- Dependency to matplotlib > 3.8
 
 ## [0.6.1] - 2025 / 05 / 20
 ### Added
