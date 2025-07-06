@@ -1,4 +1,4 @@
-# 12. Lience 
+# 12. Licence 
 
                                     Apache License
                             Version 2.0, January 2004

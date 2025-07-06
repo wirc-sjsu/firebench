@@ -14,6 +14,8 @@
 [![Check linting with Pylint](https://github.com/wirc-sjsu/firebench/actions/workflows/pylint.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/pylint.yml)
 [![Black Code Formatting Check](https://github.com/wirc-sjsu/firebench/actions/workflows/black.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/black.yml)
 ![GitHub License](https://img.shields.io/github/license/wirc-sjsu/firebench)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15477459.svg)](https://doi.org/10.5281/zenodo.15477459)
+
 
 **FireBench** is a Python library designed for the systematic benchmarking and inter-comparison of fire models.
 Recent advancements in fire modeling have introduced complex and varied models, but there is a lack of systematic evaluation regarding their accuracy, efficiency, sensitivity, validity domain, and inter-compatibility.

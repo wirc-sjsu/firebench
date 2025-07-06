@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "firebench"
-version = "0.6.0"
+version = "0.7.0a"
 authors = [
     {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
 ]
@@ -13,11 +13,13 @@ maintainers = [
 ]
 description = "FireBench is a Python library designed for the systematic benchmarking and inter-comparison of fire models."
 dependencies = [
-    "numpy < 2.0",
+    "numpy < 3.0",
     "pint < 1.0",
     "scipy < 2.0",
     "SALib < 2.0",
     "h5py < 4.0",
+    "geopandas < 2.0",
+    "matplotlib > 3.8",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -32,6 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 
     # Pick your license as you wish (see also "license" above)
     "License :: OSI Approved :: Apache Software License",
@@ -44,6 +47,7 @@ dev = [
     "bandit",
     "pylint",
     "black",
+    "shapely",
 ]
 [tool.hatch.envs.default]
 features = ["dev"]

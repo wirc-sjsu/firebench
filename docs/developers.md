@@ -7,7 +7,7 @@ To run tests, ensure you are at the root of the project directory.
 ### Install Dependencies
 
 ```bash
-pip install ".[dev]"
+pip install -e ".[dev]"
 ```
 
 ### Run Tests

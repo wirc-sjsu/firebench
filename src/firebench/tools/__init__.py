@@ -45,3 +45,4 @@ from .utils import (
     is_scalar_quantity,
     get_value_by_category,
 )
+from .raster_to_perimeters import array_to_geopolygons
