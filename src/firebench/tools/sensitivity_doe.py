@@ -74,7 +74,7 @@ def merge_dictionaries(dict1: dict, dict2: dict, prefer: int = 0) -> dict:
     ------
     KeyError
         If there is a key conflict between the dictionaries and prefer is set to 0.
-    """
+    """  # pylint: disable=line-too-long
     match prefer:
         case 1:
             return {**dict2, **dict1}  # dict1 overrides dict2
