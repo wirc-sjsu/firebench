@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 - Updated developer documentation
 - Refactoring of Benchmarks page. Benchmarks are now sorted by model context instead of metric context.
+- Improve Anderson 2015 Validation benchmark document.
 - Tags have a colorful badge.
 
 ### Miscellaneous

@@ -5,19 +5,14 @@
 
 
 ## Tags
-![metric](../../../../_static/static_badges/metric-Accuracy-4477AA.svg)
-![metric](../../../../_static/static_badges/Fire_Submodel-Rate_of_Spread-cf0c21.svg)
+![tag](../../../../_static/static_badges/metric-Accuracy-4477AA.svg)
+![tag](../../../../_static/static_badges/Fire_Submodel-Rate_of_Spread-cf0c21.svg)
+![tag](../../../../_static/static_badges/Difficulty-Low-green.svg)
 
-## Short description
+## Description
 The goal is to assess the accuracy of various rate of spread (ROS) models by comparing their computed ROS values against observed data from the Anderson 2015 dataset.
-
-## Detailed description
-
-It should contain:
-- Scientific background and motiviation.
-- Description of the modeled process or scenario.
-- Relevance of the benchmark to real-world application or theoretical exploration.
-- Diagrams/schematics of the benchmark are welcome.
+The dataset presented in [1] compiles shrubland fire behavior data from experimental studies conducted across Australia, New Zealand, Europe, and South Africa. It encompasses a wide range of heathland and shrubland vegetation types and structures.  The dataset contains independent data from prescribed fires and wildfires.
+The accuracy is evaluated using RMSE, Pearson correlation and NMSE.
 
 ## Data description
 ### Input
@@ -27,61 +22,35 @@ It should contain:
 
 All of the data mentionned above is available within the package `FireBench`.
 
+The following plot presents some statistics about the Anderson 2015 dataset.
+The top panel shows the distribution of the rate of spread for valid observations (where the input data are complete to run a rate of spread model).
+The middle panel shows the observation in a wind/fuel moisture space.
+The bottom panel shows the distribution of the closest Scott and Burgan fuel catgeory based on fuel load and fuel height. The invalid category groups the observations where the fuel load or fuel heught information is not available.
+![img](../../../../_static/images/fire_models_info/stats_Anderson_2015.png)
+
 ### Expected output data
 - The workflow generates an output file in [hdf5 format](https://www.hdfgroup.org/solutions/hdf5/). The output file contains the expected and computed rate of spread.
 
 ## Initial conditions and configuration
 - To add complementary data from Scott and Burgan fuel model, you need to select the category that represents at best the fuel from the Anderson 2015 dataset. To select which fuel category to use, employ the `firebench.tools.find_closest_fuel_class_by_properties` function to identify the nearest fuel category. In this benchmark, use `FUEL_LOAD_DRY_TOTAL` and `FUEL_HEIGHT`, and apply default weights to determine similarity.
 - Apply the `Baughman_generalized_wind_reduction_factor_unsheltered` method to compute the wind reduction factor, considering that the input wind measurements are taken above the vegetation canopy. 
-- 
 
 ## Metrics definition
-- Definition of primary metrics (RMSE, bias, runtime, etc.) and derived metrics (burned area agreement, time to ignition, statistical comparison of plumes, etc.)
-- Usage of existing `FireBench` post processing tools (or need for tools)
-- Units and interpretation.
+The accuracy of the rate of spread model is evaluated using:
+- RMSE using `firebench.metrics.stats.rmse`.
+- NMSE with range normalization using `firebench.metrics.stats.nmse_range`.
+- Pearson correlation coefficient using `numpy.corrcoef`.
 
-## Publication status
-- Is this benchmark:
-    - linked to a publication (in review, published, preprint)?
-    - embargoed until a specific date?
-- Citation to use (if applicable)
+## Current Benchmark results
 
-## Licensing and Use Terms
-- License for any data or code provided
-- Attribution and reuse policy
+The following table summarize the results for different rate of spread models, and sort them by RMSE value.
 
-## Additional notes
+Model                  | Benchmark status  | RMSE [m/s]     | NMSE [-]      | Pearson correlation [-]
+---------------------- | ----------------- | -------- | --------- | -------------------
+Balbi_2022        | ![status](../../../../_static/static_badges/Submitted-blue.svg) | 0.67 | 0.56 | 0.53
+Rothermel_SFIRE        | ![status](../../../../_static/static_badges/Submitted-blue.svg) | 1.40 | 1.17 | 0.43
 
-## Optional: Benchmark difficulty
-Optional indicator for difficulty to run this benchmark:
-- low: fast/approximate, educational or conceptual
-- medium: realistic inputs, moderate compute
-- high: high fidelity, coupled models, research grade
-
-
-
-## Description of the benchmark
-### Objectives
-
-The goal is to assess the accuracy of various rate of spread (ROS) models by comparing their computed ROS values against observed data from the Anderson 2015 dataset.
-
-- **Input Dataset**: Utilize Table A1 from the Anderson 2015 dataset, located at `firebench/data/ros_model_validation/Anderson_2015`. 
-
-- **Complementary Fuel Data**: Incorporate fuel data from the Scott and Burgan 40 fuel models.
-
-- **Handling Missing Fuel Data**: If specific fuel data is unavailable, employ the `firebench.tools.find_closest_fuel_class_by_properties` function to identify the nearest fuel category. This function uses total fuel load and fuel height, applying default weights to determine similarity.
-
-- **Wind Reduction Factor Calculation**: Apply the `Baughman_generalized_wind_reduction_factor_unsheltered` method to compute the wind reduction factor, considering that the input wind measurements are taken above the vegetation canopy. 
-
-### Output file
-
-The workflow generates an output file in [hdf5 format](https://www.hdfgroup.org/solutions/hdf5/).
-The output file contains the expected and computed rate of spread.
-
-## Benchmarks available
-
-The worklow template can be found at `firebench/workflow/rate_of_spread_models_analysis/01_01_Anderson_2015_validation`.
-
+More information about benchmark results:
 ```{toctree}
 :maxdepth: 1
 
@@ -89,4 +58,17 @@ report_Rothermel_SFIRE.md
 report_balbi_2022.md
 ```
 
-If you don't find the content in the `data` directory, try `git lfs pull`.
+## Publication status
+- The dataset for this benchmark is described in [1].
+
+## Licensing and Use Terms
+As the data provided is prior to January 1st, 2024, the commercial use of this data requires explicit permission from the publisher. For more detailed information or to seek permissions, you can visit the [CSIRO Publishing Open Access page](https://www.publish.csiro.au/wf/forauthors/openaccess).
+
+## Additional notes
+- The worklow template can be found at `firebench/workflow/rate_of_spread_models_analysis/01_01_Anderson_2015_validation`.
+- If you don't find the content in the `data` directory, try `git lfs pull`.
+
+## Reference
+
+[1] [Anderson, W. R., Cruz, M. G., Fernandes, P. M., McCaw, L., Vega, J. A., Bradstock, R. A., ... & van Wilgen, B. W. (2015). A generic, empirical-based model for predicting rate of fire spread in shrublands. International Journal of Wildland Fire, 24(4), 443-460.](https://doi.org/10.1071/WF14130)
+
