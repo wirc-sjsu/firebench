@@ -8,7 +8,7 @@ This section groups the workflows, tests, and benchmarks proposed by FireBench.
 
 fire_submodels/rate_of_spread/Anderson_2015_Validation/index.md
 fire_submodels/rate_of_spread/Computational_cost/index.md
-fire_submodels/rate_of_spread/Global_Sensitivity_env/index.md
+fire_submodels/rate_of_spread/Global_sensitivity_env/index.md
 
 ```
 

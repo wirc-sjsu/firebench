@@ -25,7 +25,7 @@ The wind (blue bars) is the most important parameter, with more than 80% of the 
 Then, the fuel moisture content (green bars) is important for fuel categories representing coarser fuels, which explains less 10% of the rate of spread variance.
 The slope (red bars) is of relatively minor importance for Rothermel and does not significantly affect the rate of spread in the range of input chosen.
 
-![blockdiagram](../../_static/workflow/rate_of_spread/sensitivity/Rothermel_SFIRE_SB40.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/sensitivity/Rothermel_SFIRE_SB40.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

@@ -29,7 +29,7 @@ Some fuel properties are considered as constant:
 <!-- Fill in with your results -->
 **Fig.1** shows that Rothermel_SFIRE is over predicting the rate fo spread in most cases.
 
-![blockdiagram](../../../_static/workflow/rate_of_spread/Anderson_2015_Validation/Rothermel_SFIRE.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/Anderson_2015_Validation/Rothermel_SFIRE.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

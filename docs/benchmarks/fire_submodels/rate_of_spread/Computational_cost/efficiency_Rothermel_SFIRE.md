@@ -32,7 +32,7 @@
 As fuel category 4 uses a different rate of spread calculation within the SFIRE implementation of Rothermel, a difference in performance is expected.
 Overall, the performance is very similar for each fuel category and a mean execution time of 6.698 $\mu$s over 106,496 samples.
 
-![blockdiagram](../../_static/workflow/rate_of_spread/efficiency/Rothermel_SFIRE.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/efficiency/Rothermel_SFIRE.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

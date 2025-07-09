@@ -30,7 +30,7 @@
 <!-- Fill in with your results -->
 **Fig.1**  shows the execution time aggregated for all fuel classes (total) and for each fuel class.
 
-![blockdiagram](../../_static/workflow/rate_of_spread/efficiency/Hamada_2.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/efficiency/Hamada_2.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

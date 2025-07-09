@@ -31,7 +31,7 @@ The wind direction is the most important parameter with around 65% of the varian
 Then wind speed is representing less then 20% of the variance. And finally the ratio of fire resistant building is marginal for most fuel class.
 The small increase in total order shows a existing interaction between parameters (mostly wind direction and speed).
 
-![blockdiagram](../../_static/workflow/rate_of_spread/sensitivity/Hamada_1_wudapt.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/sensitivity/Hamada_1_wudapt.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

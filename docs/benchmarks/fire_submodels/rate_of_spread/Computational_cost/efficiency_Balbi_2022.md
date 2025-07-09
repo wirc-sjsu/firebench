@@ -33,7 +33,7 @@
 Minor discrepancies can be observed across fuel categories, mostly due to differences in the average number of iterations needed to converge.
 Overall, the performance is very similar for each fuel category, and a mean execution time of 19.11 $\mu$s over 106,496 samples.
 
-![blockdiagram](../../_static/workflow/rate_of_spread/efficiency/Balbi_2022.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/efficiency/Balbi_2022.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

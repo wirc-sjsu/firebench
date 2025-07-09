@@ -29,7 +29,7 @@ Some fuel properties are considered as constant:
 <!-- Fill in with your results -->
 **Fig.1** shows that Balbi 2022 is over predicting the rate fo spread in most cases.
 
-![blockdiagram](../../../_static/workflow/rate_of_spread/Anderson_2015_Validation/Balbi_2022.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/Anderson_2015_Validation/Balbi_2022.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

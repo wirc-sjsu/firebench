@@ -46,7 +46,7 @@ The model is insensitive to the other three parameter.
 Therefore, using the default value for them is recommended as their value does not change the output of the model. The model parameter `beta` can be set to 2 (but not less than 2 for stability reasons).
 The total order analysis shows an even interaction between input variables as the total order is not changing the order of importance of the input variables.
 
-![blockdiagram](../../_static/workflow/rate_of_spread/sensitivity/Hamada_2_wudapt.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/sensitivity/Hamada_2_wudapt.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

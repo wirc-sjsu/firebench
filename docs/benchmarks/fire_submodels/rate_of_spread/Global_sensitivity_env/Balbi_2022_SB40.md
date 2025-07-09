@@ -34,7 +34,7 @@ The wind (blue) is the second most important parameter for each fuel category ex
 The slope (red), air density (magenta), and air temperature (yellow) have a marginal influence on the rate of spread. Using default values for these parameters is recommended.
 The ignition temperature (dark red) and the ignition length (dark blue) are of low importance.
 
-![blockdiagram](../../_static/workflow/rate_of_spread/sensitivity/Balbi_2022_SB40.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/sensitivity/Balbi_2022_SB40.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1

@@ -28,7 +28,7 @@ The slope (red bars) is of relatively minor importance for Rothermel and does no
 
 The total order indices are higher than the first order indices, indicating coupling effects between variables, mostly between wind and moisture.
 
-![blockdiagram](../../_static/workflow/rate_of_spread/sensitivity/Rothermel_SFIRE_A13.png)
+![blockdiagram](../../../../_static/workflow/rate_of_spread/sensitivity/Rothermel_SFIRE_A13.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1
