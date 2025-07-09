@@ -8,7 +8,7 @@ It computes the `First and Total Order Sobol indices` with respect to environmen
 Environmental variables can be fuel moisture content, terrain slope angle in the spread direction, midflame wind speed in the spread direction, air temperature and density, or fuel ignition temperature. 
 
 **Fig.1**  shows an example of the benchmark for `Anderson13` fuel model, `Rothermel_SFIRE` with three environmental parameters (moisture, slope, wind).
-![blockdiagram](../../_static/images/Benchmark_0d_sensitivity_ros.png)
+![blockdiagram](../../../../_static/images/Benchmark_0d_sensitivity_ros.png)
 <p style="text-align: center;">
     <strong>
         Fig. 1
