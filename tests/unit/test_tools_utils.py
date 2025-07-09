@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from firebench import Quantity, logger
 from firebench.tools import get_value_by_category, is_scalar_quantity, logging, set_logging_level
-from firebench.tools.utils import _calculate_sha256
+from firebench.tools.utils import calculate_sha256
 
 
 @pytest.mark.parametrize(
@@ -96,7 +96,7 @@ def test_calculate_sha256_valid_file():
         temp_file_path = temp_file.name
 
     try:
-        result_hash = _calculate_sha256(temp_file_path)
+        result_hash = calculate_sha256(temp_file_path)
         assert result_hash == expected_hash, "The calculated hash does not match the expected hash."
     finally:
         os.remove(temp_file_path)
@@ -110,7 +110,7 @@ def test_calculate_sha256_file_not_found(caplog):
     set_logging_level(logging.WARNING)
 
     with caplog.at_level(logging.ERROR):
-        result = _calculate_sha256(non_existent_path)
+        result = calculate_sha256(non_existent_path)
         assert result == "", "Expected empty string when file is not found."
         # Verify that the appropriate error message was logged
         expected_message = f"File not found: '{non_existent_path}'. Unable to calculate SHA-256 hash."
@@ -131,7 +131,7 @@ def test_calculate_sha256_permission_error(caplog):
         os.chmod(temp_file_path, 0)
 
         with caplog.at_level(logging.ERROR):
-            result = _calculate_sha256(temp_file_path)
+            result = calculate_sha256(temp_file_path)
             assert result == "", "Expected empty string when permission is denied."
             # Verify that the appropriate error message was logged
             expected_message = f"Permission denied when accessing file: '{temp_file_path}'. Unable to calculate SHA-256 hash."
@@ -152,7 +152,7 @@ def test_calculate_sha256_os_error(caplog):
     # Simulate an OSError by trying to open a directory as a file
     with tempfile.TemporaryDirectory() as temp_dir:
         with caplog.at_level(logging.ERROR):
-            result = _calculate_sha256(temp_dir)
+            result = calculate_sha256(temp_dir)
             assert result == "", "Expected empty string when an OS error occurs."
             # Verify that the appropriate error message was logged
             expected_message_prefix = f"OS error occurred while processing file '{temp_dir}':"

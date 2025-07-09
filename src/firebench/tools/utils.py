@@ -68,7 +68,7 @@ def get_value_by_category(x: any, category_index: int):
         raise IndexError(f"One-based index {category_index} not found in {x}.") from exc
 
 
-def _calculate_sha256(file_path):
+def calculate_sha256(file_path):
     """
     Calculate the SHA-256 hash of a file's contents.
 
