@@ -18,9 +18,9 @@ def anderson_2015_stats(
     Plot statistics from the Anderson 2015 dataset.
 
     This function processes the Anderson (2015) dataset and visualizes:
-    - Histogram of observed rate of spread (ROS)
-    - Scatter plot of wind speed vs dead fuel moisture
-    - Histogram of closest Scott and Burgan 40 (SB40) fuel model matches
+        - Histogram of observed rate of spread (ROS)
+        - Scatter plot of wind speed vs dead fuel moisture
+        - Histogram of closest Scott and Burgan 40 (SB40) fuel model matches
 
     Parameters
     ----------

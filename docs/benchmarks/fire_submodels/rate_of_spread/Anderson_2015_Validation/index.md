@@ -26,6 +26,7 @@ The following plot presents some statistics about the Anderson 2015 dataset.
 The top panel shows the distribution of the rate of spread for valid observations (where the input data are complete to run a rate of spread model).
 The middle panel shows the observation in a wind/fuel moisture space.
 The bottom panel shows the distribution of the closest Scott and Burgan fuel catgeory based on fuel load and fuel height. The invalid category groups the observations where the fuel load or fuel heught information is not available.
+You can generate this figure using `firebench.stats.anderson_2015_stats` using default parameters or change units for wind and rate of spread.
 ![img](../../../../_static/images/fire_models_info/stats_Anderson_2015.png)
 
 ### Expected output data
