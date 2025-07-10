@@ -6,8 +6,8 @@ sys.path.insert(0, os.path.abspath('../src/firebench'))
 
 project = 'Firebench'
 author = 'WIRC SJSU'
-version = '0.5'
-release = '0.5.0'
+version = '0.7.0'
+release = '0.7.0'
 copyright = '%Y, Aurélien Costes, WIRC SJSU'
 
 extensions = [
