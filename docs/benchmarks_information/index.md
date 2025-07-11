@@ -230,7 +230,7 @@ Send your completed report alongside any important data voa one of the following
 - ![status](https://img.shields.io/badge/Fire_Submodel-Terrain_Projection-9d0026)
 - ![status](https://img.shields.io/badge/Fire_Submodel-Wind_Interpolation-800026) -->
 
-- ![status](https://img.shields.io/badge/Fuel_Moisture-Canopy-c6dbef)
+<!-- - ![status](https://img.shields.io/badge/Fuel_Moisture-Canopy-c6dbef)
 - ![status](https://img.shields.io/badge/Fuel_Moisture-Dead-6aaed6)
 - ![status](https://img.shields.io/badge/Fuel_Moisture-Dead_1h-5ba3d0)
 - ![status](https://img.shields.io/badge/Fuel_Moisture-Dead_10h-4a98c9)
@@ -239,7 +239,7 @@ Send your completed report alongside any important data voa one of the following
 - ![status](https://img.shields.io/badge/Fuel_Moisture-Live-2070b4)
 - ![status](https://img.shields.io/badge/Fuel_Moisture-Live_herbaceous-105ba4)
 - ![status](https://img.shields.io/badge/Fuel_Moisture-Live_woody-08468b)
-- ![status](https://img.shields.io/badge/Fuel_Moisture-Soil-08306b)
+- ![status](https://img.shields.io/badge/Fuel_Moisture-Soil-08306b) -->
 
 <!-- - ![status](https://img.shields.io/badge/Danger\/Risk-<7days-fbb6bc)
 - ![status](https://img.shields.io/badge/Danger\/Risk-Seasonal-ed549d)
