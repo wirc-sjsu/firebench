@@ -1,4 +1,4 @@
-# 10. Changelog
+# 11. Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -6,14 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.7.0]
 ### Added
+- `anderson_2015_stats`: Plot statistics from the Anderson 2015 dataset.
 - `array_to_geopolygons`: Convert an array field into geospatial polygons at a given iso-value, preserving holes.
-- `jaccard_polygon`: Compute the Intersection over Union (IoU), i.e. Jaccard Index, between two fire perimeters described as geospatial polygons.
+- `auto_bins`: Automatically generate histogram bin edges for plotting, based on data range.
 - `jaccard_binary`: Compute the IoU, i.e. Jaccard Index, between two fire perimeters described as 2D binary masks.
-- `sorensen_dice_polygon`: Compute the Sorensen-Dice index between two fire perimeters described as geospatial polygons.
+- `jaccard_polygon`: Compute the Intersection over Union (IoU), i.e. Jaccard Index, between two fire perimeters described as geospatial polygons.
 - `sorensen_dice_binary`: Compute the Sorensen-Dice index between two fire perimeters described as 2D binary masks.
+- `sorensen_dice_polygon`: Compute the Sorensen-Dice index between two fire perimeters described as geospatial polygons.
+- `rmse`: Compute the Root Mean Square Error (RMSE) between two arrays, ignoring NaNs.
+- `nmse_range`: Compute the Normalized Mean Square Error (NMSE) between two arrays, using the range of the reference signal as normalization.
+- `nmse_power`: Compute the Normalized Mean Square Error (NMSE) between two arrays, using the product of their mean values as normalization.
 
 ### Documentation
 - Updated developer documentation
+- Refactoring of Benchmarks page. Benchmarks are now sorted by model context instead of metric context.
+- Improve Anderson 2015 Validation benchmark document.
+- Tags have a colorful badge.
 
 ### Miscellaneous
 - Support Python 3.13

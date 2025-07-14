@@ -35,6 +35,7 @@ myst_enable_extensions = [
     "tasklist",
     "amsmath",
     "dollarmath",
+    "colon_fence",
 ]
 
 autodoc_default_options = {

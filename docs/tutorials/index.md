@@ -1,4 +1,4 @@
-# 5. Tutorials
+# 6. Tutorials
 
 This section provides some tutorials to guide the use of the Firebench package.
 
