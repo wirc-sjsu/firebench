@@ -1286,3 +1286,775 @@ class Santoni_2011(RateOfSpreadModel):
             Santoni_2011.compute_ros(input_dict_no_units, fuel_cat, **opt),
             Santoni_2011.metadata["rate_of_spread"]["units"],
         )
+
+class McArthur(RateOfSpreadModel):
+    """
+    A class to represent the McArthur's model for fire spread rate calculation.
+
+    This class provides metadata for various fuel properties and a static method to compute the rate of spread (ROS).
+    The metadata includes descriptions, units, and acceptable ranges for each property.
+
+    Metadata
+    --------
+    The model uses the following fuel parameters:
+
+    - ``fgi``
+        - Standard name: ``FUEL_LOAD_DRY_TOTAL``
+        - Units: ``tonne / hectare``
+        - Range: ``0 to inf``
+        - Type: ``input``
+
+    - ``igrass``
+        - Standard name: ``FUEL_GRASSLAND_FLAG``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``wind``
+        - Standard name: ``WIND_SPEED``
+        - Units: ``kilometer / hour``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``slope``
+        - Standard name: ``SLOPE_ANGLE``
+        - Units: ``degree``
+        - Range: ``-90 to 90``
+        - Type: ``input``
+
+    - ``temp_air``
+        - Standard name: ``AIR_TEMPERATURE``
+        - Units: ``celsius``
+        - Range: ``0 to inf``
+        - Type: ``input``
+        - Default: ``300``
+
+    - ``rel_humid``
+        - Standard name: ``RELATIVE_HUMIDITY``
+        - Units: ``percent``
+        - Range: ``0 to 100``
+        - Type: ``input``
+
+    - ``precipitation``
+        - Standard name: ``PRECIPITATION``
+        - Units: ``millimeter``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+
+    - ``deg_curing``
+        - Standard name: ``DEGREE_OF_CURING``
+        - Units: ``percent``
+        - Range: ``0 to 100``
+        - Type: ``input``
+
+    - ``drought_index``
+        - Standard name: ``DROUGHT_INDEX``
+        - Units: ``millimeter``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+
+    - ``time_since_rain``
+        - Standard name: ``TIME_SINCE_RAIN``
+        - Units: ``days``
+        - Range: ``0 to inf``
+        - Type: ``optional``
+
+    - ``rate_of_spread``
+        - Standard name: ``RATE_OF_SPREAD``
+        - Units: ``kilometer / hour``
+        - Range: ``0 to inf``
+        - Type: ``output``
+    """  # pylint: disable=line-too-long
+
+    metadata = {
+        "fgi": {
+            "std_name": svn.FUEL_LOAD_DRY_TOTAL,
+            "units": ureg.tonne / ureg.hectare,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+        },
+        "igrass": {
+            "std_name": svn.FUEL_GRASSLAND_FLAG,
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+            "type": ParameterType.input,
+        },
+        "wind": {
+            "std_name": svn.WIND_SPEED,
+            "units": ureg.kilometer / ureg.hour,
+            "range": (-np.inf, np.inf),
+            "type": ParameterType.input,
+        },
+        "slope": {
+            "std_name": svn.SLOPE_ANGLE,
+            "units": ureg.degree,
+            "range": (-90, 90),
+            "type": ParameterType.input,
+        },
+        "temp_air": {
+            "std_name": svn.AIR_TEMPERATURE,
+            "units": ureg.celsius,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+            "default": 30,
+        },
+        "rel_humid": {
+            "std_name": svn.RELATIVE_HUMIDITY,
+            "units": ureg.percent,
+            "range": (0, 100),
+            "type": ParameterType.input,
+        },
+        "precipitation": {
+            "std_name": svn.PRECIPITATION,
+            "units": ureg.millimeter,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+        },
+        "deg_curing": {
+            "std_name": svn.DEGREE_OF_CURING,
+            "units": ureg.percent,
+            "range": (0, 100),
+            "type": ParameterType.input,
+        },
+        "drought_index": {
+            "std_name": svn.DROUGHT_INDEX,
+            "units": ureg.millimeter,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+        },
+        "time_since_rain": {
+            "std_name": svn.TIME_SINCE_RAIN,
+            "units": ureg.days,
+            "range": (0, np.inf),
+            "type": ParameterType.optional,
+        },
+        "rate_of_spread": {
+            "std_name": svn.RATE_OF_SPREAD,
+            "units": ureg.kilometer / ureg.hour,
+            "range": (0, np.inf),
+            "type": ParameterType.output,
+        },
+    }
+
+    @staticmethod
+    def McArthur(
+        fgi: float,
+        igrass: int,
+        wind: float,
+        slope: float,
+        temp_air: float,
+        rel_humid: float,
+        precipitaion: float,
+        deg_curing: float,
+        drought_index: float,
+        time_since_rain: float,
+    ) -> float:
+        """
+        Compute the rate of spread using McArthur's model.
+
+        This function calculates the forward rate of spread of a fire in grassland fuels and in forest fires using
+        McArthur's (1980) fire spread model. The model considers fuel load, fuel type, wind speed, slope, ambient air 
+        temperatrure, precipitation, degree of curing, drought index, time since last rain, and relative humidity, 
+        to estimate the rate of spread.
+
+        Parameters
+        ----------
+        fgi : float
+            Total fuel load (dry weight) per unit area [t ha-1].
+            Represents the total mass of combustible material available to the fire.
+
+        igrass : int
+            Grassland flag (0 or 1).
+            Indicator for grass fuel type: set to 1 if the fuel is grass, otherwise 0.
+
+        wind : float
+            Wind speed at 10 m height [km h-1].
+
+        slope : float
+            Slope steepness [degrees].
+            The angle of the terrain slope; positive for uphill, negative for downhill.
+
+        temp_air : float
+            Ambiant air temperature [C]
+
+        rel_humid : float
+            Relative humidity of ambient air [%].
+
+        precipitation : float
+            Precipitaion [mm].
+
+        deg_curing : float
+            Degree of curing [%].
+
+        drought_index : float
+            Keetch-Byram drought index [mm].
+
+        time_since_rain : float
+            Time since the last rain [days].
+
+        **opt : dict, optional
+            Additional optional parameters.
+
+        Returns
+        -------
+        float
+            Rate of spread [km/h].
+            The estimated forward rate of spread of the fire.
+
+        References
+        ----------
+        I. R. NOBLE, G. A. V. BARY, A. M. GILL (1980).
+        *McArthur's fire-danger meters expressed as equations*.
+        Australian Journal of Ecology, 5, 201-203.
+        """  # pylint: disable=line-too-long
+
+        # Calculate various coefficients
+        I = drought_index # Keetch-Byram drought index (mm)
+        N = time_since_rain # Time since the last rain 
+        P = precipitaion # Precipitation (mm)
+        d_factor = 0.191 * (I + 104) * np.power((N + 1) , 1.5) / (3.52 * np.power((N + 1) , 1.5) + P - 1.0)
+        # Drought factor for forest fuel, Max input value is 10
+
+        if igrass == 0:
+            fdi = 2.0 * np.exp(-0.450 + 0.987 * np.log(d_factor) - 0.0345 * rel_humid + 0.0338 * temp_air
+                               + 0.0234 * wind)   # Fire danger index for forest fires
+            r_0 = 0.0012 * fdi * fgi  # Spread rate at zero slope, km/h
+            ros = r_0 * np.exp(0.069 * slope)    # Spread rate, km/h
+
+        else:
+            fmc = (97.7 + 4.06 * rel_humid)/(temp_air + 6.0) - (0.00854 * rel_humid) + (3000.0 / deg_curing) - 30.0 
+            # Fuel moisture content for grass fuel, Max input value is 30
+            if fmc < 18.8:
+                fdi = 3.35 * fgi * np.exp(-0.0897 * fmc + 0.0403 * wind)          # Fire danger index 
+            else:
+                fdi = 0.299 * fgi * np.exp(-1.686 + 0.0403 * wind) * (30 - fmc)   # Fire danger index 
+
+            if fgi <= 2:
+            # light fuel load or grazed pastures.
+                ros = 0.06 * fdi   # Spread rate, km/h
+            else:
+            # high fuel load
+                ros = 0.13 * fdi   # Spread rate, km/h
+
+        # Default
+        return min(ros, 6.0)
+
+    @staticmethod
+    def compute_ros(
+        input_dict: dict[str, float | int | list[float] | list[int]],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> float:
+        """
+        Compute the rate of spread of fire using ``McArthur``'s model.
+
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the ROS. Input data must be provided in standard units without ``pint.Quantity`` objects.
+        For unit-aware calculations, use `compute_ros_with_units`.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing the input data for various fuel properties.
+            The keys should be the standard variable names as defined in ``McArthur.metadata``.
+            Each value can be a single float/int or a list/array of floats/ints.
+
+        **opt : dict
+            Additional optional parameters to be passed to the ``McArthur`` method.
+
+        Returns
+        -------
+        float
+            The computed rate of spread of fire.
+
+        Examples
+        --------
+        **Example with scalar fuel properties:**
+
+        .. code-block:: python
+
+            input_data = {
+                svn.FUEL_LOAD_DRY_TOTAL: 4,                  # fgi
+                svn.FUEL_GRASSLAND_FLAG: 1.0,
+                svn.WIND_SPEED: 10.0,
+                svn.SLOPE_ANGLE: 30,
+                svn.AIR_TEMPEATURE: 30,
+                svn.RELATIVE_HUMIDITY: 40,
+                svn.PRECIPITATION: 2,
+                svn.DEGREE_OF_CURING: 50,
+                svn.DROUGHT_INDEX: 1,
+                svn.TIME_SINCE_RAIN: 30,
+            }
+            ros = McArthur.compute_ros(input_data)
+            print(f"The rate of spread is {ros:.4f}")
+        """  # pylint: disable=line-too-long
+        # Prepare fuel properties using the base class method
+        fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
+            input_dict=input_dict, metadata=McArthur.metadata, fuel_cat=fuel_cat
+        )
+
+        # Calculate the rate of spread
+        return McArthur.McArthur(**fuel_properties)
+
+    @staticmethod
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> Quantity:
+        """
+        Compute the rate of spread (ROS) of fire using McArthur's model with unit handling.
+
+        This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
+        computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
+            Keys should match the variable names defined in `McArthur.metadata`.
+
+        **opt : dict
+            Additional optional parameters passed to `compute_ros`.
+
+        Returns
+        -------
+        ureg.Quantity
+            Computed rate of spread (ROS) with units (e.g., kilometers per hour).
+
+        Notes
+        -----
+        - Use this function when working with `pint.Quantity` objects in `input_dict`.
+        - Units for the ROS are defined in `McArthur.metadata["rate_of_spread"]["units"]`.
+        """  # pylint: disable=line-too-long
+        input_dict_no_units = extract_magnitudes(input_dict)
+
+        return ureg.Quantity(
+            McArthur.compute_ros(input_dict_no_units, fuel_cat, **opt),
+            McArthur.metadata["rate_of_spread"]["units"],
+        )
+    
+class Cheney(RateOfSpreadModel):
+    """
+    A class to represent the Cheney's model for fire spread rate calculation.
+
+    This class provides metadata for various fuel properties and a static method to compute the rate of spread (ROS).
+    The metadata includes descriptions, units, and acceptable ranges for each property.
+
+    Metadata
+    --------
+    The model uses the following fuel parameters:
+
+    - ``fhs_s``
+        - Standard name: ``FUEL_HAZARD_SCORE_SURFACE_FUEL``
+        - Units: ``dimensionless``
+        - Range: ``0 to 4``
+        - Type: ``input``
+
+    - ``fhs_ns``
+        - Standard name: ``FUEL_HAZARD_SCORE_NEAR_SURFACE_FUEL``
+        - Units: ``dimensionless``
+        - Range: ``0 to 4``
+        - Type: ``input``
+
+    - ``hf_ns``
+        - Standard name: ``FUEL_HEIGHT_SURFACE_FUEL``
+        - Units: ``centimeter``
+        - Range: ``0 to 4``
+        - Type: ``input``
+
+    - ``igrass``
+        - Standard name: ``FUEL_GRASSLAND_FLAG``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``igrass_state``
+        - Standard name: ``FUEL_GRASSLAND_STATE_FLAG``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``ieuca``
+        - Standard name: ``FUEL_EUCALYPTUS_FLAG``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``ieuca_ros``
+        - Standard name: ``FUEL_EUCALYPTUS_ROS_FLAG``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``fmoist_period``
+        - Standard name: ``FUEL_MOISTURE_CONTENT_PERIOD_FLAG``
+        - Units: ``dimensionless``
+        - Range: ``0 to 1``
+        - Type: ``input``
+
+    - ``wind``
+        - Standard name: ``WIND_SPEED``
+        - Units: ``kilometer / hour``
+        - Range: ``-inf to inf``
+        - Type: ``input``
+
+    - ``temp_air``
+        - Standard name: ``AIR_TEMPERATURE``
+        - Units: ``celsius``
+        - Range: ``0 to inf``
+        - Type: ``input``
+        - Default: ``300``
+
+    - ``rel_humid``
+        - Standard name: ``RELATIVE_HUMIDITY``
+        - Units: ``percent``
+        - Range: ``0 to 100``
+        - Type: ``input``
+
+    - ``deg_curing``
+        - Standard name: ``DEGREE_OF_CURING``
+        - Units: ``percent``
+        - Range: ``0 to 100``
+        - Type: ``input``
+
+    - ``rate_of_spread``
+        - Standard name: ``RATE_OF_SPREAD``
+        - Units: ``kilometer / hour``
+        - Range: ``0 to inf``
+        - Type: ``output``
+    """  # pylint: disable=line-too-long
+
+    metadata = {
+        "fhs_s": {
+            "std_name": svn.FUEL_HAZARD_SCORE_SURFACE_FUEL,
+            "units": ureg.dimensionless,
+            "range": (0, 4),
+            "type": ParameterType.input,
+        },
+        "fhs_ns": {
+            "std_name": svn.FUEL_HAZARD_SCORE_NEAR_SURFACE_FUEL,
+            "units": ureg.dimensionless,
+            "range": (0, 4),
+            "type": ParameterType.input,
+        },
+        "hf_ns": {
+            "std_name": svn.FUEL_HEIGHT_NEAR_SURFACE_FUEL,
+            "units": ureg.centimeter,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+        },
+        "igrass": {
+            "std_name": svn.FUEL_GRASSLAND_FLAG,
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+            "type": ParameterType.input,
+        },
+        "igrass_state": {
+            "std_name": svn.FUEL_GRASSLAND_STATE_FLAG,
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+            "type": ParameterType.input,
+        },
+        "ieuca": {
+            "std_name": svn.FUEL_EUCALYPTUS_FLAG,
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+            "type": ParameterType.input,
+        },
+        "ieuca_ros": {
+            "std_name": svn.FUEL_EUCALYPTUS_ROS_FLAG,
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+            "type": ParameterType.input,
+        },
+        "fmoist_period": {
+            "std_name": svn.FUEL_MOISTURE_CONTENT_PERIOD_FLAG,
+            "units": ureg.dimensionless,
+            "range": (0, 1),
+            "type": ParameterType.input,
+        },
+        "wind": {
+            "std_name": svn.WIND_SPEED,
+            "units": ureg.kilometer / ureg.hour,
+            "range": (-np.inf, np.inf),
+            "type": ParameterType.input,
+        },
+        "temp_air": {
+            "std_name": svn.AIR_TEMPERATURE,
+            "units": ureg.celsius,
+            "range": (0, np.inf),
+            "type": ParameterType.input,
+            "default": 30,
+        },
+        "rel_humid": {
+            "std_name": svn.RELATIVE_HUMIDITY,
+            "units": ureg.percent,
+            "range": (0, 100),
+            "type": ParameterType.input,
+        },
+        "deg_curing": {
+            "std_name": svn.DEGREE_OF_CURING,
+            "units": ureg.percent,
+            "range": (0, 100),
+            "type": ParameterType.input,
+        },
+        "rate_of_spread": {
+            "std_name": svn.RATE_OF_SPREAD,
+            "units": ureg.meter / ureg.minute,
+            "range": (0, np.inf),
+            "type": ParameterType.output,
+        },
+    }
+
+    @staticmethod
+    def Cheney(
+        fhs_s: float,
+        fhs_ns: float,
+        hf_ns: float,
+        igrass: int,
+        igrass_state: int,
+        ieuca: int,
+        ieuca_ros: int,
+        fmoist_period: int,
+        wind: float,
+        temp_air: float,
+        rel_humid: float,
+        deg_curing: float,
+    ) -> float:
+        """
+        Compute the rate of spread using Cheney's model.
+
+        This function calculates the forward rate of spread of a fire in grassland fuels using Cheney's (1998) model 
+        and in eucalyptus fuels using Cheney's (2012) model. The model considers fuel load, fuel type, state of 
+        grass fuel, wind speed, ambient air temperatrure, degree of curing, and relative humidity, 
+        to estimate the rate of spread.
+
+        Parameters
+        ----------
+        fhs_s : float
+            Fuel hazard score for surface fuels (0 - 4).
+
+        fhs_s : float
+            Fuel hazard score for near surface fuels (0 - 4).
+
+        hf_ns : float
+            Height of near surface fuels [cm].
+
+        igrass : int
+            Grassland flag (0 or 1).
+            Indicator for grass fuel type: set to 1 if the fuel is grass, otherwise 0.
+
+        igrass_state : int
+            Grassland state flag (0 or 1 or 2).
+            Indicator for state of grass fuel: set to 0 if the grass is undisturbed, 
+            set to 1 if the grass is cut/grazed, set to 2 if the grass is eaten out.
+
+        ieuca : int
+            Eucalyptus flag (0 or 1).
+            Indicator for eucalyptus fuel type: set to 1 if the fuel is dry eucalyptus, otherwise 0.
+
+        ieuca_ros : int
+            Eucalyptus ros flag (0 or 1).
+            Indicator for ros model for eucalyptus fuel: set to 0 if ros is calculated using Fire Hazard Score (FHS), 
+            set to 1 if ros is calculated using Fire Hazard Rating (FHR).
+
+        fmoist_period : int
+            Fuel moisture evaluation period flag (0 or 1 or 2).
+            Indicator for the period during which fuel moisture is calculated: set to 0 if the period is between
+            12.00 - 17.00 (daylight savings time, OCtober - March), set to 1 if the period is otherwise for daylight
+            hours, set to 2 if the period is nighttime.
+
+        wind : float
+            Wind speed at 10 m height [km h-1].
+
+        temp_air : float
+            Ambiant air temperature [C]
+
+        rel_humid : float
+            Relative humidity of ambient air [%].
+
+        deg_curing : float
+            Degree of curing [%].
+
+        **opt : dict, optional
+            Additional optional parameters.
+
+        Returns
+        -------
+        float
+            Rate of spread [m/min].
+            The estimated forward rate of spread of the fire.
+
+        References
+        ----------
+        1. N. P. Cheney, J. S. Gouldl, W. R. Catchpole (1998).
+        *Prediction of Fire Spread in Grasslands*
+        International Journal of Wildland Fire 8(l), 1-13.
+
+        2. N. P. Cheney, J. S. Gould, W. L. McCawb, W. R. Anderson (2012).
+        *Predicting fire behaviour in dry eucalypt forest in southern Australias*.
+        Forest Ecology and Management, 280, 120–131.
+        """  # pylint: disable=line-too-long     
+
+        if igrass == 1:
+            # Calculate various coefficients
+            phi_c = 1.12 / (1 + 59.2 * np.exp(-0.124 * (deg_curing - 50))) # Min input value greater than 50
+            fmc = 9.58 - 0.205 * temp_air + 0.138 * rel_humid
+            # Fuel moisture content for grass fuel, Input value range is 2% - 24%
+            if fmc < 12.0:
+                phi_m = np.exp(-0.108 * fmc)        
+            else:
+                if wind < 10:
+                    phi_m = 0.684 - 0.0342 * fmc
+                else:
+                    phi_m = 0.547 - 0.0228 * fmc
+
+            if igrass_state == 0:
+                if wind < 5:
+                    ros = (0.054 + 0.269 * wind) * phi_m * phi_c  # Spread rate, m/min
+                else:
+                    ros = (1.4 + 0.838 * np.power((wind - 5.0) , 0.844)) * phi_m * phi_c  # Spread rate, m/min
+            elif igrass_state == 1:
+                if wind < 5:
+                    ros = (0.054 + 0.209 * wind) * phi_m * phi_c  # Spread rate, m/min
+                else:
+                    ros = (1.1 + 0.705 * np.power((wind - 5.0) , 0.844)) * phi_m * phi_c  # Spread rate, m/min
+            else:
+                ros = (0.55 + 0.357 * np.power((wind - 5.0) , 0.844)) * phi_m * phi_c  
+                # Spread rate, m/min, Mininum wind speed is 5 km/h  
+        
+        if ieuca == 1:    
+            # Calculate various coefficients
+            if fmoist_period == 0:    #  between 12.00 - 17.00 (daylight savings time, OCtober - March)
+                fmc = 2.76 + 0.124 * rel_humid - 0.0187 * temp_air
+            elif fmoist_period == 1:  #  Other daylight time 
+                fmc = 3.60 + 0.169 * rel_humid - 0.0450 * temp_air
+            else:      # Night time
+                fmc = 3.08 + 0.198 * rel_humid - 0.0483 * temp_air  
+
+            phi_m = 18.35 * np.power(fmc , -1.495)
+            B1 = 1.03 # Model correction for bias (FHS based)
+            B2 = 1.02 # Model correction for bias (FHR based)
+
+            if ieuca_ros == 0:
+                # Spread rate calculated using Fuel Hazard Score
+                ros = (30.0 + 1.531 * np.power((wind - 5.0) , 0.8576) * np.power(fhs_s , 0.9301) 
+                * np.power((fhs_ns * hf_ns) , 0.6366) * B1 * phi_m) * 60.0 # Spread rate, m/min
+            else:
+                # Spread rate calculated using Fuel Hazard Rating
+                # Surface and near-surface fuel hazard rating - regression constants
+                # Max value for fhs_s and fhs_ns input is 4
+                if fhs_s <= 1.5: fhr_s = 0  
+                if fhs_s > 1.5 and fhs_s <= 2.5: fhr_s = 1.5608 
+                if fhs_s > 2.5 and fhs_s <= 3.5: fhr_s = 2.1412
+                if fhs_s > 3.5 and fhs_s <= 3.75: fhr_s = 2.0548
+                if fhs_s > 3.75: fhr_s = 2.3251                   
+
+                if fhs_ns <= 1.5: fhr_ns = 0.4694  
+                if fhs_ns > 1.5 and fhs_ns <= 2.5: fhr_ns = 0.7070 
+                if fhs_ns > 2.5 and fhs_ns <= 3.5: fhr_ns = 1.2772
+                if fhs_ns > 3.5 and fhs_ns <= 3.75: fhr_ns = 1.7492
+                if fhs_ns > 3.75: fhr_ns = 1.2446 
+
+                ros = (30.0 + 2.311 * np.power((wind - 5.0) , 0.8364) * np.exp(fhr_s + fhr_ns) 
+                * B2 * phi_m) * 60.0 # Spread rate, m/min
+        # Default
+        return min(ros, 6.0)
+
+    @staticmethod
+    def compute_ros(
+        input_dict: dict[str, float | int | list[float] | list[int]],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> float:
+        """
+        Compute the rate of spread of fire using ``Cheney``'s model.
+
+        This function processes input fuel properties, optionally selects a specific fuel category,
+        and calculates the ROS. Input data must be provided in standard units without ``pint.Quantity`` objects.
+        For unit-aware calculations, use `compute_ros_with_units`.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing the input data for various fuel properties.
+            The keys should be the standard variable names as defined in ``Cheney.metadata``.
+            Each value can be a single float/int or a list/array of floats/ints.
+
+        **opt : dict
+            Additional optional parameters to be passed to the ``Cheney`` method.
+
+        Returns
+        -------
+        float
+            The computed rate of spread of fire.
+
+        Examples
+        --------
+        **Example with scalar fuel properties:**
+
+        .. code-block:: python
+
+            input_data = {
+                svn.FUEL_HAZARD_SCORE_SURFACE_FUEL: 2.0
+                svn.FUEL_HAZARD_SCORE_NEAR_SURFACE_FUEL: 3.0
+                svn.FUEL_HEIGHT_NEAR_SURFACE_FUEL: 30.0
+                svn.FUEL_GRASSLAND_FLAG: 0.0,
+                svn.FUEL_GRASSLAND_STATE_FLAG: 0.0,
+                svn.FUEL_EUCALYPTUS_FLAG: 1.0,
+                svn.FUEL_EUCALYPTUS_ROS_FLAG: 1.0,
+                svn.FUEL_MOISTURE_CONTENT_PERIOD_FLAG: 2.0,
+                svn.WIND_SPEED: 10.0,
+                svn.AIR_TEMPEATURE: 30,
+                svn.RELATIVE_HUMIDITY: 40,
+                svn.DEGREE_OF_CURING: 50,
+            }
+            ros = Cheney.compute_ros(input_data)
+            print(f"The rate of spread is {ros:.4f}")
+        """  # pylint: disable=line-too-long
+        # Prepare fuel properties using the base class method
+        fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
+            input_dict=input_dict, metadata=Cheney.metadata, fuel_cat=fuel_cat
+        )
+
+        # Calculate the rate of spread
+        return Cheney.Cheney(**fuel_properties)
+
+    @staticmethod
+    def compute_ros_with_units(
+        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
+        fuel_cat: int = 0,
+        **opt,
+    ) -> Quantity:
+        """
+        Compute the rate of spread (ROS) of fire using Cheney's model with unit handling.
+
+        This function extracts magnitudes from input data (removing `pint.Quantity` wrappers),
+        computes the ROS using `compute_ros`, and attaches the appropriate unit to the result.
+
+        Parameters
+        ----------
+        input_dict : dict
+            Dictionary containing input fuel properties as `pint.Quantity` objects or standard values.
+            Keys should match the variable names defined in `Cheney.metadata`.
+
+        **opt : dict
+            Additional optional parameters passed to `compute_ros`.
+
+        Returns
+        -------
+        ureg.Quantity
+            Computed rate of spread (ROS) with units (e.g., meters per minute).
+
+        Notes
+        -----
+        - Use this function when working with `pint.Quantity` objects in `input_dict`.
+        - Units for the ROS are defined in `Cheney.metadata["rate_of_spread"]["units"]`.
+        """  # pylint: disable=line-too-long
+        input_dict_no_units = extract_magnitudes(input_dict)
+
+        return ureg.Quantity(
+            Cheney.compute_ros(input_dict_no_units, fuel_cat, **opt),
+            Cheney.metadata["rate_of_spread"]["units"],
+        )

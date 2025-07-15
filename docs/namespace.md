@@ -17,6 +17,8 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `CANOPY_DENSITY_BULK`: Canopy bulk density [kg m-3]
 - `CANOPY_HEIGHT_BOTTOM`: Canopy height bottom [m]
 - `CANOPY_HEIGHT_TOP`: Canopy height top [m]
+- `DEGREE_OF_CURING`: Degree of curing [%]
+- `DROUGHT_INDEX`: Drought index [-]
 - `FUEL_CLASS`: Fuel class (int)
 - `FUEL_CHAPARRAL_FLAG`: Fuel chaparral flag (int)
 - `FUEL_COVER`: Fuel cover [%]
@@ -24,9 +26,16 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_DENSITY_BULK`: Fuel bulk density [kg m-3]
 - `FUEL_DENSITY_DEAD`: Dead fuel density [kg m-3]
 - `FUEL_DENSITY_LIVE`: Live fuel density [kg m-3]
+- `FUEL_EUCALYPTUS_FLAG`: Fuel eucalyptus flag (int)
+- `FUEL_EUCALYPTUS_ROS_FLAG`: Fuel eucalyptus flag (int)
 - `FUEL_FRACTION_CONSUMED_FLAME_ZONE`: Fuel fraction consumed flame zone [-]
+- `FUEL_GRASSLAND_FLAG`: Fuel grassland flag (int)
+- `FUEL_GRASSLAND_STATE_FLAG`: Fuel grassland state flag (int)
+- `FUEL_HAZARD_SCORE_SURFACE_FUEL` : Fuel hazard score surface fuel [-]
+- `FUEL_HAZARD_SCORE_NEAR_SURFACE_FUEL` : Fuel hazard score near surface fuel [-]
 - `FUEL_HEAT_CONTENT`: Fuel heat content [J kg-1]
 - `FUEL_HEIGHT`: Fuel height [m]
+- `FUEL_HEIGHT_NEAR_SURFACE_FUEL` : Fuel height near surface fuel [cm]
 - `FUEL_LOAD_DEAD_RATIO`: Dead fuel load ratio [-]
 - `FUEL_LOAD_FINE`: Fine fuels load [kg m-2]
 - `FUEL_LOAD_FINE_DEAD`: Dead fine fuels load [kg m-2]
@@ -50,6 +59,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_MOISTURE_CONTENT_ELEVATED_DEAD`: Dead fuel moisture content elevated [%]
 - `FUEL_MOISTURE_CONTENT_FINE_DEAD`: Dead fine fuel moisture content elevated [%]
 - `FUEL_MOISTURE_CONTENT_LIVE`: Live fuel moisture content [%]
+- `FUEL_MOISTURE_CONTENT_PERIOD_FLAG`: Fuel moisture content period flag (int)
 - `FUEL_MOISTURE_EXTINCTION`: Fuel moisture extinction [%]
 - `FUEL_ROUGHNESS_HEIGHT`: Fuel roughness height [m]
 - `FUEL_SFIREBURNUP_CONSUMPTION_CST`: Fuel SFIRE BURNUP consumption constant [-]
@@ -66,6 +76,8 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_WIND_REDUCTION_FACTOR`: Fuel wind reduction factor [-]
 - `IGNITION_LENGTH`: Ignition length [m]
 - `LENGTH`: Length [m]
+- `PRECIPITATION`: Precipitation [mm]
+- `TIME_SINCE_RAIN`: Time since rain [days] 
 - `RATE_OF_SPREAD`: Rate of spread [m s-1]
 - `RELATIVE_HUMIDITY`: Relative Humidity [m s-1]
 - `SLOPE_ANGLE`: Slope angle [deg]
