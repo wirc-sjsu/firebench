@@ -83,6 +83,7 @@ def test_test_nmse_power_denom_zero():
         nmse_power(x1, x2)
     assert "Cannot normalize MSE: denominator is zero. Use nmse_range instead." in str(excinfo.value)
 
+
 # bias
 # ----------
 @pytest.mark.parametrize(
@@ -92,7 +93,7 @@ def test_test_nmse_power_denom_zero():
         (np.array([0, 1, 2]), np.array([0, 0, 3]), 0),
         (np.array([0, 1, 2]), np.array([0, 0, 6]), -1),
         (np.array([0, 1, 2]), np.array([0, np.nan, 2]), 0),
-        (np.array([[0, 1], [2, 3]]), np.array([[1, 2], [3, 4]]), -1.),
+        (np.array([[0, 1], [2, 3]]), np.array([[1, 2], [3, 4]]), -1.0),
     ],
 )
 def test_bias(x1, x2, expected_bias):
