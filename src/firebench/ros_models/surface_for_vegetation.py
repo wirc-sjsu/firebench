@@ -300,7 +300,7 @@ class Rothermel_SFIRE(RateOfSpreadModel):
             # Spread rate has no dependency on fuel character, only windspeed
             spdms = max(wind, 0.0)
             ros = max(0.03333, 1.2974 * spdms**1.41)  # Spread rate, m/s
- 
+
         # Default
         return min(ros, 6.0)
 
