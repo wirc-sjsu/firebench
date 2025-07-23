@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from firebench.metrics.stats import rmse, nmse_range, nmse_power
+from firebench.metrics.stats import rmse, nmse_range, nmse_power, bias
 from math import sqrt
 
 
@@ -82,3 +82,26 @@ def test_test_nmse_power_denom_zero():
     with pytest.raises(ValueError) as excinfo:
         nmse_power(x1, x2)
     assert "Cannot normalize MSE: denominator is zero. Use nmse_range instead." in str(excinfo.value)
+
+# bias
+# ----------
+@pytest.mark.parametrize(
+    "x1, x2, expected_bias",
+    [
+        (np.array([0, 1, 2]), np.array([0, 1, 2]), 0),
+        (np.array([0, 1, 2]), np.array([0, 0, 3]), 0),
+        (np.array([0, 1, 2]), np.array([0, 0, 6]), -1),
+        (np.array([0, 1, 2]), np.array([0, np.nan, 2]), 0),
+        (np.array([[0, 1], [2, 3]]), np.array([[1, 2], [3, 4]]), -1.),
+    ],
+)
+def test_bias(x1, x2, expected_bias):
+    assert np.isclose(bias(x1, x2), expected_bias)
+
+
+def test_bias_raise_shape():
+    x1 = np.array([0, 1, 2])
+    x2 = np.array([0, 1])
+    with pytest.raises(ValueError) as excinfo:
+        bias(x1, x2)
+    assert "Input shapes must match, got (3,) and (2,)." in str(excinfo.value)

@@ -114,3 +114,34 @@ def nmse_power(x1: np.ndarray, x2: np.ndarray) -> float:
         raise ValueError("Cannot normalize MSE: denominator is zero. Use nmse_range instead.")
 
     return np.nanmean((x1 - x2) ** 2) / denom
+
+
+def bias(x1: np.ndarray, x2: np.ndarray) -> float:
+    """
+    Compute the bias between two arrays, ignoring NaNs.
+
+    Parameters
+    ----------
+    x1 : np.ndarray
+        First input array (e.g. prediction)
+    x2 : np.ndarray
+        Second input array of the same shape as x1 (e.g. observations)
+
+    Returns
+    -------
+    float
+        The bias value between x1 and x2.
+
+    Raises
+    ------
+    ValueError
+        If the two input arrays do not have the same shape.
+
+    Notes
+    -----
+    B = E(x1) - E(x2)
+    """  # pylint: disable=line-too-long
+    if x1.shape != x2.shape:
+        raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
+
+    return np.nanmean(x1) - np.nanmean(x2)

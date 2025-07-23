@@ -36,6 +36,7 @@ This page lists fire sub-models included in the package, the datasets and the to
 Non-exhaustive list of high-level tools available. For more information about tools, please refer to the [API Reference](./api/index.rst).
 
 ### 0d metrics
+- `bias`: Compute the bias between two arrays, ignoring NaNs.
 - `nmse_power`: Compute the Normalized Mean Square Error (NMSE) between two arrays, using the product of their mean values as normalization.
 - `nmse_range`: Compute the Normalized Mean Square Error (NMSE) between two arrays, using the range of the reference signal as normalization.
 - `rmse`: Compute the Root Mean Square Error (RMSE) between two arrays, ignoring NaNs.

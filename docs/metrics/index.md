@@ -15,6 +15,7 @@ These metrics apply to **0D signals**, *i.e.*, time series at a single spatial l
 - You want to compute per-station RMSE, bias, correlation, etc.
 
 **List of metrics**
+- Bias
 - RMSE
 - NMSE with range normalization
 - NMSE with power normalization
