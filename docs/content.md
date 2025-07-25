@@ -52,6 +52,10 @@ Non-exhaustive list of high-level tools available. For more information about to
 
 - `array_to_geopolygons`: Convert an array field into geospatial polygons at a given iso-value, preserving holes.
 
+### Sensors confidence interval
+
+- `CS506_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS506 Fuel Moisture Sensor.
+
 ### Sub-models utils
 
 - `anderson_2015_stats`: Plot statistics from the Anderson 2015 dataset.

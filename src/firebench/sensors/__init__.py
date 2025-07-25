@@ -1,1 +1,2 @@
-from .CS506 import CS506_range90, CS506_rms
+from .CS506 import CS506_cl
+from .utils import z_from_cl

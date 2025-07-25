@@ -1,100 +1,82 @@
-def CS506_rms(value: float, age: float = None) -> float:
+import numpy as np
+
+from .utils import z_from_cl
+
+
+def _cs506_scalar(value: float) -> float:
     """
-    Return the root-mean-square (RMS) measurement error of the Campbell Scientific CS506
-    Fuel Moisture Sensor, using a 26601 10-hour fuel moisture stick.
-
-    Parameters
-    ----------
-    value : float
-        Fuel moisture content, in percent (% by dry weight).
-        Must be between 0 and 50 inclusive.
-    age : float, optional
-        Age of the fuel stick, in years. This parameter is currently unused because
-        no age-dependent sensitivity is documented for the CS506 sensor.
-
-    Returns
-    -------
-    float
-        RMS error in fuel moisture measurement, in percentage points of moisture content.
-
-    Raises
-    ------
-    ValueError
-        If the input fuel moisture value is outside the supported range [0, 50].
-
-    Reference
-    ---------
-    CS506 Manual:
-    https://s.campbellsci.com/documents/ca/manuals/cs506_man.pdf
-
-    Notes
-    -----
-    The sensor uses piecewise equations depending on the fuel moisture content range,
-    and a discontinuity may occur around 5% as noted in the documentation:
-    "A sudden small increase or decrease in the measured water content near 5% is to be
-    expected as the datalogger changes from one equation to the other." No specific
-    uncertainty is provided for this transition, so standard RMS values are returned.
+    Return the RMS error for a single fuel moisture value.
     """  # pylint: disable=line-too-long
-    _ = age  # Placeholder for future age-dependent uncertainty
-    if value < 0 or value > 50:
-        raise ValueError("Fuel moisture value must be between 0 and 50 percent (inclusive).")
-
+    if not 0 <= value <= 50:
+        raise ValueError("Fuel moisture value must be between 0 and 50 percent")
     if value < 10:
-        return 0.74
+        return 0.76
     if value < 20:
-        return 0.90
+        return 1.22
     if value < 30:
-        return 1.94
-    return 2.27
+        return 2.07
+    return 2.50
 
 
-def CS506_range90(value: float, age: float = None) -> float:
+def CS506_cl(values: float | int | np.ndarray, cl: float = 95.45, age: float = None) -> float | np.ndarray:
     """
-    Return the 90% confidence range of measurement error for the Campbell Scientific CS506
-    Fuel Moisture Sensor, using a 26601 10-hour fuel moisture stick.
+    Compute the half-width of the confidence interval for measurement error
+    of the Campbell Scientific CS506 Fuel Moisture Sensor.
 
-    This value represents the absolute error bounds within which 90% of sensor measurements
-    are expected to fall, based on documented performance in specified fuel moisture intervals.
+    This function uses documented RMS and 90% error bounds for the CS506,
+    applied to 10-hour fuel moisture sticks (model 26601). The confidence interval
+    is estimated assuming normally distributed errors, using:
+
+        max(RMS, d90 / 1.644853) * z
+
+    where `z` is the two-sided z-score corresponding to the specified confidence level.
 
     Parameters
     ----------
-    value : float
-        Fuel moisture content, in percent (% by dry weight).
-        Must be between 0 and 50 inclusive.
+    values : float or int or np.ndarray
+        Fuel moisture content value(s), in percent (% by dry weight).
+        Must be in the range [0, 50].
+    cl : float, optional
+        Desired two-sided confidence level, in the range ]0, 100[. Default is 95.45% (2 sigma).
     age : float, optional
-        Age of the fuel stick, in years. This parameter is currently unused because
-        no age-dependent sensitivity is documented for the CS506 sensor.
+        Age of the fuel stick in years. Currently unused; reserved for future support.
 
     Returns
     -------
-    float
-        Half-width of the 90% confidence interval for measurement error, in percentage points
-        of fuel moisture content. The total interval is +/- this value.
+    float or np.ndarray
+        Half-width of the `cl`% confidence interval for measurement error, in the same
+        shape as the input. For scalar input, returns a scalar. For array input, returns
+        an array. The total interval is +/- this value.
 
     Raises
     ------
     ValueError
-        If the input fuel moisture value is outside the supported range [0, 50].
+        If any input value is outside the supported range [0, 50], or if `cl` is not
+        in the range ]0, 100[.
 
-    Reference
-    ---------
+    References
+    ----------
     CS506 Manual:
     https://s.campbellsci.com/documents/ca/manuals/cs506_man.pdf
 
     Notes
     -----
-    This function uses piecewise constant uncertainty values for different fuel moisture
-    intervals. The documentation indicates a discontinuity in the measurement behavior near 5%,
-    but no specific confidence range is given for that effect.
+    - This function uses piecewise constant uncertainty values for different fuel moisture
+      intervals. The documentation indicates a discontinuity in the measurement behavior near 5%,
+      but no specific confidence range is given for that effect.
+    - Measurement uncertainty increases with fuel moisture.
+    - Error model assumes bias is negligible.
     """  # pylint: disable=line-too-long
-    _ = age  # Placeholder for future age-dependent uncertainty
-    if value < 0 or value > 50:
-        raise ValueError("Fuel moisture value must be between 0 and 50 percent (inclusive).")
+    _ = age  # Placeholder for future use
 
-    if 0 <= value < 10:
-        return 1.25
-    if value < 20:
-        return 2.00
-    if value < 30:
-        return 3.40
-    return 4.11
+    if not 0 < cl < 100:
+        raise ValueError("Confidence level cl must be between 0 and 100")
+
+    z = z_from_cl(0.01 * cl)
+
+    if isinstance(values, (float, int)):
+        rms = _cs506_scalar(values)
+        return rms * z
+
+    values = np.asarray(values)
+    return np.array([_cs506_scalar(v) * z for v in values])

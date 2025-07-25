@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `anderson_2015_stats`: Plot statistics from the Anderson 2015 dataset.
 - `array_to_geopolygons`: Convert an array field into geospatial polygons at a given iso-value, preserving holes.
 - `auto_bins`: Automatically generate histogram bin edges for plotting, based on data range.
+- `CS506_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS506 Fuel Moisture Sensor.
 - `jaccard_binary`: Compute the IoU, i.e. Jaccard Index, between two fire perimeters described as 2D binary masks.
 - `jaccard_polygon`: Compute the Intersection over Union (IoU), i.e. Jaccard Index, between two fire perimeters described as geospatial polygons.
 - `sorensen_dice_binary`: Compute the Sorensen-Dice index between two fire perimeters described as 2D binary masks.
