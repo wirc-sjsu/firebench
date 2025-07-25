@@ -54,6 +54,7 @@ Non-exhaustive list of high-level tools available. For more information about to
 
 ### Sensors confidence interval
 
+- `CS505_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS505 Fuel Moisture Sensor.
 - `CS506_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS506 Fuel Moisture Sensor.
 
 ### Sub-models utils
