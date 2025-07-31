@@ -23,6 +23,7 @@ class StandardVariableNames(Enum):  # pragma: no cover
     CANOPY_HEIGHT_BOTTOM = "canopy_height_bottom"
     CANOPY_HEIGHT_TOP = "canopy_height_top"
     DIRECTION = "direction"
+    FIRE_ARRIVAL_TIME = "fire_arrival_time"
     FUEL_CLASS = "fuel_class"
     FUEL_CHAPARRAL_FLAG = "fuel_chaparral_flag"
     FUEL_COVER = "fuel_cover"
