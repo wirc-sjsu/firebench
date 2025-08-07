@@ -1,4 +1,4 @@
-# 5. Benchmarks list
+# 6. Benchmarks list
 This section groups the workflows, tests, and benchmarks proposed by FireBench.
 
 ## Fire submodels

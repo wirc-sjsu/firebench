@@ -13,7 +13,7 @@ It allows to estimate the overall performance of the rate of spread model implem
 
 ### Output file
 
-The workflow generates an output file in [hdf5 format](https://www.hdfgroup.org/solutions/hdf5/).
+The workflow generates an output file in [HDF5 format](https://www.hdfgroup.org/solutions/hdf5/).
 The output file contains the rate of spread and the execution time.
 
 ## Benchmarks available

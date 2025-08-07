@@ -120,6 +120,7 @@ We welcome contributions to FireBench! For more information on how to contribute
 dataset_experiments/index.md
 fire_models_info/index.md
 benchmarks_information/index.md
+standard_format.md
 metrics/index.md
 benchmarks/index.md
 tutorials/index.md

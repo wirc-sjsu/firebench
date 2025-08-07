@@ -1,4 +1,4 @@
-# 4. Metrics information
+# 5. Metrics information
 This section describes the high-level metrics available in `FireBench`, organized by the type and structure of the observational data they support. These metrics are designed to evaluate model performance in realistic settings and are grouped into categories that reflect typical data sources (e.g., weather stations, satellite imagery, fire perimeters).
 Some metrics support observation uncertainty, and others are specifically designed for deterministic or ensemble simulations.
 

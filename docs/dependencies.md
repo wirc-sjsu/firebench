@@ -19,3 +19,4 @@ These dependencies are required for advanced use (testing, offline generation of
 - pytest
 - pytest-cov
 - pytest-mock
+- shapely
