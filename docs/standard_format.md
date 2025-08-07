@@ -2,7 +2,7 @@
 
 - **Version**: 0.1
 - **Status**: Draft
-- **Last update**: 2025-08-06
+- **Last update**: 2025-08-07
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
 
@@ -162,7 +162,6 @@ The possible units fields are the following:
 - `position_y_units`
 - `position_z_units`
 
-
 ## File Attributes
 
 The HDF5 file must contain the following root-level attributes:
@@ -185,25 +184,53 @@ Attributs | Type | Description
 ## Group definition
 
 ### Probes
-- Contains time series data from specific points in space called probes, for example weather stations (RAWS) or local sensors.
-- Each probe dataset is organized in a group containing the time series of all sensors that are at the same location.
-- Each dataset should be named after the probe location or ID (e.g. probe_01)
-- Time dimension must be clearly identified and follow the time format standard.
-- Location of the probes must be defined as attributes following a spacial description convention.
+- Contains time series data from specific points in space called probes, for example, weather stations (RAWS) or local sensors.
+- Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate are placed in the same data group (*e.g.*, a sensor group). Multiple data groups that share the same spatial location are further grouped together in a location group (*e.g.*, a weather station).
+- Each group containing data should be named after the probe location or ID (e.g. probe_01).
+- Each dataset (data_k) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
+- The time coordinate dataset must be a dataset named `time`.
+- Each time coordinate dataset must follow the global time convention (see Time format).
+- Location of the probes must be defined as attributes following a spatial description convention.
+- If geographic coordinates are used, a CRS must be included.
+- Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- In the following example, the array dimensions can be:
+    - time -> ($N_t$)
+    - data_k -> ($N_t$)
+```
+/                                    (root)
+├── probes/                          (point-based time series)
+│    ├── weather_station_1           (group all sensors from weather station 1)
+│    │    ├── sensor_1               (group all data from sensor_1)
+│    │    │    ├── time              (time dataset)
+│    │    │    ├── temperature       (temperature data from sensor_1 dataset)
+│    │    ├── sensor_2               (group all data from sensor_2)
+│    │    │    ├── time              (time dataset)
+│    │    │    ├── wind_speed        (wind speed from sensor_2 dataset)
+│    │    │    ├── wind_direction    (wind direction from sensor_2 dataset)
+│    ├── sensor_3                    (group all data from sensor_3)
+│    │    ├── time                   (time dataset)
+│    │    ├── wind_u                 (U wind data from sensor_3 dataset)
+│    │    ├── wind_v                 (V wind data from sensor_3 dataset)
+│    │    ├── wind_w                 (W wind data from sensor_3 dataset)
+```
+
+### 1D raster
+- Contains time series data from a dataset associated with one-dimensional spatial data.
+- Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group.
+- The spatial coordinate dataset (z in the example) must follow a spatial description convention for a one-dimensional dataset. The spatial coordinate can be fixed in time or change in time.
+- If geographic coordinates are used, a CRS must be included.
+- Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- In the following example, the array dimensions can be:
+    - time -> ($N_t$)
+    - z -> ($N_z$) or ($N_t$, $N_z$) for time varying z coordinate
+    - data_k -> ($N_t$, $N_z$)
 
 ```
-/                           (root)
-├── probes/                 (point-based time series)
-│    ├── weather_station_1  (group all sensors from weather station 1)
-│    │    ├── sensor_1      (group all data from sensor_1)
-│    │    │    ├── time     (time dataset)
-│    │    │    ├── data_1   (data from sensor_1 dataset)
-│    │    ├── sensor_2      (group all data from sensor_2)
-│    │    │    ├── time     (time dataset)
-│    │    │    ├── data_2   (data from sensor_2 dataset)
-│    │    │    ├── data_3   (data from sensor_2 dataset)
-│    ├── sensor_3           (group all data from sensor_3)
-│    │    ├── time          (time dataset)
-│    │    ├── data_4        (data from sensor_3 dataset)
-│    │    ├── data_5        (data from sensor_3 dataset)
+/                               (root)
+├── 1D_raster/                  (1D gridded spatial data + time)
+│    ├── wind_profiler_1        (group all sensors from weather station 1)
+│    │    ├── time              (time dataset)
+│    │    ├── z                 (vertical spatial coordinate for profile)
+│    │    ├── wind_speed        (wind profiler data)
+│    │    ├── wind_direction    (wind profiler data)
 ```
