@@ -2,7 +2,7 @@
 
 - **Version**: 0.1
 - **Status**: Draft
-- **Last update**: 2025-08-07
+- **Last update**: 2025-08-08
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
 
