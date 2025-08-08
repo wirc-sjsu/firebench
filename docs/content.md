@@ -57,6 +57,11 @@ Non-exhaustive list of high-level tools available. For more information about to
 - `CS505_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS505 Fuel Moisture Sensor.
 - `CS506_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS506 Fuel Moisture Sensor.
 
+### Standard file format utils
+
+- `current_datetime_iso8601`: Get the current datetime as an ISO 8601 formatted string (YYYY-MM-DDTHH:MM[:SS]±HH:MM).
+- `datetime_to_iso8601`: Convert a given datetime to an ISO 8601 formatted string (YYYY-MM-DDTHH:MM[:SS]±HH:MM).
+
 ### Sub-models utils
 
 - `anderson_2015_stats`: Plot statistics from the Anderson 2015 dataset.

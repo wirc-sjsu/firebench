@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `auto_bins`: Automatically generate histogram bin edges for plotting, based on data range.
 - `CS505_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS505 Fuel Moisture Sensor.
 - `CS506_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS506 Fuel Moisture Sensor.
+- `current_datetime_iso8601`: Get the current datetime as an ISO 8601 formatted string (YYYY-MM-DDTHH:MM[:SS]±HH:MM).
+- `datetime_to_iso8601`: Convert a given datetime to an ISO 8601 formatted string (YYYY-MM-DDTHH:MM[:SS]±HH:MM).
 - `jaccard_binary`: Compute the IoU, i.e. Jaccard Index, between two fire perimeters described as 2D binary masks.
 - `jaccard_polygon`: Compute the Intersection over Union (IoU), i.e. Jaccard Index, between two fire perimeters described as geospatial polygons.
 - `sorensen_dice_binary`: Compute the Sorensen-Dice index between two fire perimeters described as 2D binary masks.
