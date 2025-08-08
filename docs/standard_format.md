@@ -187,7 +187,7 @@ Attributs | Type | Description
 - Contains time series data from specific points in space called probes, for example, weather stations (RAWS) or local sensors.
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate are placed in the same data group (*e.g.*, a sensor group). Multiple data groups that share the same spatial location are further grouped together in a location group (*e.g.*, a weather station).
 - Each group containing data should be named after the probe location or ID (e.g. probe_01).
-- Each dataset (data_k) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
+- Each dataset (temperature, wind_speed, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - The time coordinate dataset must be a dataset named `time`.
 - Each time coordinate dataset must follow the global time convention (see Time format).
 - Location of the probes must be defined as attributes following a spatial description convention.
@@ -219,6 +219,7 @@ Attributs | Type | Description
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group.
 - The spatial coordinate dataset (z in the example) must follow a spatial description convention for a one-dimensional dataset. The spatial coordinate can be fixed in time or change in time.
 - If geographic coordinates are used, a CRS must be included.
+- Each dataset (wind_speed, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
 - The coordinate arrays may be 1D, or time-dependent 1D, depending on the grid type (regular, curvilinear, moving).
 - In the following example, the array dimensions can be:
@@ -241,6 +242,7 @@ Attributs | Type | Description
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group. For example, `fire_arrival_time` and `rate_of_spread` share the same x, y, and time coordinates, so they are stored in the same group.
 - The spatial coordinate dataset (x, y in the example) must follow a spatial description convention for a two-dimensional dataset. The spatial coordinate can be fixed in time or change in time.
 - If geographic coordinates are used, a CRS must be included.
+- Each dataset (rate_of_spread, wind_u, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
 - The coordinate arrays may be 1D, 2D, or time-dependent 2D, depending on the grid type (regular, curvilinear, moving).
 - In the following example, the array dimensions can be:
@@ -254,7 +256,7 @@ Attributs | Type | Description
 
 ```
 /                                  (root)
-├── 2D_raster/                     (1D gridded spatial data + time)
+├── 2D_raster/                     (2D gridded spatial data + time)
 │    ├── wrfoutput_1               (group outputs from a WRF-SFIRE simulation for surface x-y plane)
 │    │    ├── time                 (time dataset)
 │    │    ├── x                    (x spatial coordinate)
@@ -274,6 +276,7 @@ Attributs | Type | Description
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group. For example, `wind_u` and `wind_v` share the same x, y, z, and time coordinates, so they are stored in the same group.
 - The spatial coordinate dataset (x, y, z in the example) must follow a spatial description convention for a three-dimensional dataset. The spatial coordinate can be fixed in time or change in time.
 - If geographic coordinates are used, a CRS must be included.
+- Each dataset (temperature, wind_u, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
 - The coordinate arrays may be 1D, 3D, or time-dependent 3D, depending on the grid type (regular, curvilinear, moving).
 - In the following example, the array dimensions can be:
@@ -285,7 +288,7 @@ Attributs | Type | Description
 
 ```
 /                            (root)
-├── 3D_raster/               (1D gridded spatial data + time)
+├── 3D_raster/               (3D gridded spatial data + time)
 │    ├── wrfoutput_1         (group outputs from a WRF-SFIRE simulation)
 │    │    ├── time           (time dataset)
 │    │    ├── x              (x spatial coordinate)
@@ -297,3 +300,21 @@ Attributs | Type | Description
 │    │    ├── temperature    (temperature output from WRF-SFIRE simulation)
 ```
 
+### Fuel models
+- Contains data from a Fuel Model (Anderson/Albini, Scott and Burgan).
+- Datasets must be grouped per fuel model. Fuel model extensions (new properties for an existing fuel model) must be added separately and be named with the suffix `_extension_*`.
+- Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- The number of fuel categories contained in a fuel model must be specified by the attribute `nb_fuel_cat` of the fuel model group.
+- In the following example, the array dimensions must share one dimension size defined by the attribute `nb_fuel_cat` of `Anderson13` and `WUDAPT10` groups. The size of the first dimension of all category-dependent datasets must match `nb_fuel_cat`. For example the dataset for a fuel parameter can have the shape ($N$) or ($N$, $N_2$) if $N$ is the number of fuel categories (`nb_fuel_cat`) and $N_2$ a parameter specific dimension (*e.g.*, size classes, depth layers).
+
+```
+/                                           (root)
+├── fuel_models/                            (fuel model classification or parameters)
+│    ├── Anderson13                         (group parameters for the Anderson Fuel Model)
+│    │    ├── fuel_load_dry_total           (total dry fuel load)
+│    │    ├── fuel_density                  (fuel density)
+│    │    ├── fuel_moisture_extinction      (moisture of extinction)
+│    ├── WUDAPT10                           (group parameters for the WUDAPT Fuel Model)
+│    │    ├── building_length_side          (building side length)
+│    │    ├── building_length_separation    (building separation length)
+```
