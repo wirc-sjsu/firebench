@@ -16,6 +16,7 @@ Each .h5 file must adhere to the following structure:
 ├── 1D_raster/      (1D gridded spatial data + time)
 ├── 2D_raster/      (2D gridded spatial data + time)
 ├── 3D_raster/      (3D gridded spatial data + time)
+├── unstructured/   (unstructured spatial data + time)
 ├── polygons/       (geopolygones)
 ├── fuel_models/    (fuel model classification or parameters)
 ├── metadata/       (high-level metadata and descriptions)
@@ -300,10 +301,43 @@ Attributs | Type | Description
 │    │    ├── temperature    (temperature output from WRF-SFIRE simulation)
 ```
 
+### Unstructured
+- Contains data with unstructured spatial coordinates (*i.e* not associated with a regular grid). It includes trajectories, buildings, and unstructured meshes.
+- Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group.
+- All spatial coordinates must follow the Spatial Information Convention, including CRS where applicable.
+- Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- Each dataset (temperature, wind_u, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
+- The following example proposes a structure for a particle trajectories dataset, an output of a model using an unstructured mesh, and a dataset containing building positions and information about buildings.
+
+```
+/                                           (root)
+├── unstructured/                           (unstructured spatial data + time)
+│    ├── ptcl_trajectories_1                (group data from a particle trajectory model)
+│    │    ├── time
+│    │    ├── x
+│    │    ├── y
+│    │    ├── z
+│    ├── unstructured_mesh_1                (group data from a model using a unstructured mesh)
+│    │    ├── time
+│    │    ├── position_nodes                (Nnodes x3)
+│    │    ├── connectivity                  (Nelements x Nvertices)
+│    │    ├── temperature
+│    │    ├── wind_u
+│    │    ├── wind_v
+│    │    ├── wind_w
+│    ├── buildings_info_1                   (group data from a building dataset)
+│    │    ├── position_structure
+│    │    ├── roof_type
+```
+
+**Note**: This part of the standard is in an early stage and intentionally allows significant flexibility to accommodate diverse unstructured data types. The structure and required fields may evolve in future versions based on user feedback and practical experience.
+
 ### Fuel models
 - Contains data from a Fuel Model (Anderson/Albini, Scott and Burgan).
 - Datasets must be grouped per fuel model. Fuel model extensions (new properties for an existing fuel model) must be added separately and be named with the suffix `_extension_*`.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- Each fuel property (fuel load, fuel height, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
+- Each fuel property dataset must contain the attributes `long_name` describing the property, `unit`, and `type` describing the variable type in the numpy array (*e.g.* float64, object, int32). String variables will be using the object type.
 - The number of fuel categories contained in a fuel model must be specified by the attribute `nb_fuel_cat` of the fuel model group.
 - In the following example, the array dimensions must share one dimension size defined by the attribute `nb_fuel_cat` of `Anderson13` and `WUDAPT10` groups. The size of the first dimension of all category-dependent datasets must match `nb_fuel_cat`. For example the dataset for a fuel parameter can have the shape ($N$) or ($N$, $N_2$) if $N$ is the number of fuel categories (`nb_fuel_cat`) and $N_2$ a parameter specific dimension (*e.g.*, size classes, depth layers).
 
