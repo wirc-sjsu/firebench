@@ -19,11 +19,11 @@ Each .h5 file must adhere to the following structure:
 ├── unstructured/   (unstructured spatial data + time)
 ├── polygons/       (geopolygones)
 ├── fuel_models/    (fuel model classification or parameters)
-├── metadata/       (high-level metadata and descriptions)
 ├── miscellaneous/  (non-standard or project-specific data)
 ```
 
 All groups are optional unless otherwise specified in a benchmark case specification.
+The `/metadata` group is not defined in this version of the standard, as all metadata should normally be stored as attributes of the file, existing groups, or datasets. If additional metadata needs to be stored as dedicated datasets, the `/metadata` group is reserved for this purpose. Its structure and required fields may evolve in future versions based on user feedback and practical experience.
 
 ## Time format
 
@@ -181,6 +181,11 @@ Attributs | Type | Description
 `model_name` | str | Name of the model producing the data
 `model_version` | str | Version of the model
 `description` | str | Short description of the dataset
+`project_name` | str | Short description of the project
+`license` | str | License or terms of use
+`data_source` | str | Source of the data if applicable
+
+No `/metadata` group is required; prefer file-level attributes. The `/metadata` namespace is reserved for future versions.
 
 ## Group definition
 
@@ -328,6 +333,7 @@ Attributs | Type | Description
 ```
 
 **Note**: This part of the standard is in an early stage and intentionally allows significant flexibility to accommodate diverse unstructured data types. The structure and required fields may evolve in future versions based on user feedback and practical experience.
+
 
 ### Polygon
 - Contains data stored as polygons with an explicit coordinate reference system (CRS), such as those derived from .kml or shapefiles.
