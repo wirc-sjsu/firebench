@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Dependency to matplotlib > 3.8
 
 ### Fix
-- Comma missing in one row of Anderson 2015 dataset.
+- Comma missing in two row of Anderson 2015 dataset.
 
 ## [0.6.1] - 2025 / 05 / 20
 ### Added
