@@ -195,7 +195,7 @@ Attributs | Type | Description
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
 - In the following example, the array dimensions can be:
     - time -> ($N_t$)
-    - data_k -> ($N_t$)
+    - data (temperature, wind_speed, *etc.*) -> ($N_t$)
 ```
 /                                    (root)
 ├── probes/                          (point-based time series)
@@ -220,17 +220,80 @@ Attributs | Type | Description
 - The spatial coordinate dataset (z in the example) must follow a spatial description convention for a one-dimensional dataset. The spatial coordinate can be fixed in time or change in time.
 - If geographic coordinates are used, a CRS must be included.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- The coordinate arrays may be 1D, or time-dependent 1D, depending on the grid type (regular, curvilinear, moving).
 - In the following example, the array dimensions can be:
     - time -> ($N_t$)
     - z -> ($N_z$) or ($N_t$, $N_z$) for time varying z coordinate
-    - data_k -> ($N_t$, $N_z$)
+    - data (wind_speed, wind_direction, *etc.*) -> ($N_t$, $N_z$)
 
 ```
 /                               (root)
 ├── 1D_raster/                  (1D gridded spatial data + time)
-│    ├── wind_profiler_1        (group all sensors from weather station 1)
+│    ├── wind_profiler_1        (group all data from the wind profiler)
 │    │    ├── time              (time dataset)
 │    │    ├── z                 (vertical spatial coordinate for profile)
 │    │    ├── wind_speed        (wind profiler data)
 │    │    ├── wind_direction    (wind profiler data)
 ```
+
+### 2D raster
+- Contains time series data from a dataset associated with two-dimensional spatial data. "2D raster" in this standard means any two spatial dimensions, whether horizontal, vertical, or arbitrary section, and that coordinate naming (x, y, z) will follow the Spatial Information Convention.
+- Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group. For example, `fire_arrival_time` and `rate_of_spread` share the same x, y, and time coordinates, so they are stored in the same group.
+- The spatial coordinate dataset (x, y in the example) must follow a spatial description convention for a two-dimensional dataset. The spatial coordinate can be fixed in time or change in time.
+- If geographic coordinates are used, a CRS must be included.
+- Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- The coordinate arrays may be 1D, 2D, or time-dependent 2D, depending on the grid type (regular, curvilinear, moving).
+- In the following example, the array dimensions can be:
+    - time -> ($N_t$)
+    - x of wrfoutput_1 group -> ($N_x$) or ($N_y$, $N_x$) or ($N_t$, $N_y$, $N_x$) or ($N_t$, $N_x$)
+    - y -> ($N_y$) or ($N_y$, $N_x$) or ($N_t$, $N_y$, $N_x$) or ($N_t$, $N_y$)
+    - data of wrfoutput_1 group(fire_arrival_time, *etc.*) -> ($N_t$, $N_y$, $N_x$)
+    - x of wrfoutput_cs_1 group -> ($N_x$) or ($N_z$, $N_x$) or ($N_t$, $N_z$, $N_x$) or ($N_t$, $N_x$)
+    - z -> ($N_z$) or ($N_z$, $N_x$) or ($N_t$, $N_z$, $N_x$) or ($N_t$, $N_z$)
+    - data of wrfoutput_cs_1 group(wind_u, *etc.*) -> ($N_t$, $N_z$, $N_x$)
+
+```
+/                                  (root)
+├── 2D_raster/                     (1D gridded spatial data + time)
+│    ├── wrfoutput_1               (group outputs from a WRF-SFIRE simulation for surface x-y plane)
+│    │    ├── time                 (time dataset)
+│    │    ├── x                    (x spatial coordinate)
+│    │    ├── y                    (y spatial coordinate)
+│    │    ├── fire_arrival_time    (fire arrival time output from WRF-SFIRE simulation)
+│    │    ├── rate_of_spread       (rate of spread output from WRF-SFIRE simulation)
+│    ├── wrfoutput_cs_1            (group outputs from a WRF-SFIRE simulation for a x-z cross section)
+│    │    ├── time                 (time dataset)
+│    │    ├── x                    (x spatial coordinate)
+│    │    ├── z                    (z spatial coordinate)
+│    │    ├── wind_u               (zonal wind output from WRF-SFIRE simulation)
+│    │    ├── wind_w               (vertical wind output from WRF-SFIRE simulation)
+```
+
+### 3D raster
+- Contains time series data from a dataset associated with three-dimensional spatial data.
+- Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group. For example, `wind_u` and `wind_v` share the same x, y, z, and time coordinates, so they are stored in the same group.
+- The spatial coordinate dataset (x, y, z in the example) must follow a spatial description convention for a three-dimensional dataset. The spatial coordinate can be fixed in time or change in time.
+- If geographic coordinates are used, a CRS must be included.
+- Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- The coordinate arrays may be 1D, 3D, or time-dependent 3D, depending on the grid type (regular, curvilinear, moving).
+- In the following example, the array dimensions can be:
+    - time -> ($N_t$)
+    - x -> ($N_x$) or ($N_z$, $N_y$, $N_x$) or ($N_t$, $N_z$, $N_y$, $N_x$) or ($N_t$, $N_x$)
+    - y -> ($N_y$) or ($N_z$, $N_y$, $N_x$) or ($N_t$, $N_z$, $N_y$, $N_x$) or ($N_t$, $N_y$)
+    - z -> ($N_z$) or ($N_z$, $N_y$, $N_x$) or ($N_t$, $N_z$, $N_y$, $N_x$) or ($N_t$, $N_z$)
+    - data (temperature, wind_u, *etc.*) -> ($N_t$, $N_z$, $N_y$, $N_x$)
+
+```
+/                            (root)
+├── 3D_raster/               (1D gridded spatial data + time)
+│    ├── wrfoutput_1         (group outputs from a WRF-SFIRE simulation)
+│    │    ├── time           (time dataset)
+│    │    ├── x              (x spatial coordinate)
+│    │    ├── y              (y spatial coordinate)
+│    │    ├── z              (z spatial coordinate)
+│    │    ├── wind_u         (U wind output from WRF-SFIRE simulation)
+│    │    ├── wind_v         (V wind output from WRF-SFIRE simulation)
+│    │    ├── wind_w         (W wind output from WRF-SFIRE simulation)
+│    │    ├── temperature    (temperature output from WRF-SFIRE simulation)
+```
+
