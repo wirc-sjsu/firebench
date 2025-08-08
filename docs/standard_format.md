@@ -306,7 +306,7 @@ No `/metadata` group is required; prefer file-level attributes. The `/metadata` 
 │    │    ├── temperature    (temperature output from WRF-SFIRE simulation)
 ```
 
-### Unstructured
+### unstructured
 - Contains data with unstructured spatial coordinates (*i.e* not associated with a regular grid). It includes trajectories, or unstructured meshes.
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group.
 - All spatial coordinates must follow the Spatial Information Convention, including CRS where applicable.
@@ -335,7 +335,7 @@ No `/metadata` group is required; prefer file-level attributes. The `/metadata` 
 **Note**: This part of the standard is in an early stage and intentionally allows significant flexibility to accommodate diverse unstructured data types. The structure and required fields may evolve in future versions based on user feedback and practical experience.
 
 
-### Polygon
+### polygons
 - Contains data stored as polygons with an explicit coordinate reference system (CRS), such as those derived from .kml or shapefiles.
 - All spatial coordinates must follow the Spatial Information Convention, including a required `crs` attribute at the group level. Optional attributes or datasets for holes/multipolygons can be added.
 - Each polygon is stored as a separate dataset within a group. This dataset contains the polygon geometry (list of vertices) and has its own attributes for time, CRS, and other metadata. Multipolygons (island, holes) can be stored in the same dataset as long as they share the same attributes.
@@ -359,7 +359,7 @@ No `/metadata` group is required; prefer file-level attributes. The `/metadata` 
 **Note**: This part of the standard is in an early stage and intentionally allows significant flexibility to accommodate diverse geopolygons data types. The structure and required fields may evolve in future versions based on user feedback and practical experience.
 
 
-### Fuel models
+### fuel_models
 - Contains data from a Fuel Model (Anderson/Albini, Scott and Burgan).
 - Datasets must be grouped per fuel model. Fuel model extensions (new properties for an existing fuel model) must be added separately and be named with the suffix `_extension_*`.
 - Each fuel property (fuel load, fuel height, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
@@ -379,3 +379,14 @@ No `/metadata` group is required; prefer file-level attributes. The `/metadata` 
 │    │    ├── building_length_side          (building side length)
 │    │    ├── building_length_separation    (building separation length)
 ```
+
+### miscellaneous
+
+- The `/miscellaneous` group is intended for non-standard, project-specific, or experimental datasets that do not yet fall under any defined category of this standard.
+- All datasets in `/miscellaneous` must include clear metadata:
+    - description attribute explaining the purpose and origin of the data.
+    - units attribute (Pint-compatible) if the dataset contains physical quantities.
+    - Spatial and temporal metadata following the relevant conventions in this standard, if applicable.
+- Naming of datasets should remain descriptive and avoid collisions with reserved names in the standard.
+- Use of `/miscellaneous` should be temporary whenever possible; data types that become common should be proposed for inclusion in future versions of the standard.
+- The structure of `/miscellaneous` is unconstrained, but good practice is to group related datasets together to improve clarity.
