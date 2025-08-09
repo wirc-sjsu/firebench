@@ -8,7 +8,12 @@ import numpy as np
 
 # Replace 'your_module' with the actual module name that defines _resolve_tz
 from firebench.tools.standard_file_utils import _resolve_tz
-from firebench.tools import datetime_to_iso8601, current_datetime_iso8601, read_quantity_from_fb_dataset, get_firebench_data_directory
+from firebench.tools import (
+    datetime_to_iso8601,
+    current_datetime_iso8601,
+    read_quantity_from_fb_dataset,
+    get_firebench_data_directory,
+)
 
 
 # _resolve_tz
@@ -93,6 +98,7 @@ def test_naive_dt_without_tz_raises_value_error():
 
 # current_datetime_iso8601
 # ------------------------
+
 
 class FixedOffsetTZ(tzinfo):
     """UTC+03:00 fixed offset."""

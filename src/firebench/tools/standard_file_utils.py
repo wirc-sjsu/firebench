@@ -153,7 +153,7 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
     - The function reads the **entire dataset** into memory; for very large datasets,
     consider reading subsets instead.
     - Compliant with FireBench I/O standard >= 0.1.
-    """
+    """  # pylint: disable=line-too-long
     ds = file_object[dataset_path]
 
     units = ds.attrs.get("units", None)
@@ -161,5 +161,5 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
         raise ValueError(
             f"Dataset '{dataset_path}' is missing a valid `units` attribute required by FireBench I/O standard."
         )
-    
+
     return ureg.Quantity(ds[()], ds.attrs["units"])
