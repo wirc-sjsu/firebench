@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `jaccard_polygon`: Compute the Intersection over Union (IoU), i.e. Jaccard Index, between two fire perimeters described as geospatial polygons.
 - `sorensen_dice_binary`: Compute the Sorensen-Dice index between two fire perimeters described as 2D binary masks.
 - `sorensen_dice_polygon`: Compute the Sorensen-Dice index between two fire perimeters described as geospatial polygons.
+- `read_quantity_from_fb_dataset`: Read a dataset from an HDF5 file, group, or dataset node and return it as a Pint Quantity according to the FireBench I/O standard.
 - `rmse`: Compute the Root Mean Square Error (RMSE) between two arrays, ignoring NaNs.
 - `nmse_range`: Compute the Normalized Mean Square Error (NMSE) between two arrays, using the range of the reference signal as normalization.
 - `nmse_power`: Compute the Normalized Mean Square Error (NMSE) between two arrays, using the product of their mean values as normalization.

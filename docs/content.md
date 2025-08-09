@@ -61,6 +61,7 @@ Non-exhaustive list of high-level tools available. For more information about to
 
 - `current_datetime_iso8601`: Get the current datetime as an ISO 8601 formatted string (YYYY-MM-DDTHH:MM[:SS]±HH:MM).
 - `datetime_to_iso8601`: Convert a given datetime to an ISO 8601 formatted string (YYYY-MM-DDTHH:MM[:SS]±HH:MM).
+- `read_quantity_from_fb_dataset`: Read a dataset from an HDF5 file, group, or dataset node and return it as a Pint Quantity according to the FireBench I/O standard.
 
 ### Sub-models utils
 

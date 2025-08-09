@@ -1,12 +1,14 @@
 import re
+import os
 import pytest
 from datetime import tzinfo, timezone, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-import logging
+import h5py
+import numpy as np
 
 # Replace 'your_module' with the actual module name that defines _resolve_tz
 from firebench.tools.standard_file_utils import _resolve_tz
-from firebench.tools import datetime_to_iso8601, current_datetime_iso8601
+from firebench.tools import datetime_to_iso8601, current_datetime_iso8601, read_quantity_from_fb_dataset, get_firebench_data_directory
 
 
 # _resolve_tz
@@ -92,8 +94,6 @@ def test_naive_dt_without_tz_raises_value_error():
 # current_datetime_iso8601
 # ------------------------
 
-
-# --- Helpers to make deterministic "now" ---
 class FixedOffsetTZ(tzinfo):
     """UTC+03:00 fixed offset."""
 
@@ -118,7 +118,6 @@ class FakeDateTime:
         return DummyNow()
 
 
-# --- Tests ---
 def test_current_datetime_iso8601_local_with_seconds(monkeypatch):
     import firebench.tools.standard_file_utils as std_utils
 
@@ -155,3 +154,32 @@ def test_current_datetime_iso8601_with_zoneinfo_without_seconds(monkeypatch):
     # Paris in January is UTC+01:00 → from +03:00 local, subtract 2 hours
     result = current_datetime_iso8601(include_seconds=False, tz=ZoneInfo("Europe/Paris"))
     assert result == "2030-01-02T01:04+01:00"
+
+
+# read_quantity_from_fb_dataset
+# -----------------------------
+def test_read_quantity_from_fb_dataset():
+    # Assuming these files exist in the package
+    h5_file_path = os.path.join(get_firebench_data_directory(), "test", "file_test_1.h5")
+
+    # Ensure the files exist
+    assert os.path.isfile(h5_file_path), f"Missing h5 file: {h5_file_path}"
+
+    with h5py.File(h5_file_path, mode="r") as f:
+        q = read_quantity_from_fb_dataset("valid_data", f)
+    assert hasattr(q, "magnitude") and hasattr(q, "units")
+    np.testing.assert_allclose(q.magnitude, np.array([1.0, 2.0, 3.0]))
+    assert str(q.units) == "meter"
+
+    with h5py.File(h5_file_path, "r") as f:
+        q = read_quantity_from_fb_dataset("valid_data_2d", f)
+    np.testing.assert_allclose(q.magnitude, np.array([[1, 2], [3, 4]], dtype=float))
+    assert str(q.units) == "second"
+
+    with h5py.File(h5_file_path, "r") as f:
+        with pytest.raises(ValueError, match="missing a valid `units` attribute"):
+            read_quantity_from_fb_dataset("missing_units", f)
+
+    with h5py.File(h5_file_path, "r") as f:
+        with pytest.raises(ValueError):
+            read_quantity_from_fb_dataset("non_string_units", f)
