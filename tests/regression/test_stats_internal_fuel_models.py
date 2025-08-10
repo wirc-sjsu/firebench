@@ -1,5 +1,5 @@
-from firebench.tools import calculate_sha256
 from firebench.stats import anderson_2015_stats
+
 
 def test_anderson_2015_stats_hash_match(tmp_path):
     # unit_wind="m/s", unit_ros="m/s", dpi=150
