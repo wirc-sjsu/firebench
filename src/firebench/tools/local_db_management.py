@@ -3,7 +3,7 @@ import os
 import shutil
 
 from .logging_config import logger
-from .utils import _calculate_sha256
+from .utils import calculate_sha256
 
 
 def _check_source_file_exists(file_path: str):
@@ -162,7 +162,7 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
     _handle_existing_destination_file(destination_file_path, overwrite)
 
     # get hash of file for traceability
-    hash_file = _calculate_sha256(file_path)
+    hash_file = calculate_sha256(file_path)
 
     # Copy file to workflow record directory
     shutil.copy2(file_path, destination_file_path)

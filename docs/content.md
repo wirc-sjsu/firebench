@@ -1,4 +1,4 @@
-# 7. Content of the package
+# 9. Content of the package
 
 This page lists fire sub-models included in the package, the datasets and the tools.
 
@@ -35,6 +35,12 @@ This page lists fire sub-models included in the package, the datasets and the to
 
 Non-exhaustive list of high-level tools available. For more information about tools, please refer to the [API Reference](./api/index.rst).
 
+### 0d metrics
+- `bias`: Compute the bias between two arrays, ignoring NaNs.
+- `nmse_power`: Compute the Normalized Mean Square Error (NMSE) between two arrays, using the product of their mean values as normalization.
+- `nmse_range`: Compute the Normalized Mean Square Error (NMSE) between two arrays, using the range of the reference signal as normalization.
+- `rmse`: Compute the Root Mean Square Error (RMSE) between two arrays, ignoring NaNs.
+
 ### Perimeters metrics
 
 - `jaccard_binary`: Jaccard index (Intersection over Union) for binary matrix.
@@ -46,8 +52,20 @@ Non-exhaustive list of high-level tools available. For more information about to
 
 - `array_to_geopolygons`: Convert an array field into geospatial polygons at a given iso-value, preserving holes.
 
+### Sensors confidence interval
+
+- `CS505_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS505 Fuel Moisture Sensor.
+- `CS506_cl`: Compute the half-width of the confidence interval for measurement error of the Campbell Scientific CS506 Fuel Moisture Sensor.
+
+### Standard file format utils
+
+- `current_datetime_iso8601`: Get the current datetime as an ISO 8601 formatted string (YYYY-MM-DDTHH:MM[:SS]±HH:MM).
+- `datetime_to_iso8601`: Convert a given datetime to an ISO 8601 formatted string (YYYY-MM-DDTHH:MM[:SS]±HH:MM).
+- `read_quantity_from_fb_dataset`: Read a dataset from an HDF5 file, group, or dataset node and return it as a Pint Quantity according to the FireBench I/O standard.
+
 ### Sub-models utils
 
+- `anderson_2015_stats`: Plot statistics from the Anderson 2015 dataset.
 - `apply_wind_reduction_factor`: Calculate the wind speed at a different height by applying a wind reduction factor.
 - `check_data_quality_ros_model`: Check and process the input data quality for a Rate of Spread (ROS) model.
 - `check_input_completeness`: Check the completeness of the input data against the metadata dictionary.

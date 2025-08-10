@@ -1,10 +1,10 @@
-import numpy as np
+from typing import Union
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from matplotlib.path import Path
-from shapely.geometry import Polygon
+import numpy as np
 from scipy.ndimage import gaussian_filter
-from typing import List, Union
+from shapely.geometry import Polygon
 
 
 def array_to_geopolygons(
@@ -40,7 +40,7 @@ def array_to_geopolygons(
     geopandas.GeoDataFrame
         GeoDataFrame with valid polygons (including holes) representing the iso-contour.
     """  # pylint: disable=line-too-long
-    if not (lon.shape == lat.shape == field.shape):
+    if not lon.shape == lat.shape == field.shape:
         raise ValueError("Input arrays (lon, lat, field) must have the same shape.")
 
     if smooth_sigma > 0:

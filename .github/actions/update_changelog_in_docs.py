@@ -17,7 +17,7 @@ def update_changelog_in_docs():
         changelog_content = root_file.read()
 
     # Front matter for the docs/changelog.md file
-    front_matter = """# 10. """
+    front_matter = """# 11. """
 
     # Combine front matter and changelog content
     full_changelog_content = front_matter + changelog_content[2:]

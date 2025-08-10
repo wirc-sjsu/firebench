@@ -42,11 +42,11 @@ Accepted benchmarks will be included in the **FireBench Annual Report**, present
 
 ### 📄 How to Submit a Benchmark
 
-1. Review the [Benchmark Proposal Template](benchmarks/index.md) for formatting guidelines.
+1. Review the [Benchmark Proposal Template](benchmarks_information/index.md) for formatting guidelines.
 2. Fill in your submission using the [Google Doc Template](https://docs.google.com/document/d/19RXwEnl81XxUfCWXOCUENFV-ZB4iz16faCDsJatddc8/edit?usp=sharing).
 3. View ongoing submissions in the [List of Submitted Benchmarks](https://docs.google.com/spreadsheets/d/1Ee2G6FgD-c-5fu-oPcsI3ApyQnPQvxZJwKqVOYqtj28/edit?usp=sharing).
 
-💡 If you're interested in **running** a benchmark (using one or more fire models), check out the [Benchmark Execution Guidelines](benchmarks/index.md) to learn how to evaluate and report results.
+💡 If you're interested in **running** a benchmark (using one or more fire models), check out the [Benchmark Execution Guidelines](benchmarks_information/index.md) to learn how to evaluate and report results.
 
 We’re excited to see how the community will help shape the future of fire modeling!
 
@@ -119,8 +119,10 @@ We welcome contributions to FireBench! For more information on how to contribute
 
 dataset_experiments/index.md
 fire_models_info/index.md
+benchmarks_information/index.md
+standard_format.md
+metrics/index.md
 benchmarks/index.md
-workflows_0D_models/index.md
 tutorials/index.md
 namespace.md
 content.md
