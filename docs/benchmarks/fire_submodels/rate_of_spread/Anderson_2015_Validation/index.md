@@ -16,9 +16,17 @@ The accuracy is evaluated using RMSE, Pearson correlation and NMSE.
 
 ## Data description
 ### Input
-- The rate of spread observations are stored in the Table A1 from the [Anderson 2015 dataset](../../../../dataset_experiments/Anderson_2015_dataset.md).
-- The data required to run the rate of spread model is also contained in the Table A1 from the [Anderson 2015 dataset](../../../../dataset_experiments/Anderson_2015_dataset.md)
-- If some required inputs are not available in the provided dataset, it is allowed to add complementary data from the [Scott and Burgan 40 fuel models](../../../../fire_models_info/21_fuel_models/03_SB40.md). If the required data is not present in Scott and Burgan fuel model, it is allowed to use [Anderson](../../../../fire_models_info/21_fuel_models/02_Anderson.md) fuel model.
+- The data for this benchmark is the compressed archive `firebench/data/benchmarks/fire_submodels/ROS_validation_using_Anderson_2015_dataset.tar.zst`.
+This archive contains:
+    - `data_ROS_validation_using_Anderson_2015.h5`: main data file following the FireBench I/O standard 0.1. *sha256: 18345579aa94da579fd0bb4131fdaaa26fa62d7bebe02816988820f7c7bb8966*
+    - `plot_and_metrics.py`: Script to calculate metrics and create plots from standard output files from the benchmark and model's output. *sha256: d729b63846b14d6a201486d02e6fa79d39ab2f74603e49196da4c8500d5c7f32* 
+    - `generate_data_benchmark.py`: Script to generate `data_ROS_validation_using_Anderson_2015.h5` from [Anderson 2015 dataset](../../../../dataset_experiments/Anderson_2015_dataset.md). If some required inputs are not available in the provided dataset, it is allowed to add complementary data from the [Scott and Burgan 40 fuel models](../../../../fire_models_info/21_fuel_models/03_SB40.md). If the required data is not present in Scott and Burgan fuel model, it is allowed to use [Anderson](../../../../fire_models_info/21_fuel_models/02_Anderson.md) fuel model. *sha256: 139be6db528a2475f943d256237643bd29d043d7223717782d182f9cf6d12b71*
+    - `run_rothermel_example.py`: Example script to calculate the rate of spread for Anderson 2015 dataset using the `Rothermel_SFIRE` rate of spread model and save the date in a file compliant with the FireBench I/O standard 0.1. *sha256: 89a1715194e2e152fd40aa521409903993cb2ddfdfb4a805c1dae13cd17bdca4*
+
+`ROS_validation_using_Anderson_2015_dataset.tar.zst` *sha256: 8b4d736e3c6d9904e13c98d7bf3f388814759490f0ebcceec949499645283809*
+
+To uncompresse the archive, use `tar --zstd -xf ROS_validation_using_Anderson_2015_dataset.tar.zst`.
+If the archive file does not appear in the `data` directory, use `git lfs pull`.
 
 All of the data mentionned above is available within the package `FireBench`.
 
@@ -49,7 +57,7 @@ The following table summarize the results for different rate of spread models, a
 Model                  | Benchmark status  | RMSE [m/s]     | NMSE [-]      | Pearson correlation [-]
 ---------------------- | ----------------- | -------- | --------- | -------------------
 Balbi_2022        | ![status](../../../../_static/static_badges/Submitted-blue.svg) | 0.67 | 0.56 | 0.53
-Rothermel_SFIRE        | ![status](../../../../_static/static_badges/Submitted-blue.svg) | 1.40 | 1.17 | 0.43
+Rothermel_SFIRE        | ![status](../../../../_static/static_badges/Validated-green.svg) | 1.45 | 1.21 | 0.48
 
 More information about benchmark results:
 ```{toctree}

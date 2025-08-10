@@ -25,9 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Documentation
 - Updated developer documentation
 - Refactoring of Benchmarks page. Benchmarks are now sorted by model context instead of metric context.
-- Improve Anderson 2015 Validation benchmark document.
 - Tags have a colorful badge.
 - Add documentation for FireBench standard file format version 0.1.
+
+### Benchmarks
+- Improve Anderson 2015 Validation benchmark document.
+- Refactoring of `ROS validation using Anderson 2015 dataset` to use the FireBench I/O standard.
 
 ### Miscellaneous
 - Support Python 3.13
