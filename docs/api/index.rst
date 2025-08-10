@@ -1,4 +1,4 @@
-13. API Reference
+15. API Reference
 =================
 
 .. toctree::
@@ -6,4 +6,6 @@
 
    ros_models.rst
    tools.rst
+   metrics.rst
+   stats.rst
    wind_interpolation.rst

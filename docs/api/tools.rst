@@ -31,6 +31,11 @@ firebench.tools
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: firebench.tools.raster_to_perimeters
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: firebench.tools.read_data
    :members:
    :undoc-members:

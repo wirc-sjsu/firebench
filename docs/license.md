@@ -1,4 +1,4 @@
-# 12. Lience 
+# 14. Licence 
 
                                     Apache License
                             Version 2.0, January 2004
@@ -188,7 +188,7 @@
         same "printed page" as the copyright notice for easier
         identification within third-party archives.
 
-    Copyright 2024 Wildfire Interdisciplinary Research Center @ SJSU
+    Copyright 2024-2025 Wildfire Interdisciplinary Research Center @ SJSU
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

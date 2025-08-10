@@ -2,6 +2,7 @@ import pytest
 from firebench.ros_models import RateOfSpreadModel
 from firebench.tools import ParameterType
 
+
 # Subclass for testing purposes
 class TestRateOfSpreadModel(RateOfSpreadModel):
     @staticmethod

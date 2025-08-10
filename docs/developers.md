@@ -1,4 +1,4 @@
-# 9. Developer's Guide
+# 11. Developer's Guide
 
 ## Running Tests
 
@@ -7,7 +7,7 @@ To run tests, ensure you are at the root of the project directory.
 ### Install Dependencies
 
 ```bash
-pip install ".[dev]"
+pip install -e ".[dev]"
 ```
 
 ### Run Tests
