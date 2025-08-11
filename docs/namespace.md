@@ -18,10 +18,16 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `CANOPY_HEIGHT_BOTTOM`: Canopy height bottom [m]
 - `CANOPY_HEIGHT_TOP`: Canopy height top [m]
 - `DEGREE_OF_CURING`: Degree of curing [%]
+- `DROUGHT_CODE_INITIAL`: Drought code initial [-]
 - `DROUGHT_INDEX`: Drought index [-]
+- `DUFF_MOISTURE_CODE_INITIAL`: Drought moisture code intial [-]
+- `ELEVATION`: Elevation [m]
+- `FINE_FUEL_MOISTURE_CODE_INITIAL`: Fine fuel moisture code initial [%]
 - `FUEL_CLASS`: Fuel class (int)
 - `FUEL_CHAPARRAL_FLAG`: Fuel chaparral flag (int)
+- `FUEL_CONIFER_CONTENT`: Fuel conifer content [%]
 - `FUEL_COVER`: Fuel cover [%]
+- `FUEL_DEAD_FIR_CONTENT`: Fuel daed fir content [%]
 - `FUEL_DENSITY`: Fuel density [kg m-3]
 - `FUEL_DENSITY_BULK`: Fuel bulk density [kg m-3]
 - `FUEL_DENSITY_DEAD`: Dead fuel density [kg m-3]
@@ -31,6 +37,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_FRACTION_CONSUMED_FLAME_ZONE`: Fuel fraction consumed flame zone [-]
 - `FUEL_GRASSLAND_FLAG`: Fuel grassland flag (int)
 - `FUEL_GRASSLAND_STATE_FLAG`: Fuel grassland state flag (int)
+- `FUEL_HARDWOOD_CONTENT`: Fuel hardwood content [%]
 - `FUEL_HAZARD_SCORE_SURFACE_FUEL` : Fuel hazard score surface fuel [-]
 - `FUEL_HAZARD_SCORE_NEAR_SURFACE_FUEL` : Fuel hazard score near surface fuel [-]
 - `FUEL_HEAT_CONTENT`: Fuel heat content [J kg-1]
@@ -75,12 +82,20 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_WIND_HEIGHT`: Fuel wind height [m]
 - `FUEL_WIND_REDUCTION_FACTOR`: Fuel wind reduction factor [-]
 - `IGNITION_LENGTH`: Ignition length [m]
+- `INITIAL_SPREAD_INDEX`: Initial spread index [-]
+- `JULIAN_DATE`: Julian date (int)
+- `LATITUDE`: Latitude [deg]
+- `LONGITUDE`: Longitude [deg]
 - `LENGTH`: Length [m]
+- `MONTH`: Month (int)
 - `PRECIPITATION`: Precipitation [mm]
 - `TIME_SINCE_RAIN`: Time since rain [days] 
 - `RATE_OF_SPREAD`: Rate of spread [m s-1]
-- `RELATIVE_HUMIDITY`: Relative Humidity [m s-1]
+- `RELATIVE_HUMIDITY`: Relative humidity [m s-1]
 - `SLOPE_ANGLE`: Slope angle [deg]
+- `STAND_HEIGHT`: Slope angle [m]
+- `STAND_DENSITY`: Stand density [stems/ha]
 - `TEMPERATURE`: Temperature [K]
 - `TIME`: Time [s]
 - `WIND_SPEED`: Wind [m s-1]
+- `WIND_DIRECTION`: Wind direction [deg]
