@@ -117,3 +117,4 @@ def anderson_2015_stats(
         plt.show()  # pragma: no cover
     else:
         fig.savefig(output_filename, dpi=dpi)
+    return fig
