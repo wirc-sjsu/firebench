@@ -200,6 +200,7 @@ The possible units fields are the following:
 - Location of the probes must be defined as attributes following a spatial description convention.
 - If geographic coordinates are used, a CRS must be included.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- If no data value or fill value is used, an attribute `_FillValue` must be defined at the dataset level.
 - In the following example, the array dimensions can be:
     - time -> ($N_t$)
     - data (temperature, wind_speed, *etc.*) -> ($N_t$)
@@ -228,6 +229,7 @@ The possible units fields are the following:
 - If geographic coordinates are used, a CRS must be included.
 - Each dataset (wind_speed, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- If no data value or fill value is used, an attribute `_FillValue` must be defined at the dataset level.
 - The coordinate arrays may be 1D, or time-dependent 1D, depending on the grid type (regular, curvilinear, moving).
 - In the following example, the array dimensions can be:
     - time -> ($N_t$)
@@ -251,6 +253,7 @@ The possible units fields are the following:
 - If geographic coordinates are used, a CRS must be included.
 - Each dataset (rate_of_spread, wind_u, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- If no data value or fill value is used, an attribute `_FillValue` must be defined at the dataset level.
 - The coordinate arrays may be 1D, 2D, or time-dependent 2D, depending on the grid type (regular, curvilinear, moving).
 - In the following example, the array dimensions can be:
     - time -> ($N_t$)
@@ -285,6 +288,7 @@ The possible units fields are the following:
 - If geographic coordinates are used, a CRS must be included.
 - Each dataset (temperature, wind_u, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- If no data value or fill value is used, an attribute `_FillValue` must be defined at the dataset level.
 - The coordinate arrays may be 1D, 3D, or time-dependent 3D, depending on the grid type (regular, curvilinear, moving).
 - In the following example, the array dimensions can be:
     - time -> ($N_t$)
@@ -312,6 +316,7 @@ The possible units fields are the following:
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group.
 - All spatial coordinates must follow the Spatial Information Convention, including CRS where applicable.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- If no data value or fill value is used, an attribute `_FillValue` must be defined at the dataset level.
 - Each dataset (temperature, wind_u, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - The following example proposes a structure for a particle trajectories dataset, an output of a model using an unstructured mesh, and a dataset containing building positions and information about buildings.
 
@@ -343,6 +348,7 @@ The possible units fields are the following:
 - Polygons that have a specific time stamp must contain an attribute `time` following the time format convention (each polygon dataset has its own time attribute).
 - Per-polygon attributes (e.g., building type, perimeter source) should be stored as attributes at the lowest common level. Group attributes are considered common to all datasets contained in the group. If information is specific to a polygon, it should be stored as a dataset attribute.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- If no data value or fill value is used, an attribute `_FillValue` must be defined at the dataset level.
 - Each dataset (fire perimeter, buildings, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - Polygons are stored as (Nvertices, 2) or (Nvertices, 3) arrays following a Spatial Information Convention.
 
@@ -366,6 +372,7 @@ The possible units fields are the following:
 - Each fuel property (fuel load, fuel height, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint library](https://pint.readthedocs.io/en/stable/) terminology.
 - Each fuel property dataset must contain the attributes `long_name` describing the property, `unit`, and `type` describing the variable type in the numpy array (*e.g.* float64, object, int32). String variables will be using the object type.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- If no data value or fill value is used, an attribute `_FillValue` must be defined at the dataset level.
 - The number of fuel categories contained in a fuel model must be specified by the attribute `nb_fuel_cat` of the fuel model group.
 - In the following example, the array dimensions must share one dimension size defined by the attribute `nb_fuel_cat` of `Anderson13` and `WUDAPT10` groups. The size of the first dimension of all category-dependent datasets must match `nb_fuel_cat`. For example the dataset for a fuel parameter can have the shape ($N$) or ($N$, $N_2$) if $N$ is the number of fuel categories (`nb_fuel_cat`) and $N_2$ a parameter specific dimension (*e.g.*, size classes, depth layers).
 
@@ -391,3 +398,5 @@ The possible units fields are the following:
 - Naming of datasets should remain descriptive and avoid collisions with reserved names in the standard.
 - Use of `/miscellaneous` should be temporary whenever possible; data types that become common should be proposed for inclusion in future versions of the standard.
 - The structure of `/miscellaneous` is unconstrained, but good practice is to group related datasets together to improve clarity.
+- Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
+- If no data value or fill value is used, an attribute `_FillValue` must be defined at the dataset level.
