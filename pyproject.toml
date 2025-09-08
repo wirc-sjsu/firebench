@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "firebench"
-version = "0.7.0"
+version = "0.8.0a"
 authors = [
     {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
 ]
@@ -20,6 +20,8 @@ dependencies = [
     "h5py < 4.0",
     "geopandas < 2.0",
     "matplotlib > 3.8",
+    "rasterio < 2.0",
+    "pyproj < 4.0",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
