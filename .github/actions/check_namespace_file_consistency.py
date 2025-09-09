@@ -17,10 +17,12 @@ from pathlib import Path
 NAMESPACE_DOCS = Path("docs/namespace.md")
 _MD_NAME_RE = re.compile(r"-\s*`([^`]+)`")
 
+
 def get_md_variables(md_path: Path) -> list[str]:
     """Return the list of variable names listed in the Markdown spec."""
     text = md_path.read_text(encoding="utf-8")
     return _MD_NAME_RE.findall(text)
+
 
 def get_svn_variables() -> list[str]:
     """Return the list of variable names from `firebench.svn`.
@@ -42,13 +44,14 @@ def get_svn_variables() -> list[str]:
     names = [n for n in dir(svn) if n.isupper() and not n.startswith("_")]
     return sorted(set(names))
 
+
 def check_consistency() -> None:
     md_vars = set(get_md_variables(NAMESPACE_DOCS))
     svn_vars = set(get_svn_variables())
 
     only_in_docs = sorted(md_vars - svn_vars)
-    only_in_svn  = sorted(svn_vars - md_vars)
-    common       = sorted(md_vars & svn_vars)
+    only_in_svn = sorted(svn_vars - md_vars)
+    common = sorted(md_vars & svn_vars)
 
     print("== Namespace Consistency Check ==")
     print(f"Common: {len(common)}")
@@ -58,6 +61,7 @@ def check_consistency() -> None:
     print(f"Only in svn (missing from docs): {len(only_in_svn)}")
     for name in only_in_svn:
         print(f"  - {name}")
+
 
 if __name__ == "__main__":
     check_consistency()
