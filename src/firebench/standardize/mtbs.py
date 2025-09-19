@@ -114,7 +114,7 @@ def convert_mtbs_geotiff(
 
         g = h5.create_group(group_name)
         g.attrs["data_source"] = f"MTBS {path}"
-
+        g.attrs["crs"] = f"EPSG:{epsg_code}"
         # TODO: add some useful metadata from _metadata.xml (fire_ignition_time, pre_fire_image_date, post_fire_image_date)
 
         # Lat/Lon as 2-D arrays
@@ -125,6 +125,5 @@ def convert_mtbs_geotiff(
         dlat.attrs["units"] = "degrees"
 
         ddata = g.create_dataset(svn.FIRE_BURN_SEVERITY.value, data=severity_raw["data"], dtype=np.uint8)
-        ddata.attrs["crs"] = f"EPSG:{epsg_code}"
         ddata.attrs["units"] = "dimensionless"
         ddata.attrs["_FillValue"] = 0
