@@ -12,6 +12,18 @@ from ..tools import current_datetime_iso8601, datetime_to_iso8601
 from .tools import VERSION_STD, check_std_version
 from ..tools.logging_config import logger
 
+tz = pytz.timezone('America/Denver')
+
+variable_units = {
+    "air_temp": "degC",
+    "wind_speed": "m/s",
+    "relative_humidity": "%",
+    "precipitation": "mm",
+    "wind_direction": "deg",
+    "wind_gust": "m/s",
+    "solar_radiation": "W/m2"
+}
+
 def weather_station(
     path: str,
     dst: str,
@@ -97,13 +109,11 @@ def weather_station(
             station_id = station["ID"]
         
         # Create a group for this station
-            grp = g.create_group(station_id)
+            grp = g.create_group("weather station - " + station_id)
         
         # --- Save OBSERVATIONS as subgroup ---
-            obs_group = grp.create_group("OBSERVATIONS")
             observations = station.get("OBSERVATIONS", {})
             datetime_keys = [k for k in observations.keys() if "date" in k.lower() or "time" in k.lower() or "date_time" in k.lower()]
-            tz = pytz.timezone('America/Denver')
             for dt_key in datetime_keys:
                 obs_values = observations[dt_key]
                 if not obs_values:
@@ -120,5 +130,21 @@ def weather_station(
                     arr = np.array(obs_values, dtype=f"S{len(obs_values[0])}")
                 else:
                     arr = np.array(obs_values, dtype=np.float32)
-                obs_group.create_dataset(obs_key, data=arr)
+                grp.create_dataset(obs_key, data=arr)
+
+        # --- Add relevant UNITS for sensor variables ---
+        sensor_vars = station.get("SENSOR_VARIABLES", {})
+        if sensor_vars is not None:
+            existing_sensor_vars = list(sensor_vars.keys())
+        else:
+            existing_sensor_vars = []
+
+        relevant_units = {
+            var: unit for var, unit in variable_units.items()
+            if var in existing_sensor_vars or unit in ["position", "elevation"]
+        }
+
+        existing_units_attr = grp.attrs.get("UNITS")
+        units_string = str(relevant_units)
+        grp.attrs["UNITS"] = units_string
         
