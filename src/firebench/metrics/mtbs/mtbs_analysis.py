@@ -2,10 +2,8 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import BoundaryNorm, ListedColormap, Normalize
-from scipy.sparse import coo_matrix
 from ...tools.namespace import StandardVariableNames as svn
 from ...tools.utils import FIGSIZE_DEFAULT
-from sklearn.metrics import confusion_matrix
 
 COLORS_MTBS = [
     (1, 1, 1, 0),  # 0: no data
