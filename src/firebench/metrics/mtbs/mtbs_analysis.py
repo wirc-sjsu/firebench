@@ -1,11 +1,10 @@
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
+from pyproj import CRS, Transformer
 from matplotlib.colors import BoundaryNorm, ListedColormap, Normalize
-from scipy.sparse import coo_matrix
 from ...tools.namespace import StandardVariableNames as svn
 from ...tools.utils import FIGSIZE_DEFAULT
-from sklearn.metrics import confusion_matrix
 
 COLORS_MTBS = [
     (1, 1, 1, 0),  # 0: no data
@@ -50,29 +49,30 @@ def global_accuracy(
     """
     # Import evaluated dataset
     with h5py.File(filepath_eval, "r") as h5:
-        grp_1 = h5[mtbs_group_path_eval]
-        lat_1 = grp_1[svn.LATITUDE.value][:, :]
-        lon_1 = grp_1[svn.LONGITUDE.value][:, :]
-        mtbs_1 = grp_1[svn.FIRE_BURN_SEVERITY.value][:, :]
-        crs_1 = grp_1.attrs["crs"]
+        grp = h5[mtbs_group_path_eval]
+        lat_eval = grp[svn.LATITUDE.value][:, :]
+        lon_eval = grp[svn.LONGITUDE.value][:, :]
+        mtbs_eval = grp[svn.FIRE_BURN_SEVERITY.value][:, :]
+        crs_eval = CRS(grp.attrs["crs"])
 
     # Import reference dataset
     with h5py.File(filepath_ref, "r") as h5:
-        grp_2 = h5[mtbs_group_path_ref]
-        lat_2 = grp_2[svn.LATITUDE.value][:, :]
-        lon_2 = grp_2[svn.LONGITUDE.value][:, :]
-        mtbs_2 = grp_2[svn.FIRE_BURN_SEVERITY.value][:, :]
-        crs_2 = grp_2.attrs["crs"]
+        grp = h5[mtbs_group_path_ref]
+        lat_ref = grp[svn.LATITUDE.value][:, :]
+        lon_ref = grp[svn.LONGITUDE.value][:, :]
+        mtbs_ref = grp[svn.FIRE_BURN_SEVERITY.value][:, :]
+        crs_ref = CRS(grp.attrs["crs"])
 
-    # TODO: Projection eval -> ref
+    transform_crs_eval_to_ref = Transformer.from_crs(crs_eval, crs_ref, always_xy=True)
+
     # TODO: interpolation nearest
 
     # process greenness
 
     # compute confusion matrix
     # Flatten in case your labels are 2D rasters
-    y_true = np.asarray(mtbs_2).ravel()
-    y_pred = np.asarray(mtbs_1).ravel()
+    y_true = np.asarray(mtbs_ref).ravel()
+    y_pred = np.asarray(mtbs_eval).ravel()
 
     # If you know your class list; otherwise infer:
     classes = np.unique(np.concatenate([y_true, y_pred]))
@@ -114,14 +114,14 @@ def global_accuracy(
     norm = BoundaryNorm(bounds, cmap.N)
 
     # panel 2: Evaluated
-    im1 = ax1.pcolormesh(lon_1, lat_1, mtbs_1, cmap=cmap, norm=norm, edgecolors="none")
+    im1 = ax1.pcolormesh(lon_eval, lat_eval, mtbs_eval, cmap=cmap, norm=norm, edgecolors="none")
 
     # panel 2: Reference
-    im2 = ax2.pcolormesh(lon_2, lat_2, mtbs_2, cmap=cmap, norm=norm, edgecolors="none")
+    im2 = ax2.pcolormesh(lon_ref, lat_ref, mtbs_ref, cmap=cmap, norm=norm, edgecolors="none")
 
     # panel 3: Difference
     im3 = ax3.pcolormesh(
-        lon_2, lat_2, mtbs_1 - mtbs_2, cmap="RdYlGn_r", norm=Normalize(vmin=-5, vmax=5), edgecolors="none"
+        lon_ref, lat_ref, mtbs_eval - mtbs_ref, cmap="RdYlGn_r", norm=Normalize(vmin=-5, vmax=5), edgecolors="none"
     )
 
     # panel 4: confusion matrix

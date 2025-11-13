@@ -23,6 +23,8 @@ def convert_mtbs_geotiff(
     """
     Convert a MTBS GeoTIFF to Firebench HDF5 standard file.
 
+    MTBS data uses NAD83 projection.
+
     Parameters
     ----------
     path : str
@@ -56,7 +58,6 @@ def convert_mtbs_geotiff(
     ii = np.arange(rows)
     # vectorized center coordinates from affine:
     # x = a*col + b*row + c ; y = d*col + e*row + f
-    # Use broadcasting to form 2-D arrays without Python loops.
     x = (
         severity_raw["transform"].a * jj[None, :]
         + severity_raw["transform"].b * ii[:, None]
@@ -69,12 +70,9 @@ def convert_mtbs_geotiff(
     )
 
     # Reproject to geographic lat/lon
-    # Choose your target CRS:
-    #   - WGS84 geographic:
-    epsg_code = 4269
-    tgt_crs = CRS.from_epsg(epsg_code)  # lon/lat
-    #   - OR NAD83 geographic:
-    # tgt_crs = CRS.from_epsg(4269) # lon/lat
+    # NAD83 geographic
+    CRS_NAME = "EPSG:4269"
+    tgt_crs = CRS(CRS_NAME)
 
     # always_xy=True -> transformer expects/returns (x, y) = (lon, lat) ordering for geographic CRS
     transformer = Transformer.from_crs(severity_raw["crs"], tgt_crs, always_xy=True)
@@ -114,7 +112,7 @@ def convert_mtbs_geotiff(
 
         g = h5.create_group(group_name)
         g.attrs["data_source"] = f"MTBS {path}"
-        g.attrs["crs"] = f"EPSG:{epsg_code}"
+        g.attrs["crs"] = CRS_NAME
         # TODO: add some useful metadata from _metadata.xml (fire_ignition_time, pre_fire_image_date, post_fire_image_date)
 
         # Lat/Lon as 2-D arrays
