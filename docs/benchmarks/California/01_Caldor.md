@@ -1,9 +1,9 @@
 # 2021 Caldor Fire
 
 **Version**: 1.0a
-**Status**: In Progress
+**Case ID**: FB001 
 
-### Contributors
+## Contributors
 - Aurélien Costes, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [aurelien.costes@sjsu.edu](mailto:aurelien.costes@sjsu.edu), [ORCID](https://orcid.org/0000-0003-4543-5107)
 
 
@@ -16,6 +16,7 @@ It contains observation datasets for:
 - Burn severity
 - Building damaged
 - (Plume top height)
+- (Smoke concentration ground)
 
 ## Buildings damage benchmarks
 
@@ -69,6 +70,26 @@ Total                  | 4444
     </em>
 </p>
 
-### Confusion matrix
+### Benchmark FB001-BD01
 
-**Benchmark ID**: FB001-BD01
+**KPI**: Binary structure loss accuracy
+
+### Benchmark FB001-BD02
+
+**KPI**: Binary structure loss precision
+
+### Benchmark FB001-BD03
+
+**KPI**: Binary structure loss recall
+
+### Benchmark FB001-BD04
+
+**KPI**: Binary structure loss false negative rate
+
+### Benchmark FB001-BD05
+
+**KPI**: Binary structure loss false positive rate
+
+### Benchmark FB001-BD06
+
+**KPI**: Binary structure loss F1 score
