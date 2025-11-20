@@ -92,8 +92,10 @@ def global_accuracy(
     accuracy_per_class_total = np.zeros(5)
 
     for k in range(K - 1):
-        accuracy_per_class_bps[k] = cm[k + 1, k + 1] / np.sum(cm[k+1, 1:]) if np.sum(cm[k+1, 1:]) > 0 else 0.0
-        accuracy_per_class_total[k] = cm[k + 1, k + 1] / (np.sum(cm[k+1, :]) + cm[0, k+1])
+        accuracy_per_class_bps[k] = (
+            cm[k + 1, k + 1] / np.sum(cm[k + 1, 1:]) if np.sum(cm[k + 1, 1:]) > 0 else 0.0
+        )
+        accuracy_per_class_total[k] = cm[k + 1, k + 1] / (np.sum(cm[k + 1, :]) + cm[0, k + 1])
 
     print(accuracy_per_class_bps)
     print(accuracy_per_class_total)
@@ -121,7 +123,12 @@ def global_accuracy(
 
     # panel 3: Difference
     im3 = ax3.pcolormesh(
-        lon_ref, lat_ref, mtbs_eval - mtbs_ref, cmap="RdYlGn_r", norm=Normalize(vmin=-5, vmax=5), edgecolors="none"
+        lon_ref,
+        lat_ref,
+        mtbs_eval - mtbs_ref,
+        cmap="RdYlGn_r",
+        norm=Normalize(vmin=-5, vmax=5),
+        edgecolors="none",
     )
 
     # panel 4: confusion matrix
