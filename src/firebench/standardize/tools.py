@@ -1,12 +1,23 @@
 import h5py
 from ..tools.logging_config import logger
+import re 
 
-VERSION_STD = "0.1"
+VERSION_STD = "0.2"
 
 VERSION_STD_COMPATIBILITY = {
     "0.1": [],
+    "0.2": [],
 }
 
+VALIDATION_SCHEME_1 = ["0.1", "0.2"]
+
+
+ISO8601_REGEX = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T"         # Date + 'T'
+    r"\d{2}:\d{2}"                 # HH:MM (always present)
+    r"(?:\:\d{2}(?:\.\d+)?)?"      # optional :SS[.ffffff]
+    r"(?:Z|[+-]\d{2}:\d{2})?$"     # optional timezone
+)
 
 def check_std_version(file: h5py.File):
     """
@@ -56,3 +67,27 @@ def check_std_version(file: h5py.File):
         return False
 
     raise ValueError(f"Standard version {file_version} not compatible with {VERSION_STD}")
+
+def is_iso8601(s: str) -> bool:
+    return bool(ISO8601_REGEX.match(s))
+
+def validate_h5_std(file: h5py.File):
+    """
+    Validate that the mandatory structure in the h5 file is compliant with the standard
+    """
+    if "FireBench_io_version" not in file.attrs:
+        raise ValueError(f"Attribute `FireBench_io_version` not found.")
+    
+    if file.attrs["FireBench_io_version"] in VALIDATION_SCHEME_1:
+        # check creation date
+        if "created_on" not in file.attrs:
+            raise ValueError(f"Attribute `created_on` not found.")
+        
+        if not is_iso8601(file.attrs["created_on"]):
+            raise ValueError(f"Attribute `created_on` not compliant with ISO8601.")
+
+        # check authors
+        if "created_by" not in file.attrs:
+            raise ValueError(f"Attribute `created_by` not found.")
+        
+        
