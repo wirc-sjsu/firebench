@@ -1,8 +1,8 @@
 # 4. Standard FireBench file format
 
-- **Version**: 0.1
+- **Version**: 0.2
 - **Status**: Draft
-- **Last update**: 2025-08-08
+- **Last update**: 2025-11-19
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
 
@@ -12,7 +12,8 @@ Each .h5 file must adhere to the following structure:
 
 ```
 /                   (root)
-├── probes/         (point-based time series)
+├── points/         (geopolygones)
+├── time_series/    (point-based time series)
 ├── 1D_raster/      (1D gridded spatial data + time)
 ├── 2D_raster/      (2D gridded spatial data + time)
 ├── 3D_raster/      (3D gridded spatial data + time)

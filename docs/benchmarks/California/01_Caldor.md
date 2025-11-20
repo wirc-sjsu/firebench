@@ -1,11 +1,12 @@
 # 2021 Caldor Fire
 
-**Version**: 1.0a
-**Case ID**: FB001 
+**Version**: 1.0a <br>
+**Case ID**: FB001 <br>
+**FireBench IO std version**: >= 0.2 <br>
+**Date of last update**: 11/19/2025 
 
 ## Contributors
 - Aurélien Costes, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [aurelien.costes@sjsu.edu](mailto:aurelien.costes@sjsu.edu), [ORCID](https://orcid.org/0000-0003-4543-5107)
-
 
 ## Description
 
@@ -70,26 +71,62 @@ Total                  | 4444
     </em>
 </p>
 
-### Benchmark FB001-BD01
+### Processing of dataset
 
-**KPI**: Binary structure loss accuracy
+#### Binary classes of building damaged
+In order to performe some calculations, the building damaged classes can be aggrageted to form binary classes. The `Inaccessible` is ignored. The following aggragtion method is used:
+- `unburnt` binary class contains `No Damage`, `Affected (1-9%)`, and `Minor (10-25%)`,
+- `burnt` binary class contains `Major (26-50%)`, and `Destroyed (>50%)`.
 
-### Benchmark FB001-BD02
+### Benchmarks
 
-**KPI**: Binary structure loss precision
+See Key Performance Indicator (KPI) defintion [here](../../metrics/index.md).
 
-### Benchmark FB001-BD03
+#### FB001-BD01
 
-**KPI**: Binary structure loss recall
+**KPI**: Binary Structure Loss Accuracy <br>
+This benchmark is performed on the binary classes for damaged buildings.
 
-### Benchmark FB001-BD04
+#### FB001-BD02
 
-**KPI**: Binary structure loss false negative rate
+**KPI**: Binary Structure Loss Precision <br>
+This benchmark is performed on the binary classes for damaged buildings.
 
-### Benchmark FB001-BD05
+#### FB001-BD03
 
-**KPI**: Binary structure loss false positive rate
+**KPI**: Binary Structure Loss Recall <br>
+This benchmark is performed on the binary classes for damaged buildings.
 
-### Benchmark FB001-BD06
+#### FB001-BD04
 
-**KPI**: Binary structure loss F1 score
+**KPI**: Binary Structure Loss False Negative Rate <br>
+This benchmark is performed on the binary classes for damaged buildings.
+
+#### FB001-BD05
+
+**KPI**: Binary Structure Loss False Positive Rate <br>
+This benchmark is performed on the binary classes for damaged buildings.
+
+#### FB001-BD06
+
+**KPI**: Binary Structure Loss F1 Score <br>
+This benchmark is performed on the binary classes for damaged buildings.
+
+
+## Requirements
+
+The following sections list the datasets requirements to run the different benchmarks. When the benchmark script is run, each requirement is validated. If a requirement is met, each corresponding benchmark is run.
+Each requirement lists the datasets (as path) required to run the benchmark as well as mandatory attributs for each dataset. The shape of the dataset is given between parenthesis.
+
+*Example*
+```
+- /path/of/dataset (shape): attribut1, attribut2
+```
+
+Requirement            | Benchmarks 
+---------------------- | ----------------- 
+R01                    | FB001-BD01, FB001-BD02, FB001-BD03, FB001-BD04, FB001-BD05, FB001-BD06
+
+### R01
+
+- `/points/building_damaged/building_damage`: units
