@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def binary_confusion_matrix(y_true, y_pred):
+def binary_cm(y_true, y_pred):
     """
     Compute the binary confusion matrix for two boolean-compatible arrays.
 
@@ -39,7 +39,7 @@ def binary_confusion_matrix(y_true, y_pred):
     >>> binary_confusion_matrix_matrix([0, 1, 1, 0], [0, 1, 0, 0])
     array([[2, 0],
            [1, 1]])
-    """
+    """ # pylint: disable=line-too-long
     y_true = np.asarray(y_true).astype(bool)
     y_pred = np.asarray(y_pred).astype(bool)
 
