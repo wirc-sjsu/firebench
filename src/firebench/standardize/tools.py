@@ -101,12 +101,12 @@ def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
     """
     for dset_path, attrs in required.items():
         if dset_path not in file:
-            return False, dset_path
+            return False, f"dataset `{dset_path}`"
 
         dset = file[dset_path]
 
         for attr_name in attrs:
             if attr_name not in dset.attrs:
-                return False, f"{dset}: {attr_name}"
+                return False, f"attr `{attr_name}` of dataset `{dset_path}`"
 
     return True, None
