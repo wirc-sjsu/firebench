@@ -146,7 +146,7 @@ def binary_recall_rate(bcm: np.ndarray):
     tn, fp, fn, tp = bcm.ravel()
     return tp / (tp + fn)
 
-def binary_specific_rate(bcm: np.ndarray):
+def binary_specificity(bcm: np.ndarray):
     """
     Compute the specificity (true negative rate, TNR) from a 2x2 binary confusion matrix.
 

@@ -99,12 +99,12 @@ This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD04
 
-**KPI**: Binary Structure Loss False Negative Rate <br>
+**KPI**: Binary Structure Loss Specificity <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD05
 
-**KPI**: Binary Structure Loss False Positive Rate <br>
+**KPI**: Binary Structure Loss Negative Predictive Value <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD06
