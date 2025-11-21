@@ -116,11 +116,11 @@ This benchmark is performed on the binary classes for damaged buildings.
 ## Requirements
 
 The following sections list the datasets requirements to run the different benchmarks. When the benchmark script is run, each requirement is validated. If a requirement is met, each corresponding benchmark is run.
-Each requirement lists the datasets (as path) required to run the benchmark as well as mandatory attributs for each dataset. The shape of the dataset is given between parenthesis.
+Each requirement lists the required datasets (as path) as well as mandatory attributs for each dataset.
 
 *Example*
 ```
-- /path/of/dataset (shape): attribut1, attribut2
+- /path/of/dataset: attribut1, attribut2
 ```
 
 Requirement            | Benchmarks 
