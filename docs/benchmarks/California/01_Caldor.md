@@ -113,6 +113,31 @@ This benchmark is performed on the binary classes for damaged buildings.
 This benchmark is performed on the binary classes for damaged buildings.
 
 
+## Burn severity benchmarks
+
+### Dataset
+
+The data has been collected using [Monitoring Trends in Burning Severity](https://mtbs.gov/) (MTBS).
+The original zip file contains burn severity, pre/post burn images, and final fire perimeter.
+The source of the burn severity used in FireBench is the file `ca3858612053820210815_20210805_20220723_dnbr6.tif`. 
+
+The hash of the original source files are: 
+- zip file: 171b9604c0654d8612eaabcfcad93d2374762661ab34b4d62718630a13469841
+- tif dnbr6: 33db74d3c5798c41ff3a4fc5ee57da9105fdc7a75d7f8af0d053d2f82cfdc0b6
+
+![blockdiagram](../../_static/benchmarks/FB001/mtbs_map.jpg)
+<p style="text-align: center;">
+    <strong>
+        Fig. 3
+    </strong>
+    :
+    <em>
+        Map of burn severity from MTBS
+    </em>
+</p>
+
+### Benchmarks
+
 ## Requirements
 
 The following sections list the datasets requirements to run the different benchmarks. When the benchmark script is run, each requirement is validated. If a requirement is met, each corresponding benchmark is run.
@@ -130,3 +155,7 @@ R01                    | FB001-BD01, FB001-BD02, FB001-BD03, FB001-BD04, FB001-B
 ### R01
 
 - `/points/building_damaged/building_damage`: units
+
+## Notes
+
+- Each file hash has been performed using `firebench.standardize.calculate_sha256`.
