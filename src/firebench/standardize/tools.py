@@ -1,6 +1,9 @@
 import h5py
 from ..tools.logging_config import logger
+from ..tools.units import ureg
+from .time import current_datetime_iso8601
 import re
+from pathlib import Path
 
 VERSION_STD = "0.2"
 
@@ -110,3 +113,77 @@ def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
                 return False, f"attr `{attr_name}` of dataset `{dset_path}`"
 
     return True, None
+
+
+def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5py.Group | h5py.Dataset):
+    """
+    Read a dataset from an HDF5 file, group, or dataset node and return it as a Pint Quantity
+    according to the FireBench I/O standard.
+
+    This function expects the dataset to comply with the FireBench standard I/O format
+    (version >= 0.1), meaning it must define a string `units` attribute specifying the
+    physical units of the stored values. The full dataset is loaded into memory and
+    wrapped into a `pint.Quantity` using the global `ureg` registry.
+
+    Parameters
+    ----------
+    dataset_path : str
+        Path to the target dataset relative to `file_object`. For an `h5py.File`,
+        this is the absolute or group-relative path (e.g., "/2D_raster/0001/temperature").
+    file_object : h5py.File | h5py.Group | h5py.Dataset
+        HDF5 file, group, or dataset object from which the dataset will be read.
+        Must support item access via `__getitem__` and store datasets with `.attrs`.
+
+    Returns
+    -------
+    pint.Quantity
+        The dataset values loaded into memory, associated with the units taken from
+        the dataset's `units` attribute.
+
+    Raises
+    ------
+    KeyError
+        If `dataset_path` does not exist in `file_object`.
+    ValueError
+        If the dataset has no `units` attribute or it is not a non-empty string.
+
+    Notes
+    -----
+    - The function reads the **entire dataset** into memory; for very large datasets,
+    consider reading subsets instead.
+    - Compliant with FireBench I/O standard >= 0.1.
+    """  # pylint: disable=line-too-long
+    ds = file_object[dataset_path]
+
+    units = ds.attrs.get("units", None)
+    if not isinstance(units, str) or not units.strip():
+        raise ValueError(
+            f"Dataset '{dataset_path}' is missing a valid `units` attribute required by FireBench I/O standard."
+        )
+
+    return ureg.Quantity(ds[()], ds.attrs["units"])
+
+
+def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.File:
+    """
+    Create a new file using FireBench standard.
+    Return the file object.
+    Notes
+    -----
+    Do not forget to close the file once edited. This function opens the h5 file but do not close it.
+    """
+    if Path(filepath).exists():
+        if overwrite:
+            logger.info("file %s  already exists and is being replaced.", filepath)
+        else:
+            logger.error(
+                "file %s already exists. Use `overwrite=True` to overwrite the existing file.", filepath
+            )
+            raise FileExistsError()
+
+    h5 = h5py.File(filepath, mode="w")
+    h5.attrs["FireBench_io_version"] = VERSION_STD
+    h5.attrs["created_on"] = current_datetime_iso8601(include_seconds=False)
+    h5.attrs["created_by"] = authors
+
+    return h5
