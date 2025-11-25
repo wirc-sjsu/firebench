@@ -34,7 +34,7 @@ Attributs | Type | Description
 :--------- | :----: | :-----------
 `FireBench_io_version` | str | Version of the I/O standard used
 `created_on` | str | ISO 8601 date-time of file creation
-`created_by` | str | Creator identifier (name, email, etc)
+`created_by` | str | Creator identifier (name, email, etc). Each contributor must be separated by `;` (parsing authors).
 
 
 Suggested additional attributes:

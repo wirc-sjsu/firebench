@@ -1,9 +1,7 @@
 import h5py
 from ..tools.logging_config import logger
 from ..tools.units import ureg
-from .time import current_datetime_iso8601
 import re
-from pathlib import Path
 
 VERSION_STD = "0.2"
 
@@ -164,26 +162,27 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
     return ureg.Quantity(ds[()], ds.attrs["units"])
 
 
-def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.File:
-    """
-    Create a new file using FireBench standard.
-    Return the file object.
-    Notes
-    -----
-    Do not forget to close the file once edited. This function opens the h5 file but do not close it.
-    """
-    if Path(filepath).exists():
-        if overwrite:
-            logger.info("file %s  already exists and is being replaced.", filepath)
-        else:
-            logger.error(
-                "file %s already exists. Use `overwrite=True` to overwrite the existing file.", filepath
-            )
-            raise FileExistsError()
+def merge_authors(authors_1:str, authors_2:str):
+    list_authors_1 = [a.strip() for a in authors_1.split(";") if a.strip()]
+    list_authors_2 = [a.strip() for a in authors_2.split(";") if a.strip()]
+    n1, n2 = len(list_authors_1), len(list_authors_2)
+    merged_authors: list[str] = []
+    seen = set()
 
-    h5 = h5py.File(filepath, mode="w")
-    h5.attrs["FireBench_io_version"] = VERSION_STD
-    h5.attrs["created_on"] = current_datetime_iso8601(include_seconds=False)
-    h5.attrs["created_by"] = authors
+    max_len = max(n1, n2)
+    for i in range(max_len):
+        if i < n1:
+            a1 = list_authors_1[i]
+            if a1 and a1 not in seen:
+                merged_authors.append(a1)
+                seen.add(a1)
+        if i < n2:
+            a2 = list_authors_2[i]
+            if a2 and a2 not in seen:
+                merged_authors.append(a2)
+                seen.add(a2)
 
-    return h5
+    if not merged_authors:
+        return ""
+
+    return ";".join(merged_authors) + ";"

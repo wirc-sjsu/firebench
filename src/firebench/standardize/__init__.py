@@ -5,9 +5,12 @@ from .tools import (
     is_iso8601,
     validate_h5_requirement,
     read_quantity_from_fb_dataset,
-    new_std_file,
+    merge_authors,
 )
 from .time import (
     current_datetime_iso8601,
     datetime_to_iso8601,
+)
+from .files import (
+    new_std_file,
 )
