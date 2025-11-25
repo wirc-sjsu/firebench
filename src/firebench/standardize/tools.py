@@ -2,6 +2,7 @@ import h5py
 from ..tools.logging_config import logger
 from ..tools.units import ureg
 import re
+import numpy as np
 
 VERSION_STD = "0.2"
 
@@ -19,6 +20,10 @@ ISO8601_REGEX = re.compile(
     r"(?:\:\d{2}(?:\.\d+)?)?"  # optional :SS[.ffffff]
     r"(?:Z|[+-]\d{2}:\d{2})?$"  # optional timezone
 )
+
+IGNORE_ATTRIBUTES = {
+    "/": {"created_on", "created_by", "FireBench_io_version"},
+}
 
 
 def check_std_version(file: h5py.File):
@@ -162,7 +167,7 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
     return ureg.Quantity(ds[()], ds.attrs["units"])
 
 
-def merge_authors(authors_1:str, authors_2:str):
+def merge_authors(authors_1: str, authors_2: str):
     list_authors_1 = [a.strip() for a in authors_1.split(";") if a.strip()]
     list_authors_2 = [a.strip() for a in authors_2.split(";") if a.strip()]
     n1, n2 = len(list_authors_1), len(list_authors_2)
@@ -186,3 +191,126 @@ def merge_authors(authors_1:str, authors_2:str):
         return ""
 
     return ";".join(merged_authors) + ";"
+
+
+def collect_conflicts(file1, file2, path: str = "/", conflicts: list | None = None):
+    """
+    Recursively collect conflicts between two HDF5 trees.
+
+    A *conflict* is defined as one of:
+      - Same path exists in both files but with different node types
+        (group vs dataset).
+      - Same dataset path exists in both files but has different
+        shape or dtype.
+      - Same attribute key exists in both objects but has different value.
+
+    Parameters
+    ----------
+    file1, file2 :
+        Open h5py.File or h5py.Group objects that share the same logical layout.
+    path : str, optional
+        Current absolute HDF5 path to compare (default is root "/").
+    conflicts : list, optional
+        List that will be extended with conflict dicts. If None, a new
+        list is created and returned.
+
+    Returns
+    -------
+    list
+        The list of collected conflict dicts. Each conflict has keys:
+        - "path" : str, the HDF5 path where the conflict occurs
+        - "kind" : str, one of {"node_type", "dataset_mismatch", "attr_mismatch"}
+        - "detail" : str, human-readable description
+    """
+    if conflicts is None:
+        conflicts = []
+
+    obj1 = file1[path]
+    obj2 = file2[path]
+
+    # Helper: compare attributes of two objects at same path
+    def _compare_attrs(o1, o2, obj_path: str):
+        ignore_set = IGNORE_ATTRIBUTES.get(obj_path, set())
+
+        keys1 = set(o1.attrs.keys()) - ignore_set
+        keys2 = set(o2.attrs.keys()) - ignore_set
+        common = keys1 & keys2
+
+        for key in common:
+            v1 = o1.attrs[key]
+            v2 = o2.attrs[key]
+
+            # Use np.array_equal to handle scalars, strings, arrays, etc.
+            if not np.array_equal(v1, v2):
+                conflicts.append(
+                    {
+                        "path": obj_path,
+                        "kind": "attr_mismatch",
+                        "detail": f"Attribute '{key}' differs: {v1!r} vs {v2!r}",
+                    }
+                )
+
+    is_group1 = isinstance(obj1, h5py.Group)
+    is_group2 = isinstance(obj2, h5py.Group)
+    is_dset1 = isinstance(obj1, h5py.Dataset)
+    is_dset2 = isinstance(obj2, h5py.Dataset)
+
+    # 1) Different node types at the same path: group vs dataset
+    if (is_group1 and is_dset2) or (is_dset1 and is_group2):
+        conflicts.append(
+            {
+                "path": path,
+                "kind": "node_type",
+                "detail": f"Different node types at {path}: "
+                f"{type(obj1).__name__} vs {type(obj2).__name__}",
+            }
+        )
+        return conflicts
+
+    # 2) Both datasets: check shape/dtype + attributes
+    if is_dset1 and is_dset2:
+        if obj1.shape != obj2.shape or obj1.dtype != obj2.dtype:
+            conflicts.append(
+                {
+                    "path": path,
+                    "kind": "dataset_mismatch",
+                    "detail": (
+                        f"Dataset mismatch at {path}: "
+                        f"shape/dtype {obj1.shape}, {obj1.dtype} vs "
+                        f"{obj2.shape}, {obj2.dtype}"
+                    ),
+                }
+            )
+
+        _compare_attrs(obj1, obj2, path)
+        return conflicts
+
+    # 3) Both groups: compare attributes + recurse on common children
+    if is_group1 and is_group2:
+        _compare_attrs(obj1, obj2, path)
+
+        keys1 = set(obj1.keys())
+        keys2 = set(obj2.keys())
+        common_keys = keys1 & keys2
+
+        # Only common children can conflict. Extra children are fine.
+        for name in common_keys:
+            if path == "/":
+                child_path = f"/{name}"
+            else:
+                child_path = f"{path.rstrip('/')}/{name}"
+
+            collect_conflicts(file1, file2, path=child_path, conflicts=conflicts)
+
+        return conflicts
+
+    # Should not really reach here, but in case of exotic types:
+    conflicts.append(
+        {
+            "path": path,
+            "kind": "node_type",
+            "detail": f"Unsupported node type combination at {path}: "
+            f"{type(obj1).__name__} vs {type(obj2).__name__}",
+        }
+    )
+    return conflicts

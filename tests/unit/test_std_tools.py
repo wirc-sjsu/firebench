@@ -1,6 +1,7 @@
 import pytest
 from firebench.standardize import merge_authors
 
+
 @pytest.mark.parametrize(
     "created_by_1, created_by_2, expected",
     [
@@ -13,7 +14,6 @@ from firebench.standardize import merge_authors
             "carol;dan;",
             "alice;carol;bob;dan;",
         ),
-
         # 2. Different length, no overlaps (file1 longer)
         # file1: alice, bob, charlie
         # file2: dan, erin
@@ -26,7 +26,6 @@ from firebench.standardize import merge_authors
             "dan;erin;",
             "alice;dan;bob;erin;charlie;",
         ),
-
         # 3. Different length, no overlaps (file2 longer)
         # file1: alice, bob
         # file2: carol, dan, erin
@@ -39,7 +38,6 @@ from firebench.standardize import merge_authors
             "carol;dan;erin;",
             "alice;carol;bob;dan;erin;",
         ),
-
         # 4. Overlap across lists
         # file1: alice, bob
         # file2: bob, carol
@@ -52,7 +50,6 @@ from firebench.standardize import merge_authors
             "bob;carol;",
             "alice;bob;carol;",
         ),
-
         # 5. Duplicate within the same list + overlap
         # file1: alice, alice, bob
         # file2: carol, alice
@@ -66,7 +63,6 @@ from firebench.standardize import merge_authors
             "carol;alice;",
             "alice;carol;bob;",
         ),
-
         # 6. One side empty (no authors in file1)
         # file1: ""
         # file2: alice, bob
@@ -75,7 +71,6 @@ from firebench.standardize import merge_authors
             "alice;bob;",
             "alice;bob;",
         ),
-
         # 7. One side empty (no authors in file2)
         # file1: alice, bob
         # file2: ""
@@ -84,14 +79,12 @@ from firebench.standardize import merge_authors
             "",
             "alice;bob;",
         ),
-
         # 8. Both empty
         (
             "",
             "",
             "",
         ),
-
         # 9. Trailing semicolons with possible stray spaces
         # Expect that your function strips whitespace around names.
         # file1: " alice  ", "bob"
@@ -102,7 +95,6 @@ from firebench.standardize import merge_authors
             "bob ;  carol ;",
             "alice;bob;carol;",
         ),
-
         # 10. Multiple overlaps and reordering
         # file1: alice, bob, charlie, dave
         # file2: bob, erin, charlie, frank

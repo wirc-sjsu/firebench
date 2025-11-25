@@ -2,7 +2,8 @@ import h5py
 from ..tools.logging_config import logger
 from .time import current_datetime_iso8601
 from pathlib import Path
-from .tools import VERSION_STD, validate_h5_std, merge_authors
+from .tools import VERSION_STD, validate_h5_std, merge_authors, collect_conflicts
+
 
 def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.File:
     """
@@ -28,7 +29,8 @@ def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.F
 
     return h5
 
-def merge_two_std_files(filepath_1:str, filepath_2:str, filepath_target:str,  conflict_solver = dict, overwrite:bool = False):
+
+def merge_two_std_files(filepath_1: str, filepath_2: str, filepath_target: str, overwrite: bool = False):
     """
     Try to merge two std FireBench files
 
@@ -42,7 +44,11 @@ def merge_two_std_files(filepath_1:str, filepath_2:str, filepath_target:str,  co
     validate_h5_std(file2)
 
     # Check for any conflicts
-    conflicts = []
+    conflicts = collect_conflicts(file1, file2)
+    if not conflicts:
+        logger.error("Try to merge files but conflicts have been found.")
+        print(conflicts)
+        raise ValueError()
 
     # Find both list of authors
     merged_authors = merge_authors(file1.attrs["created_by"], file2.attrs["created_by"])
@@ -55,4 +61,3 @@ def merge_two_std_files(filepath_1:str, filepath_2:str, filepath_target:str,  co
     file1.close()
     file2.close()
     merged_file.close()
-
