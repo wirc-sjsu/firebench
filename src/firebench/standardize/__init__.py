@@ -1,4 +1,4 @@
-from .mtbs import convert_mtbs_geotiff
+from .mtbs import standardize_mtbs_from_geotiff
 from .tools import (
     VERSION_STD,
     validate_h5_std,
