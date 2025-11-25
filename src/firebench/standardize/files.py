@@ -2,7 +2,7 @@ import h5py
 from ..tools.logging_config import logger
 from .time import current_datetime_iso8601
 from pathlib import Path
-from .tools import VERSION_STD, validate_h5_std, merge_authors, collect_conflicts
+from .tools import VERSION_STD, validate_h5_std, merge_authors, collect_conflicts, merge_trees
 
 
 def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.File:
@@ -30,7 +30,13 @@ def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.F
     return h5
 
 
-def merge_two_std_files(filepath_1: str, filepath_2: str, filepath_target: str, overwrite: bool = False):
+def merge_two_std_files(
+    filepath_1: str,
+    filepath_2: str,
+    filepath_target: str,
+    merged_description: str = "",
+    overwrite: bool = False,
+):
     """
     Try to merge two std FireBench files
 
@@ -38,6 +44,7 @@ def merge_two_std_files(filepath_1: str, filepath_2: str, filepath_target: str, 
 
     Then merge the list of authors without duplicates. Keep order as much as possible (first authors from file1 then first author from file2 then second from file 1...)
     """
+    logger.debug("Merge two std files")
     file1 = h5py.File(filepath_1, "r")
     validate_h5_std(file1)
     file2 = h5py.File(filepath_2, "r")
@@ -45,7 +52,7 @@ def merge_two_std_files(filepath_1: str, filepath_2: str, filepath_target: str, 
 
     # Check for any conflicts
     conflicts = collect_conflicts(file1, file2)
-    if not conflicts:
+    if conflicts:
         logger.error("Try to merge files but conflicts have been found.")
         print(conflicts)
         raise ValueError()
@@ -56,8 +63,13 @@ def merge_two_std_files(filepath_1: str, filepath_2: str, filepath_target: str, 
     # Create the new file
     merged_file = new_std_file(filepath_target, authors=merged_authors, overwrite=overwrite)
 
+    merge_trees(file1, file2, merged_file)
+
+    merged_file.attrs["description"] = merged_description
+
     # fill the content of merged_file witht the content of both files
 
     file1.close()
     file2.close()
     merged_file.close()
+    logger.info("Standard files merge successfull")

@@ -314,3 +314,154 @@ def collect_conflicts(file1, file2, path: str = "/", conflicts: list | None = No
         }
     )
     return conflicts
+
+
+def merge_trees(
+    file1: h5py.File,
+    file2: h5py.File,
+    merged_file: h5py.File,
+    conflict_solver: dict | None = None,
+) -> None:
+    """
+    Recursively fill `merged_file` with content from `file1` and `file2`.
+
+    Order:
+    ------
+    1. Copy the full tree from file1 into merged_file.
+    2. Merge the full tree from file2 into merged_file:
+       - If a path does not exist in merged_file, copy it.
+       - If a dataset already exists:
+           * If a conflict solver is provided for this path, use it to
+             combine existing and incoming data.
+           * Otherwise, keep the existing data (we assume they are compatible
+             because conflicts were checked earlier).
+       - Group attributes:
+           * Add attributes that don't exist yet in merged_file.
+           * Attributes listed in IGNORE_ATTRIBUTES are skipped.
+    """
+
+    # 1) copy everything from file1 (no conflicts, merged_file is new/empty)
+    _merge_from_source(
+        src=file1,
+        dst=merged_file,
+        path="/",
+        conflict_solver={},  # nothing to resolve, just copy
+        overwrite_existing=False,
+    )
+
+    # 2) merge from file2, now conflict_solver may apply
+    _merge_from_source(
+        src=file2,
+        dst=merged_file,
+        path="/",
+        conflict_solver={},
+        overwrite_existing=True,
+    )
+
+
+def _merge_from_source(
+    src: h5py.Group,
+    dst: h5py.Group,
+    path: str,
+    conflict_solver: dict,
+    overwrite_existing: bool,
+) -> None:
+    """
+    Recursive helper.
+
+    Parameters
+    ----------
+    src : h5py.Group or h5py.File
+        Source root/node.
+    dst : h5py.Group or h5py.File
+        Destination root/node.
+    path : str
+        Absolute HDF5 path in src (and corresponding path in dst).
+    conflict_solver : dict
+        Mapping path -> solver(existing_data, incoming_data) -> resolved_data.
+    overwrite_existing : bool
+        If False, never touch existing objects (used for file1).
+        If True, apply conflict_solver or keep existing by default (used for file2).
+    """
+    src_obj = src[path]
+    dst_obj = dst[path]  # must exist; for root "/" this is the file itself
+
+    # Copy/merge attributes for this object (group or dataset)
+    _copy_attributes(src_obj, dst_obj, path)
+
+    if isinstance(src_obj, h5py.Dataset):
+        # Nothing more to recurse into
+        return
+
+    if not isinstance(src_obj, h5py.Group):
+        # ignore exotic node types for now (SoftLink, ExternalLink, etc.)
+        return
+
+    # src_obj is a Group: iterate over its children
+    for name, child in src_obj.items():
+        if path == "/":
+            child_path = f"/{name}"
+        else:
+            child_path = f"{path.rstrip('/')}/{name}"
+
+        if name not in dst_obj:
+            # Child does not exist yet in dst: copy entire subtree
+            _copy_entire_object(src_obj, dst_obj, name)
+        else:
+            # TODO: allow for conflict solver
+            raise ValueError("Conflict detected. Merge stopped")
+
+
+def _copy_entire_object(src_parent: h5py.Group, dst_parent: h5py.Group, name: str) -> None:
+    """
+    Copy a group or dataset `name` from src_parent to dst_parent, including
+    all attributes and children (for groups).
+    """
+    obj = src_parent[name]
+
+    if isinstance(obj, h5py.Dataset):
+        # Create dataset with same data and attrs
+        dset = dst_parent.create_dataset(name, data=obj[...], dtype=obj.dtype)
+        _copy_attributes(obj, dset, _build_child_path(dst_parent.name, name))
+
+    elif isinstance(obj, h5py.Group):
+        # Create group and copy attributes
+        grp = dst_parent.create_group(name)
+        _copy_attributes(obj, grp, _build_child_path(dst_parent.name, name))
+
+        # Recurse to copy all children
+        for child_name in obj.keys():
+            _copy_entire_object(obj, grp, child_name)
+
+    else:
+        # Exotic object types (SoftLink, ExternalLink, etc.): skip or handle if needed
+        # For now, we skip them to keep the implementation simple.
+        pass
+
+
+def _copy_attributes(
+    src_obj: h5py.Dataset | h5py.Group, dst_obj: h5py.Dataset | h5py.Group, path: str
+) -> None:
+    """
+    Copy attributes from src_obj to dst_obj, skipping attributes that:
+      - are in IGNORE_ATTRIBUTES for this path, or
+      - already exist in dst_obj.
+    """
+    ignore_set = IGNORE_ATTRIBUTES.get(path, set())
+
+    for key, value in src_obj.attrs.items():
+        if key in ignore_set:
+            continue
+        if key in dst_obj.attrs:
+            # Keep existing attr value
+            continue
+        dst_obj.attrs[key] = value
+
+
+def _build_child_path(parent_path: str, name: str) -> str:
+    """
+    Utility to build a proper HDF5 path for a child object.
+    """
+    if parent_path == "/":
+        return f"/{name}"
+    return f"{parent_path.rstrip('/')}/{name}"
