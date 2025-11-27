@@ -83,7 +83,7 @@ Throughout, $x$ denotes the KPI value.
 
 ### Linear Bounded Normalization
 
-For KPIs with a **bounded acceptable range** $[a, b]$, with $(a < b)$, the normalization function is defined as:
+For KPIs with a **bounded acceptable range** $[a, b]$, with $a < b$, the normalization function is defined as:
 
 $$
 \mathcal N(x, a, b) = 100 \, \left( \frac{x - a}{b - a} \right)
@@ -95,7 +95,7 @@ Here,
 
 ### Linear Half-Open Normalization
 
-For KPIs that have a **minimum acceptable value** ($a$) but no finite upper limit, i.e. values in $[a, +\infty)$, we define:
+For KPIs that have a **minimum acceptable value** $a$ but no finite upper limit, i.e. values in $[a, +\infty[$, we define:
 
 $$
 \mathcal N(x, a, m) = 100 \, \max \left(0,  1 - \frac{x-a}{m-a} \right)
@@ -112,7 +112,7 @@ Here,
 For KPIs with a minimum acceptable value $a$ and domain $[a, +\infty[$, we define an exponentially decaying score:
 
 $$
-\mathcal N(x, a, m) =100 , \exp \left( - \frac{\ln 2(x-a)}{m-a} \right).
+\mathcal N(x, a, m) =100 \, \exp \left( - \frac{\ln 2(x-a)}{m-a} \right).
 $$
 
 This formulation ensures:
