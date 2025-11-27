@@ -88,36 +88,42 @@ In order to performe some calculations, the building damaged classes can be aggr
 
 ### Benchmarks
 
-See Key Performance Indicator (KPI) defintion [here](../../metrics/index.md).
+See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
 
 #### FB001-BD01
 
 **KPI**: Binary Structure Loss Accuracy <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD02
 
 **KPI**: Binary Structure Loss Precision <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD03
 
 **KPI**: Binary Structure Loss Recall <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD04
 
 **KPI**: Binary Structure Loss Specificity <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD05
 
 **KPI**: Binary Structure Loss Negative Predictive Value <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD06
 
 **KPI**: Binary Structure Loss F1 Score <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 
@@ -169,36 +175,42 @@ To perform the high severity benchmarks using binary confusion matrix, we constr
 
 ### Benchmarks
 
-See Key Performance Indicator (KPI) defintion [here](../../metrics/index.md).
+See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
 
 #### FB001-SV01
 
 **KPI**: Binary High Severity Accuracy <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV02
 
 **KPI**: Binary High Severity Precision <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV03
 
 **KPI**: Binary High Severity Recall <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV04
 
 **KPI**: Binary High Severity Specificity <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV05
 
 **KPI**: Binary High Severity Negative Predictive Value <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV06
 
 **KPI**: Binary High Severity F1 Score <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 ## Requirements
@@ -225,6 +237,19 @@ Mandatory group/dataset| Mandatory attirbutes
 `/2D_raster/Caldor_MTBS/fire_burn_severity`| units, _FillValue
 `/2D_raster/Caldor_MTBS/position_lat`| units
 `/2D_raster/Caldor_MTBS/position_lon`| units
+
+## Aggregation Schemes
+
+This section provides the weights used to aggregate KPI Unit Scores. More information about aggregation methods [here](../../metrics/index.md). If aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total score are not computed.
+
+### Scheme A
+
+Group                  | Group Weight | Benchmark ID  | Benchmark weight
+---------------------- | ------------ | ------------  | ----------------
+Building Damage        | 1            |               | 
+|        |                            | BD01 to BD06  | 1
+Burn Severity          | 1            |               | 
+|        |                            | SV01 to SV06  | 1
 
 ## Notes
 

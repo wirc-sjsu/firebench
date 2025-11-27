@@ -128,7 +128,7 @@ Here,
 - $m$ corresponds to the value at which the score has decreased to **50**,
 - scores decay smoothly toward 0 as $x \to +\infty$.
 
-## Key Performance Indicator Defintions
+## Key Performance Indicator Definitions
 
 ### Burn Severity KPIs
 
