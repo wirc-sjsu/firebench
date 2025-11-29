@@ -1,6 +1,20 @@
 # 5. Metrics and Scores information
 This section describes the high-level metrics available in `FireBench`, listed as `Key Performance Indicator` (KPI). Each KPI represents one, and only one, quantitative evaluation of performance.
+KPIs are based on metrics that correspond to the generalization of quantitative comparison of multiple datasets.
 The KPI value can be normalized and multiple KPIs can be aggregated to construct a score.
+
+Figure 1 shows the relationship between the different quantitative components. Each KPI is form by using one or several metrics. The output from the KPI can be normalized using a normalization function to form a score.
+
+![blockdiagram](../_static/images/Metrics_diagram.png)
+<p style="text-align: center;">
+    <strong>
+        Fig. 1
+    </strong>
+    :
+    <em>
+        Relationship between Metrics, KPI, Normalization and Score
+    </em>
+</p>
 
 For implementation details, refer to the [API references](../api/index.rst).
 
@@ -76,6 +90,144 @@ Note: The example here above are not related to the real case FB001 (Caldor Fire
 values are given as examples.
 ```
 
+## Metrics
+
+### 1D metrics
+
+**Input:** Two 1D vectors of size $N$:
+
+- $x_i$: evaluated dataset
+- $y_i$: reference dataset
+
+#### Mean
+
+**Description:** Average value of a 1D vector $x$. <br>
+**Range:** Same as range of $x$. <br>
+**Units:** Same as input units. <br>
+**Formula:**
+$$
+\bar x = \frac{1}{N} \sum_{i=1}^N x_i
+$$
+
+#### Bias
+
+**Description:** Difference between the mean of $x$ and the mean of $y$.<br>
+**Range:** Same as range of input values.<br>
+**Units:** Same as input units.<br>
+**Formula:**
+$$
+B = \bar x - \bar y
+$$
+
+#### Root Mean Square Error
+
+**Description:** Square root of the mean squared difference between (x) and (y), noted RMSE. <br>
+**Range:** $[0, +\infty[$.<br>
+**Units:** Same as input units.<br>
+**Formula:**
+$$
+RMSE(x, y) = \sqrt{\frac{1}{N} \sum_{i=1}^N (x_i - y_i)^2}
+$$
+
+#### Normalized MSE - power normalization
+
+**Description:** RMSE normalized by the range of the reference dataset.<br>
+**Range:** $[0, +\infty)$.<br>
+**Units:** Dimensionless.<br>
+**Formula:**
+$$
+NMSE_p = \frac{RMSE(x, y)}{\max(y) - \min(y)}
+$$
+
+#### Normalized MSE – range normalization
+**Description:** Squared RMSE normalized by the product of mean values of the datasets.<br>
+**Range:** $[0, +\infty)$ (undefined if $\bar x = 0$ or $\bar y = 0$).<br>
+**Units:** Dimensionless.<br>
+**Formula:**
+$$
+NMSE_r = \frac{RMSE(x, y)^2}{\bar x \, \bar y}
+$$
+
+
+### Binary Confusion Matrix
+
+**Input:** Two 1D binary vectors (0 or 1) of size $N$:
+
+- $x_i$: evaluated dataset
+- $y_i$: reference dataset
+
+The following metrics are derived from the [Binary confusion matrix](https://en.wikipedia.org/wiki/Confusion_matrix#Table_of_confusion) generated from both dataset. The Binary confusion matrix is a 2x2 matrix containing:
+
+|              | Reference = 1 | Reference = 0 |
+| ------------ | ------------- | ------------- |
+| **Eval = 1** | TP            | FP            |
+| **Eval = 0** | FN            | TN            |
+
+Where:
+- TP: True Positive
+- FP: False Positive
+- FN: False Negative
+- TN: True Negative
+
+#### Accuracy
+
+**Description:** Fraction of correct predictions among all samples (see [accuracy](https://en.wikipedia.org/wiki/Accuracy_and_precision#In_classification)).<br>
+**Range:** $[0, 1]$<br>
+**Units:** Dimensionless.<br>
+**Formula:**
+$$
+Accuracy = \frac{TP + TN}{TP + TN + FP + FN}
+$$
+
+#### Precision
+**Description:** Fraction of predicted positives that are true positives (see [precision](https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values#Definition)).<br>
+**Range:** $[0, 1]$<br>
+**Units:** Dimensionless.<br>
+**Formula:**
+$$
+Precision = \frac{TP}{TP + FP},
+$$
+
+#### Recall
+**Description:** Fraction of actual positives correctly identified (see [recall](https://en.wikipedia.org/wiki/Precision_and_recall)). Recall can also be named Sensitivity or True Positive Rate.<br>
+**Range:** $[0, 1]$<br>
+**Units:** Dimensionless.<br>
+**Formula:**
+$$
+Recall = \frac{TP}{TP + FN},
+$$
+
+#### Specificity
+**Description:** Fraction of actual negatives correctly identified (see [specificity](https://en.wikipedia.org/wiki/Sensitivity_and_specificity)). Recall can also be named True Negative Rate.<br>
+**Range:** $[0, 1]$<br>
+**Units:** Dimensionless.<br>
+**Formula:**
+$$
+Specificity = \frac{TN}{TN + FP}
+$$
+
+#### Negative Predictive Value
+**Description:** Fraction of predicted negatives that are true negatives (see [Negative Predictive Value](https://en.wikipedia.org/wiki/Positive_and_negative_predictive_values)).<br>
+**Range:** $[0, 1]$<br>
+**Units:** Dimensionless.<br>
+**Formula:**
+$$
+Negative Predictive Value = \frac{TN}{TN + FN}
+$$
+
+#### F1 Score
+**Description:** Harmonic mean of Precision and Recall (see [F1 Score](https://en.wikipedia.org/wiki/F-score)).<br>
+**Range:** $[0, 1]$<br>
+**Units:** Dimensionless.<br>
+**Formula:**
+$$
+F1 Score =  \frac{2 \times Precision \times Recall}{Precision + Recall}
+$$
+
+### Time related
+
+#### Time above threshold
+
 ## KPI Normalization
 
 This section describes several normalization schemes used to convert KPI values into a score in the range ([0, 100]).
@@ -136,8 +288,8 @@ Here,
 
 *Category*: Burn Severity <br>
 *Name used in result files*: Binary High Severity Accuracy <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measure how accurately the model predicts which point are identified as high severity, based on binary (high severity / not high severity) observations.
 
@@ -154,8 +306,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Burn Severity <br>
 *Name used in result files*: Binary High Severity Precision <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measures how accurately the model predicts which cells are high severity, by evaluating the proportion of predicted high severity points that were actually high severity.
 
@@ -172,8 +324,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Burn Severity <br>
 *Name used in result files*: Binary High Severity Recall <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measures how completely the model captures the cells with a high severity index, indicating the fraction of truly high severity cells that the model successfully identifies.
 
@@ -190,8 +342,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Burn Severity <br>
 *Name used in result files*: Binary High Severity Specificity <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measures how accurately the model identifies cells with another severity index than high, by quantifying the fraction of other indices correctly predicted as other (not high).
 
@@ -208,8 +360,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Burn Severity <br>
 *Name used in result files*: Binary High Severity Negative Predictive Value <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measures the reliability of the model’s predictions for cells identified with another severuty index than high, indicating the proportion of points predicted index as other (not high) that were indeed observed as other.
 
@@ -226,8 +378,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Burn Severity <br>
 *Name used in result files*: Binary High Severity F1 Score <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Provides a balanced measure of model performance by combining precision and recall, capturing how well the model identifies high severity cells while limiting false alarms.
 
@@ -245,8 +397,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Structure Damage <br>
 *Name used in result files*: Binary Structure Loss Accuracy <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measure how accurately the model predicts which structures are destroyed or not destroyed by the fire, based on binary (burned / not burned) observations.
 
@@ -263,8 +415,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Structure Damage <br>
 *Name used in result files*: Binary Structure Loss Precision <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measures how accurately the model predicts which structures are destroyed, by evaluating the proportion of predicted-destroyed buildings that were actually destroyed.
 
@@ -282,8 +434,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Structure Damage <br>
 *Name used in result files*: Binary Structure Loss Recall <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measures how completely the model captures the buildings that were actually destroyed, indicating the fraction of truly destroyed structures that the model successfully identifies.
 
@@ -300,8 +452,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Structure Damage <br>
 *Name used in result files*: Binary Structure Loss Specificity <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measures how accurately the model identifies buildings that survived, by quantifying the fraction of intact structures correctly predicted as not destroyed.
 
@@ -318,8 +470,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Structure Damage <br>
 *Name used in result files*: Binary Structure Loss Negative Predictive Value <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Measures the reliability of the model’s predictions for surviving structures, indicating the proportion of predicted-intact buildings that were indeed not destroyed.
 
@@ -336,8 +488,8 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 
 *Category*: Structure Damage <br>
 *Name used in result files*: Binary Structure Loss F1 Score <br>
-*Best Score*: 1 <br>
-*Lowest Score*: 0
+*Best*: 1 <br>
+*Worst*: 0
 
 Provides a balanced measure of model performance by combining precision and recall, capturing how well the model identifies destroyed buildings while limiting false alarms.
 
@@ -348,3 +500,83 @@ F1 Score =  \frac{2 \times Precision \times Recall}{Precision + Recall}
 $$
 
 The implementation of this KPI is done using the `firebench.metrics.confusion_matrix.binary_cm` function and `firebench.metrics.confusion_matrix.binary_f_score` functions (see API documentation for implementation). If some data processing (e.g., for category aggregation) is required, this process is described at the case level.
+
+### Weather stations KPIs
+
+#### 24h forecast Wind Speed Bias Average
+
+*Category*: Weather Stations <br>
+*Name used in result files*: 24h forecast Wind Speed Bias Average <br>
+*Best*: 0 <br>
+*Worst*: increasing $|bias|$ <br>
+*Parameters*:
+- $t_s$: 24h period starting time
+
+Provides the average bias over multiple weather stations over a period 24h for wind speed.
+
+The average bias is calculated as:
+
+$$
+\overline{Bias} = \frac{1}{N_s} \sum_{k=1}^{N_s} \frac{1}{N_t} \sum_{i=1}^{N_t} (m_{ki} - o_{ki})
+$$
+where $N_s$ is the number of weather stations, $N_t$ is the number of time step over the 24h period, $m_{ki}$ is the model data for station $k$ at time step $i$, and $o_{ki}$ is the observation data for station $k$ at time step $i$.
+
+The implementation of this KPI is done using `firebench.metrics.stats.bias`.
+
+#### 24h forecast Wind Speed RMSE Average
+
+*Category*: Weather Stations <br>
+*Name used in result files*: 24h forecast Wind Speed RMSE Average <br>
+*Best*: 0 <br>
+*Worst*: increasing $|bias|$ <br>
+*Parameters*:
+- $t_s$: 24h period starting time
+
+Provides the average RMSE over multiple weather stations over a period 24h for wind speed.
+
+The average RMSE is calculated as:
+
+$$
+\overline{RMSE} = \frac{1}{N_s} \sum_{k=1}^{N_s} \sqrt{\frac{1}{N_t} \sum_{i=1}^{N_t} (m_{ki} - o_{ki})^2}
+$$
+where $N_s$ is the number of weather stations, $N_t$ is the number of time step over the 24h period, $m_{ki}$ is the model data for station $k$ at time step $i$, and $o_{ki}$ is the observation data for station $k$ at time step $i$.
+
+The implementation of this KPI is done using `firebench.metrics.stats.rmse`.
+
+#### 24h forecast Wind Direction RMSE Average
+
+*Category*: Weather Stations <br>
+*Name used in result files*: 24h forecast Wind Direction RMSE Average <br>
+*Best*: 0 <br>
+*Worst*: increasing $|bias|$ <br>
+*Parameters*:
+- $t_s$: 24h period starting time
+
+
+Wind direction difference is calculated as
+$$
+d_{wd} = ((x - y + 180) \mod 360 ) - 180
+$$
+
+#### 24h forecast Wind Gust RMSE Average
+
+*Category*: Weather Stations <br>
+*Name used in result files*: 24h forecast Wind Gust RMSE Average <br>
+*Best*: 0 <br>
+*Worst*: increasing $|bias|$ <br>
+*Parameters*:
+- $t_s$: 24h period starting time
+
+#### 24h forecast Sustained Wind Speed Average
+
+*Category*: Weather Stations <br>
+*Name used in result files*: 24h forecast Wind Gust RMSE Average <br>
+*Best*: 0 <br>
+*Worst*: increasing $|bias|$ <br>
+*Parameters*:
+- $t_s$: 24h period starting time
+- $U_0$: Value of thresehold
+
+Calculate the amount of time when the wind speed is above a defined threshold. Compare this time to observation and average it over multiple weather stations.
+
+

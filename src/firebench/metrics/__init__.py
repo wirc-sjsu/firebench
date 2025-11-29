@@ -4,3 +4,4 @@ from .kpi_normalization import (
     kpi_norm_half_open_linear,
     kpi_norm_half_open_exponential,
 )
+from .table import save_as_table

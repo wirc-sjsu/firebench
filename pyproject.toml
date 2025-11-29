@@ -22,6 +22,7 @@ dependencies = [
     "matplotlib > 3.8",
     "rasterio < 2.0",
     "pyproj < 4.0",
+    "reportlab < 5.0",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
