@@ -11,24 +11,13 @@ def _score_to_color(score):
     Map a score from 0 to 100 to a color from red -> yellow -> green.
     Output: hex string "#RRGGBB".
     """
-
-    # Clamp score
-    s = max(0, min(100, score)) / 100.0
-
-    # Red → Yellow for s ∈ [0,0.5]
-    # Yellow → Green for s ∈ [0.5,1]
-    if s < 0.5:
-        # red (255,0,0) to yellow (255,255,0)
-        r = 255
-        g = int(255 * (s / 0.5))
-        b = 0
-    else:
-        # yellow (255,255,0) to green (0,255,0)
-        r = int(255 * ((1 - s) / 0.5))
-        g = 255
-        b = 0
-
-    return "#{:02x}{:02x}{:02x}".format(r, g, b)
+    if score < 33.33:
+        return "#D6452A"
+    
+    if score < 66.66:
+        return "#E8C441"
+    
+    return "#6BAF5F"
 
 
 def save_as_table(filename: Path, data: dict):
@@ -65,9 +54,6 @@ def save_as_table(filename: Path, data: dict):
         bottomMargin=0 * mm,
     )
 
-    # ------------------------------------------------------------------
-    # 2) Table data (3×3)
-    # ------------------------------------------------------------------
     text_table = []
 
     # header
@@ -80,10 +66,11 @@ def save_as_table(filename: Path, data: dict):
             [
                 f"Total Score {data['case_id']} agg. {scheme_name}: {data['evaluated_model_name']}",
                 "",
+                "",
                 f"{data['score_card']['Score Total']:.2f}",
             ]
         )
-    text_table.append(["Benchmark ID/Group Name", "Weight", "Score"])
+    text_table.append(["Benchmark ID/Group Name", "KPI value", "Weight", "Score"])
 
     # rows
     group_rows = []
@@ -92,32 +79,42 @@ def save_as_table(filename: Path, data: dict):
             # add group row
             group_score = data["score_card"][f"Score {group_name}"]
             group_rows.append(len(text_table))
-            text_table.append([f"Group: {group_name}", f"{group_content["weight"]}", f"{group_score:.2f}"])
+            text_table.append([f"Group: {group_name}", "", f"{group_content["weight"]}", f"{group_score:.2f}"])
             # add benchamrk rows
             for bench_id, bench_weight in group_content["benchmarks"].items():
-                bench_score = data["benchmarks"][bench_id]["Score"]
-                kpi_name = [i for i in data["benchmarks"][bench_id].keys() if i != "Score"][0]
-                text_table.append([f"{kpi_name}", f"{bench_weight}", f"{bench_score:.2f}"])
+                for key, item in data["benchmarks"][bench_id].items():
+                    if key == "Score":
+                        bench_score = item
+                        kpi_name = [i for i in data["benchmarks"][bench_id].keys() if i != "Score"][0]
+                    else:
+                        # KPI
+                        kpi_score = item
+                text_table.append([f"{kpi_name}", f"{kpi_score:.2e}", f"{bench_weight}", f"{bench_score:.2f}"])
     else:
         # Only print benchmarks
         for bench_id in data["benchmarks"].keys():
-            text_table.append([f"{bench_id}", "None", f"{data['benchmarks'][bench_id]['Score']:.2f}"])
+            for key, item in data["benchmarks"][bench_id].items():
+                if key == "Score":
+                    bench_score = item
+                else:
+                    kpi_score = item
+            text_table.append([f"{bench_id}", f"{kpi_score:.2e}", "None", f"{bench_score:.2f}"])
 
     # footer
     text_table.append(
-        [f"FireBench version: {data['firebench_version']}   case version: {data['case_version']}", "", ""]
+        [f"FireBench version: {data['firebench_version']}   case version: {data['case_version']}", "", "", ""]
     )
 
-    col_widths = [100 * mm, 30 * mm, 30 * mm]
+    col_widths = [100 * mm, 20 * mm, 20 * mm, 20 * mm]
 
     # ------------------------------------------------------------------
     # 3) Table style with both merges
     # ------------------------------------------------------------------
     table_style = [
-        # === MERGE FIRST 2 COLUMNS OF FIRST ROW ===
-        ("SPAN", (0, 0), (1, 0)),
-        # === MERGE ALL 3 COLUMNS OF LAST ROW ===
-        ("SPAN", (0, nb_rows - 1), (2, nb_rows - 1)),
+        # === MERGE FIRST 3 COLUMNS OF FIRST ROW ===
+        ("SPAN", (0, 0), (2, 0)),
+        # === MERGE ALL 4 COLUMNS OF LAST ROW ===
+        ("SPAN", (0, nb_rows - 1), (3, nb_rows - 1)),
         # Borders
         ("BOX", (0, 0), (-1, -1), 0.75, colors.black),
         ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
@@ -128,19 +125,20 @@ def save_as_table(filename: Path, data: dict):
             "BACKGROUND",
             (0, -1),
             (-1, -1),
-            colors.HexColor("#d9d9d9"),
+            colors.HexColor("#A79F9A"),
         ),  # merged footer row
         # Alignment
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("ALIGN", (0, 0), (0, 0), "LEFT"),
+        ("ALIGN", (0, 0), (0, -1), "LEFT"),
         ("ALIGN", (0, -1), (0, -1), "LEFT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         # Fonts
         ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ('FONT', (3,0), (3,0), 'Helvetica-Bold', 9),
     ]
 
-    for i in range(nb_rows - 2):
+    for i in range(nb_rows - 3):
         table_style.append(
             (
                 "BACKGROUND",
@@ -155,8 +153,8 @@ def save_as_table(filename: Path, data: dict):
         table_style.append(
             (
                 "BACKGROUND",
-                (2, 0),
-                (2, 0),
+                (3, 0),
+                (3, 0),
                 colors.HexColor(_score_to_color(data["score_card"]["Score Total"])),
             ),  # merged header row
         )
@@ -167,7 +165,7 @@ def save_as_table(filename: Path, data: dict):
     else:
         text_table[0][2] = "INVALID"
         table_style.append(
-            ("BACKGROUND", (2, 0), (2, 0), colors.HexColor("#ff0000")),  # merged header row
+            ("BACKGROUND", (3, 0), (3, 0), colors.HexColor("#ff0000")),  # merged header row
         )
 
     table = Table(text_table, colWidths=col_widths)
