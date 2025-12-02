@@ -9,6 +9,7 @@
 - pint < 1.0
 - pyproj < 4.0
 - rasterio < 2.0
+- reportlab < 5.0
 - SALib < 2.0
 - scipy < 2.0
 
