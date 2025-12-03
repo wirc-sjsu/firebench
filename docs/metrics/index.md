@@ -105,6 +105,7 @@ values are given as examples.
 **Range:** Same as range of $x$. <br>
 **Units:** Same as input units. <br>
 **Formula:**
+
 $$
 \bar x = \frac{1}{N} \sum_{i=1}^N x_i
 $$
@@ -115,6 +116,7 @@ $$
 **Range:** Same as range of input values.<br>
 **Units:** Same as input units.<br>
 **Formula:**
+
 $$
 B = \bar x - \bar y
 $$
@@ -125,6 +127,7 @@ $$
 **Range:** $[0, +\infty[$.<br>
 **Units:** Same as input units.<br>
 **Formula:**
+
 $$
 RMSE(x, y) = \sqrt{\frac{1}{N} \sum_{i=1}^N (x_i - y_i)^2}
 $$
@@ -135,6 +138,7 @@ $$
 **Range:** $[0, +\infty)$.<br>
 **Units:** Dimensionless.<br>
 **Formula:**
+
 $$
 NMSE_p = \frac{RMSE(x, y)}{\max(y) - \min(y)}
 $$
@@ -144,6 +148,7 @@ $$
 **Range:** $[0, +\infty)$ (undefined if $\bar x = 0$ or $\bar y = 0$).<br>
 **Units:** Dimensionless.<br>
 **Formula:**
+
 $$
 NMSE_r = \frac{RMSE(x, y)^2}{\bar x \, \bar y}
 $$
@@ -175,6 +180,7 @@ Where:
 **Range:** $[0, 1]$<br>
 **Units:** Dimensionless.<br>
 **Formula:**
+
 $$
 Accuracy = \frac{TP + TN}{TP + TN + FP + FN}
 $$
@@ -184,6 +190,7 @@ $$
 **Range:** $[0, 1]$<br>
 **Units:** Dimensionless.<br>
 **Formula:**
+
 $$
 Precision = \frac{TP}{TP + FP},
 $$
@@ -193,6 +200,7 @@ $$
 **Range:** $[0, 1]$<br>
 **Units:** Dimensionless.<br>
 **Formula:**
+
 $$
 Recall = \frac{TP}{TP + FN},
 $$
@@ -202,6 +210,7 @@ $$
 **Range:** $[0, 1]$<br>
 **Units:** Dimensionless.<br>
 **Formula:**
+
 $$
 Specificity = \frac{TN}{TN + FP}
 $$
@@ -211,6 +220,7 @@ $$
 **Range:** $[0, 1]$<br>
 **Units:** Dimensionless.<br>
 **Formula:**
+
 $$
 Negative Predictive Value = \frac{TN}{TN + FN}
 $$
@@ -220,6 +230,7 @@ $$
 **Range:** $[0, 1]$<br>
 **Units:** Dimensionless.<br>
 **Formula:**
+
 $$
 F1 Score =  \frac{2 \times Precision \times Recall}{Precision + Recall}
 $$
