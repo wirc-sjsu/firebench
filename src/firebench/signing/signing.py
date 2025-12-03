@@ -2,8 +2,10 @@ import hmac
 import hashlib
 import json
 
-from . import _secret_key
-
+try:
+    from . import _secret_key
+except ImportError:
+    _secret_key = None
 
 def _canonical_json_dumps(data: dict) -> bytes:
     return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
