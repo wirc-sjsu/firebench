@@ -13,10 +13,10 @@ def _score_to_color(score):
     """
     if score < 33.33:
         return "#D6452A"
-    
+
     if score < 66.66:
         return "#E8C441"
-    
+
     return "#6BAF5F"
 
 
@@ -79,7 +79,9 @@ def save_as_table(filename: Path, data: dict):
             # add group row
             group_score = data["score_card"][f"Score {group_name}"]
             group_rows.append(len(text_table))
-            text_table.append([f"Group: {group_name}", "", f"{group_content["weight"]}", f"{group_score:.2f}"])
+            text_table.append(
+                [f"Group: {group_name}", "", f"{group_content['weight']}", f"{group_score:.2f}"]
+            )
             # add benchamrk rows
             for bench_id, bench_weight in group_content["benchmarks"].items():
                 for key, item in data["benchmarks"][bench_id].items():
@@ -89,7 +91,9 @@ def save_as_table(filename: Path, data: dict):
                     else:
                         # KPI
                         kpi_score = item
-                text_table.append([f"{kpi_name}", f"{kpi_score:.2e}", f"{bench_weight}", f"{bench_score:.2f}"])
+                text_table.append(
+                    [f"{kpi_name}", f"{kpi_score:.2e}", f"{bench_weight}", f"{bench_score:.2f}"]
+                )
     else:
         # Only print benchmarks
         for bench_id in data["benchmarks"].keys():
@@ -102,7 +106,12 @@ def save_as_table(filename: Path, data: dict):
 
     # footer
     text_table.append(
-        [f"FireBench version: {data['firebench_version']}   case version: {data['case_version']}", "", "", ""]
+        [
+            f"FireBench version: {data['firebench_version']}   case version: {data['case_version']}",
+            "",
+            "",
+            "",
+        ]
     )
 
     col_widths = [100 * mm, 20 * mm, 20 * mm, 20 * mm]
@@ -135,7 +144,7 @@ def save_as_table(filename: Path, data: dict):
         # Fonts
         ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ('FONT', (3,0), (3,0), 'Helvetica-Bold', 9),
+        ("FONT", (3, 0), (3, 0), "Helvetica-Bold", 9),
     ]
 
     for i in range(nb_rows - 3):
