@@ -251,6 +251,20 @@ Building Damage        | 1            |               |
 Burn Severity          | 1            |               | 
 |        |                            | SV01 to SV06  | 1
 
+### Scheme B
+
+Group                  | Group Weight | Benchmark ID  | Benchmark weight
+---------------------- | ------------ | ------------  | ----------------
+Building Damage        | 1            |               | 
+|        |                            | BD01 to BD06  | 1
+
+### Scheme S
+
+Group                  | Group Weight | Benchmark ID  | Benchmark weight
+---------------------- | ------------ | ------------  | ----------------
+Burn Severity          | 1            |               | 
+|        |                            | SV01 to SV06  | 1
+
 ## Notes
 
 - Each file hash has been performed using `firebench.standardize.calculate_sha256`.
