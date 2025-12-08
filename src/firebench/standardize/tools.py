@@ -22,7 +22,7 @@ ISO8601_REGEX = re.compile(
 )
 
 IGNORE_ATTRIBUTES = {
-    "/": {"created_on", "created_by", "FireBench_io_version"},
+    "/": {"created_on", "created_by", "FireBench_io_version", "description"},
 }
 
 

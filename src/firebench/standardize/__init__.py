@@ -14,4 +14,5 @@ from .time import (
 from .files import (
     new_std_file,
     merge_two_std_files,
+    merge_std_files,
 )
