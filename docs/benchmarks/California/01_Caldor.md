@@ -94,36 +94,42 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 
 **KPI**: Binary Structure Loss Accuracy <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary Structure Loss Accuracy <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD02
 
 **KPI**: Binary Structure Loss Precision <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary Structure Loss Precision <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD03
 
 **KPI**: Binary Structure Loss Recall <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary Structure Loss Recall <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD04
 
 **KPI**: Binary Structure Loss Specificity <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary Structure Loss Specificity <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD05
 
 **KPI**: Binary Structure Loss Negative Predictive Value <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary Structure Loss Negative Predictive Value <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 #### FB001-BD06
 
 **KPI**: Binary Structure Loss F1 Score <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary Structure Loss F1 Score <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
 
@@ -181,36 +187,42 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 
 **KPI**: Binary High Severity Accuracy <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Accuracy <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV02
 
 **KPI**: Binary High Severity Precision <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Precision <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV03
 
 **KPI**: Binary High Severity Recall <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Recall <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV04
 
 **KPI**: Binary High Severity Specificity <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Specificity <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV05
 
 **KPI**: Binary High Severity Negative Predictive Value <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Negative Predictive Value <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 #### FB001-SV06
 
 **KPI**: Binary High Severity F1 Score <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity F1 Score <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 ## Requirements
