@@ -112,3 +112,14 @@ def current_datetime_iso8601(
     # Start from local now, then convert to requested tz for consistency
     now_local = datetime.now().astimezone()
     return datetime_to_iso8601(now_local, include_seconds, tz)
+
+def sanitize_iso8601(dt_str: str) -> str:
+    """
+    Sanitize an ISO8601 datetime string so it becomes XML/KML-safe.
+    
+    Rules:
+        - Replace "-" and ":" with "_"
+        - Leave all digits and letters unchanged
+        - Keeps "T" and timezone offset structure preserved
+    """
+    return dt_str.replace("-", "_").replace(":", "_")
