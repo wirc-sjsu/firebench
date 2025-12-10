@@ -17,3 +17,4 @@ from .files import (
     merge_two_std_files,
     merge_std_files,
 )
+from .landfire import standardize_landfire_from_geotiff
