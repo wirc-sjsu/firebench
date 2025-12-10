@@ -408,8 +408,24 @@ def _merge_from_source(
             # Child does not exist yet in dst: copy entire subtree
             _copy_entire_object(src_obj, dst_obj, name)
         else:
-            # TODO: allow for conflict solver
-            raise ValueError("Conflict detected. Merge stopped")
+            # Child already exists in dst: possible conflict
+            src_child = src_obj[name]
+            dst_child = dst_obj[name]
+
+            if path == "/" and isinstance(src_child, h5py.Group) and isinstance(dst_child, h5py.Group):
+                # Recurse into /<name> and merge there
+                _merge_from_source(
+                    src=src,
+                    dst=dst,
+                    path=child_path,
+                    conflict_solver=conflict_solver,
+                    overwrite_existing=overwrite_existing,
+                )
+            else:
+                # Deeper levels (path != "/") or non-group conflicts:
+                # keep strict behavior and raise.
+                logger.error("_merge_from_source: conflict at path %s for %s", path, name)
+                raise ValueError("Conflict detected. Merge stopped")
 
 
 def _copy_entire_object(src_parent: h5py.Group, dst_parent: h5py.Group, name: str) -> None:
