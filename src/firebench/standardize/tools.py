@@ -3,6 +3,11 @@ from ..tools.logging_config import logger
 from ..tools.units import ureg
 import re
 import numpy as np
+from pathlib import Path
+import rasterio
+from pyproj import CRS, Transformer
+from rasterio.windows import from_bounds
+from rasterio.warp import transform_bounds
 
 VERSION_STD = "0.2"
 
@@ -357,6 +362,122 @@ def merge_trees(
         conflict_solver={},
         overwrite_existing=True,
     )
+
+
+def import_tif_with_rect_box(
+    geotiff_path: Path,
+    lower_left_corner: tuple[float, float],
+    upper_right_corner: tuple[float, float],
+    projection: str = None,
+    invert_y: bool = False,
+):
+    """
+    Import a subset of a GeoTIFF using a geographic rectangular bounding box.
+
+    The function loads only the portion of the input GeoTIFF that intersects a
+    user-defined rectangle in geographic coordinates (lat/lon). The bounding box
+    is reprojected into the source CRS, a raster window is extracted, and pixel-center
+    coordinates are computed. The result is returned in the target CRS (default: CRS of
+    the source dataset unless a different projection is specified).
+
+    Parameters
+    ----------
+    geotiff_path : Path
+        Path to the GeoTIFF file.
+    lower_left_corner : tuple[float, float]
+        Geographic coordinates of the lower-left corner of the selection box,
+        formatted as (latitude, longitude).
+    upper_right_corner : tuple[float, float]
+        Geographic coordinates of the upper-right corner of the selection box,
+        formatted as (latitude, longitude).
+    projection : str, optional
+        Target CRS for returned latitude/longitude arrays. If None, use the CRS
+        of the source GeoTIFF. Can be any pyproj-compatible CRS string (e.g. "EPSG:4326").
+    invert_y : bool, optional
+        If True, flip the data and latitude/longitude arrays along the vertical
+        axis (useful for image-style orientation).
+
+    Returns
+    -------
+    lat : np.ndarray
+        2-D array of latitude coordinates for each pixel center in the selected region,
+        expressed in the target CRS.
+    lon : np.ndarray
+        2-D array of longitude coordinates for each pixel center in the selected region,
+        expressed in the target CRS.
+    data_arr : np.ndarray
+        2-D array containing the raster data extracted within the bounding box.
+
+    Notes
+    -----
+    - Only the requested rectangular region is read from disk, preventing the allocation
+      of extremely large full-domain coordinate grids.
+    - The function logs a summary of the loaded subset including its shape, CRS, and window.
+    - The selection box is provided in geographic coordinates and internally reprojected
+      to the raster's native projection.
+    """  # pylint: disable=line-too-long
+    with rasterio.open(geotiff_path.resolve()) as src:
+        if projection is None:
+            projection = src.crs
+        tgt_crs = CRS(projection)
+
+        lat_min, lon_min = lower_left_corner
+        lat_max, lon_max = upper_right_corner
+
+        lon_min, lon_max = sorted((lon_min, lon_max))
+        lat_min, lat_max = sorted((lat_min, lat_max))
+
+        bbox_src = transform_bounds(
+            tgt_crs,
+            src.crs,
+            lon_min,
+            lat_min,
+            lon_max,
+            lat_max,
+            densify_pts=21,
+        )
+        x_min_src, y_min_src, x_max_src, y_max_src = bbox_src
+
+        window = from_bounds(x_min_src, y_min_src, x_max_src, y_max_src, src.transform)
+
+        data = src.read(1, window=window)
+        transform_window = src.window_transform(window)
+
+        data_dict = {
+            "data": data,
+            "transform": transform_window,
+            "crs": src.crs,
+            "nodata": src.nodata,
+        }
+
+        logger.info(
+            "Loaded subset from %s: shape=%s, CRS=%s, window=%s",
+            geotiff_path,
+            data.shape,
+            src.crs,
+            window,
+        )
+
+    rows, cols = data_dict["data"].shape
+
+    jj = np.arange(cols)
+    ii = np.arange(rows)
+
+    # center coordinates in source CRS (projected)
+    T = data_dict["transform"]
+    x = T.a * jj[None, :] + T.b * ii[:, None] + T.c
+    y = T.d * jj[None, :] + T.e * ii[:, None] + T.f
+
+    tgt_crs = CRS(projection)
+    transformer = Transformer.from_crs(data_dict["crs"], tgt_crs, always_xy=True)
+    lon, lat = transformer.transform(x, y)
+
+    if invert_y:
+        lat = lat[::-1, :]
+        lon = lon[::-1, :]
+        data_dict["data"] = data_dict["data"][::-1, :]
+
+    return np.array(lat), np.array(lon), np.array(data_dict["data"])
 
 
 def _merge_from_source(
