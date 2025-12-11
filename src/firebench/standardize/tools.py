@@ -477,7 +477,7 @@ def import_tif_with_rect_box(
         lon = lon[::-1, :]
         data_dict["data"] = data_dict["data"][::-1, :]
 
-    return np.array(lat), np.array(lon), np.array(data_dict["data"])
+    return np.array(lat), np.array(lon), np.array(data_dict["data"]), tgt_crs
 
 
 def _merge_from_source(

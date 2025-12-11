@@ -8,6 +8,7 @@ from pyproj import CRS, Transformer
 from ..tools import StandardVariableNames as svn
 from .tools import check_std_version
 from ..tools.logging_config import logger
+from .std_file_info import SPATIAL_2D
 
 
 def standardize_mtbs_from_geotiff(
@@ -30,7 +31,7 @@ def standardize_mtbs_from_geotiff(
     h5file :  h5py.File
         target HDF5 file
     group_name : str | None
-        HDF5 group path. If None, auto-derive from filename, e.g. '2D_raster/<group_name>'.
+        HDF5 group path. If None, auto-derive from filename, e.g. 'SPATIAL_2D/<group_name>'.
     overwrite: bool
         Overwrite the group in the HDF5 file. Default: False
     invert_y: bool
@@ -84,7 +85,7 @@ def standardize_mtbs_from_geotiff(
     if group_name is None:
         group_name = Path(geotiff_path).stem
 
-    group_name = f"/2D_raster/{group_name}"
+    group_name = f"/{SPATIAL_2D}/{group_name}"
     if group_name in h5file.keys():
         if overwrite:
             del h5file[group_name]

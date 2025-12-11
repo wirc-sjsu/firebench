@@ -11,6 +11,7 @@ def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.F
     """
     Create a new file using FireBench standard.
     Return the file object.
+
     Notes
     -----
     Do not forget to close the file once edited. This function opens the h5 file but do not close it.
