@@ -12,11 +12,11 @@ Each .h5 file must adhere to the following structure:
 
 ```
 /                   (root)
-├── points/         (geopolygones)
+├── points/         (0D datasets)
 ├── time_series/    (point-based time series)
-├── 1D_raster/      (1D gridded spatial data + time)
-├── 2D_raster/      (2D gridded spatial data + time)
-├── 3D_raster/      (3D gridded spatial data + time)
+├── spatial_1d/     (1D gridded spatial data + time)
+├── spatial_2d/     (2D gridded spatial data + time)
+├── spatial_3d/     (3D gridded spatial data + time)
 ├── unstructured/   (unstructured spatial data + time)
 ├── polygons/       (geopolygones)
 ├── fuel_models/    (fuel model classification or parameters)
