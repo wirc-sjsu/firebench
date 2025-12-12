@@ -479,6 +479,7 @@ def import_tif_with_rect_box(
 
     return np.array(lat), np.array(lon), np.array(data_dict["data"]), tgt_crs, data_dict["nodata"]
 
+
 def import_tif(
     geotiff_path: str,
     projection: str = None,

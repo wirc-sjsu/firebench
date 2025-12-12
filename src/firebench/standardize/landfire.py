@@ -11,6 +11,7 @@ from .tools import check_std_version, import_tif
 from ..tools.logging_config import logger
 from .std_file_info import SPATIAL_2D
 
+
 def standardize_landfire_from_geotiff(
     geotiff_path: str,
     h5file: h5py.File,
@@ -21,7 +22,7 @@ def standardize_landfire_from_geotiff(
     overwrite: bool = False,
     invert_y: bool = False,
     fill_value: float = None,
-    compression_lvl:int=3,
+    compression_lvl: int = 3,
 ):
     """
     Convert a MTBS GeoTIFF to Firebench HDF5 standard file.
@@ -70,13 +71,19 @@ def standardize_landfire_from_geotiff(
     g.attrs["crs"] = str(crs)
 
     # Lat/Lon as 2-D arrays
-    dlat = g.create_dataset("position_lat", data=lat, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl))
+    dlat = g.create_dataset(
+        "position_lat", data=lat, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl)
+    )
     dlat.attrs["units"] = "degrees"
 
-    dlat = g.create_dataset("position_lon", data=lon, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl))
+    dlat = g.create_dataset(
+        "position_lon", data=lon, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl)
+    )
     dlat.attrs["units"] = "degrees"
 
-    ddata = g.create_dataset(variable_name, data=landfire_data, dtype=np.uint16, **hdf5plugin.Zstd(clevel=compression_lvl))
+    ddata = g.create_dataset(
+        variable_name, data=landfire_data, dtype=np.uint16, **hdf5plugin.Zstd(clevel=compression_lvl)
+    )
     ddata.attrs["units"] = variable_units
     if fill_value is None:
         ddata.attrs["_FillValue"] = nodata

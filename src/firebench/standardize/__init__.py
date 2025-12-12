@@ -34,3 +34,4 @@ from .std_file_info import (
     FUEL_MODELS,
     MISCELLANEOUS,
 )
+from .synoptic import standardize_synoptic_raws_from_json
