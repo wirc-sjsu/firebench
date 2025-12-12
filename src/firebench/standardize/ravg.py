@@ -1,4 +1,5 @@
 import h5py
+import hdf5plugin
 import numpy as np
 from .tools import check_std_version, import_tif_with_rect_box
 from ..tools.logging_config import logger
@@ -158,6 +159,7 @@ def _standardize_ravg_from_geotiff(
     projection: str = None,
     overwrite: bool = False,
     invert_y: bool = False,
+    compression_lvl:int=3,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard.
@@ -186,7 +188,7 @@ def _standardize_ravg_from_geotiff(
     logger.debug("Standardize RAVG %s dataset from file %s ", ravg_variable, geotiff_path)
     check_std_version(h5file)
 
-    lat, lon, ravg_data, crs = import_tif_with_rect_box(
+    lat, lon, ravg_data, crs, nodata = import_tif_with_rect_box(
         geotiff_path, lower_left_corner, upper_right_corner, projection, invert_y
     )
 
@@ -209,12 +211,12 @@ def _standardize_ravg_from_geotiff(
     g.attrs["data_source"] = f"RAVG {geotiff_path}"
     g.attrs["crs"] = str(crs)
 
-    dlat = g.create_dataset("position_lat", data=lat, dtype=np.float64)
+    dlat = g.create_dataset("position_lat", data=lat, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl))
     dlat.attrs["units"] = "degrees"
 
-    dlat = g.create_dataset("position_lon", data=lon, dtype=np.float64)
+    dlat = g.create_dataset("position_lon", data=lon, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl))
     dlat.attrs["units"] = "degrees"
 
-    ddata = g.create_dataset(ravg_variable, data=ravg_data, dtype=np.uint8)
+    ddata = g.create_dataset(ravg_variable, data=ravg_data, dtype=np.uint8, **hdf5plugin.Zstd(clevel=compression_lvl))
     ddata.attrs["units"] = "dimensionless"
-    ddata.attrs["_FillValue"] = 0
+    ddata.attrs["_FillValue"] = nodata

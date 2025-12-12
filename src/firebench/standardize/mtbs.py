@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import h5py
+import hdf5plugin
 import numpy as np
 import rasterio
 from pyproj import CRS, Transformer
@@ -18,6 +19,7 @@ def standardize_mtbs_from_geotiff(
     projection: str = None,
     overwrite: bool = False,
     invert_y: bool = False,
+    compression_lvl:int=3,
 ):
     """
     Convert a MTBS GeoTIFF to Firebench HDF5 standard file.
@@ -102,12 +104,12 @@ def standardize_mtbs_from_geotiff(
     g.attrs["crs"] = str(tgt_crs)
 
     # Lat/Lon as 2-D arrays
-    dlat = g.create_dataset("position_lat", data=lat, dtype=np.float64)
+    dlat = g.create_dataset("position_lat", data=lat, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl))
     dlat.attrs["units"] = "degrees"
 
-    dlat = g.create_dataset("position_lon", data=lon, dtype=np.float64)
+    dlat = g.create_dataset("position_lon", data=lon, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl))
     dlat.attrs["units"] = "degrees"
 
-    ddata = g.create_dataset(svn.FIRE_BURN_SEVERITY.value, data=severity_raw["data"], dtype=np.uint8)
+    ddata = g.create_dataset(svn.FIRE_BURN_SEVERITY.value, data=severity_raw["data"], dtype=np.uint8, **hdf5plugin.Zstd(clevel=compression_lvl))
     ddata.attrs["units"] = "dimensionless"
     ddata.attrs["_FillValue"] = 0

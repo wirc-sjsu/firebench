@@ -477,7 +477,62 @@ def import_tif_with_rect_box(
         lon = lon[::-1, :]
         data_dict["data"] = data_dict["data"][::-1, :]
 
-    return np.array(lat), np.array(lon), np.array(data_dict["data"]), tgt_crs
+    return np.array(lat), np.array(lon), np.array(data_dict["data"]), tgt_crs, data_dict["nodata"]
+
+def import_tif(
+    geotiff_path: str,
+    projection: str = None,
+    invert_y: bool = False,
+):
+    """
+    Convert a MTBS GeoTIFF to Firebench HDF5 standard file.
+
+    Use source data projection as default. Can be reprojected by specifying the CRS in projection.
+
+    Parameters
+    ----------
+    geotiff_path : str
+        Path to the MTBS GeoTIFF (ending with *_dnbr6.tif).
+    h5file :  h5py.File
+        target HDF5 file
+    group_name : str | None
+        HDF5 group path. If None, auto-derive from filename, e.g. '2D_raster/<group_name>'.
+    overwrite: bool
+        Overwrite the group in the HDF5 file. Default: False
+    invert_y: bool
+        Invert y axis in data
+
+    Returns
+    -------
+     h5py.File
+        The actual HDF5 group written (with suffix if collision).
+    """  # pylint: disable=line-too-long
+    with rasterio.open(geotiff_path) as src:
+        data = src.read(1)
+        data_dict = {"data": data, "transform": src.transform, "crs": src.crs, "nodata": src.nodata}
+        logger.info(f"Loaded {geotiff_path}: shape={data.shape}, CRS={src.crs}")
+
+    rows, cols = data.shape
+    jj = np.arange(cols)
+    ii = np.arange(rows)
+    T = data_dict["transform"]
+    x = T.a * jj[None, :] + T.b * ii[:, None] + T.c
+    y = T.d * jj[None, :] + T.e * ii[:, None] + T.f
+
+    if projection is None:
+        projection = data_dict["crs"]
+    tgt_crs = CRS(projection)
+
+    # always_xy=True -> transformer expects/returns (x, y) = (lon, lat) ordering for geographic CRS
+    transformer = Transformer.from_crs(data_dict["crs"], tgt_crs, always_xy=True)
+    lon, lat = transformer.transform(x, y)
+
+    if invert_y:
+        lat = lat[::-1, :]
+        lon = lon[::-1, :]
+        data_dict["data"] = data_dict["data"][::-1, :]
+
+    return np.array(lat), np.array(lon), np.array(data_dict["data"]), tgt_crs, data_dict["nodata"]
 
 
 def _merge_from_source(
@@ -554,26 +609,7 @@ def _copy_entire_object(src_parent: h5py.Group, dst_parent: h5py.Group, name: st
     Copy a group or dataset `name` from src_parent to dst_parent, including
     all attributes and children (for groups).
     """
-    obj = src_parent[name]
-
-    if isinstance(obj, h5py.Dataset):
-        # Create dataset with same data and attrs
-        dset = dst_parent.create_dataset(name, data=obj[...], dtype=obj.dtype)
-        _copy_attributes(obj, dset, _build_child_path(dst_parent.name, name))
-
-    elif isinstance(obj, h5py.Group):
-        # Create group and copy attributes
-        grp = dst_parent.create_group(name)
-        _copy_attributes(obj, grp, _build_child_path(dst_parent.name, name))
-
-        # Recurse to copy all children
-        for child_name in obj.keys():
-            _copy_entire_object(obj, grp, child_name)
-
-    else:
-        # Exotic object types (SoftLink, ExternalLink, etc.): skip or handle if needed
-        # For now, we skip them to keep the implementation simple.
-        pass
+    src_parent.copy(name, dst_parent, name=name)
 
 
 def _copy_attributes(
@@ -593,12 +629,3 @@ def _copy_attributes(
             # Keep existing attr value
             continue
         dst_obj.attrs[key] = value
-
-
-def _build_child_path(parent_path: str, name: str) -> str:
-    """
-    Utility to build a proper HDF5 path for a child object.
-    """
-    if parent_path == "/":
-        return f"/{name}"
-    return f"{parent_path.rstrip('/')}/{name}"
