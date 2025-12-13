@@ -1,6 +1,5 @@
 import h5py
-from ..tools.logging_config import logger
-from ..tools.units import ureg
+import hdf5plugin
 import re
 import numpy as np
 from pathlib import Path
@@ -8,6 +7,8 @@ import rasterio
 from pyproj import CRS, Transformer
 from rasterio.windows import from_bounds
 from rasterio.warp import transform_bounds
+from ..tools.logging_config import logger
+from ..tools.units import ureg
 
 VERSION_STD = "0.2"
 
@@ -325,7 +326,7 @@ def merge_trees(
     file1: h5py.File,
     file2: h5py.File,
     merged_file: h5py.File,
-    conflict_solver: dict | None = None,
+    compression_lvl: int = 3,
 ) -> None:
     """
     Recursively fill `merged_file` with content from `file1` and `file2`.
@@ -350,8 +351,7 @@ def merge_trees(
         src=file1,
         dst=merged_file,
         path="/",
-        conflict_solver={},  # nothing to resolve, just copy
-        overwrite_existing=False,
+        compression_lvl=compression_lvl,
     )
 
     # 2) merge from file2, now conflict_solver may apply
@@ -359,8 +359,7 @@ def merge_trees(
         src=file2,
         dst=merged_file,
         path="/",
-        conflict_solver={},
-        overwrite_existing=True,
+        compression_lvl=compression_lvl,
     )
 
 
@@ -536,81 +535,124 @@ def import_tif(
     return np.array(lat), np.array(lon), np.array(data_dict["data"]), tgt_crs, data_dict["nodata"]
 
 
+def copy_entire_object_zstd(
+    src_parent: h5py.Group,
+    dst_parent: h5py.Group,
+    name: str,
+    compression_lvl: int,
+) -> None:
+    """
+    Recursively copy `name` from src_parent to dst_parent.
+
+    Policy:
+    - Groups:
+        * If missing in dst -> create
+        * If already exists -> copy only new attrs via _copy_attributes
+        * Recurse into children
+    - Datasets:
+        * If missing -> create with Zstd(clevel=compression_lvl), load ONE dataset at a time
+        * If exists -> raise
+    - Links/other: skipped
+    """
+    src_obj = src_parent.get(name, getlink=False)
+    if src_obj is None:
+        return
+
+    if isinstance(src_obj, h5py.Dataset):
+        if name in dst_parent:
+            # Keep strict behavior by default
+            raise ValueError(
+                f"Conflict detected: dataset already exists at {dst_parent.name.rstrip('/')}/{name}"
+            )
+
+        dset = dst_parent.create_dataset(
+            name,
+            data=src_obj[...],
+            dtype=src_obj.dtype,
+            **hdf5plugin.Zstd(clevel=compression_lvl),
+        )
+        _copy_attributes(src_obj, dset, f"{dst_parent.name.rstrip('/')}/{name}")
+        return
+
+    if isinstance(src_obj, h5py.Group):
+        if name in dst_parent:
+            dst_obj = dst_parent[name]
+            if not isinstance(dst_obj, h5py.Group):
+                raise ValueError(
+                    f"Conflict detected: expected group at {dst_parent.name.rstrip('/')}/{name}"
+                )
+            grp = dst_obj
+        else:
+            grp = dst_parent.create_group(name)
+
+        _copy_attributes(src_obj, grp, f"{dst_parent.name.rstrip('/')}/{name}")
+
+        # recurse
+        for child_name in src_obj.keys():
+            copy_entire_object_zstd(
+                src_parent=src_obj,
+                dst_parent=grp,
+                name=child_name,
+                compression_lvl=compression_lvl,
+            )
+        return
+
+    # SoftLink/ExternalLink/etc: skip
+    return
+
+
 def _merge_from_source(
     src: h5py.Group,
     dst: h5py.Group,
     path: str,
-    conflict_solver: dict,
-    overwrite_existing: bool,
+    compression_lvl: int,
 ) -> None:
     """
     Recursive helper.
 
-    Parameters
-    ----------
-    src : h5py.Group or h5py.File
-        Source root/node.
-    dst : h5py.Group or h5py.File
-        Destination root/node.
-    path : str
-        Absolute HDF5 path in src (and corresponding path in dst).
-    conflict_solver : dict
-        Mapping path -> solver(existing_data, incoming_data) -> resolved_data.
-    overwrite_existing : bool
-        If False, never touch existing objects (used for file1).
-        If True, apply conflict_solver or keep existing by default (used for file2).
+    - Merges attributes at `path` via _copy_attributes (only new attrs).
+    - For children:
+        * if missing in dst: copy entire subtree with Zstd
+        * if exists:
+            - if both are groups: recurse (at any depth)
+            - otherwise: strict conflict (raise)
     """
     src_obj = src[path]
-    dst_obj = dst[path]  # must exist; for root "/" this is the file itself
+    dst_obj = dst[path]  # must exist for current node
 
     # Copy/merge attributes for this object (group or dataset)
     _copy_attributes(src_obj, dst_obj, path)
 
     if isinstance(src_obj, h5py.Dataset):
-        # Nothing more to recurse into
         return
 
     if not isinstance(src_obj, h5py.Group):
-        # ignore exotic node types for now (SoftLink, ExternalLink, etc.)
         return
 
-    # src_obj is a Group: iterate over its children
-    for name, child in src_obj.items():
-        if path == "/":
-            child_path = f"/{name}"
-        else:
-            child_path = f"{path.rstrip('/')}/{name}"
+    for name in src_obj.keys():
+        child_path = f"/{name}" if path == "/" else f"{path.rstrip('/')}/{name}"
 
         if name not in dst_obj:
-            # Child does not exist yet in dst: copy entire subtree
-            _copy_entire_object(src_obj, dst_obj, name)
+            copy_entire_object_zstd(
+                src_parent=src_obj,
+                dst_parent=dst_obj,
+                name=name,
+                compression_lvl=compression_lvl,
+            )
         else:
-            # Child already exists in dst: possible conflict
             src_child = src_obj[name]
             dst_child = dst_obj[name]
 
-            if path == "/" and isinstance(src_child, h5py.Group) and isinstance(dst_child, h5py.Group):
-                # Recurse into /<name> and merge there
+            if isinstance(src_child, h5py.Group) and isinstance(dst_child, h5py.Group):
                 _merge_from_source(
                     src=src,
                     dst=dst,
                     path=child_path,
-                    conflict_solver=conflict_solver,
-                    overwrite_existing=overwrite_existing,
+                    compression_lvl=compression_lvl,
                 )
             else:
-                # Deeper levels (path != "/") or non-group conflicts:
-                # keep strict behavior and raise.
                 logger.error("_merge_from_source: conflict at path %s for %s", path, name)
                 raise ValueError("Conflict detected. Merge stopped")
-
-
-def _copy_entire_object(src_parent: h5py.Group, dst_parent: h5py.Group, name: str) -> None:
-    """
-    Copy a group or dataset `name` from src_parent to dst_parent, including
-    all attributes and children (for groups).
-    """
-    src_parent.copy(name, dst_parent, name=name)
 
 
 def _copy_attributes(

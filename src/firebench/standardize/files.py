@@ -41,6 +41,7 @@ def merge_two_std_files(
     filepath_target: str,
     merged_description: str = "",
     overwrite: bool = False,
+    compression_lvl: int = 3,
 ):
     """
     Try to merge two std FireBench files
@@ -49,7 +50,13 @@ def merge_two_std_files(
 
     Then merge the list of authors without duplicates. Keep order as much as possible (first authors from file1 then first author from file2 then second from file 1...)
     """
-    logger.debug("merge_two_std_files: merge %s with %s into %s", filepath_1, filepath_2, filepath_target)
+    logger.info(
+        "merge_two_std_files: merge %s with %s into %s with compression level %s",
+        filepath_1,
+        filepath_2,
+        filepath_target,
+        compression_lvl,
+    )
     file1 = h5py.File(filepath_1, "r")
     validate_h5_std(file1)
     file2 = h5py.File(filepath_2, "r")
@@ -68,7 +75,7 @@ def merge_two_std_files(
     # Create the new file
     merged_file = new_std_file(filepath_target, authors=merged_authors, overwrite=overwrite)
 
-    merge_trees(file1, file2, merged_file)
+    merge_trees(file1, file2, merged_file, compression_lvl=compression_lvl)
 
     merged_file.attrs["description"] = merged_description
 
@@ -85,6 +92,7 @@ def merge_std_files(
     filepath_target: str,
     merged_description: str = "",
     overwrite: bool = False,
+    compression_lvl: int = 3,
 ):
     if not filespath:
         raise ValueError("filespath must contain at least one file")
@@ -118,6 +126,8 @@ def merge_std_files(
 
             if is_last:
                 out_path = target_path
+                compression_lvl_used = compression_lvl
+                overwrite_used = overwrite
             else:
                 # Alternate between tmp1 and tmp2, ensuring out_path != current_path
                 if current_path == tmp1:
@@ -127,13 +137,16 @@ def merge_std_files(
                 else:
                     # First time we merge, we can pick any temp file
                     out_path = tmp1
+                compression_lvl_used = 1  # minimal compression for tmp files
+                overwrite_used = True
 
             merge_two_std_files(
                 filepath_1=str(current_path),
                 filepath_2=str(next_path),
                 filepath_target=str(out_path),
                 merged_description=merged_description,
-                overwrite=True,  # safe: we control these temp/target files here
+                overwrite=overwrite_used,
+                compression_lvl=compression_lvl_used,
             )
 
             current_path = out_path
