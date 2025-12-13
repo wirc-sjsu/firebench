@@ -17,6 +17,7 @@ def standardize_ravg_cc_from_geotiff(
     projection: str = None,
     overwrite: bool = False,
     invert_y: bool = False,
+    compression_lvl: int = 3,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard for Canopy Cover Loss
@@ -52,6 +53,7 @@ def standardize_ravg_cc_from_geotiff(
         projection,
         overwrite,
         invert_y,
+        compression_lvl,
     )
 
 
@@ -64,6 +66,7 @@ def standardize_ravg_cbi_from_geotiff(
     projection: str = None,
     overwrite: bool = False,
     invert_y: bool = False,
+    compression_lvl: int = 3,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard for Composite Burn Index Severity
@@ -99,6 +102,7 @@ def standardize_ravg_cbi_from_geotiff(
         projection,
         overwrite,
         invert_y,
+        compression_lvl,
     )
 
 
@@ -111,6 +115,7 @@ def standardize_ravg_ba_from_geotiff(
     projection: str = None,
     overwrite: bool = False,
     invert_y: bool = False,
+    compression_lvl: int = 3,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard for Live Basal Area loss
@@ -146,6 +151,7 @@ def standardize_ravg_ba_from_geotiff(
         projection,
         overwrite,
         invert_y,
+        compression_lvl,
     )
 
 
@@ -225,4 +231,5 @@ def _standardize_ravg_from_geotiff(
         ravg_variable, data=ravg_data, dtype=np.uint8, **hdf5plugin.Zstd(clevel=compression_lvl)
     )
     ddata.attrs["units"] = "dimensionless"
-    ddata.attrs["_FillValue"] = nodata
+    if nodata is not None:
+        ddata.attrs["_FillValue"] = nodata
