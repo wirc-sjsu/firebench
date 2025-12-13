@@ -113,7 +113,7 @@ def standardize_synoptic_raws_from_json(
                 )
             else:
                 if var in variable_conversion:
-                    logger.info("> processing %s", var)
+                    logger.debug("> processing %s", var)
                     var_data = np.array(
                         station_dict["OBSERVATIONS"][var], dtype=variable_conversion[var]["dtype"]
                     )
