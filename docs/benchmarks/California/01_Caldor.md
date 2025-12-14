@@ -20,7 +20,7 @@ It contains observation datasets for:
 - Live basal area change (RAVG)
 - Weather stations (Synoptic)
 
-## Buildings damage benchmarks
+## Buildings damage
 
 ### Dataset
 
@@ -134,7 +134,7 @@ This benchmark is performed on the binary classes for damaged buildings.
 This benchmark is performed on the binary classes for damaged buildings.
 
 
-## Burn severity benchmarks
+## Burn severity from MTBS
 
 ### Dataset
 
@@ -226,6 +226,55 @@ This benchmark is performed on the binary classes for high severity points (Bina
 **Name in Score Card**: Binary High Severity F1 Score <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
+## Burn Severity from RAVG 
+### Dataset
+
+## Canopy cover loss 
+### Dataset
+
+## Infrared fire perimeters
+### Dataset
+
+The infrared fire perimeters have been gathered from [NIROPS](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/) dataset.
+Every orginal file has been manually processed to extract only the perimeter. The time stamp of the perimeter has been defined from the imaging report (e.g. [Report for 2021/08/17](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/20210818/20210818_Caldor_IR_Topo_11x17.pdf)) using the `Imagery Date` and `Imagery Time`. The burn area obtained using the KML file and python tools has been verified against the `Interpreted Acreage` when specified in the reports. Each fire perimeter (see Fig. 6) is stored as a group within the HDF5 data file with an attributes containing the path of the KML file that contains the fire perimeter dataset.
+The perimeters have been processed from August 17th (first IR perimeter available) to September 10th, when the burn area is 99% if the final burn area, as shown in Figure 7 (source: [CALFIRE](https://www.fire.ca.gov/incidents/2021/8/14/caldor-fire/)).
+The final dataset contains 21 perimeters.
+
+The following study periods (see Fig. 7) are defined:
+- `W1`: from August 17th 20h20 PDT to September 10th 23h34 PDT, for a total duration of 24 days, 3h, and 14 min.
+- `W2`: from August 19th 20h45 PDT to August 21st 21h15 PDT, for a total duration of 2 days, 0h and 30 min.
+- `W3`: from August 26th 02h30 PDT to August 28th 20h30 PDT, for a total duration of 2 days, 18h and 0 min.
+- `W4`: from August 28th 20h30 PDT to September 3rd 00h40 PDT, for a total duration of 5 days, 4h and 10 min.
+
+Figure 6 shows teach processed fire perimeter as a colored solid contour. The color of the contour displays the time stamp of the perimeter.
+
+![blockdiagram](../../_static/benchmarks/FB001/Caldor_perimeters.png)
+<p style="text-align: center;">
+    <strong>
+        Fig. 6
+    </strong>
+    :
+    <em>
+        Infrared fire perimeters from August 17th to September 10th.
+    </em>
+</p>
+
+Figure 6 shows teach processed fire perimeter as a colored solid contour. The color of the contour displays the time stamp of the perimeter. The study periods are shown as colored rectangle at the bottom of the plot.
+
+![blockdiagram](../../_static/benchmarks/FB001/Caldor_burnt_area.png)
+<p style="text-align: center;">
+    <strong>
+        Fig. 7
+    </strong>
+    :
+    <em>
+        Burn area derived from IR perimeters from August 17th to September 10th. Red dashed line shows the final burn area from CALFIRE. The orange dashed line shows the final burn area from MTBS final perimeter.
+    </em>
+</p>
+
+### Benchmarks
+
+
 ## Requirements
 
 The following sections list the datasets requirements to run the different benchmarks. When the benchmark script is run, each requirement is validated on the HDF5 file passed as input (from the model ouput/data the user wants to evaluate). If a requirement is met, each corresponding benchmark is run.
@@ -281,6 +330,7 @@ Burn Severity          | 1            |               |
 ## Notes
 
 - Each file hash has been performed using `firebench.standardize.calculate_sha256`.
+- Collection of forecasts or reanalysis are authorized for benchmarks period (e.g. for fire perimeters) but have to be detailed in the model report attached to the report sent back to FireBench team for collection and validation of results.
 
 ## Acknowledgment 
 
