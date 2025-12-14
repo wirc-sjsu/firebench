@@ -517,30 +517,100 @@ Files (KML) at path defined in `rel_path` attributes must exist.
 
 ## Aggregation Schemes
 
-This section provides the weights used to aggregate KPI Unit Scores. More information about aggregation methods [here](../../metrics/index.md). If aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total score are not computed.
+This section describes the weights used to aggregate KPI unit scores. More information about aggregation methods [here](../../metrics/score.md). If aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total score are not computed.
+
+### Group definition
+
+All benchmarks have a default weight of 1 in each group. If custom weights are applied, refer to custom weight Table. 
+
+Weight precedence:
+- Default benchmark weight: 1
+- Group benchmark overrides: apply to all schemes unless overridden
+- Scheme benchmark overrides: apply only within that scheme and override everything else 
+
+Group                  | Benchmark ID
+---------------------- | ------------
+Building Damage        | BD01 to BD06
+Burn Severity          | SV01 to SV06
+Fire Perimeter W1      | FP01, FP05, FP09, FP13, FP17, FP21, FP25, FP29
+Fire Perimeter W2      | FP02, FP06, FP10, FP14, FP18, FP22, FP26, FP30
+Fire Perimeter W3      | FP03, FP07, FP11, FP15, FP19, FP23, FP27, FP31
+Fire Perimeter W4      | FP04, FP08, FP12, FP16, FP20, FP24, FP28, FP32
+
+#### Group benchmark override
+The custom weight defined in the following Table overrides the default weight from the Group Definition Table.
+
+Group                  | Benchmark ID  | Weight
+---------------------- | ------------  | ------
+Fire Perimeter W1      | FP25, FP29    | 2
+Fire Perimeter W2      | FP26, FP30    | 2
+Fire Perimeter W3      | FP27, FP31    | 2
+Fire Perimeter W4      | FP28, FP32    | 2
 
 ### Scheme A
 
-Group                  | Group Weight | Benchmark ID  | Benchmark weight
----------------------- | ------------ | ------------  | ----------------
-Building Damage        | 1            |               | 
-|        |                            | BD01 to BD06  | 1
-Burn Severity          | 1            |               | 
-|        |                            | SV01 to SV06  | 1
+Scheme A contains all the groups with default weights. It can be used to evaluate complete model performance with balanced weighting.
 
-### Scheme B
+Group                  | Group Weight 
+---------------------- | ------------
+Building Damage        | 1 
+Burn Severity          | 1     
+Fire Perimeter W1      | 1
+Fire Perimeter W2      | 1
+Fire Perimeter W3      | 1
+Fire Perimeter W4      | 1
 
-Group                  | Group Weight | Benchmark ID  | Benchmark weight
----------------------- | ------------ | ------------  | ----------------
-Building Damage        | 1            |               | 
-|        |                            | BD01 to BD06  | 1
+## Scheme B
+
+Scheme B contains only the building damage group. It is used to evaluate the model only on building damage benchmarks.
+
+Group                  | Group Weight 
+---------------------- | ------------
+Building Damage        | 1 
+
+### Scheme FP
+
+Scheme FP contains only the fire perimeter groups. It is used to evaluate the model only on fire perimeter benchmarks for all of the study periods. 
+
+Group                  | Group Weight 
+---------------------- | ------------
+Fire Perimeter W1      | 1
+Fire Perimeter W2      | 1
+Fire Perimeter W3      | 1
+Fire Perimeter W4      | 1
+
+### Scheme FPW1-W1
+
+Scheme FPW1-CW1 applies an alternative benchmark weighting for fire perimeter groups. It uses the number of days for each study period as the weight. 
+
+Group                  | Group Weight 
+---------------------- | ------------
+Fire Perimeter W1      | 24.1
+Fire Perimeter W2      | 2.0
+Fire Perimeter W3      | 2.75
+Fire Perimeter W4      | 5.2
+
+#### Scheme benchmark override
+This scheme also modifies the weights applied to the benchmarks. It gives more weight to the average Jaccard and Dice-Sorensen index compared the min/max indices. It also adds more weight to the burn area benchmarks.
+
+Group                  | Benchmark ID  | Weight
+---------------------- | ------------  | ------
+Fire Perimeter W1      | FP01, FP13    | 2
+|                      | FP25, FP29    | 4
+Fire Perimeter W2      | FP02, FP14    | 2
+|                      | FP26, FP30    | 4
+Fire Perimeter W3      | FP03, FP15    | 2
+|                      | FP27, FP31    | 4
+Fire Perimeter W4      | FP04, FP16    | 2
+|                      | FP28, FP32    | 4
 
 ### Scheme S
 
-Group                  | Group Weight | Benchmark ID  | Benchmark weight
----------------------- | ------------ | ------------  | ----------------
-Burn Severity          | 1            |               | 
-|        |                            | SV01 to SV06  | 1
+Scheme S contains only the burn severity group. It is used to evaluate the model only on building severity from MTBS benchmarks.
+
+Group                  | Group Weight 
+---------------------- | ------------
+Burn Severity          | 1     
 
 ## Notes
 
@@ -550,4 +620,4 @@ Burn Severity          | 1            |               |
 
 ## Acknowledgment 
 
-We gratefully acknowledge Synoptic for granting permission to redistribute selected weather-station data as part of the FireBench benchmarking framework.
+We gratefully acknowledge [Synoptic](https://synopticdata.com) for granting permission to redistribute selected weather-station data as part of the FireBench benchmarking framework.
