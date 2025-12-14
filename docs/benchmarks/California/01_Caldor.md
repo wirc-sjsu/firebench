@@ -15,7 +15,10 @@ It contains observation datasets for:
 - Building damaged (CALFIRE)
 - Burn severity (MTBS)
 - Burn severity (RAVG)
+- Canopy bottom height (LANDFIRE)
+- Canopy bulk density (LANDFIRE)
 - Canopy cover loss (RAVG)
+- Canopy height (LANDFIRE)
 - Infrared fire perimeters (NIROPS)
 - Live basal area change (RAVG)
 - Weather stations (Synoptic)
@@ -50,7 +53,7 @@ Figure 1 shows the spatial distribution of building damage for the Caldor Fire.
     </em>
 </p>
 
-Figure 2 shows the distribution of building damage for the Caldor Fire. The following table shows the number of strucure in each damage category.
+Figure 2 shows the distribution of building damage for the Caldor Fire. The following Table shows the number of strucure in each damage category.
 Damage category        | Counts [-]  
 ---------------------- | ----------------- 
 No Damage              | 3356
@@ -91,43 +94,49 @@ In order to performe some calculations, the building damaged classes can be aggr
 
 See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
 
-#### FB001-BD01
+#### Binary Structure Loss Accuracy
 
+**IDs**: FB001-BD01 <br>
 **KPI**: Binary Structure Loss Accuracy <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Accuracy <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
-#### FB001-BD02
+#### Binary Structure Loss Precision
 
+**IDs**: FB001-BD02 <br>
 **KPI**: Binary Structure Loss Precision <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Precision <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
-#### FB001-BD03
+#### Binary Structure Loss Recall
 
+**IDs**: FB001-BD03 <br>
 **KPI**: Binary Structure Loss Recall <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Recall <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
-#### FB001-BD04
+#### Binary Structure Loss Specificity
 
+**IDs**: FB001-BD04 <br>
 **KPI**: Binary Structure Loss Specificity <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Specificity <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
-#### FB001-BD05
+#### Binary Structure Loss Negative Predictive Value
 
+**IDs**: FB001-BD05<br>
 **KPI**: Binary Structure Loss Negative Predictive Value <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Negative Predictive Value <br>
 This benchmark is performed on the binary classes for damaged buildings.
 
-#### FB001-BD06
+#### Binary Structure Loss F1 Score
 
+**IDs**: FB001-BD06<br>
 **KPI**: Binary Structure Loss F1 Score <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss F1 Score <br>
@@ -184,43 +193,49 @@ To perform the high severity benchmarks using binary confusion matrix, we constr
 
 See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
 
-#### FB001-SV01
+#### Binary High Severity Accuracy
 
+**IDs**: FB001-SV01<br>
 **KPI**: Binary High Severity Accuracy <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Accuracy <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
-#### FB001-SV02
+#### Binary High Severity Precision
 
+**IDs**: FB001-SV02<br>
 **KPI**: Binary High Severity Precision <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Precision <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
-#### FB001-SV03
+#### Binary High Severity Recall
 
+**IDs**: FB001-SV03<br>
 **KPI**: Binary High Severity Recall <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Recall <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
-#### FB001-SV04
+#### Binary High Severity Specificity
 
+**IDs**: FB001-SV04<br>
 **KPI**: Binary High Severity Specificity <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Specificity <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
-#### FB001-SV05
+#### Binary High Severity Negative Predictive Value
 
+**IDs**: FB001-SV05<br>
 **KPI**: Binary High Severity Negative Predictive Value <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Negative Predictive Value <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
-#### FB001-SV06
+#### Binary High Severity F1 Score
 
+**IDs**: FB001-SV06<br>
 **KPI**: Binary High Severity F1 Score <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity F1 Score <br>
@@ -240,11 +255,14 @@ Every orginal file has been manually processed to extract only the perimeter. Th
 The perimeters have been processed from August 17th (first IR perimeter available) to September 10th, when the burn area is 99% if the final burn area, as shown in Figure 7 (source: [CALFIRE](https://www.fire.ca.gov/incidents/2021/8/14/caldor-fire/)).
 The final dataset contains 21 perimeters.
 
-The following study periods (see Fig. 7) are defined:
-- `W1`: from August 17th 20h20 PDT to September 10th 23h34 PDT, for a total duration of 24 days, 3h, and 14 min.
-- `W2`: from August 19th 20h45 PDT to August 21st 21h15 PDT, for a total duration of 2 days, 0h and 30 min.
-- `W3`: from August 26th 02h30 PDT to August 28th 20h30 PDT, for a total duration of 2 days, 18h and 0 min.
-- `W4`: from August 28th 20h30 PDT to September 3rd 00h40 PDT, for a total duration of 5 days, 4h and 10 min.
+The following study periods (see Fig. 7) are defined in the following Table:
+
+Name | Start time        | End time           | Duration      | Burn area [acre]
+-----|-------------------|--------------------|---------------|-----------------
+W1   | Aug 17 20h20 PDT  | Sep 10 23h34 PDT   | 24d  3h 14min | 166,256
+W2   | Aug 19 20h45 PDT  | Aug 21 21h15 PDT   |  2d  0h 30min | 24,941
+W3   | Aug 26 02h30 PDT  | Aug 28 20h30 PDT   |  2d 18h  0min | 19,992
+W4   | Aug 28 20h30 PDT  | Sep  3 00h40 PDT   |  5d  4h 10min | 56,272
 
 Figure 6 shows teach processed fire perimeter as a colored solid contour. The color of the contour displays the time stamp of the perimeter.
 
@@ -274,6 +292,145 @@ Figure 6 shows teach processed fire perimeter as a colored solid contour. The co
 
 ### Benchmarks
 
+See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
+
+#### Average Jaccard Index over study period
+
+**IDs**: See Table<br>
+**KPI**: Average Jaccard Index <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: See Table <br>
+The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP01 | W1           | Average Jaccard Index W1
+FP02 | W2           | Average Jaccard Index W2
+FP03 | W3           | Average Jaccard Index W3
+FP04 | W4           | Average Jaccard Index W4
+
+#### Minimum Jaccard Index over study period
+
+**IDs**: See Table<br>
+**KPI**: Minimum Jaccard Index <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: See Table <br>
+The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP05 | W1           | Minimum Jaccard Index W1
+FP06 | W2           | Minimum Jaccard Index W2
+FP07 | W3           | Minimum Jaccard Index W3
+FP08 | W4           | Minimum Jaccard Index W4
+
+#### Maximum Jaccard Index over study period
+
+**IDs**: See Table<br>
+**KPI**: Maximum Jaccard Index <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: See Table <br>
+The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP09 | W1           | Minimum Jaccard Index W1
+FP10 | W2           | Minimum Jaccard Index W2
+FP11 | W3           | Minimum Jaccard Index W3
+FP12 | W4           | Minimum Jaccard Index W4
+
+#### Average Dice-Sorensen Index over study period
+
+**IDs**: See Table<br>
+**KPI**: Average Dice-Sorensen Index <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: See Table <br>
+The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP13 | W1           | Average Dice-Sorensen Index W1
+FP14 | W2           | Average Dice-Sorensen Index W2
+FP15 | W3           | Average Dice-Sorensen Index W3
+FP16 | W4           | Average Dice-Sorensen Index W4
+
+#### Minimum Dice-Sorensen Index over study period
+
+**IDs**: See Table<br>
+**KPI**: Minimum Dice-Sorensen Index <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: See Table <br>
+The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP17 | W1           | Minimum Dice-Sorensen Index W1
+FP18 | W2           | Minimum Dice-Sorensen Index W2
+FP19 | W3           | Minimum Dice-Sorensen Index W3
+FP20 | W4           | Minimum Dice-Sorensen Index W4
+
+#### Maximum Dice-Sorensen Index over study period
+
+**IDs**: See Table<br>
+**KPI**: Maximum Dice-Sorensen Index <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: See Table <br>
+The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP21 | W1           | Minimum Dice-Sorensen Index W1
+FP22 | W2           | Minimum Dice-Sorensen Index W2
+FP23 | W3           | Minimum Dice-Sorensen Index W3
+FP24 | W4           | Minimum Dice-Sorensen Index W4
+
+#### Burn Area Bias
+
+**IDs**: See Table<br>
+**KPI**: Burn Area Bias <br>
+**Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
+**Name in Score Card**: See Table <br>
+The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
+A bias of $m$ acre, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means higher difficulty) and must be chosen by the community.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID   | Study period | Name in Score Card | $m$    | $B_{50}$
+-----|--------------|--------------------|--------|---------
+FP25 | W1           | Burn Area Bias W1  | 80,000 | 48%
+FP26 | W2           | Burn Area Bias W2  | 5,000  | 20%
+FP27 | W3           | Burn Area Bias W3  | 5,000  | 25%
+FP28 | W4           | Burn Area Bias W4  | 17,000 | 30%
+
+#### Burn Area RMSE
+
+**IDs**: See Table<br>
+**KPI**: Burn Area RMSE <br>
+**Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
+**Name in Score Card**: See Table <br>
+The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
+A bias of $m$ acre, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means higher difficulty) and must be chosen by the community.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID   | Study period | Name in Score Card | $m$    | $B_{50}$
+-----|--------------|--------------------|--------|---------
+FP29 | W1           | Burn Area RMSE W1  | 80,000 | 48%
+FP30 | W2           | Burn Area RMSE W2  | 5,000  | 20%
+FP31 | W3           | Burn Area RMSE W3  | 5,000  | 25%
+FP32 | W4           | Burn Area RMSE W4  | 17,000 | 30%
 
 ## Requirements
 
