@@ -40,7 +40,7 @@ def kpi_norm_bounded_linear(x, a, b):
 
 def kpi_norm_half_open_linear(x, a, m):
     """
-    Linearly normalize a KPI defined on the half-open interval [a, ∞).
+    Linearly normalize a KPI defined on the half-open interval [a, \infty).
 
     This function applies a linear decay starting from:
         - x = a -> score = 100
@@ -80,12 +80,12 @@ def kpi_norm_half_open_linear(x, a, m):
 
 def kpi_norm_half_open_exponential(x, a, m):
     """
-    Exponentially normalize a KPI defined on the half-open interval [a, ∞).
+    Exponentially normalize a KPI defined on the half-open interval [a, \infty).
 
     This function applies a smooth exponential decay such that:
         - x = a -> score = 100
         - x = m -> score = 50
-        - x -> ∞ -> score -> 0
+        - x -> \infty -> score -> 0
     ensuring a monotonic and asymptotic decline.
 
     Use this normalization when the KPI has a minimum acceptable value `a`
@@ -118,3 +118,73 @@ def kpi_norm_half_open_exponential(x, a, m):
     if m <= a:
         raise ValueError(f"Parameter m ({m}) smaller than lower limit a ({a})")
     return 100.0 * exp(-log(2) * (x - a) / (m - a))
+
+
+def kpi_norm_symmetric_open_linear(x, m):
+    """
+    Linearly normalize a KPI defined on the open interval (-\infty, \infty).
+
+    This function applies a smooth exponential decay such that:
+        - x = 0 -> score = 100
+        - |x| >= m -> score = 0
+
+    Use this normalization when deviations should be penalized linearly.
+
+    Parameters
+    ----------
+    x : float
+        KPI value to normalize.
+    m : float
+        Value at which the score reaches 0. Must satisfy m > 0.
+
+    Returns
+    -------
+    float
+        Normalized score in the range (0, 100], dlinear decay from
+        100 at `a` to 0 at `m`.
+
+    Raises
+    ------
+    ValueError
+        If `m <= 0`.
+    """
+    if m <= 0:
+        raise ValueError(f"Parameter m ({m}) smaller than lower limit 0")
+    return 100.0 * max(0, 1 - abs(x) / m)
+
+
+def kpi_norm_symmetric_open_exponential(x, m):
+    """
+    Exponentially normalize a KPI defined on the open interval (-\infty, \infty).
+
+    This function applies a smooth exponential decay such that:
+        - x = 0 -> score = 100
+        - x = +/- m -> score = 50
+        - x -> \infty -> score -> 0
+    ensuring a monotonic and asymptotic decline.
+
+    Use this normalization when deviations should be
+    penalized progressively rather than linearly. The parameter `m` defines
+    the characteristic decay scale at which performance is reduced by half.
+
+    Parameters
+    ----------
+    x : float
+        KPI value to normalize.
+    m : float
+        Value at which the score reaches 50. Must satisfy m > 0.
+
+    Returns
+    -------
+    float
+        Normalized score in the range (0, 100], decaying exponentially
+        from 100 at `0` toward 0 as `x` increases.
+
+    Raises
+    ------
+    ValueError
+        If `m <= 0`.
+    """
+    if m <= 0:
+        raise ValueError(f"Parameter m ({m}) smaller than lower limit 0")
+    return 100.0 * exp(-log(2) * abs(x) / m)

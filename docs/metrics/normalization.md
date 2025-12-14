@@ -34,7 +34,7 @@ Here,
 For KPIs with a minimum acceptable value $a$ and domain $[a, +\infty[$, we define an exponentially decaying score:
 
 $$
-\mathcal N(x, a, m) =100 \, \exp \left( - \frac{\ln 2(x-a)}{m-a} \right).
+\mathcal N(x, a, m) =100 \, \exp \left( - \frac{\ln 2 \, (x-a)}{m-a} \right).
 $$
 
 This formulation ensures:
@@ -49,3 +49,38 @@ Here,
 - $a$ corresponds to the **best** possible score (100),
 - $m$ corresponds to the value at which the score has decreased to **50**,
 - scores decay smoothly toward 0 as $x \to +\infty$.
+
+## Symmetric Linear Open Normalization
+
+For KPIs that have a symmetry around 0 but no finite limit, i.e. values in $[-\infty, +\infty[$, we define:
+
+$$
+\mathcal N(x, m) = 100 \, \max \left(0,  1 - \frac{|x|}{m} \right)
+$$
+
+where $m > a$ is a parameter specifying the value of $x$ at which the score reaches **0**.
+
+Here,
+- $a$ corresponds to the **best** score (100),
+- $m$ corresponds to the **worst** score (0).
+
+## Symmetric Exponential Open Normalization
+
+For KPIs that have a symmetry around 0 but no finite limit, i.e. values in $[-\infty, +\infty[$, we define:
+
+$$
+\mathcal N(x, m) =100 \, \exp \left( - \frac{\ln 2 \, |x|}{m} \right).
+$$
+
+This formulation ensures:
+
+$$
+\mathcal N(0,m) = 100, \qquad
+\mathcal N(\pm m,m) = 50.
+$$
+
+Thus, $m$ is the KPI value at which the score is exactly **50**.
+Here,
+- $0$ corresponds to the **best** possible score (100),
+- $m$ corresponds to the value at which the score has decreased to **50**,
+- scores decay smoothly toward 0 as $x \to \pm\infty$.
