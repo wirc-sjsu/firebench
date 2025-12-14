@@ -1,9 +1,9 @@
 # 2021 Caldor Fire
 
-**Version**: 1.0a <br>
+**Version**: 2026.0a <br>
 **Case ID**: FB001 <br>
 **FireBench IO std version**: >= 0.2 <br>
-**Date of last update**: 11/19/2025 
+**Date of last update**: 12/19/2025 
 
 ## Contributors
 - Aurélien Costes, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [aurelien.costes@sjsu.edu](mailto:aurelien.costes@sjsu.edu), [ORCID](https://orcid.org/0000-0003-4543-5107)
@@ -12,12 +12,13 @@
 
 This collection of benchmarks uses the public ressources about the 2021 Caldor Fire.
 It contains observation datasets for:
-- Nearby weather stations (nb of associated benchmarks)
-- Infrared fire perimeters
-- Burn severity
-- Building damaged
-- (Plume top height)
-- (Smoke concentration ground)
+- Building damaged (CALFIRE)
+- Burn severity (MTBS)
+- Burn severity (RAVG)
+- Canopy cover loss (RAVG)
+- Infrared fire perimeters (NIROPS)
+- Live basal area change (RAVG)
+- Weather stations (Synoptic)
 
 ## Buildings damage benchmarks
 
@@ -280,3 +281,7 @@ Burn Severity          | 1            |               |
 ## Notes
 
 - Each file hash has been performed using `firebench.standardize.calculate_sha256`.
+
+## Acknowledgment 
+
+We gratefully acknowledge Synoptic for granting permission to redistribute selected weather-station data as part of the FireBench benchmarking framework.
