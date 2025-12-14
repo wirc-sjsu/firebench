@@ -96,7 +96,7 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 
 #### Binary Structure Loss Accuracy
 
-**IDs**: FB001-BD01 <br>
+**Short IDs**: BD01 <br>
 **KPI**: Binary Structure Loss Accuracy <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Accuracy <br>
@@ -104,7 +104,7 @@ This benchmark is performed on the binary classes for damaged buildings.
 
 #### Binary Structure Loss Precision
 
-**IDs**: FB001-BD02 <br>
+**Short IDs**: BD02 <br>
 **KPI**: Binary Structure Loss Precision <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Precision <br>
@@ -112,7 +112,7 @@ This benchmark is performed on the binary classes for damaged buildings.
 
 #### Binary Structure Loss Recall
 
-**IDs**: FB001-BD03 <br>
+**Short IDs**: BD03 <br>
 **KPI**: Binary Structure Loss Recall <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Recall <br>
@@ -120,7 +120,7 @@ This benchmark is performed on the binary classes for damaged buildings.
 
 #### Binary Structure Loss Specificity
 
-**IDs**: FB001-BD04 <br>
+**Short IDs**: BD04 <br>
 **KPI**: Binary Structure Loss Specificity <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Specificity <br>
@@ -128,7 +128,7 @@ This benchmark is performed on the binary classes for damaged buildings.
 
 #### Binary Structure Loss Negative Predictive Value
 
-**IDs**: FB001-BD05<br>
+**Short IDs**: BD05<br>
 **KPI**: Binary Structure Loss Negative Predictive Value <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss Negative Predictive Value <br>
@@ -136,7 +136,7 @@ This benchmark is performed on the binary classes for damaged buildings.
 
 #### Binary Structure Loss F1 Score
 
-**IDs**: FB001-BD06<br>
+**Short IDs**: BD06<br>
 **KPI**: Binary Structure Loss F1 Score <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary Structure Loss F1 Score <br>
@@ -195,7 +195,7 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 
 #### Binary High Severity Accuracy
 
-**IDs**: FB001-SV01<br>
+**Short IDs**: SV01<br>
 **KPI**: Binary High Severity Accuracy <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Accuracy <br>
@@ -203,7 +203,7 @@ This benchmark is performed on the binary classes for high severity points (Bina
 
 #### Binary High Severity Precision
 
-**IDs**: FB001-SV02<br>
+**Short IDs**: SV02<br>
 **KPI**: Binary High Severity Precision <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Precision <br>
@@ -211,7 +211,7 @@ This benchmark is performed on the binary classes for high severity points (Bina
 
 #### Binary High Severity Recall
 
-**IDs**: FB001-SV03<br>
+**Short IDs**: SV03<br>
 **KPI**: Binary High Severity Recall <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Recall <br>
@@ -219,7 +219,7 @@ This benchmark is performed on the binary classes for high severity points (Bina
 
 #### Binary High Severity Specificity
 
-**IDs**: FB001-SV04<br>
+**Short IDs**: SV04<br>
 **KPI**: Binary High Severity Specificity <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Specificity <br>
@@ -227,7 +227,7 @@ This benchmark is performed on the binary classes for high severity points (Bina
 
 #### Binary High Severity Negative Predictive Value
 
-**IDs**: FB001-SV05<br>
+**Short IDs**: SV05<br>
 **KPI**: Binary High Severity Negative Predictive Value <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity Negative Predictive Value <br>
@@ -235,7 +235,7 @@ This benchmark is performed on the binary classes for high severity points (Bina
 
 #### Binary High Severity F1 Score
 
-**IDs**: FB001-SV06<br>
+**Short IDs**: SV06<br>
 **KPI**: Binary High Severity F1 Score <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: Binary High Severity F1 Score <br>
@@ -296,7 +296,7 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 
 #### Average Jaccard Index over study period
 
-**IDs**: See Table<br>
+**Short IDs**: See Table<br>
 **KPI**: Average Jaccard Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
@@ -313,7 +313,7 @@ FP04 | W4           | Average Jaccard Index W4
 
 #### Minimum Jaccard Index over study period
 
-**IDs**: See Table<br>
+**Short IDs**: See Table<br>
 **KPI**: Minimum Jaccard Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
@@ -330,7 +330,7 @@ FP08 | W4           | Minimum Jaccard Index W4
 
 #### Maximum Jaccard Index over study period
 
-**IDs**: See Table<br>
+**Short IDs**: See Table<br>
 **KPI**: Maximum Jaccard Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
@@ -347,7 +347,7 @@ FP12 | W4           | Minimum Jaccard Index W4
 
 #### Average Dice-Sorensen Index over study period
 
-**IDs**: See Table<br>
+**Short IDs**: See Table<br>
 **KPI**: Average Dice-Sorensen Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
@@ -364,7 +364,7 @@ FP16 | W4           | Average Dice-Sorensen Index W4
 
 #### Minimum Dice-Sorensen Index over study period
 
-**IDs**: See Table<br>
+**Short IDs**: See Table<br>
 **KPI**: Minimum Dice-Sorensen Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
@@ -381,7 +381,7 @@ FP20 | W4           | Minimum Dice-Sorensen Index W4
 
 #### Maximum Dice-Sorensen Index over study period
 
-**IDs**: See Table<br>
+**Short IDs**: See Table<br>
 **KPI**: Maximum Dice-Sorensen Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
@@ -398,7 +398,7 @@ FP24 | W4           | Minimum Dice-Sorensen Index W4
 
 #### Burn Area Bias
 
-**IDs**: See Table<br>
+**Short IDs**: See Table<br>
 **KPI**: Burn Area Bias <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
@@ -416,7 +416,7 @@ FP28 | W4           | Burn Area Bias W4  | 17,000 | 30%
 
 #### Burn Area RMSE
 
-**IDs**: See Table<br>
+**Short IDs**: See Table<br>
 **KPI**: Burn Area RMSE <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
@@ -441,8 +441,12 @@ The current version of FireBench does not integrate more complex checks (e.g., a
 
 Requirement            | Benchmarks 
 ---------------------- | ----------------- 
-R01                    | FB001-BD01, FB001-BD02, FB001-BD03, FB001-BD04, FB001-BD05, FB001-BD06
-R02                    | FB001-SV01, FB001-SV02, FB001-SV03, FB001-SV04, FB001-SV05, FB001-SV06
+R01                    | BD01, BD02, BD03, BD04, BD05, BD06
+R02                    | SV01, SV02, SV03, SV04, SV05, SV06
+R03                    | FP01, FP05, FP09, FP13, FP17, FP21, FP25, FP29
+R04                    | FP02, FP06, FP10, FP14, FP18, FP22, FP26, FP30
+R05                    | FP03, FP07, FP11, FP15, FP19, FP23, FP27, FP31
+R06                    | FP04, FP08, FP12, FP16, FP20, FP24, FP28, FP32
 
 ### R01
 Mandatory group/dataset| Mandatory attirbutes 
@@ -456,6 +460,60 @@ Mandatory group/dataset| Mandatory attirbutes
 `/2D_raster/Caldor_MTBS/fire_burn_severity`| units, _FillValue
 `/2D_raster/Caldor_MTBS/position_lat`| units
 `/2D_raster/Caldor_MTBS/position_lon`| units
+
+### R03
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/polygons/Caldor_2021-08-18T20:30-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-19T20:45-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-20T20:20-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-21T21:15-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-24T22:07-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-26T03:30-06:00`| rel_path, time
+`/polygons/Caldor_2021-08-26T22:15-06:00`| rel_path, time
+`/polygons/Caldor_2021-08-27T00:22-06:00`| rel_path, time
+`/polygons/Caldor_2021-08-28T21:30-06:00`| rel_path, time
+`/polygons/Caldor_2021-08-29T22:32-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-30T21:09-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-31T21:08-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-01T21:12-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-03T00:40-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-04T23:29-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-05T23:41-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-06T23:09-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-07T22:40-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-08T22:33-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-10T23:34-07:00`| rel_path, time
+
+Files (KML) at path defined in `rel_path` attributes must exist.
+
+### R04
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/polygons/Caldor_2021-08-20T20:20-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-21T21:15-07:00`| rel_path, time
+
+Files (KML) at path defined in `rel_path` attributes must exist.
+
+### R05
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/polygons/Caldor_2021-08-26T22:15-06:00`| rel_path, time
+`/polygons/Caldor_2021-08-27T00:22-06:00`| rel_path, time
+`/polygons/Caldor_2021-08-28T21:30-06:00`| rel_path, time
+
+Files (KML) at path defined in `rel_path` attributes must exist.
+
+### R06
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/polygons/Caldor_2021-08-29T22:32-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-30T21:09-07:00`| rel_path, time
+`/polygons/Caldor_2021-08-31T21:08-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-01T21:12-07:00`| rel_path, time
+`/polygons/Caldor_2021-09-03T00:40-07:00`| rel_path, time
+
+Files (KML) at path defined in `rel_path` attributes must exist.
 
 ## Aggregation Schemes
 
@@ -486,6 +544,7 @@ Burn Severity          | 1            |               |
 
 ## Notes
 
+- **Benchmark identifiers** consist of a *case ID* and a *short ID*, for example `FB001-BD01`. Throughout the documentation, the *short ID* alone (e.g. `BD01`) is used when the benchmark case is unambiguous, in order to improve readability. The *full identifier* (`FB001-BD01`) is used whenever the case context must be explicit, such as when comparing benchmarks across different cases.
 - Each file hash has been performed using `firebench.standardize.calculate_sha256`.
 - Collection of forecasts or reanalysis are authorized for benchmarks period (e.g. for fire perimeters) but have to be detailed in the model report attached to the report sent back to FireBench team for collection and validation of results.
 
