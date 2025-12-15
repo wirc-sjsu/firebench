@@ -70,6 +70,17 @@ def save_as_table(filename: Path, data: dict):
                 f"{data['score_card']['Score Total']:.2f}",
             ]
         )
+    else:
+        # Aggregation scheme is 0 or invalid
+        scheme_name = "No agg"
+        text_table.append(
+            [
+                f"Total Score {data['case_id']} agg. {scheme_name}: {data['evaluated_model_name']}",
+                "",
+                "",
+                f"Invalid",
+            ]
+        )
     text_table.append(["Benchmark ID/Group Name", "KPI value", "Weight", "Score"])
 
     # rows
