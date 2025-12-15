@@ -1,7 +1,7 @@
-from math import exp, log
+from math import exp, log, isclose
 
 
-def kpi_norm_bounded_linear(x, a, b):
+def kpi_norm_bounded_linear(x, a, b, rtol=1e-12, atol=1e-15):
     """
     Linearly normalize a KPI that has a fully bounded acceptable range [a, b].
 
@@ -31,14 +31,14 @@ def kpi_norm_bounded_linear(x, a, b):
     ValueError
         If `x < a` or if `x > b`.
     """
-    if x < a:
+    if x < a and not isclose(x, a, rel_tol=rtol, abs_tol=atol):
         raise ValueError(f"KPI value {x} smaller than lower limit {a}")
-    if x > b:
+    if x > b and not isclose(x, b, rel_tol=rtol, abs_tol=atol):
         raise ValueError(f"KPI value {x} greater than upper limit {b}")
     return 100.0 * (x - a) / (b - a)
 
 
-def kpi_norm_half_open_linear(x, a, m):
+def kpi_norm_half_open_linear(x, a, m, rtol=1e-12, atol=1e-15):
     """
     Linearly normalize a KPI defined on the half-open interval [a, \infty).
 
@@ -71,14 +71,14 @@ def kpi_norm_half_open_linear(x, a, m):
     ValueError
         If `x < a` or if `m <= a`.
     """
-    if x < a:
+    if x < a and not isclose(x, a, rel_tol=rtol, abs_tol=atol):
         raise ValueError(f"KPI value {x} smaller than lower limit {a}")
     if m <= a:
         raise ValueError(f"Parameter m ({m}) smaller than lower limit a ({a})")
     return 100.0 * max(0, 1 - (x - a) / (m - a))
 
 
-def kpi_norm_half_open_exponential(x, a, m):
+def kpi_norm_half_open_exponential(x, a, m, rtol=1e-12, atol=1e-15):
     """
     Exponentially normalize a KPI defined on the half-open interval [a, \infty).
 
@@ -113,7 +113,7 @@ def kpi_norm_half_open_exponential(x, a, m):
     ValueError
         If `x < a` or if `m <= a`.
     """
-    if x < a:
+    if x < a and not isclose(x, a, rel_tol=rtol, abs_tol=atol):
         raise ValueError(f"KPI value {x} smaller than lower limit {a}")
     if m <= a:
         raise ValueError(f"Parameter m ({m}) smaller than lower limit a ({a})")
