@@ -31,7 +31,7 @@ def rmse(x1: np.ndarray, x2: np.ndarray) -> float:
     if x1.shape != x2.shape:
         raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
 
-    return np.sqrt(np.nanmean((x1 - x2) ** 2))
+    return float(np.sqrt(np.nanmean((x1 - x2) ** 2)))
 
 
 def nmse_range(x1: np.ndarray, x2: np.ndarray) -> float:
@@ -72,7 +72,7 @@ def nmse_range(x1: np.ndarray, x2: np.ndarray) -> float:
             "Cannot normalize RMSE: denominator is zero (no range in reference). Use nmse_power instead."
         )
 
-    return rmse(x1, x2) / denom
+    return float(rmse(x1, x2) / denom)
 
 
 def nmse_power(x1: np.ndarray, x2: np.ndarray) -> float:
@@ -113,7 +113,7 @@ def nmse_power(x1: np.ndarray, x2: np.ndarray) -> float:
     if denom == 0:
         raise ValueError("Cannot normalize MSE: denominator is zero. Use nmse_range instead.")
 
-    return np.nanmean((x1 - x2) ** 2) / denom
+    return float(np.nanmean((x1 - x2) ** 2) / denom)
 
 
 def bias(x1: np.ndarray, x2: np.ndarray) -> float:
@@ -144,4 +144,4 @@ def bias(x1: np.ndarray, x2: np.ndarray) -> float:
     if x1.shape != x2.shape:
         raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
 
-    return np.nanmean(x1) - np.nanmean(x2)
+    return float(np.nanmean(x1) - np.nanmean(x2))
