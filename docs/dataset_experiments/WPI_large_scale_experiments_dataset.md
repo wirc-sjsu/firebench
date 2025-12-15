@@ -10,6 +10,7 @@ The dataset presents wind aided fire spread experiments over Pinus Plaustris nee
 
 Variable name in dataset    | Unit  | Standard Variable Name    | type      | Source
 ------------------------    | ----  | ----------------------    | ----      | ------
+case no                     |       |                           | object    | 
 fltyp                       |       |                           | object    | 
 fueldepthm                  | m     | fuel_height               | float64   |  
 fldf                        | kg m-2| fuel_load_dead            | float64   |
@@ -17,7 +18,8 @@ fllf                        | kg m-2| fuel_load_live            | float64   |
 wspd                        | m s-1 | wind_speed                | float64   | 
 fmde                        | %     | fuel_moisture_content_dead| float64   | 
 fml                         | %     | fuel_moisture_content_live| float64   | 
-ros                         | m min-1| rate_of_spread           | float64   | 
+ros_exp                     | m min-1| rate_of_spread_experiment| float64   | 
+ros_sim                     | m min-1| rate_of_spread_simulation| float64   | 
 
 The fill value, also called `no_data_value`, for this dataset is -9999.
 
