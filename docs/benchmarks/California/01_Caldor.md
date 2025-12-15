@@ -301,6 +301,7 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The area preserving project used is EPSG:5070.
 
 The following Table gives the correspondance between the bencmark id and the study period:
 
@@ -318,6 +319,7 @@ FP04 | W4           | Average Jaccard Index W4
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The area preserving project used is EPSG:5070.
 
 The following Table gives the correspondance between the bencmark id and the study period:
 
@@ -335,6 +337,7 @@ FP08 | W4           | Minimum Jaccard Index W4
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The area preserving project used is EPSG:5070.
 
 The following Table gives the correspondance between the bencmark id and the study period:
 
@@ -352,6 +355,7 @@ FP12 | W4           | Minimum Jaccard Index W4
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The area preserving project used is EPSG:5070.
 
 The following Table gives the correspondance between the bencmark id and the study period:
 
@@ -369,6 +373,7 @@ FP16 | W4           | Average Dice-Sorensen Index W4
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The area preserving project used is EPSG:5070.
 
 The following Table gives the correspondance between the bencmark id and the study period:
 
@@ -386,6 +391,7 @@ FP20 | W4           | Minimum Dice-Sorensen Index W4
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The area preserving project used is EPSG:5070.
 
 The following Table gives the correspondance between the bencmark id and the study period:
 
@@ -396,13 +402,14 @@ FP22 | W2           | Minimum Dice-Sorensen Index W2
 FP23 | W3           | Minimum Dice-Sorensen Index W3
 FP24 | W4           | Minimum Dice-Sorensen Index W4
 
-#### Burn Area Bias
+#### Final Burn Area Bias
 
 **Short IDs**: See Table<br>
 **KPI**: Burn Area Bias <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
+The bias is calculated on the last perimeter of the stgudy period as the difference between the model and the observed burn area.
 A bias of $m$ acre, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means higher difficulty) and must be chosen by the community.
 
 The following Table gives the correspondance between the bencmark id and the study period:
@@ -579,9 +586,9 @@ Fire Perimeter W2      | 1
 Fire Perimeter W3      | 1
 Fire Perimeter W4      | 1
 
-### Scheme FPW1-W1
+### Scheme FP-CW1
 
-Scheme FPW1-CW1 applies an alternative benchmark weighting for fire perimeter groups. It uses the number of days for each study period as the weight. 
+Scheme FP-CW1 applies an alternative benchmark weighting for fire perimeter groups. It uses the number of days for each study period as the weight. 
 
 Group                  | Group Weight 
 ---------------------- | ------------
