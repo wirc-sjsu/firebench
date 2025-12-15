@@ -544,7 +544,8 @@ Fire Perimeter W2      | FP02, FP06, FP10, FP14, FP18, FP22, FP26, FP30
 Fire Perimeter W3      | FP03, FP07, FP11, FP15, FP19, FP23, FP27, FP31
 Fire Perimeter W4      | FP04, FP08, FP12, FP16, FP20, FP24, FP28, FP32
 
-#### Group benchmark override
+**Group benchmark override**
+
 The custom weight defined in the following Table overrides the default weight from the Group Definition Table.
 
 Group                  | Benchmark ID  | Weight
@@ -567,7 +568,7 @@ Fire Perimeter W2      | 1
 Fire Perimeter W3      | 1
 Fire Perimeter W4      | 1
 
-## Scheme B
+### Scheme B
 
 Scheme B contains only the building damage group. It is used to evaluate the model only on building damage benchmarks.
 
@@ -597,7 +598,8 @@ Fire Perimeter W2      | 2.0
 Fire Perimeter W3      | 2.75
 Fire Perimeter W4      | 5.2
 
-#### Scheme benchmark override
+**Scheme benchmark override**
+
 This scheme also modifies the weights applied to the benchmarks. It gives more weight to the average Jaccard and Dice-Sorensen index compared the min/max indices. It also adds more weight to the burn area benchmarks.
 
 Group                  | Benchmark ID  | Weight
