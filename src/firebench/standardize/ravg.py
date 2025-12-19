@@ -54,6 +54,7 @@ def standardize_ravg_cc_from_geotiff(
         overwrite,
         invert_y,
         compression_lvl,
+        fill_value=0,
     )
 
 
@@ -103,6 +104,7 @@ def standardize_ravg_cbi_from_geotiff(
         overwrite,
         invert_y,
         compression_lvl,
+        fill_value=0,
     )
 
 
@@ -152,6 +154,7 @@ def standardize_ravg_ba_from_geotiff(
         overwrite,
         invert_y,
         compression_lvl,
+        fill_value=0,
     )
 
 
@@ -166,6 +169,7 @@ def _standardize_ravg_from_geotiff(
     overwrite: bool = False,
     invert_y: bool = False,
     compression_lvl: int = 3,
+    fill_value = None,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard.
@@ -233,3 +237,5 @@ def _standardize_ravg_from_geotiff(
     ddata.attrs["units"] = "dimensionless"
     if nodata is not None:
         ddata.attrs["_FillValue"] = nodata
+    if fill_value is not None:
+        ddata.attrs["_FillValue"] = fill_value
