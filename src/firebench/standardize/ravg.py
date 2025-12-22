@@ -169,7 +169,7 @@ def _standardize_ravg_from_geotiff(
     overwrite: bool = False,
     invert_y: bool = False,
     compression_lvl: int = 3,
-    fill_value = None,
+    fill_value=None,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard.

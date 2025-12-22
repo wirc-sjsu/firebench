@@ -27,11 +27,11 @@ def ctx_get_or_compute(
             f"Context key {key!r} is not declared in CTX_SPEC. "
             "Declare it in CTX_SPEC to make cache usage explicit."
         )
-    
+
     if key in ctx:
         logger.debug("CTXKey %s found in CTX dict", key)
         return ctx[key]
-  
+
     logger.debug("Add field %s to CTX dict", key)
     value = compute(*args, **kwargs)
     ctx[key] = value

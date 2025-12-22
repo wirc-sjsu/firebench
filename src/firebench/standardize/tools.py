@@ -120,7 +120,7 @@ def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
         for attr_name in attrs:
             if attr_name not in dset.attrs:
                 return False, f"attr `{attr_name}` of dataset `{dset_path}`"
-            
+
         # check that KML files exist
         if "rel_path" in attrs:
             if not Path(dset.attrs["rel_path"]).exists():

@@ -165,7 +165,7 @@ def sorensen_dice_polygon(
     intersection = gpd.overlay(polygon1, polygon2, how="intersection", keep_geom_type=False)
 
     # Compute and return sorensen
-    return max(0, min( 1, 2 * intersection.area.sum() / (polygon1.area.sum() + polygon2.area.sum())))
+    return max(0, min(1, 2 * intersection.area.sum() / (polygon1.area.sum() + polygon2.area.sum())))
 
 
 def sorensen_dice_binary(mask1: np.ndarray, mask2: np.ndarray) -> float:
@@ -207,4 +207,4 @@ def sorensen_dice_binary(mask1: np.ndarray, mask2: np.ndarray) -> float:
     if denom == 0:
         return 1.0 if intersection == 0 else 0.0  # Both masks empty or inconsistent
 
-    return max(0, min (1, 2 * intersection / denom))
+    return max(0, min(1, 2 * intersection / denom))
