@@ -241,11 +241,127 @@ This benchmark is performed on the binary classes for high severity points (Bina
 **Name in Score Card**: Binary High Severity F1 Score <br>
 This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
-## Burn Severity from RAVG 
+## Canopy cover loss 
+
 ### Dataset
 
-## Canopy cover loss 
-### Dataset
+The data has been collected using [Rapid Assessment of Vegetation Condition after Wildfire](https://burnseverity.cr.usgs.gov/ravg/) (RAVG).
+The source of the canopy cover loss used in FireBench is the dataset over CONUS for 2021 `ravg_2021_cc5.tif`. The region around Caldor Fire has been processed and standardized using the following bounding box:
+- south west: (38.4, -120.8)
+- north east: (39.0, -119.7)
+
+The canopy cover loss categories, described with the corresponding index used in the dataset, are the following:
+- 'Unmappable': 0
+- '0%': 1
+- '>0-<25%': 2
+- '25-<50%': 3
+- '50-<75%': 4
+- '75-100%': 5
+- 'Outide burn area': 9
+
+In addition, a bounding box has been used to remove the data from another fire (forced to `0`):
+- south west: (38.6, -119.9)
+- north east: (38.805, -119.7)
+
+Figure 4 shows the processed RAVG dataset available in FireBench.
+
+![blockdiagram](../../_static/benchmarks/FB001/RAVG_CC_final.png)
+<p style="text-align: center;">
+    <strong>
+        Fig. 4
+    </strong>
+    :
+    <em>
+        Map of standardized canopy cover loss from RAVG for Caldor Fire.
+    </em>
+</p>
+
+### Processing of dataset
+
+*Performed at obs dataset level*
+
+A bounding box has been used to remove the data from another fire (forced to `0`):
+- south west: (38.6, -119.9)
+- north east: (38.805, -119.7)
+
+#### Masking using LANDFIRE dataset
+
+*Performed at benchmark run level*
+
+In order to perform evaluation of high canopy cover loss, a mask is defined using three LANDFIRE datasets:
+- Canopy bulk density
+- Canopy height
+- Canopy bottom height
+
+The variable `masked high binary canopy cover loss` used in various benchmarks is computed only where all LANDFIRE canopy variable (interpolated using nearest method on the RAVG grid) are strictly greater than 0 (presence of canopy fuel) and is defined as a binary variable:
+- `1` if RAVG canopy cover loss value is `5`,
+- `0` if RAVG canopy cover loss value is between `1` and `4`,
+- `nan` otherwise.
+
+Figure 5 shows the processed `masked high binary canopy cover loss` dataset used for related benchmarks.
+
+![blockdiagram](../../_static/benchmarks/FB001/RAVG_CC_masked.png)
+<p style="text-align: center;">
+    <strong>
+        Fig. 5
+    </strong>
+    :
+    <em>
+        Map of standardized canopy cover loss from RAVG for Caldor Fire.
+    </em>
+</p>
+
+### Benchmarks
+
+See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
+
+#### Masked High Binary Canopy Cover Loss Accuracy
+
+**Short IDs**: CC01<br>
+**KPI**: Binary Confusion Matrix Accuracy applied to Masked High Binary Canopy Cover Loss<br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Accuracy <br>
+This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+
+#### Binary High Severity Precision
+
+**Short IDs**: SV02<br>
+**KPI**: Binary High Severity Precision <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Precision <br>
+This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+
+#### Binary High Severity Recall
+
+**Short IDs**: SV03<br>
+**KPI**: Binary High Severity Recall <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Recall <br>
+This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+
+#### Binary High Severity Specificity
+
+**Short IDs**: SV04<br>
+**KPI**: Binary High Severity Specificity <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Specificity <br>
+This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+
+#### Binary High Severity Negative Predictive Value
+
+**Short IDs**: SV05<br>
+**KPI**: Binary High Severity Negative Predictive Value <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity Negative Predictive Value <br>
+This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+
+#### Binary High Severity F1 Score
+
+**Short IDs**: SV06<br>
+**KPI**: Binary High Severity F1 Score <br>
+**Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
+**Name in Score Card**: Binary High Severity F1 Score <br>
+This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
 
 ## Infrared fire perimeters
 ### Dataset
@@ -463,10 +579,10 @@ Mandatory group/dataset| Mandatory attirbutes
 ### R02
 Mandatory group/dataset| Mandatory attirbutes 
 ---------------------- | --------------------
-`/2D_raster/Caldor_MTBS`| crs
-`/2D_raster/Caldor_MTBS/fire_burn_severity`| units, _FillValue
-`/2D_raster/Caldor_MTBS/position_lat`| units
-`/2D_raster/Caldor_MTBS/position_lon`| units
+`/spatial_2d/Caldor_MTBS`| crs
+`/spatial_2d/Caldor_MTBS/fire_burn_severity`| units, _FillValue
+`/spatial_2d/Caldor_MTBS/position_lat`| units
+`/spatial_2d/Caldor_MTBS/position_lon`| units
 
 ### R03
 Mandatory group/dataset| Mandatory attirbutes 
@@ -522,6 +638,14 @@ Mandatory group/dataset| Mandatory attirbutes
 
 Files (KML) at path defined in `rel_path` attributes must exist.
 
+### R07
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/spatial_2d/ravg_cc`| crs
+`/spatial_2d/ravg_cc/ravg_canopy_cover_loss`| units, _FillValue
+`/spatial_2d/ravg_cc/position_lat`| units
+`/spatial_2d/ravg_cc/position_lon`| units
+
 ## Aggregation Schemes
 
 This section describes the weights used to aggregate KPI unit scores. More information about aggregation methods [here](../../metrics/score.md). If aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total score are not computed.
@@ -543,6 +667,7 @@ Fire Perimeter W1      | FP01, FP05, FP09, FP13, FP17, FP21, FP25, FP29
 Fire Perimeter W2      | FP02, FP06, FP10, FP14, FP18, FP22, FP26, FP30
 Fire Perimeter W3      | FP03, FP07, FP11, FP15, FP19, FP23, FP27, FP31
 Fire Perimeter W4      | FP04, FP08, FP12, FP16, FP20, FP24, FP28, FP32
+Canopy Cover Loss      | CC01, CC02
 
 **Group benchmark override**
 
