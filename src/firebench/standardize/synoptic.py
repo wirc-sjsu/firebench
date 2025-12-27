@@ -3,6 +3,7 @@ import numpy as np
 import hdf5plugin
 import h5py
 import json
+import pytz
 from datetime import datetime
 from ..tools import StandardVariableNames as svn
 from ..tools import logger, calculate_sha256
@@ -124,14 +125,23 @@ def standardize_synoptic_raws_from_json(
         fully_processed = True
         for var in station_dict["OBSERVATIONS"]:
             if var == "date_time":
-                time_iso = []
-                for t in station_dict["OBSERVATIONS"]["date_time"]:
-                    dt = datetime.strptime(t, "%Y%m%d%H%M%S")
-                    time_iso.append(datetime_to_iso8601(dt, True, tz=station_dict["TIMEZONE"]))
+                tz = pytz.timezone(station_dict["TIMEZONE"])
+                dts = [
+                    tz.localize(datetime.strptime(t, "%Y%m%d%H%M%S"))
+                    for t in station_dict["OBSERVATIONS"]["date_time"]
+                ]
+                dt0 = dts[0]
+                first_time_iso = datetime_to_iso8601(dt0, True)
+                rel_minutes = [
+                    (dt - dt0).total_seconds() / 60.0
+                    for dt in dts
+                ]
 
-                new_station.create_dataset(
-                    svn.TIME.value, data=time_iso, **hdf5plugin.Zstd(clevel=compression_lvl)
+                time_ds = new_station.create_dataset(
+                    svn.TIME.value, data=rel_minutes, **hdf5plugin.Zstd(clevel=compression_lvl)
                 )
+                time_ds.attrs["time_origin"] = first_time_iso
+                time_ds.attrs["time_units"] = "min"
             else:
                 if var in variable_conversion:
                     logger.debug("> processing %s", var)
