@@ -84,7 +84,7 @@ def standardize_synoptic_raws_from_json(
 
         logger.info("Processing station %s", station_dict["STID"])
 
-        group_name = f"station_{station_dict["STID"]}"
+        group_name = f"station_{station_dict['STID']}"
         if group_name in h5file.keys():
             if overwrite:
                 del h5file[group_name]
