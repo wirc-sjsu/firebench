@@ -155,6 +155,7 @@ def standardize_synoptic_raws_from_json(
                             station_dict["OBSERVATIONS"][var],
                             variable_conversion[var],
                             sensor_height,
+                            "from_data",
                             compression_lvl,
                         )
                     else:
@@ -178,6 +179,7 @@ def standardize_synoptic_raws_from_json(
                                 station_dict["OBSERVATIONS"][var],
                                 variable_conversion[var],
                                 variable_conversion[var]["default_sensor_height"],
+                                "firebench_default",
                                 compression_lvl,
                             )
 
@@ -189,10 +191,8 @@ def standardize_synoptic_raws_from_json(
                     )
 
         if fully_processed:
-            new_station.attrs["sensor_height_source"] = "from_data"
             nb_fully_processed += 1
         else:
-            new_station.attrs["sensor_height_source"] = "firebench_default"
             nb_partially_processed += 1
 
     logger.info(
@@ -211,7 +211,7 @@ def __get_sensor_height(sensor_variables: dict, variable: str):
 
 
 def __add_variable_to_group(
-    group: h5py.Group, variable, info_dict: dict, sensor_height: float, compression_lvl: int
+    group: h5py.Group, variable, info_dict: dict, sensor_height: float, sensor_height_source: str, compression_lvl: int
 ):
     var_data = np.array(variable, dtype=info_dict["dtype"])
     new_var = group.create_dataset(
@@ -222,3 +222,4 @@ def __add_variable_to_group(
     new_var.attrs["units"] = info_dict["units"]
     new_var.attrs["sensor_height"] = sensor_height
     new_var.attrs["sensor_height_units"] = "m"
+    new_var.attrs["sensor_height_source"] = sensor_height_source
