@@ -119,8 +119,10 @@ def standardize_synoptic_raws_from_json(
                 new_station.attrs["elevation_dem"] = float(station_dict["ELEV_DEM"])
                 new_station.attrs["elevation_dem_units"] = station_dict["UNITS"]["elevation"]
         if "PROVIDERS" in station_dict:
-            if "name" in station_dict["PROVIDERS"]:
-                new_station.attrs["providers"] = station_dict["PROVIDERS"]["name"]
+            provider_list = station_dict["PROVIDERS"]
+            if len(provider_list) > 0:
+                if "name" in provider_list[0].keys():
+                    new_station.attrs["providers"] = provider_list[0]["name"]
 
         fully_processed = True
         for var in station_dict["OBSERVATIONS"]:
