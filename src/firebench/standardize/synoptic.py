@@ -118,11 +118,12 @@ def standardize_synoptic_raws_from_json(
             if station_dict["ELEV_DEM"] is not None:
                 new_station.attrs["elevation_dem"] = float(station_dict["ELEV_DEM"])
                 new_station.attrs["elevation_dem_units"] = station_dict["UNITS"]["elevation"]
-        if "PROVIDERS" in station_dict:
-            provider_list = station_dict["PROVIDERS"]
-            if len(provider_list) > 0:
-                if "name" in provider_list[0].keys():
-                    new_station.attrs["providers"] = provider_list[0]["name"]
+        try:
+            provider = station_dict["PROVIDERS"][0]["name"]
+        except:
+            provider = None
+            logger.warning("No provider found for station %s. Limited import options.", station_dict["STID"])
+        new_station.attrs["providers"] = str(provider)
 
         fully_processed = True
         for var in station_dict["OBSERVATIONS"]:
