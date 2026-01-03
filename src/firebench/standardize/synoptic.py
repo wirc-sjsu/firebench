@@ -114,10 +114,11 @@ def standardize_synoptic_raws_from_json(
         new_station.attrs["public_access_level"] = "Restricted"
         new_station.attrs["redistribution_allowed"] = False
         new_station.attrs["source_file_sha256"] = sha_source_file
-        if "ELEV_DEM" in station_dict:
-            if station_dict["ELEV_DEM"] is not None:
-                new_station.attrs["elevation_dem"] = float(station_dict["ELEV_DEM"])
-                new_station.attrs["elevation_dem_units"] = station_dict["UNITS"]["elevation"]
+        try:
+            new_station.attrs["elevation_dem"] = float(station_dict["ELEV_DEM"])
+            new_station.attrs["elevation_dem_units"] = station_dict["UNITS"]["elevation"]
+        except:
+            logger.info("elevation_dem not found.", station_dict["STID"])
         try:
             provider = station_dict["PROVIDERS"][0]["name"]
         except:
