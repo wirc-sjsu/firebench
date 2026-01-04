@@ -9,51 +9,15 @@ from ..tools import StandardVariableNames as svn
 from ..tools import logger, calculate_sha256
 from .std_file_info import TIME_SERIES
 from .time import datetime_to_iso8601
-
-VARIABLE_CONVERSION = {
-    "air_temp_set_1": {
-        "std_name": svn.AIR_TEMPERATURE.value,
-        "units": "degC",
-        "dtype": np.float64,
-        "default_sensor_height": 2,
-    },
-    "relative_humidity_set_1": {
-        "std_name": svn.RELATIVE_HUMIDITY.value,
-        "units": "percent",
-        "dtype": np.float64,
-        "default_sensor_height": 2,
-    },
-    "wind_direction_set_1": {
-        "std_name": svn.WIND_DIRECTION.value,
-        "units": "degree",
-        "dtype": np.float64,
-        "default_sensor_height": None,
-    },
-    "wind_speed_set_1": {
-        "std_name": svn.WIND_SPEED.value,
-        "units": "m/s",
-        "dtype": np.float64,
-        "default_sensor_height": None,
-    },
-    "wind_gust_set_1": {
-        "std_name": svn.WIND_GUST.value,
-        "units": "m/s",
-        "dtype": np.float64,
-        "default_sensor_height": None,
-    },
-    "solar_radiation_set_1": {
-        "std_name": svn.SOLAR_RADIATION.value,
-        "units": "W/m^2",
-        "dtype": np.float64,
-        "default_sensor_height": None,
-    },
-    "fuel_moisture_set_1": {
-        "std_name": svn.FUEL_MOISTURE_CONTENT_10H.value,
-        "units": "percent",
-        "dtype": np.float64,
-        "default_sensor_height": 0.3,
-    },
-}
+from .synoptic_data import (
+    DEFAULT_SENSOR_HEIGHT_UNIT,
+    SH_TRUST_HIGHEST,
+    SH_TRUST_LVL,
+    VARIABLE_CONVERSION,
+    load_sensor_height_stations,
+    load_sensor_height_providers,
+    load_sensor_height_trusted_history,
+)
 
 
 def standardize_synoptic_raws_from_json(
@@ -61,8 +25,9 @@ def standardize_synoptic_raws_from_json(
     h5file: h5py.File,
     skip_stations: list[str] = [],
     overwrite: bool = False,
-    variable_conversion: dict = VARIABLE_CONVERSION,
+    fb_var_info: dict = VARIABLE_CONVERSION,
     compression_lvl: int = 3,
+    export_trusted_history: bool = False,
 ):
     sha_source_file = calculate_sha256(json_path.resolve())
     with open(json_path.resolve(), "r") as f:
@@ -73,9 +38,21 @@ def standardize_synoptic_raws_from_json(
     else:
         probes = h5file.create_group(TIME_SERIES)
 
+    fb_sh_hist = load_sensor_height_trusted_history()
+    fb_sh_trusted_stations = load_sensor_height_stations()
+    fb_sh_providers = load_sensor_height_providers()
+
+    # for statistics
     nb_fully_processed = 0
     nb_partially_processed = 0
     nb_skipped = 0
+    nb_var_from_data = 0
+    nb_var_from_stations = 0
+    nb_var_from_hist = 0
+    nb_var_from_provider = 0
+    nb_var_from_default = 0
+    if export_trusted_history:
+        trusted_stations_new = {}
 
     for station_dict in data["STATION"]:
         if station_dict["STID"] in skip_stations:
@@ -118,12 +95,14 @@ def standardize_synoptic_raws_from_json(
             new_station.attrs["elevation_dem"] = float(station_dict["ELEV_DEM"])
             new_station.attrs["elevation_dem_units"] = station_dict["UNITS"]["elevation"]
         except:
-            logger.info("elevation_dem not found.", station_dict["STID"])
+            logger.info("elevation_dem not found for station %s.", station_dict["STID"])
         try:
             provider = station_dict["PROVIDERS"][0]["name"]
         except:
             provider = None
-            logger.warning("No provider found for station %s. Limited import options.", station_dict["STID"])
+            logger.warning(
+                "No provider found for station %s. Limited import options.", station_dict["STID"]
+            )
         new_station.attrs["providers"] = str(provider)
 
         fully_processed = True
@@ -136,10 +115,7 @@ def standardize_synoptic_raws_from_json(
                 ]
                 dt0 = dts[0]
                 first_time_iso = datetime_to_iso8601(dt0, True)
-                rel_minutes = [
-                    (dt - dt0).total_seconds() / 60.0
-                    for dt in dts
-                ]
+                rel_minutes = [(dt - dt0).total_seconds() / 60.0 for dt in dts]
 
                 time_ds = new_station.create_dataset(
                     svn.TIME.value, data=rel_minutes, **hdf5plugin.Zstd(clevel=compression_lvl)
@@ -147,49 +123,102 @@ def standardize_synoptic_raws_from_json(
                 time_ds.attrs["time_origin"] = first_time_iso
                 time_ds.attrs["time_units"] = "min"
             else:
-                if var in variable_conversion:
-                    logger.debug("> processing %s", var)
+                if var in fb_var_info:
+                    logger.debug("Processing %s", var)
 
                     sensor_height = __get_sensor_height(station_dict["SENSOR_VARIABLES"], var)
 
                     if sensor_height is not None:
                         # Sensor heigth from metadata
-                        __add_variable_to_group(
+                        __add_sh_to_group(
                             new_station,
                             station_dict["OBSERVATIONS"][var],
-                            variable_conversion[var],
+                            fb_var_info[var],
                             sensor_height,
+                            DEFAULT_SENSOR_HEIGHT_UNIT,
                             "from_data",
+                            SH_TRUST_HIGHEST,
                             compression_lvl,
                         )
+                        nb_var_from_data += 1
+                        if export_trusted_history:
+                            try:
+                                trusted_stations_new[f"{station_dict["STID"]}"][var] = sensor_height
+                                trusted_stations_new[f"{station_dict["STID"]}"]["provider"] = str(provider)
+                            except:
+                                trusted_stations_new[f"{station_dict["STID"]}"] = {}
+                                trusted_stations_new[f"{station_dict["STID"]}"][var] = sensor_height
+                                trusted_stations_new[f"{station_dict["STID"]}"]["provider"] = str(provider)
                     else:
+                        logger.warning(
+                            "Missing sensor height info for variable %s from station %s . Looking for values in FireBench databases.",
+                            var,
+                            station_dict["STID"],
+                        )
                         # Sensor height from default, skip if None
                         fully_processed = False
-                        if variable_conversion[var]["default_sensor_height"] is None:
-                            logger.warning(
-                                "standardize_synoptic_raws_from_json: variable %s from station %s not processed due to lack of sensor height information. Default value is `None` for this variable.",
-                                var,
-                                station_dict["STID"],
-                            )
-                        else:
-                            logger.info(
-                                "standardize_synoptic_raws_from_json: variable %s from station %s uses firebench default height of %f m",
-                                var,
-                                station_dict["STID"],
-                                variable_conversion[var]["default_sensor_height"],
-                            )
-                            __add_variable_to_group(
-                                new_station,
-                                station_dict["OBSERVATIONS"][var],
-                                variable_conversion[var],
-                                variable_conversion[var]["default_sensor_height"],
-                                "firebench_default",
-                                compression_lvl,
-                            )
+
+                        # 1. Use Default value for sensor height form FireBench
+                        sh_from_fb = fb_var_info[var]["default_sensor_height"]
+                        sh_source = "firebench_default"
+                        sh_source_trusted = 0
+                        sh_info_found = False
+                        nb_var_from_default += 1
+
+                        # Try find sensor height in stations (highest trust)
+                        try:
+                            sh_from_fb = fb_sh_trusted_stations[f"{station_dict["STID"]}"][var]
+                            sh_source = "firebench_trusted_stations"
+                            sh_source_trusted = SH_TRUST_HIGHEST
+                            sh_info_found = True
+                            nb_var_from_stations += 1
+                            logger.debug("Sensor height value found in trusted stations database.")
+                        except:
+                            pass
+
+                        if not sh_info_found:
+                            # Try find sensor height in history (high trust)
+                            try:
+                                sh_from_fb = fb_sh_hist[f"{station_dict["STID"]}"][var]
+                                sh_source = "firebench_trusted_history"
+                                sh_source_trusted = SH_TRUST_HIGHEST
+                                sh_info_found = True
+                                nb_var_from_hist += 1
+                                logger.debug(
+                                    "Sensor height value found in history of trusted information database."
+                                )
+                            except:
+                                pass
+
+                        if not sh_info_found:
+                            # Try find sensor height in providers (low trust)
+                            try:
+                                sh_from_fb = fb_sh_providers[provider][var]
+                                sh_source = "firebench_providers_default"
+                                sh_source_trusted = 1
+                                sh_info_found = True
+                                nb_var_from_provider += 1
+                                logger.debug("Sensor height value found in providers database.")
+                            except:
+                                pass
+
+                        if sh_info_found:
+                            nb_var_from_default -= 1
+
+                        __add_sh_to_group(
+                            new_station,
+                            station_dict["OBSERVATIONS"][var],
+                            fb_var_info[var],
+                            sh_from_fb,
+                            DEFAULT_SENSOR_HEIGHT_UNIT,
+                            sh_source,
+                            sh_source_trusted,
+                            compression_lvl,
+                        )
 
                 else:
                     logger.warning(
-                        "standardize_synoptic_raws_from_json: variable %s from station %s not processed. Add the variable to `variable_conversion` to process it.",
+                        "> Variable %s from station %s not processed. Add the variable to `variable_conversion` to process it.",
                         var,
                         station_dict["STID"],
                     )
@@ -205,6 +234,19 @@ def standardize_synoptic_raws_from_json(
         nb_partially_processed,
         nb_skipped,
     )
+    logger.info(
+        "Stats sensor height source: %d from json data, %d from trusted stations db, %d from trusted history db, %d from providers db, %d from FireBench default. %d trusted, %d untrusted.",
+        nb_var_from_data,
+        nb_var_from_stations,
+        nb_var_from_hist,
+        nb_var_from_provider,
+        nb_var_from_default,
+        nb_var_from_data + nb_var_from_stations + nb_var_from_hist,
+        nb_var_from_provider + nb_var_from_default,
+    )
+    if export_trusted_history:
+        with open("tmp_sh_history.json", "w") as f:
+            json.dump(trusted_stations_new, f, sort_keys=True, indent=4)
 
 
 def __get_sensor_height(sensor_variables: dict, variable: str):
@@ -214,8 +256,15 @@ def __get_sensor_height(sensor_variables: dict, variable: str):
     return None
 
 
-def __add_variable_to_group(
-    group: h5py.Group, variable, info_dict: dict, sensor_height: float, sensor_height_source: str, compression_lvl: int
+def __add_sh_to_group(
+    group: h5py.Group,
+    variable,
+    info_dict: dict,
+    sensor_height: float,
+    sensor_height_units: str,
+    sensor_height_source: str,
+    trusted_source: int,
+    compression_lvl: int,
 ):
     var_data = np.array(variable, dtype=info_dict["dtype"])
     new_var = group.create_dataset(
@@ -224,6 +273,7 @@ def __add_variable_to_group(
         **hdf5plugin.Zstd(clevel=compression_lvl),
     )
     new_var.attrs["units"] = info_dict["units"]
+    new_var.attrs["sensor_height_source_confidence_lvl"] = SH_TRUST_LVL[trusted_source]
     new_var.attrs["sensor_height"] = sensor_height
-    new_var.attrs["sensor_height_units"] = "m"
+    new_var.attrs["sensor_height_units"] = sensor_height_units
     new_var.attrs["sensor_height_source"] = sensor_height_source

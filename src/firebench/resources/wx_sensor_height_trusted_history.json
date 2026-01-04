@@ -1,0 +1,125 @@
+{
+    "BDMC1": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "provider": "Bureau of Land Management",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "6.1",
+        "wind_gust_set_1": "6.1",
+        "wind_speed_set_1": "6.1"
+    },
+    "CI013": {
+        "air_temp_set_1": "1.5",
+        "provider": "California Irrigation Management Information System",
+        "relative_humidity_set_1": "1.5",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "2.0"
+    },
+    "CI227": {
+        "air_temp_set_1": "1.5",
+        "provider": "California Irrigation Management Information System",
+        "relative_humidity_set_1": "1.5",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "2.0"
+    },
+    "CI228": {
+        "air_temp_set_1": "1.5",
+        "provider": "California Irrigation Management Information System",
+        "relative_humidity_set_1": "1.5",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "2.0"
+    },
+    "CI246": {
+        "air_temp_set_1": "1.5",
+        "provider": "California Irrigation Management Information System",
+        "relative_humidity_set_1": "1.5",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "2.0"
+    },
+    "COKC1": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "provider": "Bureau of Land Management",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "6.1",
+        "wind_gust_set_1": "6.1",
+        "wind_speed_set_1": "6.1"
+    },
+    "GZFC1": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "provider": "Bureau of Land Management",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "6.1",
+        "wind_gust_set_1": "6.1",
+        "wind_speed_set_1": "6.1"
+    },
+    "KPVF": {
+        "air_temp_set_1": "2.0",
+        "provider": "National Weather Service",
+        "relative_humidity_set_1": "2.0",
+        "wind_direction_set_1": "10.0",
+        "wind_speed_set_1": "10.0"
+    },
+    "KTVL": {
+        "air_temp_set_1": "2.0",
+        "provider": "National Weather Service",
+        "relative_humidity_set_1": "2.0",
+        "wind_direction_set_1": "10.0",
+        "wind_gust_set_1": "10.0",
+        "wind_speed_set_1": "10.0"
+    },
+    "MKEC1": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "provider": "Bureau of Land Management",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "6.1",
+        "wind_gust_set_1": "6.1",
+        "wind_speed_set_1": "6.1"
+    },
+    "OWNC1": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "provider": "Bureau of Land Management",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "6.1",
+        "wind_gust_set_1": "6.1",
+        "wind_speed_set_1": "6.1"
+    },
+    "RBXC1": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "provider": "Bureau of Land Management",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "6.1",
+        "wind_gust_set_1": "6.1",
+        "wind_speed_set_1": "6.1"
+    },
+    "RWBC1": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "provider": "Bureau of Land Management",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "6.1",
+        "wind_gust_set_1": "6.1",
+        "wind_speed_set_1": "6.1"
+    },
+    "TS445": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "provider": "Bureau of Land Management",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "2.0",
+        "wind_gust_set_1": "2.0",
+        "wind_speed_set_1": "2.0"
+    }
+}
