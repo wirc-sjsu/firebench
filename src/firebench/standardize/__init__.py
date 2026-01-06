@@ -4,6 +4,7 @@ from .tools import (
     validate_h5_std,
     is_iso8601,
     validate_h5_requirement,
+    read_quantity_from_fb_attribute,
     read_quantity_from_fb_dataset,
     merge_authors,
     import_tif_with_rect_box,
