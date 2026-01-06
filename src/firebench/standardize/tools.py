@@ -178,6 +178,38 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
     return ureg.Quantity(ds[()], ds.attrs["units"])
 
 
+def read_quantity_from_fb_attribute(
+    dataset_path: str, attribute_name: str, file_object: h5py.File | h5py.Group | h5py.Dataset, dtype=float
+):
+    ds = file_object[dataset_path]
+
+    raw = ds.attrs.get(attribute_name)
+    units = ds.attrs.get(f"{attribute_name}_units")
+
+    if not isinstance(raw, (str, bytes)) or not raw:
+        raise ValueError(f"Dataset/Group '{dataset_path}' is missing the attribute '{attribute_name}'.")
+
+    if isinstance(raw, bytes):
+        raw = raw.decode()
+
+    if not isinstance(units, (str, bytes)) or not units:
+        raise ValueError(
+            f"Dataset/Group '{dataset_path}' is missing a valid " f"'{attribute_name}_units' attribute."
+        )
+
+    if isinstance(units, bytes):
+        units = units.decode()
+
+    try:
+        value = dtype(raw)
+    except Exception as e:
+        raise ValueError(
+            f"Cannot convert attribute '{attribute_name}'='{raw}' " f"to {dtype.__name__}"
+        ) from e
+
+    return ureg.Quantity(value, units)
+
+
 def merge_authors(authors_1: str, authors_2: str):
     list_authors_1 = [a.strip() for a in authors_1.split(";") if a.strip()]
     list_authors_2 = [a.strip() for a in authors_2.split(";") if a.strip()]
