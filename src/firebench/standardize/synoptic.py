@@ -143,12 +143,12 @@ def standardize_synoptic_raws_from_json(
                         nb_var_from_data += 1
                         if export_trusted_history:
                             try:
-                                trusted_stations_new[f"{station_dict["STID"]}"][var] = sensor_height
-                                trusted_stations_new[f"{station_dict["STID"]}"]["provider"] = str(provider)
+                                trusted_stations_new[f"{station_dict['STID']}"][var] = sensor_height
+                                trusted_stations_new[f"{station_dict['STID']}"]["provider"] = str(provider)
                             except:
-                                trusted_stations_new[f"{station_dict["STID"]}"] = {}
-                                trusted_stations_new[f"{station_dict["STID"]}"][var] = sensor_height
-                                trusted_stations_new[f"{station_dict["STID"]}"]["provider"] = str(provider)
+                                trusted_stations_new[f"{station_dict['STID']}"] = {}
+                                trusted_stations_new[f"{station_dict['STID']}"][var] = sensor_height
+                                trusted_stations_new[f"{station_dict['STID']}"]["provider"] = str(provider)
                     else:
                         logger.warning(
                             "Missing sensor height info for variable %s from station %s . Looking for values in FireBench databases.",
@@ -167,7 +167,7 @@ def standardize_synoptic_raws_from_json(
 
                         # Try find sensor height in stations (highest trust)
                         try:
-                            sh_from_fb = fb_sh_trusted_stations[f"{station_dict["STID"]}"][var]
+                            sh_from_fb = fb_sh_trusted_stations[f"{station_dict['STID']}"][var]
                             sh_source = "firebench_trusted_stations"
                             sh_source_trusted = SH_TRUST_HIGHEST
                             sh_info_found = True
@@ -179,7 +179,7 @@ def standardize_synoptic_raws_from_json(
                         if not sh_info_found:
                             # Try find sensor height in history (high trust)
                             try:
-                                sh_from_fb = fb_sh_hist[f"{station_dict["STID"]}"][var]
+                                sh_from_fb = fb_sh_hist[f"{station_dict['STID']}"][var]
                                 sh_source = "firebench_trusted_history"
                                 sh_source_trusted = SH_TRUST_HIGHEST
                                 sh_info_found = True
