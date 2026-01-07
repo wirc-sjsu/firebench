@@ -179,35 +179,71 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
 
 
 def read_quantity_from_fb_attribute(
-    dataset_path: str, attribute_name: str, file_object: h5py.File | h5py.Group | h5py.Dataset, dtype=float
+    dataset_path: str,
+    attribute_name: str,
+    file_object: h5py.File | h5py.Group | h5py.Dataset,
+    dtype=float,
 ):
     ds = file_object[dataset_path]
 
-    raw = ds.attrs.get(attribute_name)
-    units = ds.attrs.get(f"{attribute_name}_units")
-
-    if not isinstance(raw, (str, bytes)) or not raw:
-        raise ValueError(f"Dataset/Group '{dataset_path}' is missing the attribute '{attribute_name}'.")
-
-    if isinstance(raw, bytes):
-        raw = raw.decode()
-
-    if not isinstance(units, (str, bytes)) or not units:
-        raise ValueError(
-            f"Dataset/Group '{dataset_path}' is missing a valid " f"'{attribute_name}_units' attribute."
-        )
-
-    if isinstance(units, bytes):
-        units = units.decode()
-
-    try:
-        value = dtype(raw)
-    except Exception as e:
-        raise ValueError(
-            f"Cannot convert attribute '{attribute_name}'='{raw}' " f"to {dtype.__name__}"
-        ) from e
+    value = read_numeric_attribute(ds, attribute_name, dataset_path=dataset_path, dtype=dtype)
+    units = read_string_attribute(
+        ds, f"{attribute_name}_units", dataset_path=dataset_path, strip=True, allow_empty=False
+    )
 
     return ureg.Quantity(value, units)
+
+
+def read_numeric_attribute(
+    ds: h5py.Dataset | h5py.Group,
+    attribute_name: str,
+    dataset_path: str,
+    dtype=float,
+):
+    """
+    Read an attribute expected to represent a single numeric value.
+    Accepts: numbers, numpy scalars, strings, bytes. Rejects: missing, empty string.
+    """
+    raw = _decode_h5_scalar(_get_h5_attr(ds, attribute_name))
+
+    if raw is None:
+        raise ValueError(f"Dataset/Group '{dataset_path}' is missing the attribute '{attribute_name}'.")
+
+    if isinstance(raw, str) and raw.strip() == "":
+        raise ValueError(f"Dataset/Group '{dataset_path}' has an empty attribute '{attribute_name}'.")
+
+    try:
+        return dtype(raw)
+    except Exception as e:
+        raise ValueError(f"Cannot convert attribute '{attribute_name}'={raw!r} to {dtype.__name__}.") from e
+
+
+def read_string_attribute(
+    ds: h5py.Dataset | h5py.Group,
+    attribute_name: str,
+    dataset_path: str,
+    strip: bool = True,
+    allow_empty: bool = False,
+):
+    """
+    Read an attribute expected to be a string.
+    Accepts: str, bytes, numpy string scalars. Rejects: missing, non-str, empty (unless allow_empty).
+    """
+    raw = _decode_h5_scalar(_get_h5_attr(ds, attribute_name))
+
+    if raw is None:
+        raise ValueError(f"Dataset/Group '{dataset_path}' is missing the attribute '{attribute_name}'.")
+
+    if not isinstance(raw, str):
+        raise ValueError(
+            f"Dataset/Group '{dataset_path}' attribute '{attribute_name}' must be a string, got {type(raw).__name__}."
+        )
+
+    s = raw.strip() if strip else raw
+    if (not allow_empty) and s == "":
+        raise ValueError(f"Dataset/Group '{dataset_path}' has an empty attribute '{attribute_name}'.")
+
+    return s
 
 
 def merge_authors(authors_1: str, authors_2: str):
@@ -709,3 +745,19 @@ def _copy_attributes(
             # Keep existing attr value
             continue
         dst_obj.attrs[key] = value
+
+
+def _get_h5_attr(ds: h5py.Dataset | h5py.Group, name: str):
+    """Return raw HDF5 attribute value (or None if missing)."""
+    return ds.attrs.get(name, None)
+
+
+def _decode_h5_scalar(x):
+    """Decode bytes / numpy scalars to plain Python scalars; leave others untouched."""
+    if x is None:
+        return None
+    if isinstance(x, (bytes, np.bytes_)):
+        return x.decode()
+    if isinstance(x, np.generic):  # e.g., np.float64, np.int64, np.str_
+        return x.item()
+    return x
