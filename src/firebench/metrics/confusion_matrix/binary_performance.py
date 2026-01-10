@@ -65,6 +65,8 @@ def binary_precision(bcm: np.ndarray):
         The precision value, ranging from 0.0 to 1.0.
     """  # pylint: disable=line-too-long
     tn, fp, fn, tp = bcm.ravel()
+    if tp + fp == 0:
+        return 0
     return tp / (tp + fp)
 
 
@@ -93,6 +95,8 @@ def binary_false_positive_rate(bcm: np.ndarray):
         The false positive rate, ranging from 0.0 to 1.0.
     """  # pylint: disable=line-too-long
     tn, fp, fn, tp = bcm.ravel()
+    if fp + tn == 0:
+        return 0
     return fp / (fp + tn)
 
 
@@ -121,6 +125,8 @@ def binary_negative_predicted_value(bcm: np.ndarray):
         The negative predictive value, ranging from 0.0 to 1.0.
     """  # pylint: disable=line-too-long
     tn, fp, fn, tp = bcm.ravel()
+    if fn + tn == 0:
+        return 0
     return tn / (fn + tn)
 
 
@@ -149,6 +155,8 @@ def binary_recall_rate(bcm: np.ndarray):
         The recall value, ranging from 0.0 to 1.0.
     """  # pylint: disable=line-too-long
     tn, fp, fn, tp = bcm.ravel()
+    if tp + fn == 0:
+        return 0
     return tp / (tp + fn)
 
 
@@ -177,6 +185,8 @@ def binary_specificity(bcm: np.ndarray):
         The specificity value, ranging from 0.0 to 1.0.
     """  # pylint: disable=line-too-long
     tn, fp, fn, tp = bcm.ravel()
+    if tn + fp == 0:
+        return 0
     return tn / (tn + fp)
 
 
@@ -207,4 +217,6 @@ def binary_f_score(bcm: np.ndarray):
     """  # pylint: disable=line-too-long
     pr = binary_precision(bcm)
     rc = binary_recall_rate(bcm)
+    if pr + rc == 0:
+        return 0
     return 2.0 * (pr * rc) / (pr + rc)
