@@ -2,6 +2,7 @@ import hmac
 import hashlib
 import json
 
+from .std_files import verify_certificates_in_h5
 
 def verify_output_dict(signed_data: dict) -> bool:
     """
@@ -25,7 +26,13 @@ def verify_output_dict(signed_data: dict) -> bool:
 
     return hmac.compare_digest(mac, expected_mac)
 
+def retrieve_h5_certificates(obs_file_path, model_file_path):
+    certificates = {}
+    certificates["from_obs_std_file"] = verify_certificates_in_h5(obs_file_path)
+    certificates["from_model_std_file"] = verify_certificates_in_h5(model_file_path)
+    return certificates
 
 def write_case_results(path: str, output_dict: dict):
     with open(path, "w") as f:
-        json.dump(_finalize_payload(output_dict), f, indent=4, sort_keys=True)
+        json.dump(output_dict, f, indent=4, sort_keys=True)
+
