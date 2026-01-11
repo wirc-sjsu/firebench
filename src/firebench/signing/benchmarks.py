@@ -2,28 +2,6 @@ import hmac
 import hashlib
 import json
 
-try:
-    from . import _secret_key
-except ImportError:
-    _secret_key = None
-
-
-def _canonical_json_dumps(data: dict) -> bytes:
-    return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
-
-
-def _compute_hmac(json_bytes: bytes) -> str:
-    return _secret_key.compute_hmac(json_bytes)
-
-
-def _finalize_payload(data: dict) -> dict:
-    json_bytes = _canonical_json_dumps(data)
-    mac = _compute_hmac(json_bytes)
-
-    out = dict(data)
-    out["mac"] = mac
-    return out
-
 
 def verify_output_dict(signed_data: dict) -> bool:
     """

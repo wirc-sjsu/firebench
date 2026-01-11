@@ -36,5 +36,6 @@ from .std_file_info import (
     GEOPOLYGONS,
     FUEL_MODELS,
     MISCELLANEOUS,
+    CERTIFICATES,
 )
 from .synoptic import standardize_synoptic_raws_from_json
