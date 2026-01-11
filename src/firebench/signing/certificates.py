@@ -1,12 +1,14 @@
-from enum import Enum, auto
+from enum import Enum
 from importlib.resources import files
 from .utils import PublicKeyImportError
+
 
 class Certificates(Enum):
     FB_VERIFIED_INPUT_REQUIREMENTS = "fb-verified-input-requirements"
     FB_VERIFIED_OBS_DATASET = "fb-verified-obs-dataset"
     FB_BENCHMARK_RUN_INTERNAL = "fb-benchmark-run-internal"
     FB_MODEL_RUN_INTERNAL = "fb-model-run-internal"
+    FB_VERIFICATION_LVL = "fb-verification-lvl"
 
 
 class KeyId(Enum):
