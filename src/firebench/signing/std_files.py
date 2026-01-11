@@ -18,8 +18,10 @@ from .utils import (
     gpg_verify_detached_with_pubkey,
     sha256_hex,
     short_hex,
+    GPGNotAvailable,
+    SignatureInvalid,
+    SignatureVerificationError,
 )
-from ..tools import calculate_sha256
 from ..standardize import current_datetime_iso8601, CERTIFICATES
 from .certificates import get_public_key
 
@@ -136,9 +138,15 @@ def verify_certificates_in_h5(
             if ok:
                 try:
                     gpg_verify_detached_with_pubkey(payload_bytes, sig_txt, public_key_armor)
-                except Exception as e:
+                except GPGNotAvailable as e:
+                    ok = False
+                    err = f"verification unavailable: {e}"
+                except SignatureInvalid as e:
                     ok = False
                     err = f"signature invalid: {e}"
+                except SignatureVerificationError as e:
+                    ok = False
+                    err = f"verification error: {e}"
 
             results[payload["cert_name"]] = {
                 "cert_id": cert_id,
