@@ -21,6 +21,7 @@ Each .h5 file must adhere to the following structure:
 ├── polygons/       (geopolygons)
 ├── fuel_models/    (fuel model classification or parameters)
 ├── miscellaneous/  (non-standard or project-specific data)
+├── certificates/   (FireBench certificates)
 ```
 
 All groups are optional unless otherwise specified in a benchmark case specification.
@@ -453,3 +454,7 @@ kml/polygons_2022_07_14.kml
 ### Metadata
 
 - If `/metadata` is present, it must contain only datasets (no nested groups) and each dataset must have a `description` attribute.
+
+### Certificates
+
+- Reserved namespace for FireBench certicitates. See certification documentation.
