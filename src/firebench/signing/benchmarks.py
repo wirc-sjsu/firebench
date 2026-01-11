@@ -26,6 +26,13 @@ class Verification_lvl(Enum):
     C = "VL-C"
 
 
+VERIFICATION_LEVEL_COLORS = {
+    Verification_lvl.C.value: "#B03A2E",
+    Verification_lvl.B.value: "#D4AC0D",
+    Verification_lvl.A.value: "#2E86C1",
+    Verification_lvl.Aplus.value: "#1E8449",
+}
+
 RULES = [
     ({"fb-benchmark-run-internal", "obs-fb-verified-obs-dataset"}, Verification_lvl.B.value),
     (
@@ -226,7 +233,7 @@ def certify_benchmark_run(
     data["verification_lvl"] = compute_verification_lvl(found)
 
     data, _ = add_certificate_to_dict(
-        data, "certificate_final", Certificates.FB_VERIFICATION_LVL.value, key_id, signer, spec
+        data, "certificate_verif_lvl", Certificates.FB_VERIFICATION_LVL.value, key_id, signer, spec
     )
 
     return data

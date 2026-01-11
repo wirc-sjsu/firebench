@@ -4,6 +4,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from pathlib import Path
 from ..tools import logger
+from ..signing import verify_certificate_in_dict, DEFAULT_VL, VERIFICATION_LEVEL_COLORS
 
 
 def _score_to_color(score):
@@ -20,7 +21,7 @@ def _score_to_color(score):
     return "#6BAF5F"
 
 
-def save_as_table(filename: Path, data: dict):
+def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: str):
     logger.info("Save data dict as score card report pdf")
     if filename.suffix.lower() != ".pdf":
         filename = filename.with_suffix(".pdf")
@@ -29,6 +30,15 @@ def save_as_table(filename: Path, data: dict):
         "#f7d5cd",
         "#fbebe8",
     ]
+
+    # Default Verification lvl
+    verif_lvl = DEFAULT_VL
+
+    if signed:
+        # Check validity of signature
+        verif = verify_certificate_in_dict(data, certificate_name)
+        assert verif["valid"]
+        verif_lvl = data.get("verification_lvl", DEFAULT_VL)
 
     # Get the number of row
     nb_rows = 3  # header and footer
@@ -66,7 +76,7 @@ def save_as_table(filename: Path, data: dict):
             [
                 f"Total Score {data['case_id']} agg. {scheme_name}: {data['evaluated_model_name']}",
                 "",
-                "",
+                f"{verif_lvl}",
                 f"{data['score_card']['Score Total']:.2f}",
             ]
         )
@@ -77,7 +87,7 @@ def save_as_table(filename: Path, data: dict):
             [
                 f"Total Score {data['case_id']} agg. {scheme_name}: {data['evaluated_model_name']}",
                 "",
-                "",
+                f"{verif_lvl}",
                 f"Invalid",
             ]
         )
@@ -131,8 +141,8 @@ def save_as_table(filename: Path, data: dict):
     # 3) Table style with both merges
     # ------------------------------------------------------------------
     table_style = [
-        # === MERGE FIRST 3 COLUMNS OF FIRST ROW ===
-        ("SPAN", (0, 0), (2, 0)),
+        # === MERGE FIRST 2 COLUMNS OF FIRST ROW ===
+        ("SPAN", (0, 0), (1, 0)),
         # === MERGE ALL 4 COLUMNS OF LAST ROW ===
         ("SPAN", (0, nb_rows - 1), (3, nb_rows - 1)),
         # Borders
@@ -155,7 +165,7 @@ def save_as_table(filename: Path, data: dict):
         # Fonts
         ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("FONT", (3, 0), (3, 0), "Helvetica-Bold", 9),
+        ("FONT", (2, 0), (3, 0), "Helvetica-Bold", 9),
     ]
 
     for i in range(nb_rows - 3):
@@ -183,10 +193,19 @@ def save_as_table(filename: Path, data: dict):
                 ("BACKGROUND", (0, i_row), (-1, i_row), colors.HexColor("#f2aa84")),
             )
     else:
-        text_table[0][2] = "INVALID"
+        text_table[0][3] = "INVALID"
         table_style.append(
             ("BACKGROUND", (3, 0), (3, 0), colors.HexColor("#ff0000")),  # merged header row
         )
+    # VL colors
+    table_style.append(
+        (
+            "BACKGROUND",
+            (2, 0),
+            (2, 0),
+            colors.HexColor(VERIFICATION_LEVEL_COLORS.get(verif_lvl, "#B03A2E")),
+        ),  # merged header row
+    )
 
     table = Table(text_table, colWidths=col_widths)
     style = TableStyle(table_style)

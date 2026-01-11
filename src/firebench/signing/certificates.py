@@ -9,6 +9,7 @@ class Certificates(Enum):
     FB_BENCHMARK_RUN_INTERNAL = "fb-benchmark-run-internal"
     FB_MODEL_RUN_INTERNAL = "fb-model-run-internal"
     FB_VERIFICATION_LVL = "fb-verification-lvl"
+    FB_SCORE_CARD = "fb-score-card"
 
 
 class KeyId(Enum):
