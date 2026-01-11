@@ -10,9 +10,18 @@ import hdf5plugin
 import h5py
 import numpy as np
 
-from .utils import _is_excluded, _canonical_json_dumps, short_hex, gpg_detached_sign_armor, sha256_hex
+from .utils import (
+    _canonical_json_dumps,
+    _is_excluded,
+    canonical_json_bytes,
+    gpg_detached_sign_armor,
+    gpg_verify_detached_with_pubkey,
+    sha256_hex,
+    short_hex,
+)
 from ..tools import calculate_sha256
 from ..standardize import current_datetime_iso8601, CERTIFICATES
+from .certificates import get_public_key
 
 EXCLUDE_PREFIXES_DEFAULT = ["/certificates"]
 
@@ -71,6 +80,75 @@ def add_certificate_to_h5(
         base.attrs["subject_digest_sha256"] = subject_digest
 
     return cert_id
+
+
+def verify_certificates_in_h5(
+    h5_path: str,
+    exclude_prefixes: list[str] = EXCLUDE_PREFIXES_DEFAULT,
+):
+    """
+    Verify all certificates under /certificates.
+    Returns dict cert_id -> info (payload fields, valid flag).
+    """
+    subject_digest = hdf5_subject_digest_sha256(h5_path, exclude_prefixes=exclude_prefixes)
+
+    results = {}
+    with h5py.File(h5_path, "r") as f:
+        if f"/{CERTIFICATES}" not in f:
+            return results
+
+        certs = f[f"/{CERTIFICATES}"]
+        for cert_id in sorted(certs.keys()):
+            grp = certs[cert_id]
+            payload_txt = (
+                grp["payload"][()].decode("utf-8")
+                if isinstance(grp["payload"][()], (bytes, np.bytes_))
+                else str(grp["payload"][()])
+            )
+            sig_txt = (
+                grp["signature"][()].decode("utf-8")
+                if isinstance(grp["signature"][()], (bytes, np.bytes_))
+                else str(grp["signature"][()])
+            )
+
+            public_key_armor = get_public_key(str(grp.attrs.get("key_id")))
+
+            payload = json.loads(payload_txt)
+            payload_bytes = canonical_json_bytes(payload)
+
+            # Check certificate_id matches payload hash prefix
+            payload_sha = sha256_hex(payload_bytes)
+            expected_id = short_hex(payload_sha, 32)
+
+            ok = True
+            err = None
+
+            if expected_id != cert_id:
+                ok = False
+                err = f"certificate_id mismatch: expected {expected_id}, found {cert_id}"
+
+            # Check subject digest binding
+            if ok and payload.get("subject_digest_sha256") != subject_digest:
+                ok = False
+                err = "subject_digest mismatch: HDF5 content changed (excluding certificates) or wrong file"
+
+            # Verify signature
+            if ok:
+                try:
+                    gpg_verify_detached_with_pubkey(payload_bytes, sig_txt, public_key_armor)
+                except Exception as e:
+                    ok = False
+                    err = f"signature invalid: {e}"
+
+            results[payload["cert_name"]] = {
+                "cert_id": cert_id,
+                "valid": ok,
+                "error": err,
+                "payload": payload,
+                "subject_digest_sha256": subject_digest,
+            }
+
+    return results
 
 
 def hdf5_subject_digest_sha256(path: str, exclude_prefixes: list[str] = EXCLUDE_PREFIXES_DEFAULT) -> str:
