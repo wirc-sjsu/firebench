@@ -34,11 +34,6 @@ VERIFICATION_LEVEL_COLORS = {
 }
 
 RULES = [
-    ({"fb-benchmark-run-internal", "obs-fb-verified-obs-dataset"}, Verification_lvl.B.value),
-    (
-        {"fb-benchmark-run-internal", "obs-fb-verified-obs-dataset", "model-fb-model-run-internal"},
-        Verification_lvl.A.value,
-    ),
     (
         {
             "fb-benchmark-run-internal",
@@ -48,6 +43,11 @@ RULES = [
         },
         Verification_lvl.Aplus.value,
     ),
+    (
+        {"fb-benchmark-run-internal", "obs-fb-verified-obs-dataset", "model-fb-model-run-internal"},
+        Verification_lvl.A.value,
+    ),
+    ({"fb-benchmark-run-internal", "obs-fb-verified-obs-dataset"}, Verification_lvl.B.value),
 ]
 
 DEFAULT_VL = Verification_lvl.C.value
@@ -242,5 +242,6 @@ def certify_benchmark_run(
 def compute_verification_lvl(present: set[str]) -> int:
     for required, value in RULES:
         if required.issubset(present):
+            print(value)
             return value
     return DEFAULT_VL
