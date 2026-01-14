@@ -555,6 +555,85 @@ FP30 | W2           | Burn Area RMSE W2  | 5,000  | 20%
 FP31 | W3           | Burn Area RMSE W3  | 5,000  | 25%
 FP32 | W4           | Burn Area RMSE W4  | 17,000 | 30%
 
+## Weather stations
+
+### Dataset
+
+Weather stations datasets have been gathered from [Synoptics](https://synopticdata.com).
+All the stations available in the following bounding box have be processed:
+- south west: (38.4, -120.8)
+- north east: (39.0, -119.7)
+
+The following variables have been processed (following FireBench namespace):
+- air_temperature
+- relative_humidity
+- solar_radiation
+- fuel_moisture_content_10h
+- wind_direction
+- wind_gust
+- wind_speed
+
+```{note}
+If you want to have more variable processed, or require new benchmarks for existing variable, please reach out to the FireBench team to integrate these changes in the future version of the benchmarks.
+```
+
+Some stations don't have data for the period W1 and have been excluded from the dataset. 
+The list of excluded stations for missing data in study period is:
+403_PG, 412_PG, 413_PG, F9934.
+Also, some stations did not meet data quality criterion and have been excliuded from the dataset. 
+The list of excluded stations for data quality reasons is:
+AV833, BLCC1, C9148, COOPDAGN2, COOPMINN2, FOIC1, FPDC1, G0658, GEOC1, LNLC1, PFHC1, SBKC1, SLPC1, STAN2, UTRC1, WDFC1, XOHC1.
+
+Sensor height data has been extracted following the sensor height priority rules defined here.
+The current version of knowledge about sensor heights for the case weather stations are:
+- 10 stations with complete dataset (sensor height found in source file)
+- 98 stations with missing metadata
+- 21 stations skipped
+- 81 datasets with sensor height metadata
+- 0 datasets from trusted stations from FireBench database
+- 0 datasets from trusted history from FireBench database
+- 5 datasets from FireBench provider default database
+- 394 datasets using FireBench default metadata
+
+Therefore, 81 datasets are considered trusted and will be used in benchmarks "trusted source only".
+All 399 datasets are used in benchmarks "all sources".
+
+```{note}
+If you have information about sensor height and want to help increase the number of trusted datasets, please contact the FireBench Team.
+```
+
+Weather stations are stored in the HDF5 file using their STID.
+
+### Benchmarks
+
+See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
+
+#### Air temperature MAE
+
+**Short IDs**: See Table<br>
+**KPI**: Air temperature MAE <br>
+**Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
+**Name in Score Card**: See Table <br>
+The Mean Average Error is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+The normalization parameter $m$ sets which MAE gives a Score of 50. It represents the difficulty of the benchmark.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID    | Study period | Summary stats func |  Name in Score Card     | $m$
+------|--------------|--------------------|-------------------------|---------
+WX001 | W1           | min                | Air temp MAE min W1     | 5 degC
+WX002 | W1           | mean               | Air temp MAE mean W1    | 5 degC
+WX003 | W1           | max                | Air temp MAE max W1     | 5 degC
+WX004 | W2           | min                | Air temp MAE min W2     | 5 degC
+WX005 | W2           | mean               | Air temp MAE mean W2    | 5 degC
+WX006 | W2           | max                | Air temp MAE max W2     | 5 degC
+WX007 | W3           | min                | Air temp MAE min W3     | 5 degC
+WX008 | W3           | mean               | Air temp MAE mean W3    | 5 degC
+WX009 | W3           | max                | Air temp MAE max W3     | 5 degC
+WX010 | W4           | min                | Air temp MAE min W4     | 5 degC
+WX011 | W4           | mean               | Air temp MAE mean W4    | 5 degC
+WX012 | W4           | max                | Air temp MAE max W4     | 5 degC
+
 ## Requirements
 
 The following sections list the datasets requirements to run the different benchmarks. When the benchmark script is run, each requirement is validated on the HDF5 file passed as input (from the model ouput/data the user wants to evaluate). If a requirement is met, each corresponding benchmark is run.
