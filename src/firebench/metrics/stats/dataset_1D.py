@@ -145,3 +145,33 @@ def bias(x1: np.ndarray, x2: np.ndarray) -> float:
         raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
 
     return float(np.nanmean(x1) - np.nanmean(x2))
+
+def mae(x1: np.ndarray, x2: np.ndarray) -> float:
+    """
+    Compute the Mean Absolute Error between two arrays, ignoring NaNs.
+
+    Parameters
+    ----------
+    x1 : np.ndarray
+        First input array (e.g. prediction)
+    x2 : np.ndarray
+        Second input array of the same shape as x1 (e.g. observations)
+
+    Returns
+    -------
+    float
+        The bias value between x1 and x2.
+
+    Raises
+    ------
+    ValueError
+        If the two input arrays do not have the same shape.
+
+    Notes
+    -----
+    MAE = E(|x1 - x2|)
+    """  # pylint: disable=line-too-long
+    if x1.shape != x2.shape:
+        raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
+
+    return np.nanmean(np.abs(x1 - x2))
