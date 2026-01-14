@@ -1,16 +1,19 @@
 # 2021 Caldor Fire
 
-**Version**: 2026.0a <br>
+**Version**: 2026.0 <br>
 **Case ID**: FB001 <br>
-**FireBench IO std version**: >= 0.2 <br>
-**Date of last update**: 12/19/2025 
+**FireBench IO std version**: >= 1.0 <br>
+**Date of last update**: 01/14/2025 
 
 ## Contributors
 - Aurélien Costes, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [aurelien.costes@sjsu.edu](mailto:aurelien.costes@sjsu.edu), [ORCID](https://orcid.org/0000-0003-4543-5107)
+- Angel Farguell Caus, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [angel.farguellcaus@sjsu.edu](mailto:[angel.farguellcaus@sjsu.edu), [ORCID](https://orcid.org/0000-0003-2395-220X)
+- Adam Kochanski, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [adam.kochanski@sjsu.edu](mailto:[adam.kochanski@sjsu.edu), [ORCID](https://orcid.org/0000-0001-7820-2831)
 
 ## Description
 
-This collection of benchmarks uses the public ressources about the 2021 Caldor Fire.
+This collection of benchmarks uses the public resources about the 2021 Caldor Fire.
+It contains over 300 benchmarks on various datasets.
 It contains observation datasets for:
 - Building damaged (CALFIRE)
 - Burn severity (MTBS)
@@ -608,14 +611,16 @@ Weather stations are stored in the HDF5 file using their STID.
 
 See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
 
-#### Air temperature MAE
+#### Air temperature
 
 **Short IDs**: See Table<br>
-**KPI**: Air temperature MAE <br>
+**KPI**: Air temperature MAE/RMSE/Bias <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
-The Mean Average Error is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
-The normalization parameter $m$ sets which MAE gives a Score of 50. It represents the difficulty of the benchmark.
+Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Implementation of metrics are `firebench.metrics.stats.mae`, `firebench.metrics.stats.rmse`, `firebench.metrics.stats.bias`.
+Datasets are converted into `degC` for comparison.
+The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
 
 The following Table gives the correspondance between the bencmark id and the study period:
 
@@ -694,6 +699,310 @@ WX070 | W4           | Bias               | Air temp Bias min W4           |   5
 WX071 | W4           | Bias               | Air temp Bias mean W4          |   5.0 degC            | True
 WX072 | W4           | Bias               | Air temp Bias max W4           |   5.0 degC            | True
 
+#### Relative Humidity
+
+**Short IDs**: See Table<br>
+**KPI**: Relative humidity MAE/RMSE/Bias <br>
+**Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
+**Name in Score Card**: See Table <br>
+Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Implementation of metrics are `firebench.metrics.stats.mae`, `firebench.metrics.stats.rmse`, `firebench.metrics.stats.bias`.
+Datasets are converted into `percent` for comparison.
+The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
+------|--------------|--------------------|-------------------------|---------|--------------------
+WX073 | W1           | MAE                | RH MAE min W1 TSO              |  15.0 percent         | False
+WX074 | W1           | MAE                | RH MAE mean W1 TSO             |  15.0 percent         | False
+WX075 | W1           | MAE                | RH MAE max W1 TSO              |  15.0 percent         | False
+WX076 | W1           | MAE                | RH MAE min W1                  |  15.0 percent         | True
+WX077 | W1           | MAE                | RH MAE mean W1                 |  15.0 percent         | True
+WX078 | W1           | MAE                | RH MAE max W1                  |  15.0 percent         | True
+WX079 | W1           | RMSE               | RH RMSE min W1 TSO             |  15.0 percent         | False
+WX080 | W1           | RMSE               | RH RMSE mean W1 TSO            |  15.0 percent         | False
+WX081 | W1           | RMSE               | RH RMSE max W1 TSO             |  15.0 percent         | False
+WX082 | W1           | RMSE               | RH RMSE min W1                 |  15.0 percent         | True
+WX083 | W1           | RMSE               | RH RMSE mean W1                |  15.0 percent         | True
+WX084 | W1           | RMSE               | RH RMSE max W1                 |  15.0 percent         | True
+WX085 | W1           | Bias               | RH Bias min W1 TSO             |  15.0 percent         | False
+WX086 | W1           | Bias               | RH Bias mean W1 TSO            |  15.0 percent         | False
+WX087 | W1           | Bias               | RH Bias max W1 TSO             |  15.0 percent         | False
+WX088 | W1           | Bias               | RH Bias min W1                 |  15.0 percent         | True
+WX089 | W1           | Bias               | RH Bias mean W1                |  15.0 percent         | True
+WX090 | W1           | Bias               | RH Bias max W1                 |  15.0 percent         | True
+WX091 | W2           | MAE                | RH MAE min W2 TSO              |  15.0 percent         | False
+WX092 | W2           | MAE                | RH MAE mean W2 TSO             |  15.0 percent         | False
+WX093 | W2           | MAE                | RH MAE max W2 TSO              |  15.0 percent         | False
+WX094 | W2           | MAE                | RH MAE min W2                  |  15.0 percent         | True
+WX095 | W2           | MAE                | RH MAE mean W2                 |  15.0 percent         | True
+WX096 | W2           | MAE                | RH MAE max W2                  |  15.0 percent         | True
+WX097 | W2           | RMSE               | RH RMSE min W2 TSO             |  15.0 percent         | False
+WX098 | W2           | RMSE               | RH RMSE mean W2 TSO            |  15.0 percent         | False
+WX099 | W2           | RMSE               | RH RMSE max W2 TSO             |  15.0 percent         | False
+WX100 | W2           | RMSE               | RH RMSE min W2                 |  15.0 percent         | True
+WX101 | W2           | RMSE               | RH RMSE mean W2                |  15.0 percent         | True
+WX102 | W2           | RMSE               | RH RMSE max W2                 |  15.0 percent         | True
+WX103 | W2           | Bias               | RH Bias min W2 TSO             |  15.0 percent         | False
+WX104 | W2           | Bias               | RH Bias mean W2 TSO            |  15.0 percent         | False
+WX105 | W2           | Bias               | RH Bias max W2 TSO             |  15.0 percent         | False
+WX106 | W2           | Bias               | RH Bias min W2                 |  15.0 percent         | True
+WX107 | W2           | Bias               | RH Bias mean W2                |  15.0 percent         | True
+WX108 | W2           | Bias               | RH Bias max W2                 |  15.0 percent         | True
+WX109 | W3           | MAE                | RH MAE min W3 TSO              |  15.0 percent         | False
+WX110 | W3           | MAE                | RH MAE mean W3 TSO             |  15.0 percent         | False
+WX111 | W3           | MAE                | RH MAE max W3 TSO              |  15.0 percent         | False
+WX112 | W3           | MAE                | RH MAE min W3                  |  15.0 percent         | True
+WX113 | W3           | MAE                | RH MAE mean W3                 |  15.0 percent         | True
+WX114 | W3           | MAE                | RH MAE max W3                  |  15.0 percent         | True
+WX115 | W3           | RMSE               | RH RMSE min W3 TSO             |  15.0 percent         | False
+WX116 | W3           | RMSE               | RH RMSE mean W3 TSO            |  15.0 percent         | False
+WX117 | W3           | RMSE               | RH RMSE max W3 TSO             |  15.0 percent         | False
+WX118 | W3           | RMSE               | RH RMSE min W3                 |  15.0 percent         | True
+WX119 | W3           | RMSE               | RH RMSE mean W3                |  15.0 percent         | True
+WX120 | W3           | RMSE               | RH RMSE max W3                 |  15.0 percent         | True
+WX121 | W3           | Bias               | RH Bias min W3 TSO             |  15.0 percent         | False
+WX122 | W3           | Bias               | RH Bias mean W3 TSO            |  15.0 percent         | False
+WX123 | W3           | Bias               | RH Bias max W3 TSO             |  15.0 percent         | False
+WX124 | W3           | Bias               | RH Bias min W3                 |  15.0 percent         | True
+WX125 | W3           | Bias               | RH Bias mean W3                |  15.0 percent         | True
+WX126 | W3           | Bias               | RH Bias max W3                 |  15.0 percent         | True
+WX127 | W4           | MAE                | RH MAE min W4 TSO              |  15.0 percent         | False
+WX128 | W4           | MAE                | RH MAE mean W4 TSO             |  15.0 percent         | False
+WX129 | W4           | MAE                | RH MAE max W4 TSO              |  15.0 percent         | False
+WX130 | W4           | MAE                | RH MAE min W4                  |  15.0 percent         | True
+WX131 | W4           | MAE                | RH MAE mean W4                 |  15.0 percent         | True
+WX132 | W4           | MAE                | RH MAE max W4                  |  15.0 percent         | True
+WX133 | W4           | RMSE               | RH RMSE min W4 TSO             |  15.0 percent         | False
+WX134 | W4           | RMSE               | RH RMSE mean W4 TSO            |  15.0 percent         | False
+WX135 | W4           | RMSE               | RH RMSE max W4 TSO             |  15.0 percent         | False
+WX136 | W4           | RMSE               | RH RMSE min W4                 |  15.0 percent         | True
+WX137 | W4           | RMSE               | RH RMSE mean W4                |  15.0 percent         | True
+WX138 | W4           | RMSE               | RH RMSE max W4                 |  15.0 percent         | True
+WX139 | W4           | Bias               | RH Bias min W4 TSO             |  15.0 percent         | False
+WX140 | W4           | Bias               | RH Bias mean W4 TSO            |  15.0 percent         | False
+WX141 | W4           | Bias               | RH Bias max W4 TSO             |  15.0 percent         | False
+WX142 | W4           | Bias               | RH Bias min W4                 |  15.0 percent         | True
+WX143 | W4           | Bias               | RH Bias mean W4                |  15.0 percent         | True
+WX144 | W4           | Bias               | RH Bias max W4                 |  15.0 percent         | True
+
+#### Wind Speed
+
+**Short IDs**: See Table<br>
+**KPI**: Wind Speed MAE/RMSE/Bias <br>
+**Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
+**Name in Score Card**: See Table <br>
+Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Implementation of metrics are `firebench.metrics.stats.mae`, `firebench.metrics.stats.rmse`, `firebench.metrics.stats.bias`.
+Datasets are converted into `m/s` for comparison.
+The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
+------|--------------|--------------------|-------------------------|---------|--------------------
+WX145 | W1           | MAE                | Wind Speed MAE min W1 TSO      |   5.0 m/s             | False
+WX146 | W1           | MAE                | Wind Speed MAE mean W1 TSO     |   5.0 m/s             | False
+WX147 | W1           | MAE                | Wind Speed MAE max W1 TSO      |   5.0 m/s             | False
+WX148 | W1           | MAE                | Wind Speed MAE min W1          |   5.0 m/s             | True
+WX149 | W1           | MAE                | Wind Speed MAE mean W1         |   5.0 m/s             | True
+WX150 | W1           | MAE                | Wind Speed MAE max W1          |   5.0 m/s             | True
+WX151 | W1           | RMSE               | Wind Speed RMSE min W1 TSO     |   5.0 m/s             | False
+WX152 | W1           | RMSE               | Wind Speed RMSE mean W1 TSO    |   5.0 m/s             | False
+WX153 | W1           | RMSE               | Wind Speed RMSE max W1 TSO     |   5.0 m/s             | False
+WX154 | W1           | RMSE               | Wind Speed RMSE min W1         |   5.0 m/s             | True
+WX155 | W1           | RMSE               | Wind Speed RMSE mean W1        |   5.0 m/s             | True
+WX156 | W1           | RMSE               | Wind Speed RMSE max W1         |   5.0 m/s             | True
+WX157 | W1           | Bias               | Wind Speed Bias min W1 TSO     |   5.0 m/s             | False
+WX158 | W1           | Bias               | Wind Speed Bias mean W1 TSO    |   5.0 m/s             | False
+WX159 | W1           | Bias               | Wind Speed Bias max W1 TSO     |   5.0 m/s             | False
+WX160 | W1           | Bias               | Wind Speed Bias min W1         |   5.0 m/s             | True
+WX161 | W1           | Bias               | Wind Speed Bias mean W1        |   5.0 m/s             | True
+WX162 | W1           | Bias               | Wind Speed Bias max W1         |   5.0 m/s             | True
+WX163 | W2           | MAE                | Wind Speed MAE min W2 TSO      |   5.0 m/s             | False
+WX164 | W2           | MAE                | Wind Speed MAE mean W2 TSO     |   5.0 m/s             | False
+WX165 | W2           | MAE                | Wind Speed MAE max W2 TSO      |   5.0 m/s             | False
+WX166 | W2           | MAE                | Wind Speed MAE min W2          |   5.0 m/s             | True
+WX167 | W2           | MAE                | Wind Speed MAE mean W2         |   5.0 m/s             | True
+WX168 | W2           | MAE                | Wind Speed MAE max W2          |   5.0 m/s             | True
+WX169 | W2           | RMSE               | Wind Speed RMSE min W2 TSO     |   5.0 m/s             | False
+WX170 | W2           | RMSE               | Wind Speed RMSE mean W2 TSO    |   5.0 m/s             | False
+WX171 | W2           | RMSE               | Wind Speed RMSE max W2 TSO     |   5.0 m/s             | False
+WX172 | W2           | RMSE               | Wind Speed RMSE min W2         |   5.0 m/s             | True
+WX173 | W2           | RMSE               | Wind Speed RMSE mean W2        |   5.0 m/s             | True
+WX174 | W2           | RMSE               | Wind Speed RMSE max W2         |   5.0 m/s             | True
+WX175 | W2           | Bias               | Wind Speed Bias min W2 TSO     |   5.0 m/s             | False
+WX176 | W2           | Bias               | Wind Speed Bias mean W2 TSO    |   5.0 m/s             | False
+WX177 | W2           | Bias               | Wind Speed Bias max W2 TSO     |   5.0 m/s             | False
+WX178 | W2           | Bias               | Wind Speed Bias min W2         |   5.0 m/s             | True
+WX179 | W2           | Bias               | Wind Speed Bias mean W2        |   5.0 m/s             | True
+WX180 | W2           | Bias               | Wind Speed Bias max W2         |   5.0 m/s             | True
+WX181 | W3           | MAE                | Wind Speed MAE min W3 TSO      |   5.0 m/s             | False
+WX182 | W3           | MAE                | Wind Speed MAE mean W3 TSO     |   5.0 m/s             | False
+WX183 | W3           | MAE                | Wind Speed MAE max W3 TSO      |   5.0 m/s             | False
+WX184 | W3           | MAE                | Wind Speed MAE min W3          |   5.0 m/s             | True
+WX185 | W3           | MAE                | Wind Speed MAE mean W3         |   5.0 m/s             | True
+WX186 | W3           | MAE                | Wind Speed MAE max W3          |   5.0 m/s             | True
+WX187 | W3           | RMSE               | Wind Speed RMSE min W3 TSO     |   5.0 m/s             | False
+WX188 | W3           | RMSE               | Wind Speed RMSE mean W3 TSO    |   5.0 m/s             | False
+WX189 | W3           | RMSE               | Wind Speed RMSE max W3 TSO     |   5.0 m/s             | False
+WX190 | W3           | RMSE               | Wind Speed RMSE min W3         |   5.0 m/s             | True
+WX191 | W3           | RMSE               | Wind Speed RMSE mean W3        |   5.0 m/s             | True
+WX192 | W3           | RMSE               | Wind Speed RMSE max W3         |   5.0 m/s             | True
+WX193 | W3           | Bias               | Wind Speed Bias min W3 TSO     |   5.0 m/s             | False
+WX194 | W3           | Bias               | Wind Speed Bias mean W3 TSO    |   5.0 m/s             | False
+WX195 | W3           | Bias               | Wind Speed Bias max W3 TSO     |   5.0 m/s             | False
+WX196 | W3           | Bias               | Wind Speed Bias min W3         |   5.0 m/s             | True
+WX197 | W3           | Bias               | Wind Speed Bias mean W3        |   5.0 m/s             | True
+WX198 | W3           | Bias               | Wind Speed Bias max W3         |   5.0 m/s             | True
+WX199 | W4           | MAE                | Wind Speed MAE min W4 TSO      |   5.0 m/s             | False
+WX200 | W4           | MAE                | Wind Speed MAE mean W4 TSO     |   5.0 m/s             | False
+WX201 | W4           | MAE                | Wind Speed MAE max W4 TSO      |   5.0 m/s             | False
+WX202 | W4           | MAE                | Wind Speed MAE min W4          |   5.0 m/s             | True
+WX203 | W4           | MAE                | Wind Speed MAE mean W4         |   5.0 m/s             | True
+WX204 | W4           | MAE                | Wind Speed MAE max W4          |   5.0 m/s             | True
+WX205 | W4           | RMSE               | Wind Speed RMSE min W4 TSO     |   5.0 m/s             | False
+WX206 | W4           | RMSE               | Wind Speed RMSE mean W4 TSO    |   5.0 m/s             | False
+WX207 | W4           | RMSE               | Wind Speed RMSE max W4 TSO     |   5.0 m/s             | False
+WX208 | W4           | RMSE               | Wind Speed RMSE min W4         |   5.0 m/s             | True
+WX209 | W4           | RMSE               | Wind Speed RMSE mean W4        |   5.0 m/s             | True
+WX210 | W4           | RMSE               | Wind Speed RMSE max W4         |   5.0 m/s             | True
+WX211 | W4           | Bias               | Wind Speed Bias min W4 TSO     |   5.0 m/s             | False
+WX212 | W4           | Bias               | Wind Speed Bias mean W4 TSO    |   5.0 m/s             | False
+WX213 | W4           | Bias               | Wind Speed Bias max W4 TSO     |   5.0 m/s             | False
+WX214 | W4           | Bias               | Wind Speed Bias min W4         |   5.0 m/s             | True
+WX215 | W4           | Bias               | Wind Speed Bias mean W4        |   5.0 m/s             | True
+WX216 | W4           | Bias               | Wind Speed Bias max W4         |   5.0 m/s             | True
+
+#### Wind Direction
+
+**Short IDs**: See Table<br>
+**KPI**: Wind Direction circular Bias <br>
+**Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
+**Name in Score Card**: See Table <br>
+Each metric is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Implementation of metrics are `firebench.metrics.stats.circular_bias_deg`.
+Datasets are converted into `degree` for comparison.
+The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
+------|--------------|--------------------|-------------------------|---------|--------------------
+WX217 | W1           | circular bias      | Wind Direction circular bias min W1 TSO |  45.0 degree          | False
+WX218 | W1           | circular bias      | Wind Direction circular bias mean W1 TSO |  45.0 degree          | False
+WX219 | W1           | circular bias      | Wind Direction circular bias max W1 TSO |  45.0 degree          | False
+WX220 | W1           | circular bias      | Wind Direction circular bias min W1  |  45.0 degree          | True
+WX221 | W1           | circular bias      | Wind Direction circular bias mean W1  |  45.0 degree          | True
+WX222 | W1           | circular bias      | Wind Direction circular bias max W1  |  45.0 degree          | True
+WX223 | W2           | circular bias      | Wind Direction circular bias min W2 TSO |  45.0 degree          | False
+WX224 | W2           | circular bias      | Wind Direction circular bias mean W2 TSO |  45.0 degree          | False
+WX225 | W2           | circular bias      | Wind Direction circular bias max W2 TSO |  45.0 degree          | False
+WX226 | W2           | circular bias      | Wind Direction circular bias min W2  |  45.0 degree          | True
+WX227 | W2           | circular bias      | Wind Direction circular bias mean W2  |  45.0 degree          | True
+WX228 | W2           | circular bias      | Wind Direction circular bias max W2  |  45.0 degree          | True
+WX229 | W3           | circular bias      | Wind Direction circular bias min W3 TSO |  45.0 degree          | False
+WX230 | W3           | circular bias      | Wind Direction circular bias mean W3 TSO |  45.0 degree          | False
+WX231 | W3           | circular bias      | Wind Direction circular bias max W3 TSO |  45.0 degree          | False
+WX232 | W3           | circular bias      | Wind Direction circular bias min W3  |  45.0 degree          | True
+WX233 | W3           | circular bias      | Wind Direction circular bias mean W3  |  45.0 degree          | True
+WX234 | W3           | circular bias      | Wind Direction circular bias max W3  |  45.0 degree          | True
+WX235 | W4           | circular bias      | Wind Direction circular bias min W4 TSO |  45.0 degree          | False
+WX236 | W4           | circular bias      | Wind Direction circular bias mean W4 TSO |  45.0 degree          | False
+WX237 | W4           | circular bias      | Wind Direction circular bias max W4 TSO |  45.0 degree          | False
+WX238 | W4           | circular bias      | Wind Direction circular bias min W4  |  45.0 degree          | True
+WX239 | W4           | circular bias      | Wind Direction circular bias mean W4  |  45.0 degree          | True
+WX240 | W4           | circular bias      | Wind Direction circular bias max W4  |  45.0 degree          | True
+
+#### Fuel Moisture Content 10h
+
+**Short IDs**: See Table<br>
+**KPI**: FMC 10h MAE/RMSE/Bias <br>
+**Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
+**Name in Score Card**: See Table <br>
+Each metric is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Implementation of metrics are `firebench.metrics.stats.mae`, `firebench.metrics.stats.rmse`, `firebench.metrics.stats.bias`.
+Datasets are converted into `percent` for comparison.
+The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
+
+The following Table gives the correspondance between the bencmark id and the study period:
+
+ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
+------|--------------|--------------------|-------------------------|---------|--------------------
+WX241 | W1           | MAE                | FMC 10h MAE min W1 TSO         |   5.0 percent         | False
+WX242 | W1           | MAE                | FMC 10h MAE mean W1 TSO        |   5.0 percent         | False
+WX243 | W1           | MAE                | FMC 10h MAE max W1 TSO         |   5.0 percent         | False
+WX244 | W1           | MAE                | FMC 10h MAE min W1             |   5.0 percent         | True
+WX245 | W1           | MAE                | FMC 10h MAE mean W1            |   5.0 percent         | True
+WX246 | W1           | MAE                | FMC 10h MAE max W1             |   5.0 percent         | True
+WX247 | W1           | RMSE               | FMC 10h RMSE min W1 TSO        |   5.0 percent         | False
+WX248 | W1           | RMSE               | FMC 10h RMSE mean W1 TSO       |   5.0 percent         | False
+WX249 | W1           | RMSE               | FMC 10h RMSE max W1 TSO        |   5.0 percent         | False
+WX250 | W1           | RMSE               | FMC 10h RMSE min W1            |   5.0 percent         | True
+WX251 | W1           | RMSE               | FMC 10h RMSE mean W1           |   5.0 percent         | True
+WX252 | W1           | RMSE               | FMC 10h RMSE max W1            |   5.0 percent         | True
+WX253 | W1           | Bias               | FMC 10h Bias min W1 TSO        |   5.0 percent         | False
+WX254 | W1           | Bias               | FMC 10h Bias mean W1 TSO       |   5.0 percent         | False
+WX255 | W1           | Bias               | FMC 10h Bias max W1 TSO        |   5.0 percent         | False
+WX256 | W1           | Bias               | FMC 10h Bias min W1            |   5.0 percent         | True
+WX257 | W1           | Bias               | FMC 10h Bias mean W1           |   5.0 percent         | True
+WX258 | W1           | Bias               | FMC 10h Bias max W1            |   5.0 percent         | True
+WX259 | W2           | MAE                | FMC 10h MAE min W2 TSO         |   5.0 percent         | False
+WX260 | W2           | MAE                | FMC 10h MAE mean W2 TSO        |   5.0 percent         | False
+WX261 | W2           | MAE                | FMC 10h MAE max W2 TSO         |   5.0 percent         | False
+WX262 | W2           | MAE                | FMC 10h MAE min W2             |   5.0 percent         | True
+WX263 | W2           | MAE                | FMC 10h MAE mean W2            |   5.0 percent         | True
+WX264 | W2           | MAE                | FMC 10h MAE max W2             |   5.0 percent         | True
+WX265 | W2           | RMSE               | FMC 10h RMSE min W2 TSO        |   5.0 percent         | False
+WX266 | W2           | RMSE               | FMC 10h RMSE mean W2 TSO       |   5.0 percent         | False
+WX267 | W2           | RMSE               | FMC 10h RMSE max W2 TSO        |   5.0 percent         | False
+WX268 | W2           | RMSE               | FMC 10h RMSE min W2            |   5.0 percent         | True
+WX269 | W2           | RMSE               | FMC 10h RMSE mean W2           |   5.0 percent         | True
+WX270 | W2           | RMSE               | FMC 10h RMSE max W2            |   5.0 percent         | True
+WX271 | W2           | Bias               | FMC 10h Bias min W2 TSO        |   5.0 percent         | False
+WX272 | W2           | Bias               | FMC 10h Bias mean W2 TSO       |   5.0 percent         | False
+WX273 | W2           | Bias               | FMC 10h Bias max W2 TSO        |   5.0 percent         | False
+WX274 | W2           | Bias               | FMC 10h Bias min W2            |   5.0 percent         | True
+WX275 | W2           | Bias               | FMC 10h Bias mean W2           |   5.0 percent         | True
+WX276 | W2           | Bias               | FMC 10h Bias max W2            |   5.0 percent         | True
+WX277 | W3           | MAE                | FMC 10h MAE min W3 TSO         |   5.0 percent         | False
+WX278 | W3           | MAE                | FMC 10h MAE mean W3 TSO        |   5.0 percent         | False
+WX279 | W3           | MAE                | FMC 10h MAE max W3 TSO         |   5.0 percent         | False
+WX280 | W3           | MAE                | FMC 10h MAE min W3             |   5.0 percent         | True
+WX281 | W3           | MAE                | FMC 10h MAE mean W3            |   5.0 percent         | True
+WX282 | W3           | MAE                | FMC 10h MAE max W3             |   5.0 percent         | True
+WX283 | W3           | RMSE               | FMC 10h RMSE min W3 TSO        |   5.0 percent         | False
+WX284 | W3           | RMSE               | FMC 10h RMSE mean W3 TSO       |   5.0 percent         | False
+WX285 | W3           | RMSE               | FMC 10h RMSE max W3 TSO        |   5.0 percent         | False
+WX286 | W3           | RMSE               | FMC 10h RMSE min W3            |   5.0 percent         | True
+WX287 | W3           | RMSE               | FMC 10h RMSE mean W3           |   5.0 percent         | True
+WX288 | W3           | RMSE               | FMC 10h RMSE max W3            |   5.0 percent         | True
+WX289 | W3           | Bias               | FMC 10h Bias min W3 TSO        |   5.0 percent         | False
+WX290 | W3           | Bias               | FMC 10h Bias mean W3 TSO       |   5.0 percent         | False
+WX291 | W3           | Bias               | FMC 10h Bias max W3 TSO        |   5.0 percent         | False
+WX292 | W3           | Bias               | FMC 10h Bias min W3            |   5.0 percent         | True
+WX293 | W3           | Bias               | FMC 10h Bias mean W3           |   5.0 percent         | True
+WX294 | W3           | Bias               | FMC 10h Bias max W3            |   5.0 percent         | True
+WX295 | W4           | MAE                | FMC 10h MAE min W4 TSO         |   5.0 percent         | False
+WX296 | W4           | MAE                | FMC 10h MAE mean W4 TSO        |   5.0 percent         | False
+WX297 | W4           | MAE                | FMC 10h MAE max W4 TSO         |   5.0 percent         | False
+WX298 | W4           | MAE                | FMC 10h MAE min W4             |   5.0 percent         | True
+WX299 | W4           | MAE                | FMC 10h MAE mean W4            |   5.0 percent         | True
+WX300 | W4           | MAE                | FMC 10h MAE max W4             |   5.0 percent         | True
+WX301 | W4           | RMSE               | FMC 10h RMSE min W4 TSO        |   5.0 percent         | False
+WX302 | W4           | RMSE               | FMC 10h RMSE mean W4 TSO       |   5.0 percent         | False
+WX303 | W4           | RMSE               | FMC 10h RMSE max W4 TSO        |   5.0 percent         | False
+WX304 | W4           | RMSE               | FMC 10h RMSE min W4            |   5.0 percent         | True
+WX305 | W4           | RMSE               | FMC 10h RMSE mean W4           |   5.0 percent         | True
+WX306 | W4           | RMSE               | FMC 10h RMSE max W4            |   5.0 percent         | True
+WX307 | W4           | Bias               | FMC 10h Bias min W4 TSO        |   5.0 percent         | False
+WX308 | W4           | Bias               | FMC 10h Bias mean W4 TSO       |   5.0 percent         | False
+WX309 | W4           | Bias               | FMC 10h Bias max W4 TSO        |   5.0 percent         | False
+WX310 | W4           | Bias               | FMC 10h Bias min W4            |   5.0 percent         | True
+WX311 | W4           | Bias               | FMC 10h Bias mean W4           |   5.0 percent         | True
+WX312 | W4           | Bias               | FMC 10h Bias max W4            |   5.0 percent         | True
+
 ## Requirements
 
 The following sections list the datasets requirements to run the different benchmarks. When the benchmark script is run, each requirement is validated on the HDF5 file passed as input (from the model ouput/data the user wants to evaluate). If a requirement is met, each corresponding benchmark is run.
@@ -713,8 +1022,8 @@ R07                    | CC01 to CC06
 R08                    | WX001 to WX072
 R09                    | WX073 to WX144
 R10                    | WX145 to WX216
-R11                    | WX001 to WX072
-R12                    | WX001 to WX072
+R11                    | WX217 to WX240
+R12                    | WX241 to WX312
 
 ### R01
 Mandatory group/dataset| Mandatory attirbutes 
@@ -861,38 +1170,18 @@ Wind speed W1               | WX145 to WX162
 Wind speed W2               | WX163 to WX180
 Wind speed W3               | WX181 to WX198
 Wind speed W4               | WX199 to WX216
-Wind direction W1           | WX217 to WX162
-Wind direction W2           | WX019 to WX180
-Wind direction W3           | WX019 to WX198
-Wind direction W4           | WX019 to WX216
-Fuel Moisture 10h W1        | WX019 to WX072
-Fuel Moisture 10h W2        | WX019 to WX072
-Fuel Moisture 10h W3        | WX019 to WX072
-Fuel Moisture 10h W4        | WX019 to WX072
-
-**Group benchmark override**
-
-The custom weight defined in the following Table overrides the default weight from the Group Definition Table.
-
-Group                  | Benchmark ID  | Weight
----------------------- | ------------  | ------
-Fire Perimeter W1      | FP25, FP29    | 2
-Fire Perimeter W2      | FP26, FP30    | 2
-Fire Perimeter W3      | FP27, FP31    | 2
-Fire Perimeter W4      | FP28, FP32    | 2
+Wind direction W1           | WX217 to WX222
+Wind direction W2           | WX223 to WX228
+Wind direction W3           | WX229 to WX234
+Wind direction W4           | WX235 to WX240
+Fuel Moisture 10h W1        | WX241 to WX258
+Fuel Moisture 10h W2        | WX259 to WX276
+Fuel Moisture 10h W3        | WX277 to WX294
+Fuel Moisture 10h W4        | WX295 to WX312
 
 ### Scheme A
 
 Scheme A contains all the groups with default weights. It can be used to evaluate complete model performance with balanced weighting.
-
-Group                  | Group Weight 
----------------------- | ------------
-Building Damage        | 1 
-Burn Severity          | 1     
-Fire Perimeter W1      | 1
-Fire Perimeter W2      | 1
-Fire Perimeter W3      | 1
-Fire Perimeter W4      | 1
 
 ### Scheme B
 
@@ -901,6 +1190,14 @@ Scheme B contains only the building damage group. It is used to evaluate the mod
 Group                  | Group Weight 
 ---------------------- | ------------
 Building Damage        | 1 
+
+### Scheme CC
+
+Scheme CC contains only the canopy cover loss group. It is used to evaluate crown fire models.
+
+Group                  | Group Weight 
+---------------------- | ------------
+Canopy Cover Loss        | 1 
 
 ### Scheme FP
 
@@ -913,31 +1210,21 @@ Fire Perimeter W2      | 1
 Fire Perimeter W3      | 1
 Fire Perimeter W4      | 1
 
-### Scheme FP-CW1
+### Scheme short_all
 
-Scheme FP-CW1 applies an alternative benchmark weighting for fire perimeter groups. It uses the number of days for each study period as the weight. 
+Scheme short_all contains all the groups except the groups relative to W1 study period. Therefore, the index i is in [2, 4].
 
 Group                  | Group Weight 
 ---------------------- | ------------
-Fire Perimeter W1      | 24.1
-Fire Perimeter W2      | 2.0
-Fire Perimeter W3      | 2.75
-Fire Perimeter W4      | 5.2
-
-**Scheme benchmark override**
-
-This scheme also modifies the weights applied to the benchmarks. It gives more weight to the average Jaccard and Dice-Sorensen index compared the min/max indices. It also adds more weight to the burn area benchmarks.
-
-Group                  | Benchmark ID  | Weight
----------------------- | ------------  | ------
-Fire Perimeter W1      | FP01, FP13    | 2
-|                      | FP25, FP29    | 4
-Fire Perimeter W2      | FP02, FP14    | 2
-|                      | FP26, FP30    | 4
-Fire Perimeter W3      | FP03, FP15    | 2
-|                      | FP27, FP31    | 4
-Fire Perimeter W4      | FP04, FP16    | 2
-|                      | FP28, FP32    | 4
+Air Temp Wi            | 1     
+Building Damage        | 1 
+Burn Severity          | 1   
+Canopy Cover Loss      | 1 
+Fire Perimeter Wi      | 1  
+FMC 10h Wi             | 1     
+RH Wi                  | 1     
+Wind Direction Wi      | 1     
+Wind Speed Wi          | 1     
 
 ### Scheme S
 
@@ -947,6 +1234,33 @@ Group                  | Group Weight
 ---------------------- | ------------
 Burn Severity          | 1     
 
+### Scheme WXi
+
+Schemes WXi, for i in [1, 4], contains all the group related to weather stations for a specific study period (W1 to W4)
+
+Group                  | Group Weight 
+---------------------- | ------------
+Air Temp Wi            | 1     
+FMC 10h Wi             | 1     
+RH Wi                  | 1     
+Wind Direction Wi      | 1     
+Wind Speed Wi          | 1     
+
+### Scheme WX_short
+
+Scheme short_all contains all the groups except the groups relative to W1 study period and fire perimeter groups. Therefore, the index i is in [2, 4].
+
+Group                  | Group Weight 
+---------------------- | ------------
+Air Temp Wi            | 1     
+Building Damage        | 1 
+Burn Severity          | 1   
+Canopy Cover Loss      | 1 
+FMC 10h Wi             | 1     
+RH Wi                  | 1     
+Wind Direction Wi      | 1     
+Wind Speed Wi          | 1     
+
 ## Notes
 
 - **Benchmark identifiers** consist of a *case ID* and a *short ID*, for example `FB001-BD01`. Throughout the documentation, the *short ID* alone (e.g. `BD01`) is used when the benchmark case is unambiguous, in order to improve readability. The *full identifier* (`FB001-BD01`) is used whenever the case context must be explicit, such as when comparing benchmarks across different cases.
@@ -955,4 +1269,5 @@ Burn Severity          | 1
 
 ## Acknowledgment 
 
-We gratefully acknowledge [Synoptic](https://synopticdata.com) for granting permission to redistribute selected weather-station data as part of the FireBench benchmarking framework.
+- We gratefully acknowledge [Synoptic](https://synopticdata.com) for granting permission to redistribute selected weather-station data as part of the FireBench benchmarking framework.
+- I would like to thanks my colleague Muthu K. Selvaraj (WPI) for his help in this project.
