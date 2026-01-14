@@ -10,6 +10,7 @@ from .tools import (
     read_string_attribute,
     validate_h5_requirement,
     validate_h5_std,
+    validate_h5_weather_stations_structure,
 )
 from .time import (
     current_datetime_iso8601,

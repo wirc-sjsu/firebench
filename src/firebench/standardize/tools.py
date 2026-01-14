@@ -1,6 +1,7 @@
 import h5py
 import hdf5plugin
 import re
+import fnmatch
 import numpy as np
 from pathlib import Path
 import rasterio
@@ -9,6 +10,7 @@ from rasterio.windows import from_bounds
 from rasterio.warp import transform_bounds
 from ..tools.logging_config import logger
 from ..tools.units import ureg
+from .std_file_info import TIME_SERIES
 
 VERSION_STD = "0.2"
 
@@ -125,6 +127,33 @@ def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
         if "rel_path" in attrs:
             if not Path(dset.attrs["rel_path"]).exists():
                 return False, f"file `{dset.attrs['rel_path']}` not found from `{dset_path}`"
+
+    return True, None
+
+
+def validate_h5_weather_stations_structure(
+    file_checked: h5py.File,
+    file_ref: h5py.File,
+    variable_checked: str,
+    station_grp_name_starts_with: str = "station",
+):
+    """
+    Check if all datasets and associated attributs are present in the file.
+    Return False and the name of the first missing item if either the dataset or an attribute is missing
+    """
+    ref_paths = []
+    for station in file_ref[f"{TIME_SERIES}"].keys():
+        if not station.startswith(station_grp_name_starts_with):
+            continue
+        # check if station contains variable
+        station_path = f"{TIME_SERIES}/{station}"
+        if variable_checked in map(str, file_ref[station_path].keys()):
+            ref_paths.append(f"{TIME_SERIES}/{station}/time")
+            ref_paths.append(f"{TIME_SERIES}/{station}/{variable_checked}")
+
+    for path in ref_paths:
+        if path not in file_checked:
+            return False, path
 
     return True, None
 
