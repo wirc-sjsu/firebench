@@ -40,3 +40,4 @@ from .std_file_info import (
     CERTIFICATES,
 )
 from .synoptic import standardize_synoptic_raws_from_json
+from .synoptic_data import SH_TRUST_HIGHEST
