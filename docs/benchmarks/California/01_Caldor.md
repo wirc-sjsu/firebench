@@ -318,50 +318,50 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 #### Masked High Binary Canopy Cover Loss Accuracy
 
 **Short IDs**: CC01<br>
-**KPI**: Binary Confusion Matrix Accuracy applied to Masked High Binary Canopy Cover Loss<br>
+**KPI**: Binary High Canopy Cover Loss Accuracy<br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
-**Name in Score Card**: Binary High Severity Accuracy <br>
-This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+**Name in Score Card**: Binary High Canopy Cover Loss Accuracy <br>
+This benchmark is performed on the binary classes `masked high binary canopy cover loss`.
 
-#### Binary High Severity Precision
+#### Masked High Binary Canopy Cover Precision
 
-**Short IDs**: SV02<br>
-**KPI**: Binary High Severity Precision <br>
+**Short IDs**: CC02<br>
+**KPI**: Binary High Canopy Cover Loss Precision <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
-**Name in Score Card**: Binary High Severity Precision <br>
-This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+**Name in Score Card**: Binary High Canopy Cover Loss Precision <br>
+This benchmark is performed on the binary classes `masked high binary canopy cover loss`.
 
-#### Binary High Severity Recall
+#### Masked High Binary Canopy Cover Recall
 
-**Short IDs**: SV03<br>
-**KPI**: Binary High Severity Recall <br>
+**Short IDs**: CC03<br>
+**KPI**: Binary High Canopy Cover Loss Recall <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
-**Name in Score Card**: Binary High Severity Recall <br>
-This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+**Name in Score Card**: Binary High Canopy Cover Loss Recall <br>
+This benchmark is performed on the binary classes `masked high binary canopy cover loss`.
 
-#### Binary High Severity Specificity
+#### Masked High Binary Canopy Cover Specificity
 
-**Short IDs**: SV04<br>
-**KPI**: Binary High Severity Specificity <br>
+**Short IDs**: CC04<br>
+**KPI**: Binary High Canopy Cover Loss Specificity <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
-**Name in Score Card**: Binary High Severity Specificity <br>
-This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+**Name in Score Card**: Binary High Canopy Cover Loss Specificity <br>
+This benchmark is performed on the binary classes `masked high binary canopy cover loss`.
 
-#### Binary High Severity Negative Predictive Value
+#### Masked High Binary Canopy Cover Negative Predictive Value
 
-**Short IDs**: SV05<br>
-**KPI**: Binary High Severity Negative Predictive Value <br>
+**Short IDs**: CC05<br>
+**KPI**: Binary High Canopy Cover Loss Negative Predictive Value <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
-**Name in Score Card**: Binary High Severity Negative Predictive Value <br>
-This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+**Name in Score Card**: Binary High Canopy Cover Loss Negative Predictive Value <br>
+This benchmark is performed on the binary classes `masked high binary canopy cover loss`.
 
-#### Binary High Severity F1 Score
+#### Masked High Binary Canopy Cover F1 Score
 
-**Short IDs**: SV06<br>
-**KPI**: Binary High Severity F1 Score <br>
+**Short IDs**: CC06<br>
+**KPI**: Binary High Canopy Cover Loss F1 Score <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
-**Name in Score Card**: Binary High Severity F1 Score <br>
-This benchmark is performed on the binary classes for high severity points (Binary High severity processed variable)
+**Name in Score Card**: Binary High Canopy Cover Loss F1 Score <br>
+This benchmark is performed on the binary classes `masked high binary canopy cover loss`.
 
 ## Infrared fire perimeters
 ### Dataset
@@ -746,7 +746,27 @@ Fire Perimeter W1      | FP01, FP05, FP09, FP13, FP17, FP21, FP25, FP29
 Fire Perimeter W2      | FP02, FP06, FP10, FP14, FP18, FP22, FP26, FP30
 Fire Perimeter W3      | FP03, FP07, FP11, FP15, FP19, FP23, FP27, FP31
 Fire Perimeter W4      | FP04, FP08, FP12, FP16, FP20, FP24, FP28, FP32
-Canopy Cover Loss      | CC01, CC02
+Canopy Cover Loss      | CC01 to CC06
+Air temperature W1     | CC01 to CC06
+Air temperature W2     | CC01 to CC06
+Air temperature W3     | CC01 to CC06
+Air temperature W4     | CC01 to CC06
+Wind speed W1     | CC01 to CC06
+Wind speed W2     | CC01 to CC06
+Wind speed W3     | CC01 to CC06
+Wind speed W4     | CC01 to CC06
+Wind direction W1     | CC01 to CC06
+Wind direction W2     | CC01 to CC06
+Wind direction W3     | CC01 to CC06
+Wind direction W4     | CC01 to CC06
+Fuel Moisture 10h W1     | CC01 to CC06
+Fuel Moisture 10h W2     | CC01 to CC06
+Fuel Moisture 10h W3     | CC01 to CC06
+Fuel Moisture 10h W4     | CC01 to CC06
+Relative humidity 10h W1     | CC01 to CC06
+Relative humidity 10h W2     | CC01 to CC06
+Relative humidity 10h W3     | CC01 to CC06
+Relative humidity 10h W4     | CC01 to CC06
 
 **Group benchmark override**
 
