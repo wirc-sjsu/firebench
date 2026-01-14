@@ -31,7 +31,7 @@ It contains observation datasets for:
 ### Dataset
 
 The data has been collected using **CAL FIRE Damage Inspection (DINS) Data** (version of 2025/11/05).
-The original csv file containing multiple fires has been processed to extract the building damaged from the Caldor Fire only. The dataset contains the position (lat, lon) of buildings in the area of influence from the fire. The state of buildings is one of the following:
+The original CSV file containing multiple fires has been processed to extract only the buildings damaged by the Caldor Fire. The dataset includes the positions (lat, lon) of buildings within the area of influence of the fire. The state of buildings is one of the following:
 - 'No Damage',
 - 'Affected (1-9%)',
 - 'Minor (10-25%)',
@@ -40,9 +40,9 @@ The original csv file containing multiple fires has been processed to extract th
 - 'Inaccessible'.
 
 
-The sha256 of the original source file is: *0190a5a51aafafa20270fe046a7ae17a53697b1fb218ff8096a3d8ebbc9ef983*.
+The sha256 of the source file is: *0190a5a51aafafa20270fe046a7ae17a53697b1fb218ff8096a3d8ebbc9ef983*.
 
-If the evaluated model does not explicitly represent individual buildings, the model should consider every building within a cell to share the cell value for building damage (deterministic models) or share the median of bulding damage distribution (probabilistic models).
+If the evaluated model does not explicitly represent individual buildings, it should treat all buildings within a cell as sharing the cell value for building damage (deterministic models) or the median of the building damage distribution (probabilistic models).
 
 Figure 1 shows the spatial distribution of building damage for the Caldor Fire.
 ![blockdiagram](../../_static/benchmarks/FB001/Caldor_bd_map.png)
@@ -52,11 +52,11 @@ Figure 1 shows the spatial distribution of building damage for the Caldor Fire.
     </strong>
     :
     <em>
-        Buildings damage map
+        Building damage map
     </em>
 </p>
 
-Figure 2 shows the distribution of building damage for the Caldor Fire. The following Table shows the number of strucure in each damage category.
+Figure 2 shows the distribution of building damage for the Caldor Fire. The following Table shows the number of structures in each damage category.
 Damage category        | Counts [-]  
 ---------------------- | ----------------- 
 No Damage              | 3356
@@ -82,20 +82,20 @@ Total                  | 4444
 
 *Performed at obs dataset level*
 
-The data from the original CSV was standardized without any modification.
+The data from the original CSV file were standardized without modification.
 The column names from the original csv file were corrected from "* Damage" to "Damage" and "* Incident Name" to "Incident Name" to simplify processing.
 
-#### Binary classes of building damaged
+#### Binary classes of building damage
 
 *Performed at benchmark run level*
 
-In order to performe some calculations, the building damaged classes can be aggrageted to form binary classes. The `Inaccessible` is ignored. The following aggragtion method is used:
+To perform some calculations, the damaged building classes can be aggregated to form binary classes. The `Inaccessible` is ignored. The following aggregation method is used:
 - `unburnt` binary class contains `No Damage`, `Affected (1-9%)`, and `Minor (10-25%)`,
 - `burnt` binary class contains `Major (26-50%)`, and `Destroyed (>50%)`.
 
 ### Benchmarks
 
-See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
+See Key Performance Indicator (KPI) and normalization definitions [here](../../metrics/index.md).
 
 #### Binary Structure Loss Accuracy
 
@@ -151,7 +151,7 @@ This benchmark is performed on the binary classes for damaged buildings.
 ### Dataset
 
 The data has been collected using [Monitoring Trends in Burning Severity](https://mtbs.gov/) (MTBS).
-The original zip file contains burn severity, pre/post burn images, and final fire perimeter.
+The original zip file contains burn severity, pre/post burn images, and the final fire perimeter.
 The source of the burn severity used in FireBench is the file `ca3858612053820210815_20210805_20220723_dnbr6.tif`. The source of the final fire perimeter is the kmz file `ca3858612053820210815_20210805_20220723.kmz`.
 
 The burn severity categories, described with the corresponding index used in the dataset, are the following:
@@ -160,9 +160,9 @@ The burn severity categories, described with the corresponding index used in the
 - 'low': 2
 - 'moderate': 3
 - 'high': 4
-- 'increased greeness': 5
+- 'increased greenness': 5
 
-The hash of the original source files are: 
+The hashes of the original source files are: 
 - zip file: 171b9604c0654d8612eaabcfcad93d2374762661ab34b4d62718630a13469841
 - tif dnbr6: 33db74d3c5798c41ff3a4fc5ee57da9105fdc7a75d7f8af0d053d2f82cfdc0b6
 - final perimeter kmz: 4ed7a0ee585f8118b65a29375a3d5ee8a69e85a95ee155205ba5d781289c6e2b
@@ -184,17 +184,17 @@ Figure 3 shows the MTBS map from the original source.
 
 *Performed at obs dataset level*
 
-The burn severity array is extracted from the original file without any modification. The latitude and longitude array are reconstructed using proejction parameters (see `firebench.standardize.mtbs.standardize_mtbs_from_geotiff`). The final perimeter has been procress using QGIS. The original data (kmz file) has been imported and cleaned. Extra perimeters have been removed to only conserve the final fire perimeter. No modification to the polygons have been performed. Then, the multipolygons was exported to kml format and integrated in the dataset HDF5 file.
+The burn severity array is extracted from the original file without any modification. The latitude and longitude array are reconstructed using projection parameters (see `firebench.standardize.mtbs.standardize_mtbs_from_geotiff`). The final perimeter has been processed using QGIS. The original data (kmz file) has been imported and cleaned. Extra perimeters have been removed to conserve only the final fire perimeter. No modification to the polygons has been performed. Then, the multipolygons were exported to kml format and integrated into the dataset HDF5 file.
 
 #### Binary classes for high severity
 
 *Performed at benchmark run level*
 
-To perform the high severity benchmarks using binary confusion matrix, we construct a binary field based of the high severity index. All the points will a buen severity equal to 4 ('high') will be assigned the value 1. The other points are assigned a value 0. This processing is done when the benchmark is performed.
+To perform the high-severity benchmarks using a binary confusion matrix, we construct a binary field based on the high-severity index. All points will have a burn severity of 4 ('high') and will be assigned the value 1. The other points are assigned a value of 0. This processing is done when the benchmark is performed.
 
 ### Benchmarks
 
-See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
+See Key Performance Indicator (KPI) and normalization definitions [here](../../metrics/index.md).
 
 #### Binary High Severity Accuracy
 
@@ -249,7 +249,7 @@ This benchmark is performed on the binary classes for high severity points (Bina
 ### Dataset
 
 The data has been collected using [Rapid Assessment of Vegetation Condition after Wildfire](https://burnseverity.cr.usgs.gov/ravg/) (RAVG).
-The source of the canopy cover loss used in FireBench is the dataset over CONUS for 2021 `ravg_2021_cc5.tif`. The region around Caldor Fire has been processed and standardized using the following bounding box:
+The source of the canopy cover loss used in FireBench is the dataset over CONUS for 2021, `ravg_2021_cc5.tif`. The region around the Caldor Fire has been processed and standardized using the following bounding box:
 - south west: (38.4, -120.8)
 - north east: (39.0, -119.7)
 
@@ -291,12 +291,12 @@ A bounding box has been used to remove the data from another fire (forced to `0`
 
 *Performed at benchmark run level*
 
-In order to perform evaluation of high canopy cover loss, a mask is defined using three LANDFIRE datasets:
+To perform an evaluation of high canopy cover loss, a mask is defined using three LANDFIRE datasets:
 - Canopy bulk density
 - Canopy height
 - Canopy bottom height
 
-The variable `masked high binary canopy cover loss` used in various benchmarks is computed only where all LANDFIRE canopy variable (interpolated using nearest method on the RAVG grid) are strictly greater than 0 (presence of canopy fuel) and is defined as a binary variable:
+The variable `masked high binary canopy cover loss` used in various benchmarks is computed only where all LANDFIRE canopy variables (interpolated using the nearest method on the RAVG grid) are strictly greater than 0 (presence of canopy fuel) and is defined as a binary variable:
 - `1` if RAVG canopy cover loss value is `5`,
 - `0` if RAVG canopy cover loss value is between `1` and `4`,
 - `nan` otherwise.
@@ -316,7 +316,7 @@ Figure 5 shows the processed `masked high binary canopy cover loss` dataset used
 
 ### Benchmarks
 
-See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
+See Key Performance Indicator (KPI) and normalization definitions [here](../../metrics/index.md).
 
 #### Masked High Binary Canopy Cover Loss Accuracy
 
@@ -370,7 +370,7 @@ This benchmark is performed on the binary classes `masked high binary canopy cov
 ### Dataset
 
 The infrared fire perimeters have been gathered from [NIROPS](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/) dataset.
-Every orginal file has been manually processed to extract only the perimeter. The time stamp of the perimeter has been defined from the imaging report (e.g. [Report for 2021/08/17](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/20210818/20210818_Caldor_IR_Topo_11x17.pdf)) using the `Imagery Date` and `Imagery Time`. The burn area obtained using the KML file and python tools has been verified against the `Interpreted Acreage` when specified in the reports. Each fire perimeter (see Fig. 6) is stored as a group within the HDF5 data file with an attributes containing the path of the KML file that contains the fire perimeter dataset.
+Every orginal file has been manually processed to extract only the perimeter. The time stamp of the perimeter has been defined from the imaging report (e.g. [Report for 2021/08/17](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/20210818/20210818_Caldor_IR_Topo_11x17.pdf)) using the `Imagery Date` and `Imagery Time`. The burn area obtained using the KML file and python tools has been verified against the `Interpreted Acreage` when specified in the reports. Each fire perimeter (see Fig. 6) is stored as a group within the HDF5 data file with attributes containing the path of the KML file that contains the fire perimeter dataset.
 The perimeters have been processed from August 17th (first IR perimeter available) to September 10th, when the burn area is 99% if the final burn area, as shown in Figure 7 (source: [CALFIRE](https://www.fire.ca.gov/incidents/2021/8/14/caldor-fire/)).
 The final dataset contains 21 perimeters.
 
@@ -383,7 +383,7 @@ W2   | Aug 19 20h45 PDT  | Aug 21 21h15 PDT   |  2d  0h 30min | 24,941
 W3   | Aug 26 02h30 PDT  | Aug 28 20h30 PDT   |  2d 18h  0min | 19,992
 W4   | Aug 28 20h30 PDT  | Sep  3 00h40 PDT   |  5d  4h 10min | 56,272
 
-Figure 6 shows teach processed fire perimeter as a colored solid contour. The color of the contour displays the time stamp of the perimeter.
+Figure 6 shows the processed fire perimeter as a colored solid contour. The color of the contour indicates the timestamp of the perimeter.
 
 ![blockdiagram](../../_static/benchmarks/FB001/Caldor_perimeters.png)
 <p style="text-align: center;">
@@ -396,8 +396,6 @@ Figure 6 shows teach processed fire perimeter as a colored solid contour. The co
     </em>
 </p>
 
-Figure 6 shows teach processed fire perimeter as a colored solid contour. The color of the contour displays the time stamp of the perimeter. The study periods are shown as colored rectangle at the bottom of the plot.
-
 ![blockdiagram](../../_static/benchmarks/FB001/Caldor_burnt_area.png)
 <p style="text-align: center;">
     <strong>
@@ -405,13 +403,13 @@ Figure 6 shows teach processed fire perimeter as a colored solid contour. The co
     </strong>
     :
     <em>
-        Burn area derived from IR perimeters from August 17th to September 10th. Red dashed line shows the final burn area from CALFIRE. The orange dashed line shows the final burn area from MTBS final perimeter.
+        Burn area derived from IR perimeters from August 17th to September 10th. The red dashed line shows the final burn area from CALFIRE. The orange dashed line shows the final burn area from the MTBS final perimeter.
     </em>
 </p>
 
 ### Benchmarks
 
-See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
+See Key Performance Indicator (KPI) and normalization definitions [here](../../metrics/index.md).
 
 #### Average Jaccard Index over study period
 
@@ -419,10 +417,10 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 **KPI**: Average Jaccard Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
-The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The first perimeter at the start of the period can serve as an initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
 The area preserving project used is EPSG:5070.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID   | Study period | Name in Score Card
 -----|--------------|-------------------
@@ -437,10 +435,10 @@ FP04 | W4           | Average Jaccard Index W4
 **KPI**: Minimum Jaccard Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
-The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The first perimeter at the start of the period can serve as an initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
 The area preserving project used is EPSG:5070.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID   | Study period | Name in Score Card
 -----|--------------|-------------------
@@ -455,10 +453,10 @@ FP08 | W4           | Minimum Jaccard Index W4
 **KPI**: Maximum Jaccard Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
-The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The first perimeter at the start of the period can serve as an initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
 The area preserving project used is EPSG:5070.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID   | Study period | Name in Score Card
 -----|--------------|-------------------
@@ -473,10 +471,10 @@ FP12 | W4           | Minimum Jaccard Index W4
 **KPI**: Average Dice-Sorensen Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
-The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The first perimeter at the start of the period can serve as an initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
 The area preserving project used is EPSG:5070.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID   | Study period | Name in Score Card
 -----|--------------|-------------------
@@ -491,10 +489,10 @@ FP16 | W4           | Average Dice-Sorensen Index W4
 **KPI**: Minimum Dice-Sorensen Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
-The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The first perimeter at the start of the period can serve as an initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
 The area preserving project used is EPSG:5070.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID   | Study period | Name in Score Card
 -----|--------------|-------------------
@@ -509,10 +507,10 @@ FP20 | W4           | Minimum Dice-Sorensen Index W4
 **KPI**: Maximum Dice-Sorensen Index <br>
 **Normalization**: Linear Bounded Normalization with $a=0$, $b=1$ <br>
 **Name in Score Card**: See Table <br>
-The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
+The first perimeter at the start of the period can serve as an initial condition for the fire perimeter. The first perimeter is not used to compute any metric.
 The area preserving project used is EPSG:5070.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID   | Study period | Name in Score Card
 -----|--------------|-------------------
@@ -528,10 +526,10 @@ FP24 | W4           | Minimum Dice-Sorensen Index W4
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
-The bias is calculated on the last perimeter of the stgudy period as the difference between the model and the observed burn area.
-A bias of $m$ acre, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means higher difficulty) and must be chosen by the community.
+The bias is calculated on the last perimeter of the study period as the difference between the model and the observed burn area.
+A bias of $m$ acres, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means greater difficulty) and must be chosen by the community.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID   | Study period | Name in Score Card | $m$    | $B_{50}$
 -----|--------------|--------------------|--------|---------
@@ -547,9 +545,9 @@ FP28 | W4           | Burn Area Bias W4  | 17,000 | 30%
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
-A bias of $m$ acre, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means higher difficulty) and must be chosen by the community.
+A bias of $m$ acres, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means greater difficulty) and must be chosen by the community.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID   | Study period | Name in Score Card | $m$    | $B_{50}$
 -----|--------------|--------------------|--------|---------
@@ -563,7 +561,7 @@ FP32 | W4           | Burn Area RMSE W4  | 17,000 | 30%
 ### Dataset
 
 Weather stations datasets have been gathered from [Synoptics](https://synopticdata.com).
-All the stations available in the following bounding box have be processed:
+All the stations available in the following bounding box have been processed:
 - south west: (38.4, -120.8)
 - north east: (39.0, -119.7)
 
@@ -577,39 +575,39 @@ The following variables have been processed (following FireBench namespace):
 - wind_speed
 
 ```{note}
-If you want to have more variable processed, or require new benchmarks for existing variable, please reach out to the FireBench team to integrate these changes in the future version of the benchmarks.
+If you want to process more variables or require new benchmarks for existing variables, please reach out to the FireBench team to integrate these changes into a future version of the benchmarks.
 ```
 
 Some stations don't have data for the period W1 and have been excluded from the dataset. 
-The list of excluded stations for missing data in study period is:
+The list of excluded stations for missing data in the study period is:
 403_PG, 412_PG, 413_PG, F9934.
-Also, some stations did not meet data quality criterion and have been excliuded from the dataset. 
+Also, some stations did not meet the data quality criterion and have been excluded from the dataset. 
 The list of excluded stations for data quality reasons is:
 AV833, BLCC1, C9148, COOPDAGN2, COOPMINN2, FOIC1, FPDC1, G0658, GEOC1, LNLC1, PFHC1, SBKC1, SLPC1, STAN2, UTRC1, WDFC1, XOHC1.
 
 Sensor height data has been extracted following the sensor height priority rules defined here.
 The current version of knowledge about sensor heights for the case weather stations are:
-- 10 stations with complete dataset (sensor height found in source file)
+- 10 stations with a complete dataset (sensor height found in the source file)
 - 98 stations with missing metadata
 - 21 stations skipped
 - 81 datasets with sensor height metadata
-- 0 datasets from trusted stations from FireBench database
-- 0 datasets from trusted history from FireBench database
-- 5 datasets from FireBench provider default database
+- 0 datasets from trusted stations from the FireBench database
+- 0 datasets from trusted history from the FireBench database
+- 5 datasets from the FireBench provider default database
 - 394 datasets using FireBench default metadata
 
-Therefore, 81 datasets are considered trusted and will be used in benchmarks `trusted source only`.
+Therefore, 81 datasets are considered trusted and will be used in the benchmarks `trusted source only` (TSO).
 All 399 datasets are used in benchmarks "all sources".
 
 ```{note}
-If you have information about sensor height and want to help increase the number of trusted datasets, please contact the FireBench Team.
+If you have information about sensor height and want to help increase the number of trusted datasets, please get in touch with the FireBench Team.
 ```
 
 Weather stations are stored in the HDF5 file using their STID.
 
 ### Benchmarks
 
-See Key Performance Indicator (KPI) and normalization defintions [here](../../metrics/index.md).
+See Key Performance Indicator (KPI) and normalization definitions [here](../../metrics/index.md).
 
 #### Air temperature
 
@@ -617,12 +615,12 @@ See Key Performance Indicator (KPI) and normalization defintions [here](../../me
 **KPI**: Air temperature MAE/RMSE/Bias <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
-Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) across  all available weather stations before applying the normalization.
 Implementation of metrics are `firebench.metrics.stats.mae`, `firebench.metrics.stats.rmse`, `firebench.metrics.stats.bias`.
 Datasets are converted into `degC` for comparison.
 The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence between the benchmark ID and the study period:
 
 ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
 ------|--------------|--------------------|-------------------------|---------|--------------------
@@ -705,12 +703,12 @@ WX072 | W4           | Bias               | Air temp Bias max W4           |   5
 **KPI**: Relative humidity MAE/RMSE/Bias <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
-Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) across  all available weather stations before applying the normalization.
 Implementation of metrics are `firebench.metrics.stats.mae`, `firebench.metrics.stats.rmse`, `firebench.metrics.stats.bias`.
 Datasets are converted into `percent` for comparison.
 The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence  between the benchmark ID and the study period:
 
 ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
 ------|--------------|--------------------|-------------------------|---------|--------------------
@@ -793,12 +791,12 @@ WX144 | W4           | Bias               | RH Bias max W4                 |  15
 **KPI**: Wind Speed MAE/RMSE/Bias <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
-Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Each metric (MAE, RMSE, Bias) is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) across  all available weather stations before applying the normalization.
 Implementation of metrics are `firebench.metrics.stats.mae`, `firebench.metrics.stats.rmse`, `firebench.metrics.stats.bias`.
 Datasets are converted into `m/s` for comparison.
 The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence  between the benchmark ID and the study period:
 
 ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
 ------|--------------|--------------------|-------------------------|---------|--------------------
@@ -881,12 +879,12 @@ WX216 | W4           | Bias               | Wind Speed Bias max W4         |   5
 **KPI**: Wind Direction circular Bias <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
-Each metric is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Each metric is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) across  all available weather stations before applying the normalization.
 Implementation of metrics are `firebench.metrics.stats.circular_bias_deg`.
 Datasets are converted into `degree` for comparison.
 The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence  between the benchmark ID and the study period:
 
 ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
 ------|--------------|--------------------|-------------------------|---------|--------------------
@@ -921,12 +919,12 @@ WX240 | W4           | circular bias      | Wind Direction circular bias max W4 
 **KPI**: FMC 10h MAE/RMSE/Bias <br>
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
-Each metric is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) accross all available weather stations before applying the normalization.
+Each metric is calculated for each station for both model and observational dataset for a specified period. Then we apply summary statistics (*e.g.*, min, mean, Q3) across  all available weather stations before applying the normalization.
 Implementation of metrics are `firebench.metrics.stats.mae`, `firebench.metrics.stats.rmse`, `firebench.metrics.stats.bias`.
 Datasets are converted into `percent` for comparison.
 The normalization parameter $m$ sets which KPI value gives a Score of 50. It represents the difficulty of the benchmark.
 
-The following Table gives the correspondance between the bencmark id and the study period:
+The following Table gives the correspondence  between the benchmark ID and the study period:
 
 ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
 ------|--------------|--------------------|-------------------------|---------|--------------------
@@ -1005,9 +1003,9 @@ WX312 | W4           | Bias               | FMC 10h Bias max W4            |   5
 
 ## Requirements
 
-The following sections list the datasets requirements to run the different benchmarks. When the benchmark script is run, each requirement is validated on the HDF5 file passed as input (from the model ouput/data the user wants to evaluate). If a requirement is met, each corresponding benchmark is run.
-Each requirement lists the required datasets/groups (as path) as well as mandatory attributs for each dataset/group.
-The current version of FireBench does not integrate more complex checks (e.g., array size, dtype).
+The following sections list the datasets' requirements to run the different benchmarks. When the benchmark script runs, each requirement is validated against the HDF5 file provided as input (from the model output/data the user wants to evaluate). If a requirement is met, each corresponding benchmark is run.
+Each requirement lists the required datasets/groups (as paths) and the mandatory attributes for each dataset/group.
+The current version of FireBench does not support more complex checks (e.g., array size and dtype).
 
 
 Requirement            | Benchmarks 
@@ -1026,12 +1024,12 @@ R11                    | WX217 to WX240
 R12                    | WX241 to WX312
 
 ### R01
-Mandatory group/dataset| Mandatory attirbutes 
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/points/building_damaged/building_damage` | units
 
 ### R02
-Mandatory group/dataset| Mandatory attirbutes 
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/spatial_2d/Caldor_MTBS`| crs
 `/spatial_2d/Caldor_MTBS/fire_burn_severity`| units, _FillValue
@@ -1039,7 +1037,7 @@ Mandatory group/dataset| Mandatory attirbutes
 `/spatial_2d/Caldor_MTBS/position_lon`| units
 
 ### R03
-Mandatory group/dataset| Mandatory attirbutes 
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/polygons/Caldor_2021-08-18T20:30-07:00`| rel_path, time
 `/polygons/Caldor_2021-08-19T20:45-07:00`| rel_path, time
@@ -1065,7 +1063,7 @@ Mandatory group/dataset| Mandatory attirbutes
 Files (KML) at path defined in `rel_path` attributes must exist.
 
 ### R04
-Mandatory group/dataset| Mandatory attirbutes 
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/polygons/Caldor_2021-08-20T20:20-07:00`| rel_path, time
 `/polygons/Caldor_2021-08-21T21:15-07:00`| rel_path, time
@@ -1073,7 +1071,7 @@ Mandatory group/dataset| Mandatory attirbutes
 Files (KML) at path defined in `rel_path` attributes must exist.
 
 ### R05
-Mandatory group/dataset| Mandatory attirbutes 
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/polygons/Caldor_2021-08-26T22:15-06:00`| rel_path, time
 `/polygons/Caldor_2021-08-27T00:22-06:00`| rel_path, time
@@ -1082,7 +1080,7 @@ Mandatory group/dataset| Mandatory attirbutes
 Files (KML) at path defined in `rel_path` attributes must exist.
 
 ### R06
-Mandatory group/dataset| Mandatory attirbutes 
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/polygons/Caldor_2021-08-29T22:32-07:00`| rel_path, time
 `/polygons/Caldor_2021-08-30T21:09-07:00`| rel_path, time
@@ -1093,7 +1091,7 @@ Mandatory group/dataset| Mandatory attirbutes
 Files (KML) at path defined in `rel_path` attributes must exist.
 
 ### R07
-Mandatory group/dataset| Mandatory attirbutes 
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/spatial_2d/ravg_cc`| crs
 `/spatial_2d/ravg_cc/ravg_canopy_cover_loss`| units, _FillValue
@@ -1101,36 +1099,36 @@ Mandatory group/dataset| Mandatory attirbutes
 `/spatial_2d/ravg_cc/position_lon`| units
 
 ### R08
-Verify that model and observational datasets contains the same weather station groups with the following datasets:
-Mandatory group/dataset| Mandatory attirbutes 
+Verify that the model and observational datasets contain the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/time_series/station_<name>/time`| None
 `/time_series/station_<name>/air_temperature`| None
 
 ### R09
-Verify that model and observational datasets contains the same weather station groups with the following datasets:
-Mandatory group/dataset| Mandatory attirbutes 
+Verify that the model and observational datasets contain the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/time_series/station_<name>/time`| None
 `/time_series/station_<name>/relative_humidity`| None
 
 ### R10
-Verify that model and observational datasets contains the same weather station groups with the following datasets:
-Mandatory group/dataset| Mandatory attirbutes 
+Verify that the model and observational datasets contain the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/time_series/station_<name>/time`| None
 `/time_series/station_<name>/wind_speed`| None
 
 ### R11
-Verify that model and observational datasets contains the same weather station groups with the following datasets:
-Mandatory group/dataset| Mandatory attirbutes 
+Verify that the model and observational datasets contain the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/time_series/station_<name>/time`| None
 `/time_series/station_<name>/wind_direction`| None
 
 ### R12
-Verify that model and observational datasets contains the same weather station groups with the following datasets:
-Mandatory group/dataset| Mandatory attirbutes 
+Verify that the model and observational datasets contain the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attributes 
 ---------------------- | --------------------
 `/time_series/station_<name>/time`| None
 `/time_series/station_<name>/fuel_moisture_content_10h`| None
@@ -1138,11 +1136,11 @@ Mandatory group/dataset| Mandatory attirbutes
 
 ## Aggregation Schemes
 
-This section describes the weights used to aggregate KPI unit scores. More information about aggregation methods [here](../../metrics/score.md). If aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total score are not computed.
+This section describes the weights used to aggregate KPI unit scores. More information about aggregation methods [here](../../metrics/score.md). If the aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total scores are not computed.
 
 ### Group definition
 
-All benchmarks have a default weight of 1 in each group. If custom weights are applied, refer to custom weight Table. 
+All benchmarks have a default weight of 1 in each group. If custom weights are applied, refer to the custom weight Table. 
 
 Weight precedence:
 - Default benchmark weight: 1
@@ -1265,9 +1263,9 @@ Wind Speed Wi          | 1
 
 - **Benchmark identifiers** consist of a *case ID* and a *short ID*, for example `FB001-BD01`. Throughout the documentation, the *short ID* alone (e.g. `BD01`) is used when the benchmark case is unambiguous, in order to improve readability. The *full identifier* (`FB001-BD01`) is used whenever the case context must be explicit, such as when comparing benchmarks across different cases.
 - Each file hash has been performed using `firebench.standardize.calculate_sha256`.
-- Collection of forecasts or reanalysis are authorized for benchmarks period (e.g. for fire perimeters) but have to be detailed in the model report attached to the report sent back to FireBench team for collection and validation of results.
+- Collection of forecasts or reanalysis is authorized for the benchmark period (e.g., for fire perimeters) but has to be detailed in the model report attached to the Report sent back to the FireBench team for collection and validation of results.
 
 ## Acknowledgment 
 
 - We gratefully acknowledge [Synoptic](https://synopticdata.com) for granting permission to redistribute selected weather-station data as part of the FireBench benchmarking framework.
-- I would like to thanks my colleague Muthu K. Selvaraj (WPI) for his help in this project.
+- I would like to thank my colleague Muthu K. Selvaraj (WPI) for his help in this project.
