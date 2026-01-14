@@ -595,7 +595,7 @@ The current version of knowledge about sensor heights for the case weather stati
 - 5 datasets from FireBench provider default database
 - 394 datasets using FireBench default metadata
 
-Therefore, 81 datasets are considered trusted and will be used in benchmarks "trusted source only".
+Therefore, 81 datasets are considered trusted and will be used in benchmarks `trusted source only`.
 All 399 datasets are used in benchmarks "all sources".
 
 ```{note}
@@ -619,20 +619,80 @@ The normalization parameter $m$ sets which MAE gives a Score of 50. It represent
 
 The following Table gives the correspondance between the bencmark id and the study period:
 
-ID    | Study period | Summary stats func |  Name in Score Card     | $m$
-------|--------------|--------------------|-------------------------|---------
-WX001 | W1           | min                | Air temp MAE min W1     | 5 degC
-WX002 | W1           | mean               | Air temp MAE mean W1    | 5 degC
-WX003 | W1           | max                | Air temp MAE max W1     | 5 degC
-WX004 | W2           | min                | Air temp MAE min W2     | 5 degC
-WX005 | W2           | mean               | Air temp MAE mean W2    | 5 degC
-WX006 | W2           | max                | Air temp MAE max W2     | 5 degC
-WX007 | W3           | min                | Air temp MAE min W3     | 5 degC
-WX008 | W3           | mean               | Air temp MAE mean W3    | 5 degC
-WX009 | W3           | max                | Air temp MAE max W3     | 5 degC
-WX010 | W4           | min                | Air temp MAE min W4     | 5 degC
-WX011 | W4           | mean               | Air temp MAE mean W4    | 5 degC
-WX012 | W4           | max                | Air temp MAE max W4     | 5 degC
+ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | trusted source only
+------|--------------|--------------------|-------------------------|---------|--------------------
+WX001 | W1           | MAE                | Air temp MAE min W1 TSO        |   5.0 degC            | False
+WX002 | W1           | MAE                | Air temp MAE mean W1 TSO       |   5.0 degC            | False
+WX003 | W1           | MAE                | Air temp MAE max W1 TSO        |   5.0 degC            | False
+WX004 | W1           | MAE                | Air temp MAE min W1            |   5.0 degC            | True
+WX005 | W1           | MAE                | Air temp MAE mean W1           |   5.0 degC            | True
+WX006 | W1           | MAE                | Air temp MAE max W1            |   5.0 degC            | True
+WX007 | W1           | RMSE               | Air temp RMSE min W1 TSO       |   5.0 degC            | False
+WX008 | W1           | RMSE               | Air temp RMSE mean W1 TSO      |   5.0 degC            | False
+WX009 | W1           | RMSE               | Air temp RMSE max W1 TSO       |   5.0 degC            | False
+WX010 | W1           | RMSE               | Air temp RMSE min W1           |   5.0 degC            | True
+WX011 | W1           | RMSE               | Air temp RMSE mean W1          |   5.0 degC            | True
+WX012 | W1           | RMSE               | Air temp RMSE max W1           |   5.0 degC            | True
+WX013 | W1           | Bias               | Air temp Bias min W1 TSO       |   5.0 degC            | False
+WX014 | W1           | Bias               | Air temp Bias mean W1 TSO      |   5.0 degC            | False
+WX015 | W1           | Bias               | Air temp Bias max W1 TSO       |   5.0 degC            | False
+WX016 | W1           | Bias               | Air temp Bias min W1           |   5.0 degC            | True
+WX017 | W1           | Bias               | Air temp Bias mean W1          |   5.0 degC            | True
+WX018 | W1           | Bias               | Air temp Bias max W1           |   5.0 degC            | True
+WX019 | W2           | MAE                | Air temp MAE min W2 TSO        |   5.0 degC            | False
+WX020 | W2           | MAE                | Air temp MAE mean W2 TSO       |   5.0 degC            | False
+WX021 | W2           | MAE                | Air temp MAE max W2 TSO        |   5.0 degC            | False
+WX022 | W2           | MAE                | Air temp MAE min W2            |   5.0 degC            | True
+WX023 | W2           | MAE                | Air temp MAE mean W2           |   5.0 degC            | True
+WX024 | W2           | MAE                | Air temp MAE max W2            |   5.0 degC            | True
+WX025 | W2           | RMSE               | Air temp RMSE min W2 TSO       |   5.0 degC            | False
+WX026 | W2           | RMSE               | Air temp RMSE mean W2 TSO      |   5.0 degC            | False
+WX027 | W2           | RMSE               | Air temp RMSE max W2 TSO       |   5.0 degC            | False
+WX028 | W2           | RMSE               | Air temp RMSE min W2           |   5.0 degC            | True
+WX029 | W2           | RMSE               | Air temp RMSE mean W2          |   5.0 degC            | True
+WX030 | W2           | RMSE               | Air temp RMSE max W2           |   5.0 degC            | True
+WX031 | W2           | Bias               | Air temp Bias min W2 TSO       |   5.0 degC            | False
+WX032 | W2           | Bias               | Air temp Bias mean W2 TSO      |   5.0 degC            | False
+WX033 | W2           | Bias               | Air temp Bias max W2 TSO       |   5.0 degC            | False
+WX034 | W2           | Bias               | Air temp Bias min W2           |   5.0 degC            | True
+WX035 | W2           | Bias               | Air temp Bias mean W2          |   5.0 degC            | True
+WX036 | W2           | Bias               | Air temp Bias max W2           |   5.0 degC            | True
+WX037 | W3           | MAE                | Air temp MAE min W3 TSO        |   5.0 degC            | False
+WX038 | W3           | MAE                | Air temp MAE mean W3 TSO       |   5.0 degC            | False
+WX039 | W3           | MAE                | Air temp MAE max W3 TSO        |   5.0 degC            | False
+WX040 | W3           | MAE                | Air temp MAE min W3            |   5.0 degC            | True
+WX041 | W3           | MAE                | Air temp MAE mean W3           |   5.0 degC            | True
+WX042 | W3           | MAE                | Air temp MAE max W3            |   5.0 degC            | True
+WX043 | W3           | RMSE               | Air temp RMSE min W3 TSO       |   5.0 degC            | False
+WX044 | W3           | RMSE               | Air temp RMSE mean W3 TSO      |   5.0 degC            | False
+WX045 | W3           | RMSE               | Air temp RMSE max W3 TSO       |   5.0 degC            | False
+WX046 | W3           | RMSE               | Air temp RMSE min W3           |   5.0 degC            | True
+WX047 | W3           | RMSE               | Air temp RMSE mean W3          |   5.0 degC            | True
+WX048 | W3           | RMSE               | Air temp RMSE max W3           |   5.0 degC            | True
+WX049 | W3           | Bias               | Air temp Bias min W3 TSO       |   5.0 degC            | False
+WX050 | W3           | Bias               | Air temp Bias mean W3 TSO      |   5.0 degC            | False
+WX051 | W3           | Bias               | Air temp Bias max W3 TSO       |   5.0 degC            | False
+WX052 | W3           | Bias               | Air temp Bias min W3           |   5.0 degC            | True
+WX053 | W3           | Bias               | Air temp Bias mean W3          |   5.0 degC            | True
+WX054 | W3           | Bias               | Air temp Bias max W3           |   5.0 degC            | True
+WX055 | W4           | MAE                | Air temp MAE min W4 TSO        |   5.0 degC            | False
+WX056 | W4           | MAE                | Air temp MAE mean W4 TSO       |   5.0 degC            | False
+WX057 | W4           | MAE                | Air temp MAE max W4 TSO        |   5.0 degC            | False
+WX058 | W4           | MAE                | Air temp MAE min W4            |   5.0 degC            | True
+WX059 | W4           | MAE                | Air temp MAE mean W4           |   5.0 degC            | True
+WX060 | W4           | MAE                | Air temp MAE max W4            |   5.0 degC            | True
+WX061 | W4           | RMSE               | Air temp RMSE min W4 TSO       |   5.0 degC            | False
+WX062 | W4           | RMSE               | Air temp RMSE mean W4 TSO      |   5.0 degC            | False
+WX063 | W4           | RMSE               | Air temp RMSE max W4 TSO       |   5.0 degC            | False
+WX064 | W4           | RMSE               | Air temp RMSE min W4           |   5.0 degC            | True
+WX065 | W4           | RMSE               | Air temp RMSE mean W4          |   5.0 degC            | True
+WX066 | W4           | RMSE               | Air temp RMSE max W4           |   5.0 degC            | True
+WX067 | W4           | Bias               | Air temp Bias min W4 TSO       |   5.0 degC            | False
+WX068 | W4           | Bias               | Air temp Bias mean W4 TSO      |   5.0 degC            | False
+WX069 | W4           | Bias               | Air temp Bias max W4 TSO       |   5.0 degC            | False
+WX070 | W4           | Bias               | Air temp Bias min W4           |   5.0 degC            | True
+WX071 | W4           | Bias               | Air temp Bias mean W4          |   5.0 degC            | True
+WX072 | W4           | Bias               | Air temp Bias max W4           |   5.0 degC            | True
 
 ## Requirements
 
@@ -643,12 +703,18 @@ The current version of FireBench does not integrate more complex checks (e.g., a
 
 Requirement            | Benchmarks 
 ---------------------- | ----------------- 
-R01                    | BD01, BD02, BD03, BD04, BD05, BD06
-R02                    | SV01, SV02, SV03, SV04, SV05, SV06
+R01                    | BD01 to BD06
+R02                    | SV01 to SV06
 R03                    | FP01, FP05, FP09, FP13, FP17, FP21, FP25, FP29
 R04                    | FP02, FP06, FP10, FP14, FP18, FP22, FP26, FP30
 R05                    | FP03, FP07, FP11, FP15, FP19, FP23, FP27, FP31
 R06                    | FP04, FP08, FP12, FP16, FP20, FP24, FP28, FP32
+R07                    | CC01 to CC06
+R08                    | WX001 to WX072
+R09                    | WX073 to WX144
+R10                    | WX145 to WX216
+R11                    | WX001 to WX072
+R12                    | WX001 to WX072
 
 ### R01
 Mandatory group/dataset| Mandatory attirbutes 
@@ -725,6 +791,42 @@ Mandatory group/dataset| Mandatory attirbutes
 `/spatial_2d/ravg_cc/position_lat`| units
 `/spatial_2d/ravg_cc/position_lon`| units
 
+### R08
+Verify that model and observational datasets contains the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/time_series/station_<name>/time`| None
+`/time_series/station_<name>/air_temperature`| None
+
+### R09
+Verify that model and observational datasets contains the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/time_series/station_<name>/time`| None
+`/time_series/station_<name>/relative_humidity`| None
+
+### R10
+Verify that model and observational datasets contains the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/time_series/station_<name>/time`| None
+`/time_series/station_<name>/wind_speed`| None
+
+### R11
+Verify that model and observational datasets contains the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/time_series/station_<name>/time`| None
+`/time_series/station_<name>/wind_direction`| None
+
+### R12
+Verify that model and observational datasets contains the same weather station groups with the following datasets:
+Mandatory group/dataset| Mandatory attirbutes 
+---------------------- | --------------------
+`/time_series/station_<name>/time`| None
+`/time_series/station_<name>/fuel_moisture_content_10h`| None
+
+
 ## Aggregation Schemes
 
 This section describes the weights used to aggregate KPI unit scores. More information about aggregation methods [here](../../metrics/score.md). If aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total score are not computed.
@@ -738,35 +840,35 @@ Weight precedence:
 - Group benchmark overrides: apply to all schemes unless overridden
 - Scheme benchmark overrides: apply only within that scheme and override everything else 
 
-Group                  | Benchmark ID
----------------------- | ------------
-Building Damage        | BD01 to BD06
-Burn Severity          | SV01 to SV06
-Fire Perimeter W1      | FP01, FP05, FP09, FP13, FP17, FP21, FP25, FP29
-Fire Perimeter W2      | FP02, FP06, FP10, FP14, FP18, FP22, FP26, FP30
-Fire Perimeter W3      | FP03, FP07, FP11, FP15, FP19, FP23, FP27, FP31
-Fire Perimeter W4      | FP04, FP08, FP12, FP16, FP20, FP24, FP28, FP32
-Canopy Cover Loss      | CC01 to CC06
-Air temperature W1     | CC01 to CC06
-Air temperature W2     | CC01 to CC06
-Air temperature W3     | CC01 to CC06
-Air temperature W4     | CC01 to CC06
-Wind speed W1     | CC01 to CC06
-Wind speed W2     | CC01 to CC06
-Wind speed W3     | CC01 to CC06
-Wind speed W4     | CC01 to CC06
-Wind direction W1     | CC01 to CC06
-Wind direction W2     | CC01 to CC06
-Wind direction W3     | CC01 to CC06
-Wind direction W4     | CC01 to CC06
-Fuel Moisture 10h W1     | CC01 to CC06
-Fuel Moisture 10h W2     | CC01 to CC06
-Fuel Moisture 10h W3     | CC01 to CC06
-Fuel Moisture 10h W4     | CC01 to CC06
-Relative humidity 10h W1     | CC01 to CC06
-Relative humidity 10h W2     | CC01 to CC06
-Relative humidity 10h W3     | CC01 to CC06
-Relative humidity 10h W4     | CC01 to CC06
+Group                       | Benchmark ID
+--------------------------- | ------------
+Building Damage             | BD01 to BD06
+Burn Severity               | SV01 to SV06
+Fire Perimeter W1           | FP01, FP05, FP09, FP13, FP17, FP21, FP25, FP29
+Fire Perimeter W2           | FP02, FP06, FP10, FP14, FP18, FP22, FP26, FP30
+Fire Perimeter W3           | FP03, FP07, FP11, FP15, FP19, FP23, FP27, FP31
+Fire Perimeter W4           | FP04, FP08, FP12, FP16, FP20, FP24, FP28, FP32
+Canopy Cover Loss           | CC01 to CC06
+Air temperature W1          | WX001 to WX018
+Air temperature W2          | WX019 to WX036
+Air temperature W3          | WX037 to WX054
+Air temperature W4          | WX055 to WX072
+Relative humidity 10h W1    | WX073 to WX090
+Relative humidity 10h W2    | WX091 to WX108
+Relative humidity 10h W3    | WX109 to WX126
+Relative humidity 10h W4    | WX127 to WX144
+Wind speed W1               | WX145 to WX162
+Wind speed W2               | WX163 to WX180
+Wind speed W3               | WX181 to WX198
+Wind speed W4               | WX199 to WX216
+Wind direction W1           | WX217 to WX162
+Wind direction W2           | WX019 to WX180
+Wind direction W3           | WX019 to WX198
+Wind direction W4           | WX019 to WX216
+Fuel Moisture 10h W1        | WX019 to WX072
+Fuel Moisture 10h W2        | WX019 to WX072
+Fuel Moisture 10h W3        | WX019 to WX072
+Fuel Moisture 10h W4        | WX019 to WX072
 
 **Group benchmark override**
 
