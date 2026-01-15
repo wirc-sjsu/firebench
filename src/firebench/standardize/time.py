@@ -3,9 +3,7 @@ from __future__ import annotations
 from datetime import datetime, tzinfo
 from zoneinfo import ZoneInfo
 from typing import Optional, Union
-import h5py
-from .logging_config import logger
-from .units import ureg
+from ..tools.logging_config import logger
 
 _TZLike = Union[str, tzinfo]
 
@@ -116,50 +114,13 @@ def current_datetime_iso8601(
     return datetime_to_iso8601(now_local, include_seconds, tz)
 
 
-def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5py.Group | h5py.Dataset):
+def sanitize_iso8601(dt_str: str) -> str:
     """
-    Read a dataset from an HDF5 file, group, or dataset node and return it as a Pint Quantity
-    according to the FireBench I/O standard.
+    Sanitize an ISO8601 datetime string so it becomes XML/KML-safe.
 
-    This function expects the dataset to comply with the FireBench standard I/O format
-    (version >= 0.1), meaning it must define a string `units` attribute specifying the
-    physical units of the stored values. The full dataset is loaded into memory and
-    wrapped into a `pint.Quantity` using the global `ureg` registry.
-
-    Parameters
-    ----------
-    dataset_path : str
-        Path to the target dataset relative to `file_object`. For an `h5py.File`,
-        this is the absolute or group-relative path (e.g., "/2D_raster/0001/temperature").
-    file_object : h5py.File | h5py.Group | h5py.Dataset
-        HDF5 file, group, or dataset object from which the dataset will be read.
-        Must support item access via `__getitem__` and store datasets with `.attrs`.
-
-    Returns
-    -------
-    pint.Quantity
-        The dataset values loaded into memory, associated with the units taken from
-        the dataset's `units` attribute.
-
-    Raises
-    ------
-    KeyError
-        If `dataset_path` does not exist in `file_object`.
-    ValueError
-        If the dataset has no `units` attribute or it is not a non-empty string.
-
-    Notes
-    -----
-    - The function reads the **entire dataset** into memory; for very large datasets,
-    consider reading subsets instead.
-    - Compliant with FireBench I/O standard >= 0.1.
-    """  # pylint: disable=line-too-long
-    ds = file_object[dataset_path]
-
-    units = ds.attrs.get("units", None)
-    if not isinstance(units, str) or not units.strip():
-        raise ValueError(
-            f"Dataset '{dataset_path}' is missing a valid `units` attribute required by FireBench I/O standard."
-        )
-
-    return ureg.Quantity(ds[()], ds.attrs["units"])
+    Rules:
+        - Replace "-" and ":" with "_"
+        - Leave all digits and letters unchanged
+        - Keeps "T" and timezone offset structure preserved
+    """
+    return dt_str.replace("-", "_").replace(":", "_")

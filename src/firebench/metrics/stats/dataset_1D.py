@@ -31,7 +31,7 @@ def rmse(x1: np.ndarray, x2: np.ndarray) -> float:
     if x1.shape != x2.shape:
         raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
 
-    return np.sqrt(np.nanmean((x1 - x2) ** 2))
+    return float(np.sqrt(np.nanmean((x1 - x2) ** 2)))
 
 
 def nmse_range(x1: np.ndarray, x2: np.ndarray) -> float:
@@ -72,7 +72,7 @@ def nmse_range(x1: np.ndarray, x2: np.ndarray) -> float:
             "Cannot normalize RMSE: denominator is zero (no range in reference). Use nmse_power instead."
         )
 
-    return rmse(x1, x2) / denom
+    return float(rmse(x1, x2) / denom)
 
 
 def nmse_power(x1: np.ndarray, x2: np.ndarray) -> float:
@@ -113,7 +113,7 @@ def nmse_power(x1: np.ndarray, x2: np.ndarray) -> float:
     if denom == 0:
         raise ValueError("Cannot normalize MSE: denominator is zero. Use nmse_range instead.")
 
-    return np.nanmean((x1 - x2) ** 2) / denom
+    return float(np.nanmean((x1 - x2) ** 2) / denom)
 
 
 def bias(x1: np.ndarray, x2: np.ndarray) -> float:
@@ -144,4 +144,80 @@ def bias(x1: np.ndarray, x2: np.ndarray) -> float:
     if x1.shape != x2.shape:
         raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
 
-    return np.nanmean(x1) - np.nanmean(x2)
+    return float(np.nanmean(x1) - np.nanmean(x2))
+
+
+def mae(x1: np.ndarray, x2: np.ndarray) -> float:
+    """
+    Compute the Mean Absolute Error between two arrays, ignoring NaNs.
+
+    Parameters
+    ----------
+    x1 : np.ndarray
+        First input array (e.g. prediction)
+    x2 : np.ndarray
+        Second input array of the same shape as x1 (e.g. observations)
+
+    Returns
+    -------
+    float
+        The bias value between x1 and x2.
+
+    Raises
+    ------
+    ValueError
+        If the two input arrays do not have the same shape.
+
+    Notes
+    -----
+    MAE = E(|x1 - x2|)
+    """  # pylint: disable=line-too-long
+    if x1.shape != x2.shape:
+        raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
+
+    return np.nanmean(np.abs(x1 - x2))
+
+
+def circular_bias_deg(x1: np.ndarray, x2: np.ndarray) -> float:
+    """
+    Compute the bias between two angular arrays in degrees (0-360),
+    accounting for circularity and ignoring NaNs.
+
+    Parameters
+    ----------
+    x1 : np.ndarray
+        First input array (e.g. prediction), in degrees [0, 360)
+    x2 : np.ndarray
+        Second input array (e.g. observations), in degrees [0, 360)
+
+    Returns
+    -------
+    float
+        Circular bias in degrees, in the range (-180, 180].
+
+    Raises
+    ------
+    ValueError
+        If the two input arrays do not have the same shape.
+    """
+    if x1.shape != x2.shape:
+        raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
+
+    # Mask NaNs jointly
+    mask = np.isfinite(x1) & np.isfinite(x2)
+    if not np.any(mask):
+        return np.nan
+
+    # Convert to radians
+    theta1 = np.deg2rad(x1[mask])
+    theta2 = np.deg2rad(x2[mask])
+
+    # Circular means
+    mean1 = np.arctan2(np.mean(np.sin(theta1)), np.mean(np.cos(theta1)))
+    mean2 = np.arctan2(np.mean(np.sin(theta2)), np.mean(np.cos(theta2)))
+
+    # Difference, wrapped to (-pi, pi]
+    dtheta = mean1 - mean2
+    dtheta = (dtheta + np.pi) % (2 * np.pi) - np.pi
+
+    return float(np.rad2deg(dtheta))

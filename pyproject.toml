@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "firebench"
-version = "0.7.0"
+version = "0.8.0a"
 authors = [
     {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
 ]
@@ -13,13 +13,17 @@ maintainers = [
 ]
 description = "FireBench is a Python library designed for the systematic benchmarking and inter-comparison of fire models."
 dependencies = [
+    "geopandas < 2.0",
+    "h5py < 4.0",
+    "hdf5plugin >= 6.0",
+    "matplotlib > 3.8",
     "numpy < 3.0",
     "pint < 1.0",
-    "scipy < 2.0",
+    "pyproj < 4.0",
+    "rasterio < 2.0",
+    "reportlab < 5.0",
     "SALib < 2.0",
-    "h5py < 4.0",
-    "geopandas < 2.0",
-    "matplotlib > 3.8",
+    "scipy < 2.0",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -41,13 +45,17 @@ classifiers = [
 ]
 [project.optional-dependencies]
 dev = [
+    "bandit",
+    "black",
+    "pylint",
     "pytest",
     "pytest-cov",
     "pytest-mock",
-    "bandit",
-    "pylint",
-    "black",
     "shapely",
 ]
 [tool.hatch.envs.default]
 features = ["dev"]
+[tool.setuptools]
+include-package-data = true
+[tool.setuptools.package-data]
+firebench_adapter_wrf_sfire = ["resources/*.json"]

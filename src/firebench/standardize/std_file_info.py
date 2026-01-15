@@ -1,0 +1,11 @@
+# centralize high level structure for HDF5 standard file
+POINTS = "points"
+TIME_SERIES = "time_series"
+SPATIAL_1D = "spatial_1d"
+SPATIAL_2D = "spatial_2d"
+SPATIAL_3D = "spatial_3d"
+UNSTRUCTURED = "unstructured"
+GEOPOLYGONS = "polygons"
+FUEL_MODELS = "fuel_models"
+MISCELLANEOUS = "miscellaneous"
+CERTIFICATES = "certificates"
