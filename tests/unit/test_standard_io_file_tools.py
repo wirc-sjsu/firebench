@@ -7,14 +7,9 @@ import h5py
 import numpy as np
 
 # Replace 'your_module' with the actual module name that defines _resolve_tz
-from firebench.tools.standard_file_utils import _resolve_tz
-from firebench.tools import (
-    datetime_to_iso8601,
-    current_datetime_iso8601,
-    read_quantity_from_fb_dataset,
-    get_firebench_data_directory,
-)
-
+from firebench.standardize.time import _resolve_tz, datetime_to_iso8601, current_datetime_iso8601
+from firebench.standardize.tools import read_quantity_from_fb_dataset
+from firebench.tools import get_firebench_data_directory
 
 # _resolve_tz
 # -----------
@@ -125,7 +120,7 @@ class FakeDateTime:
 
 
 def test_current_datetime_iso8601_local_with_seconds(monkeypatch):
-    import firebench.tools.standard_file_utils as std_utils
+    import firebench.standardize.time as std_utils
 
     monkeypatch.setattr(std_utils, "datetime", FakeDateTime)
 
@@ -134,7 +129,7 @@ def test_current_datetime_iso8601_local_with_seconds(monkeypatch):
 
 
 def test_current_datetime_iso8601_local_without_seconds(monkeypatch):
-    import firebench.tools.standard_file_utils as std_utils
+    import firebench.standardize.time as std_utils
 
     monkeypatch.setattr(std_utils, "datetime", FakeDateTime)
 
@@ -143,7 +138,7 @@ def test_current_datetime_iso8601_local_without_seconds(monkeypatch):
 
 
 def test_current_datetime_iso8601_with_utc(monkeypatch):
-    import firebench.tools.standard_file_utils as std_utils
+    import firebench.standardize.time as std_utils
 
     monkeypatch.setattr(std_utils, "datetime", FakeDateTime)
 
@@ -153,7 +148,7 @@ def test_current_datetime_iso8601_with_utc(monkeypatch):
 
 
 def test_current_datetime_iso8601_with_zoneinfo_without_seconds(monkeypatch):
-    import firebench.tools.standard_file_utils as std_utils
+    import firebench.standardize.time as std_utils
 
     monkeypatch.setattr(std_utils, "datetime", FakeDateTime)
 
