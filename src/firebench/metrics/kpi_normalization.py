@@ -30,7 +30,7 @@ def kpi_norm_bounded_linear(x, a, b, rtol=1e-12, atol=1e-15):
     ------
     ValueError
         If `x < a` or if `x > b`.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     if x < a and not isclose(x, a, rel_tol=rtol, abs_tol=atol):
         raise ValueError(f"KPI value {x} smaller than lower limit {a}")
     if x > b and not isclose(x, b, rel_tol=rtol, abs_tol=atol):
@@ -70,7 +70,7 @@ def kpi_norm_half_open_linear(x, a, m, rtol=1e-12, atol=1e-15):
     ------
     ValueError
         If `x < a` or if `m <= a`.
-    """ # pylint: disable=line-too-long
+    """  # pylint: disable=line-too-long
     if x < a and not isclose(x, a, rel_tol=rtol, abs_tol=atol):
         raise ValueError(f"KPI value {x} smaller than lower limit {a}")
     if m <= a:
