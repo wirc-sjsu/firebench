@@ -11,6 +11,7 @@ from firebench.standardize.time import _resolve_tz, datetime_to_iso8601, current
 from firebench.standardize.tools import read_quantity_from_fb_dataset
 from firebench.tools import get_firebench_data_directory
 
+
 # _resolve_tz
 # -----------
 def test_resolve_tz_returns_none_for_none():
