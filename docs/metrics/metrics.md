@@ -41,6 +41,17 @@ $$
 RMSE(x, y) = \sqrt{\frac{1}{N} \sum_{i=1}^N (x_i - y_i)^2}
 $$
 
+### Mean Absolute Error
+
+**Description:** Mean of the absolute difference between (x) and (y), noted MAE. <br>
+**Range:** $[0, +\infty[$.<br>
+**Units:** Same as input units.<br>
+**Formula:**
+
+$$
+MAE(x, y) = \frac{1}{N} \sum_{i=1}^N  |x_i - y_i |
+$$
+
 ### Normalized MSE - power normalization
 
 **Description:** RMSE normalized by the range of the reference dataset.<br>

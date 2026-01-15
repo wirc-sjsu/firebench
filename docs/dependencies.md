@@ -4,6 +4,7 @@
 
 - geopandas < 2.0
 - h5py < 4.0
+- hdf5plugin >= 6.0
 - matplotlib > 3.8
 - numpy < 3.0
 - pint < 1.0
