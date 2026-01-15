@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026 / 01 / 14
+### Added
+- 2021 Caldor case FB001 documentation and benchmarks (See Zenodo FireBench for release)
+- package `metrics`: contains kpi functions, metrics functions for perimeters, 1D datasets, confusion matrix.
+- package `standardize`: contains standardization functions for landfire, mtbs, ravg, synoptic, geotiff.
+- package `signing`: contains functions for certification (hardware encryption) and verification of certificates (`verify_certificate_in_dict`, `verify_certificates_in_h5`). Verification functions require `gpg` (not needed for benchmarking functions).
+- Public Key for certificates verification
+
+### Documentation
+- FireBench Standard file format
+- Add Key Performance Indicators, Metrics, Score and Normalization information
+
 ## [0.7.0] - 2025 / 08 / 09
 ### Added
 - `anderson_2015_stats`: Plot statistics from the Anderson 2015 dataset.

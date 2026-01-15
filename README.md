@@ -10,7 +10,7 @@
 [![pages-build-deployment](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment)
 [![codecov](https://codecov.io/github/wirc-sjsu/firebench/graph/badge.svg?token=8F44OX12EW)](https://codecov.io/github/wirc-sjsu/firebench)
 [![Security Analysis](https://github.com/wirc-sjsu/firebench/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/security.yml)
-![Pylint Score](https://img.shields.io/badge/Pylint-10.00-brightgreen.svg)
+![Pylint Score](https://img.shields.io/badge/Pylint-9.44-brightgreen.svg)
 [![Check linting with Pylint](https://github.com/wirc-sjsu/firebench/actions/workflows/pylint.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/pylint.yml)
 [![Black Code Formatting Check](https://github.com/wirc-sjsu/firebench/actions/workflows/black.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/black.yml)
 ![GitHub License](https://img.shields.io/github/license/wirc-sjsu/firebench)
