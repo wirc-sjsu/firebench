@@ -30,7 +30,7 @@ def kpi_norm_bounded_linear(x, a, b, rtol=1e-12, atol=1e-15):
     ------
     ValueError
         If `x < a` or if `x > b`.
-    """
+    """ # pylint: disable=line-too-long
     if x < a and not isclose(x, a, rel_tol=rtol, abs_tol=atol):
         raise ValueError(f"KPI value {x} smaller than lower limit {a}")
     if x > b and not isclose(x, b, rel_tol=rtol, abs_tol=atol):
@@ -40,7 +40,7 @@ def kpi_norm_bounded_linear(x, a, b, rtol=1e-12, atol=1e-15):
 
 def kpi_norm_half_open_linear(x, a, m, rtol=1e-12, atol=1e-15):
     """
-    Linearly normalize a KPI defined on the half-open interval [a, \infty).
+    Linearly normalize a KPI defined on the half-open interval [a, infty).
 
     This function applies a linear decay starting from:
         - x = a -> score = 100
@@ -70,7 +70,7 @@ def kpi_norm_half_open_linear(x, a, m, rtol=1e-12, atol=1e-15):
     ------
     ValueError
         If `x < a` or if `m <= a`.
-    """
+    """ # pylint: disable=line-too-long
     if x < a and not isclose(x, a, rel_tol=rtol, abs_tol=atol):
         raise ValueError(f"KPI value {x} smaller than lower limit {a}")
     if m <= a:
@@ -80,12 +80,12 @@ def kpi_norm_half_open_linear(x, a, m, rtol=1e-12, atol=1e-15):
 
 def kpi_norm_half_open_exponential(x, a, m, rtol=1e-12, atol=1e-15):
     """
-    Exponentially normalize a KPI defined on the half-open interval [a, \infty).
+    Exponentially normalize a KPI defined on the half-open interval [a, infty).
 
     This function applies a smooth exponential decay such that:
         - x = a -> score = 100
         - x = m -> score = 50
-        - x -> \infty -> score -> 0
+        - x -> infty -> score -> 0
     ensuring a monotonic and asymptotic decline.
 
     Use this normalization when the KPI has a minimum acceptable value `a`
@@ -122,7 +122,7 @@ def kpi_norm_half_open_exponential(x, a, m, rtol=1e-12, atol=1e-15):
 
 def kpi_norm_symmetric_open_linear(x, m):
     """
-    Linearly normalize a KPI defined on the open interval (-\infty, \infty).
+    Linearly normalize a KPI defined on the open interval (-infty, infty).
 
     This function applies a smooth exponential decay such that:
         - x = 0 -> score = 100
@@ -155,12 +155,12 @@ def kpi_norm_symmetric_open_linear(x, m):
 
 def kpi_norm_symmetric_open_exponential(x, m):
     """
-    Exponentially normalize a KPI defined on the open interval (-\infty, \infty).
+    Exponentially normalize a KPI defined on the open interval (-infty, infty).
 
     This function applies a smooth exponential decay such that:
         - x = 0 -> score = 100
         - x = +/- m -> score = 50
-        - x -> \infty -> score -> 0
+        - x -> infty -> score -> 0
     ensuring a monotonic and asymptotic decline.
 
     Use this normalization when deviations should be
