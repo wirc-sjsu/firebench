@@ -1,0 +1,24 @@
+{
+    "California Irrigation Management Information System": {
+        "air_temp_set_1": "1.5",
+        "relative_humidity_set_1": "1.5",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "2.0"
+    },
+    "Bureau of Land Management": {
+        "air_temp_set_1": "2.0",
+        "fuel_moisture_set_1": "0.3",
+        "relative_humidity_set_1": "2.0",
+        "solar_radiation_set_1": "2.0",
+        "wind_direction_set_1": "6.1",
+        "wind_gust_set_1": "6.1",
+        "wind_speed_set_1": "6.1"
+    },
+    "National Weather Service": {
+        "air_temp_set_1": "2.0",
+        "relative_humidity_set_1": "2.0",
+        "wind_direction_set_1": "10.0",
+        "wind_gust_set_1": "10.0",
+        "wind_speed_set_1": "10.0"
+    }
+}

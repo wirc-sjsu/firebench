@@ -1,6 +1,16 @@
 # 6. Benchmarks list
 This section groups the workflows, tests, and benchmarks proposed by FireBench.
 
+## Events
+
+```{toctree}
+:maxdepth: 1
+
+California/01_Caldor.md
+
+```
+
+
 ## Fire submodels
 
 ```{toctree}
@@ -11,11 +21,3 @@ fire_submodels/rate_of_spread/Computational_cost/index.md
 fire_submodels/rate_of_spread/Global_sensitivity_env/index.md
 
 ```
-
-## 2D Fire Spread models
-
-## 3D Coupled dynamics
-
-## Fuel Moisture
-
-## Risk/Danger

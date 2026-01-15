@@ -1,5 +1,5 @@
 # Declare these targets as phony to avoid conflicts with files of the same name
-.PHONY: test test-cov lint update-lint-score code-formatting bandit update-docs-changelog generate-api-doc docs clean
+.PHONY: test test-cov lint update-lint-score code-formatting bandit update-docs-changelog check-consistency-namespace generate-api-doc docs clean
 
 # Run all tests without coverage report
 test:
@@ -31,6 +31,10 @@ bandit:
 # Update documentation
 update-docs-changelog:
 	python .github/actions/update_changelog_in_docs.py
+
+# Check consistency between namespace in package and in docs
+check-consistency-namespace:
+	python .github/actions/check_namespace_file_consistency.py
 
 # Update API documentation
 generate-api-doc:

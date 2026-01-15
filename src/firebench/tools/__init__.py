@@ -29,6 +29,7 @@ from .logging_config import (
     logger,
     logging,
     set_logging_level,
+    create_file_handler,
 )
 from .input_info import ParameterType
 from .fuel_models_utils import (
@@ -47,8 +48,3 @@ from .utils import (
     calculate_sha256,
 )
 from .raster_to_perimeters import array_to_geopolygons
-from .standard_file_utils import (
-    current_datetime_iso8601,
-    datetime_to_iso8601,
-    read_quantity_from_fb_dataset,
-)

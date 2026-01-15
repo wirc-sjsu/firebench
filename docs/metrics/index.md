@@ -1,64 +1,39 @@
-# 5. Metrics information
-This section describes the high-level metrics available in `FireBench`, organized by the type and structure of the observational data they support. These metrics are designed to evaluate model performance in realistic settings and are grouped into categories that reflect typical data sources (e.g., weather stations, satellite imagery, fire perimeters).
-Some metrics support observation uncertainty, and others are specifically designed for deterministic or ensemble simulations.
+# 5. Metrics and Scores information
+This section describes the high-level metrics available in `FireBench`, listed as `Key Performance Indicator` (KPI). Each KPI represents one, and only one, quantitative evaluation of performance.
+KPIs are based on metrics that correspond to the generalization of quantitative comparison of multiple datasets.
+The KPI value can be normalized and multiple KPIs can be aggregated to construct a score.
+
+We introduce the following definition:
+- Metric is a quantifiable measure used to evaluate the performance.
+- Key Performance Indicator (KPI) is derived from one or several metrics and describes one quantitative evaluation associated to specific variables (1 number out).
+- Score is a number between 0 and 100, with 100 being best performance, allowing for comparison and aggregation.
+- Normalization is the process to convert a KPI value (not necessarily bounded) to a Score (bounded between 0 and 100).
+- Aggregation is the weighted combination of multiple Scores to form one Score reflecting global performance. Aggregation is done at group of KPIs level (Group Score) and global level (Total Score)
+- Benchmark is the group KPI + Normalization.
+
+**More information about the components in the following pages**
+```{toctree}
+:maxdepth: 1
+
+score.md
+metrics.md
+kpis.md
+normalization.md
+```
+
+
+Figure 1 shows the relationship between the different quantitative components. Each KPI is form by using one or several metrics. The output from the KPI can be normalized using a normalization function to form a score.
+
+![blockdiagram](../_static/images/Metrics_diagram.png)
+<p style="text-align: center;">
+    <strong>
+        Fig. 1
+    </strong>
+    :
+    <em>
+        Relationship between Metrics, KPI, Normalization and Score
+    </em>
+</p>
 
 For implementation details, refer to the [API references](../api/index.rst).
-
 A full list of metrics is also available on the [Content page](../content.md).
-
-## Single Point (0D, Time Series)
-
-These metrics apply to **0D signals**, *i.e.*, time series at a single spatial location. This is typical for **weather station data** or **virtual probes** in simulations.
-
-**Use these metrics when**:
-- You have observations at fixed points in space (e.g., 10-meter wind at a weather station)
-- You want to compute per-station RMSE, bias, correlation, etc.
-
-**List of metrics**
-- Bias
-- RMSE
-- NMSE with range normalization
-- NMSE with power normalization
-
-## Network of Probes
-
-Metrics in this category are designed to evaluate a **network of time series** across multiple locations, such as a set of weather stations.
-
-**Use these metrics when**:
-- You want to evaluate performance across a full observation network
-- You need to analyze spatial structure, coherence, or regional error statistics
-
-## Line or Polygon Observations (1D in Space, Sparse in Time)
-
-These metrics apply to **1D spatial data** that are available at discrete times, for example GIS polygons representing fire perimeters, or airborne measurements along a path
-
-**Use these metrics when**:
-- You want to compare the shape, location, or evolution of 1D features
-- You need to evaluate model accuracy along a known line or within a boundary
-
-**List of metrics**
-- Jaccard index (Intersection over Union)
-- Sorensen-Dice index
-
-## 2D Raster Data (Sparse in Time)
-
-Metrics in this group apply to **2D spatial data**, such as satellite imagery, available at discrete times.
-
-**Use these metrics when**:
-- You are comparing model outputs to gridded observations
-- You want to use spatial scores (e.g., FSS, SAL) or object-based comparison methods
-
-**List of metrics**
-- Jaccard index (Intersection over Union)
-- Sorensen-Dice index
-
-## 3D Sparse or Semi-Sparse Observations
-
-This category includes **3D datasets** that may be dense in two dimensions and sparse in the third (typically time). Examples include:
-
-* **Lidar scans** (e.g., vertical cross-sections of wind or aerosol)
-* **Radar volumes** or **profiling instruments**
-
-**Use these metrics when**:
-- Your data span two spatial dimensions (e.g., x-z or y-z) over time
-- You want to assess how well the model reproduces layered structures or vertical evolution

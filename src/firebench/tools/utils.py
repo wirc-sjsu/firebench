@@ -4,6 +4,8 @@ import numpy as np
 from pint import Quantity
 from .logging_config import logger
 
+FIGSIZE_DEFAULT = (6, 6)
+
 
 def is_scalar_quantity(x: any):
     """

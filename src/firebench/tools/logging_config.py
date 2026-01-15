@@ -3,11 +3,10 @@ import os
 
 # Create a custom logger
 logger = logging.getLogger("firebench")
+logger.setLevel(logging.DEBUG)
 
 # Create a stream handler by default
 c_handler = logging.StreamHandler()
-
-# Set logging level for the stream handler
 c_handler.setLevel(logging.WARNING)
 
 # Create formatter and add it to the stream handler
@@ -16,9 +15,6 @@ c_handler.setFormatter(c_format)
 
 # Add the stream handler to the logger
 logger.addHandler(c_handler)
-
-# Set default logging level for the logger
-logger.setLevel(logging.WARNING)
 
 # Prevent propagation to the root logger
 logger.propagate = True

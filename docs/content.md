@@ -1,6 +1,7 @@
 # 9. Content of the package
 
 This page lists fire sub-models included in the package, the datasets and the tools.
+*This list is not up top date for 0.8+*.
 
 ## Fire submodels
 ### Fuel models

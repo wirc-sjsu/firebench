@@ -1,10 +1,10 @@
-# 11. Changelog
+# 12. Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.7.0]
+## [0.7.0] - 2025 / 08 / 09
 ### Added
 - `anderson_2015_stats`: Plot statistics from the Anderson 2015 dataset.
 - `array_to_geopolygons`: Convert an array field into geospatial polygons at a given iso-value, preserving holes.
