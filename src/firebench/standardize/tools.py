@@ -12,14 +12,15 @@ from ..tools.logging_config import logger
 from ..tools.units import ureg
 from .std_file_info import TIME_SERIES
 
-VERSION_STD = "0.2"
+VERSION_STD = "1.0"
 
 VERSION_STD_COMPATIBILITY = {
     "0.1": [],
     "0.2": [],
+    "1.0": ["0.2"],
 }
 
-VALIDATION_SCHEME_1 = ["0.1", "0.2"]
+VALIDATION_SCHEME_1 = ["0.1", "0.2", "1.0"]
 
 
 ISO8601_REGEX = re.compile(
