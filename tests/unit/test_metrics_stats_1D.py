@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from firebench.metrics.stats import rmse, nmse_range, nmse_power, bias
+from firebench.metrics.stats import rmse, nmse_range, nmse_power, bias, mae, circular_bias_deg
 from math import sqrt
 
 
@@ -106,3 +106,54 @@ def test_bias_raise_shape():
     with pytest.raises(ValueError) as excinfo:
         bias(x1, x2)
     assert "Input shapes must match, got (3,) and (2,)." in str(excinfo.value)
+
+
+# mae
+# ---
+@pytest.mark.parametrize(
+    "x1, x2, expected_mae",
+    [
+        (np.array([0, 1, 2]), np.array([0, 1, 2]), 0.0),
+        (np.array([0, 1, 2]), np.array([1, 1, 1]), 2.0 / 3.0),
+        (np.array([0, 1, 2]), np.array([0, np.nan, 4]), 1.0),
+        (np.array([[0, 1], [2, 3]]), np.array([[1, 1], [1, 5]]), 1.0),
+    ],
+)
+def test_mae(x1, x2, expected_mae):
+    assert np.isclose(mae(x1, x2), expected_mae)
+
+
+def test_mae_raises_on_shape_mismatch():
+    x1 = np.array([0, 1, 2])
+    x2 = np.array([[0, 1, 2]])
+    with pytest.raises(ValueError):
+        mae(x1, x2)
+
+
+# circular_bias_deg
+# -----------------
+@pytest.mark.parametrize(
+    "x1, x2, expected_bias",
+    [
+        (np.array([10, 20, 30]), np.array([10, 20, 30]), 0.0),  # identical
+        (np.array([10]), np.array([350]), 20.0),  # wrap-around positive
+        (np.array([350]), np.array([10]), -20.0),  # wrap-around negative
+        (np.array([0, 10]), np.array([350, 0]), 10.0),  # circular mean offset
+        (np.array([0, np.nan, 20]), np.array([10, 30, 10]), 0.0),  # joint NaN masking
+    ],
+)
+def test_circular_bias_deg(x1, x2, expected_bias):
+    assert circular_bias_deg(x1, x2) == pytest.approx(expected_bias, abs=1e-12)
+
+
+def test_circular_bias_deg_returns_nan_if_all_values_are_invalid():
+    x1 = np.array([np.nan, np.nan])
+    x2 = np.array([np.nan, np.nan])
+    assert np.isnan(circular_bias_deg(x1, x2))
+
+
+def test_circular_bias_deg_raises_on_shape_mismatch():
+    x1 = np.array([0, 1, 2])
+    x2 = np.array([[0, 1, 2]])
+    with pytest.raises(ValueError):
+        circular_bias_deg(x1, x2)
