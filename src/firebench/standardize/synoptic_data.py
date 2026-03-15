@@ -1,6 +1,6 @@
+import json
 from importlib.resources import files
 import numpy as np
-import json
 from ..tools import StandardVariableNames as svn
 
 DEFAULT_SENSOR_HEIGHT_UNIT = "m"

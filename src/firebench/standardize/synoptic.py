@@ -1,10 +1,10 @@
 from pathlib import Path
+import json
+from datetime import datetime
 import numpy as np
 import hdf5plugin
 import h5py
-import json
 import pytz
-from datetime import datetime
 from ..tools import StandardVariableNames as svn
 from ..tools import logger, calculate_sha256
 from .std_file_info import TIME_SERIES
@@ -23,12 +23,15 @@ from .synoptic_data import (
 def standardize_synoptic_raws_from_json(
     json_path: Path,
     h5file: h5py.File,
-    skip_stations: list[str] = [],
+    skip_stations: list[str] = None,
     overwrite: bool = False,
     fb_var_info: dict = VARIABLE_CONVERSION,
     compression_lvl: int = 3,
     export_trusted_history: bool = False,
 ):
+    if not skip_stations:
+        skip_stations = []
+
     sha_source_file = calculate_sha256(json_path.resolve())
     with open(json_path.resolve(), "r") as f:
         data = json.load(f)

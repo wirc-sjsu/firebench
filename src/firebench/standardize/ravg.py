@@ -1,10 +1,10 @@
+from pathlib import Path
 import h5py
 import hdf5plugin
 import numpy as np
 from .tools import check_std_version, import_tif_with_rect_box
 from ..tools.logging_config import logger
 from ..tools import StandardVariableNames as svn
-from pathlib import Path
 from .std_file_info import SPATIAL_2D
 
 
@@ -42,7 +42,7 @@ def standardize_ravg_cc_from_geotiff(
     -------
      h5py.File
         The actual HDF5 group written (with suffix if collision).
-    """
+    """  # pylint: disable=line-too-long
     _standardize_ravg_from_geotiff(
         geotiff_path,
         h5file,
@@ -92,7 +92,7 @@ def standardize_ravg_cbi_from_geotiff(
     -------
      h5py.File
         The actual HDF5 group written (with suffix if collision).
-    """
+    """  # pylint: disable=line-too-long
     _standardize_ravg_from_geotiff(
         geotiff_path,
         h5file,
@@ -142,7 +142,7 @@ def standardize_ravg_ba_from_geotiff(
     -------
      h5py.File
         The actual HDF5 group written (with suffix if collision).
-    """
+    """  # pylint: disable=line-too-long
     _standardize_ravg_from_geotiff(
         geotiff_path,
         h5file,
@@ -194,7 +194,7 @@ def _standardize_ravg_from_geotiff(
     -------
      h5py.File
         The actual HDF5 group written (with suffix if collision).
-    """
+    """  # pylint: disable=line-too-long
     logger.debug("Standardize RAVG %s dataset from file %s ", ravg_variable, geotiff_path)
     check_std_version(h5file)
 

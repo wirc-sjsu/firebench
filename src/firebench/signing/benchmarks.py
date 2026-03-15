@@ -1,7 +1,5 @@
-import hmac
 from enum import Enum
 import json
-import numpy as np
 from .std_files import verify_certificates_in_h5
 from .utils import (
     _canonical_json_dumps,
@@ -220,15 +218,15 @@ def certify_benchmark_run(
     for key, value in from_model.items():
         try:
             found[f"model-{key}"] = value["valid"]
-        except KeyError:
-            raise KeyError(f"Invalid key in certificates_input/from_model_std_file")
+        except KeyError as exc:
+            raise KeyError(f"Invalid key in certificates_input/from_model_std_file") from exc
 
     from_obs: dict = input_verif.get("from_obs_std_file", {})
     for key, value in from_obs.items():
         try:
             found[f"obs-{key}"] = value["valid"]
-        except KeyError:
-            raise KeyError(f"Invalid key in certificates_input/from_model_std_file")
+        except KeyError as exc:
+            raise KeyError(f"Invalid key in certificates_input/from_model_std_file") from exc
 
     data["verification_lvl"] = compute_verification_lvl(found)
 

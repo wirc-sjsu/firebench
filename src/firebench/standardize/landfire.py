@@ -3,10 +3,7 @@ from pathlib import Path
 import h5py
 import hdf5plugin
 import numpy as np
-import rasterio
-from pyproj import CRS, Transformer
 
-from ..tools import StandardVariableNames as svn
 from .tools import check_std_version, import_tif
 from ..tools.logging_config import logger
 from .std_file_info import SPATIAL_2D

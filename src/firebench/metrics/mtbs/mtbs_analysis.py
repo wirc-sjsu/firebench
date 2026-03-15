@@ -97,9 +97,6 @@ def global_accuracy(
         )
         accuracy_per_class_total[k] = cm[k + 1, k + 1] / (np.sum(cm[k + 1, :]) + cm[0, k + 1])
 
-    print(accuracy_per_class_bps)
-    print(accuracy_per_class_total)
-
     # or using add.at
     cm = np.zeros((K, K), dtype=int)
     np.add.at(cm, (ti, pi), 1)
