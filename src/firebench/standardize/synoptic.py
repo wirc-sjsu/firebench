@@ -176,7 +176,7 @@ def standardize_synoptic_raws_from_json(
                             sh_info_found = True
                             nb_var_from_stations += 1
                             logger.debug("Sensor height value found in trusted stations database.")
-                        except:
+                        except KeyError:
                             pass
 
                         if not sh_info_found:
@@ -190,7 +190,7 @@ def standardize_synoptic_raws_from_json(
                                 logger.debug(
                                     "Sensor height value found in history of trusted information database."
                                 )
-                            except:
+                            except KeyError:
                                 pass
 
                         if not sh_info_found:
@@ -202,7 +202,7 @@ def standardize_synoptic_raws_from_json(
                                 sh_info_found = True
                                 nb_var_from_provider += 1
                                 logger.debug("Sensor height value found in providers database.")
-                            except:
+                            except KeyError:
                                 pass
 
                         if sh_info_found:

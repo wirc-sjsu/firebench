@@ -1,8 +1,14 @@
 import os
+import shutil
 import json
 import subprocess
 import hashlib
 import tempfile
+
+_ALLOWED_GPG_PATHS = {
+    "/usr/bin/gpg",
+    "/opt/homebrew/bin/gpg",
+}
 
 
 class SignatureVerificationError(Exception):
@@ -46,8 +52,13 @@ def gpg_detached_sign_armor(message: bytes, signer: str) -> str:
     Create an ASCII-armored detached signature over message bytes.
     Requires interactive pinentry to work (set GPG_TTY).
     """
+    gpg_path = shutil.which("gpg")
+
+    if gpg_path is None or gpg_path not in _ALLOWED_GPG_PATHS:
+        raise RuntimeError("Approved gpg executable not found")
+
     p = subprocess.run(
-        ["gpg", "--batch", "--yes", "--armor", "--detach-sign", "-u", signer, "--output", "-", "--"],
+        [gpg_path, "--batch", "--yes", "--armor", "--detach-sign", "-u", signer, "--output", "-", "--"],
         input=message,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -67,8 +78,13 @@ def gpg_verify_detached_with_pubkey(message: bytes, signature_armor: str, public
             env = os.environ.copy()
             env["GNUPGHOME"] = gnupghome
 
+            gpg_path = shutil.which("gpg")
+
+            if gpg_path is None or gpg_path not in _ALLOWED_GPG_PATHS:
+                raise RuntimeError("Approved gpg executable not found")
+
             imp = subprocess.run(
-                ["gpg", "--batch", "--yes", "--import"],
+                [gpg_path, "--batch", "--yes", "--import"],
                 input=public_key_armor.encode("utf-8"),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -83,7 +99,7 @@ def gpg_verify_detached_with_pubkey(message: bytes, signature_armor: str, public
                 f.write(signature_armor)
 
             ver = subprocess.run(
-                ["gpg", "--batch", "--verify", sig_path, "-"],
+                [gpg_path, "--batch", "--verify", sig_path, "-"],
                 input=message,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
