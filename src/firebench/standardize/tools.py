@@ -1,9 +1,8 @@
+from pathlib import Path
+import re
 import h5py
 import hdf5plugin
-import re
-import fnmatch
 import numpy as np
-from pathlib import Path
 import rasterio
 from pyproj import CRS, Transformer
 from rasterio.windows import from_bounds
@@ -12,14 +11,15 @@ from ..tools.logging_config import logger
 from ..tools.units import ureg
 from .std_file_info import TIME_SERIES
 
-VERSION_STD = "0.2"
+VERSION_STD = "1.0"
 
 VERSION_STD_COMPATIBILITY = {
     "0.1": [],
     "0.2": [],
+    "1.0": ["0.2"],
 }
 
-VALIDATION_SCHEME_1 = ["0.1", "0.2"]
+VALIDATION_SCHEME_1 = ["0.1", "0.2", "1.0"]
 
 
 ISO8601_REGEX = re.compile(
@@ -93,19 +93,19 @@ def validate_h5_std(file: h5py.File):
     Validate that the mandatory structure in the h5 file is compliant with the standard
     """
     if "FireBench_io_version" not in file.attrs:
-        raise ValueError(f"Attribute `FireBench_io_version` not found.")
+        raise ValueError("Attribute `FireBench_io_version` not found.")
 
     if file.attrs["FireBench_io_version"] in VALIDATION_SCHEME_1:
         # check creation date
         if "created_on" not in file.attrs:
-            raise ValueError(f"Attribute `created_on` not found.")
+            raise ValueError("Attribute `created_on` not found.")
 
         if not is_iso8601(file.attrs["created_on"]):
-            raise ValueError(f"Attribute `created_on` not compliant with ISO8601.")
+            raise ValueError("Attribute `created_on` not compliant with ISO8601.")
 
         # check authors
         if "created_by" not in file.attrs:
-            raise ValueError(f"Attribute `created_by` not found.")
+            raise ValueError("Attribute `created_by` not found.")
 
 
 def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
@@ -612,7 +612,7 @@ def import_tif(
     with rasterio.open(geotiff_path) as src:
         data = src.read(1)
         data_dict = {"data": data, "transform": src.transform, "crs": src.crs, "nodata": src.nodata}
-        logger.info(f"Loaded {geotiff_path}: shape={data.shape}, CRS={src.crs}")
+        logger.info("Loaded %s: shape=%s, CRS=%s", geotiff_path, data.shape, src.crs)
 
     rows, cols = data.shape
     jj = np.arange(cols)
@@ -655,7 +655,7 @@ def copy_entire_object_zstd(
         * If missing -> create with Zstd(clevel=compression_lvl), load ONE dataset at a time
         * If exists -> raise
     - Links/other: skipped
-    """
+    """  # pylint: disable=line-too-long
     src_obj = src_parent.get(name, getlink=False)
     if src_obj is None:
         return
@@ -718,7 +718,7 @@ def _merge_from_source(
         * if exists:
             - if both are groups: recurse (at any depth)
             - otherwise: strict conflict (raise)
-    """
+    """  # pylint: disable=line-too-long
     src_obj = src[path]
     dst_obj = dst[path]  # must exist for current node
 
@@ -764,7 +764,7 @@ def _copy_attributes(
     Copy attributes from src_obj to dst_obj, skipping attributes that:
       - are in IGNORE_ATTRIBUTES for this path, or
       - already exist in dst_obj.
-    """
+    """  # pylint: disable=line-too-long
     ignore_set = IGNORE_ATTRIBUTES.get(path, set())
 
     for key, value in src_obj.attrs.items():

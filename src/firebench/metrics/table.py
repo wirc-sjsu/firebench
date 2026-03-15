@@ -37,7 +37,8 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
     if signed:
         # Check validity of signature
         verif = verify_certificate_in_dict(data, certificate_name)
-        assert verif["valid"]
+        if not verif["valid"]:
+            raise ValueError("Certificate verification failed")
         verif_lvl = data.get("verification_lvl", DEFAULT_VL)
 
     # Get the number of row

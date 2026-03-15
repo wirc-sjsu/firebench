@@ -24,9 +24,11 @@ _DEFAULT_KEY_PATH = "resources/public_keys"
 
 def get_public_key(key_name):
     try:
-        path = files("firebench").joinpath(f"{_DEFAULT_KEY_PATH}/{_FB_PUBLIC_KEYS[key_name]}")
-    except KeyError:
-        raise PublicKeyImportError(f"Public Key import fail for key {key_name}")
+        key_file = _FB_PUBLIC_KEYS[key_name]
+    except KeyError as exc:
+        raise PublicKeyImportError(f"Public key import failed for key {key_name}") from exc
+
+    path = files("firebench").joinpath(_DEFAULT_KEY_PATH, key_file)
     with open(path, "r", encoding="utf-8") as f:
         pubkey_armor = f.read()
     return pubkey_armor

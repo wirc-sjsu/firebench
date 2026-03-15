@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] - 2026 / 03 / 15
+### Fixes
+- bias metric: computes x1 mean only where x2 is not Nan
+
+### Miscellaneous
+- FireBench Standard file format 1.0
+- litting
+- add tests for metrics
+- fix security warnings
+
 ## [0.8.0] - 2026 / 01 / 14
 ### Added
 - 2021 Caldor case FB001 documentation and benchmarks (See Zenodo FireBench for release)

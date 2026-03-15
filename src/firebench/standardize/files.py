@@ -1,10 +1,9 @@
+from pathlib import Path
+import shutil
 import h5py
 from ..tools.logging_config import logger
 from .time import current_datetime_iso8601
-from pathlib import Path
 from .tools import VERSION_STD, validate_h5_std, merge_authors, collect_conflicts, merge_trees, logger
-from pathlib import Path
-import shutil
 
 
 def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.File:
@@ -15,7 +14,7 @@ def new_std_file(filepath: str, authors: str, overwrite: bool = False) -> h5py.F
     Notes
     -----
     Do not forget to close the file once edited. This function opens the h5 file but do not close it.
-    """
+    """  # pylint: disable=line-too-long
     new_file_path = Path(filepath)
     new_file_path.parent.mkdir(parents=True, exist_ok=True)
     if new_file_path.exists():
@@ -49,7 +48,7 @@ def merge_two_std_files(
     Check if both files are std, then check for any group/dataset/attribut conflict
 
     Then merge the list of authors without duplicates. Keep order as much as possible (first authors from file1 then first author from file2 then second from file 1...)
-    """
+    """  # pylint: disable=line-too-long
     logger.info(
         "merge_two_std_files: merge %s with %s into %s with compression level %s",
         filepath_1,
