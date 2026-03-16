@@ -49,7 +49,7 @@ def standardize_mtbs_from_geotiff(
     with rasterio.open(geotiff_path) as src:
         data = src.read(1)
         severity_raw = {"data": data, "transform": src.transform, "crs": src.crs, "nodata": src.nodata}
-        logger.info(f"Loaded {geotiff_path}: shape={data.shape}, CRS={src.crs}")
+        logger.info("Loaded %s: shape=%s, CRS=%s", geotiff_path, data.shape, src.crs)
 
     rows, cols = data.shape
 

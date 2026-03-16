@@ -119,6 +119,7 @@ def nmse_power(x1: np.ndarray, x2: np.ndarray) -> float:
 def bias(x1: np.ndarray, x2: np.ndarray) -> float:
     """
     Compute the bias between two arrays, ignoring NaNs.
+    Compute x1 dataset mean only where x2 is not Nan.
 
     Parameters
     ----------
@@ -144,7 +145,7 @@ def bias(x1: np.ndarray, x2: np.ndarray) -> float:
     if x1.shape != x2.shape:
         raise ValueError(f"Input shapes must match, got {x1.shape} and {x2.shape}.")
 
-    return float(np.nanmean(x1) - np.nanmean(x2))
+    return float(np.nanmean(x1[~np.isnan(x2)]) - np.nanmean(x2))
 
 
 def mae(x1: np.ndarray, x2: np.ndarray) -> float:

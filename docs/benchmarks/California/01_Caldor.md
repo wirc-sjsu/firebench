@@ -1,9 +1,9 @@
 # 2021 Caldor Fire
 
-**Version**: 2026.0 <br>
+**Version**: 2026.1 <br>
 **Case ID**: FB001 <br>
 **FireBench IO std version**: >= 1.0 <br>
-**Date of last update**: 01/14/2025 
+**Date of last update**: 03/15/2025 
 
 ## Contributors
 - Aurélien Costes, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [aurelien.costes@sjsu.edu](mailto:aurelien.costes@sjsu.edu), [ORCID](https://orcid.org/0000-0003-4543-5107)
