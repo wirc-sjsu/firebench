@@ -2,6 +2,7 @@
 
 ## Required
 
+- contourpy < 2.0
 - geopandas < 2.0
 - h5py < 4.0
 - hdf5plugin >= 6.0
@@ -9,6 +10,7 @@
 - numpy < 3.0
 - pint < 1.0
 - pyproj < 4.0
+- pytz > 2025.0
 - rasterio < 2.0
 - reportlab < 5.0
 - SALib < 2.0

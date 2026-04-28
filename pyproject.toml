@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "firebench"
-version = "0.8.0a"
+version = "0.8.1"
 authors = [
     {name = "Aurélien Costes", email = "aurelien.costes31@gmail.com"},
 ]
@@ -13,6 +13,7 @@ maintainers = [
 ]
 description = "FireBench is a Python library designed for the systematic benchmarking and inter-comparison of fire models."
 dependencies = [
+    "contourpy < 2.0",
     "geopandas < 2.0",
     "h5py < 4.0",
     "hdf5plugin >= 6.0",
@@ -20,6 +21,7 @@ dependencies = [
     "numpy < 3.0",
     "pint < 1.0",
     "pyproj < 4.0",
+    "pytz > 2025.0",
     "rasterio < 2.0",
     "reportlab < 5.0",
     "SALib < 2.0",
