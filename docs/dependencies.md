@@ -2,6 +2,7 @@
 
 ## Required
 
+- contourpy < 2.0
 - geopandas < 2.0
 - h5py < 4.0
 - hdf5plugin >= 6.0
