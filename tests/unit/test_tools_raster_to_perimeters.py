@@ -39,6 +39,7 @@ def test_array_to_geopolygons():
 
         final_polygons = ft.array_to_geopolygons(field, lon2, lat2, 0, original_crs="EPSG:4326")
         polygon_area = sum(final_polygons.area)
+        assert any(len(polygon.interiors) == 1 for polygon in final_polygons.geometry)
         print(polygon_area, theoretical_area)
         assert abs(polygon_area - theoretical_area) < 5e-3
 
