@@ -129,7 +129,7 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
     # footer
     text_table.append(
         [
-            f"FireBench version: {data['firebench_version']}   case version: {data['case_version']}",
+            f"FireBench version: {data['firebench_version']}   Reference dataset version: {data['case_version']}",
             "",
             "",
             "",
