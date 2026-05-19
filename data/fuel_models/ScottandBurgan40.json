@@ -1,3 +1,71 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f4ed2e9e0a68e4560a53c7c53ca0ce98c19c69319f8b055d917be4353b2d15e6
-size 1808
+{
+  "data_path": "data_ScottandBurgan40.csv",
+  "metadata": {
+    "fuel_model_code": {
+      "variable_name": "fuel_model_code",
+      "unit": "None",
+      "type": "object"
+    },
+    "fuel_load_1h": {
+      "variable_name": "fuel_load_dry_1h",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    },
+    "fuel_load_10h": {
+      "variable_name": "fuel_load_dry_10h",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    },
+    "fuel_load_100h": {
+      "variable_name": "fuel_load_dry_100h",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    },
+    "fuel_load_live_herb": {
+      "variable_name": "fuel_load_dry_live_herb",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    },
+    "fuel_load_live_woody": {
+      "variable_name": "fuel_load_dry_live_woody",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    },
+    "fuel_model_type": {
+      "variable_name": "fuel_model_type",
+      "unit": "None",
+      "type": "object"
+    },
+    "sav_ratio_dead_1h": {
+      "variable_name": "fuel_surface_area_volume_ratio_dead_1h",
+      "unit": "1/ft",
+      "type": "float64"
+    },
+    "sav_ratio_live_herb": {
+      "variable_name": "fuel_surface_area_volume_ratio_live_herb",
+      "unit": "1/ft",
+      "type": "float64"
+    },
+    "sav_ratio_live_woody": {
+      "variable_name": "fuel_surface_area_volume_ratio_live_woody",
+      "unit": "1/ft",
+      "type": "float64"
+    },
+    "fuel_bed_depth": {
+      "variable_name": "fuel_height",
+      "unit": "ft",
+      "type": "float64"
+    },
+    "dead_fuel_extinction_moisture": {
+      "variable_name": "fuel_moisture_extinction",
+      "unit": "percent",
+      "type": "float64"
+    },
+    "heat_content": {
+      "variable_name": "fuel_heat_content",
+      "unit": "BTU/lb",
+      "type": "float64"
+    }
+  }
+}
+  

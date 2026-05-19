@@ -1,6 +1,8 @@
 import json
 import os
 from os import path
+from pathlib import Path
+import warnings
 
 import numpy as np
 
@@ -9,7 +11,11 @@ from .namespace import StandardVariableNames as svn
 from .units import ureg
 
 
-def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = None):
+def read_fuel_data_file(
+    fuel_model_name: str,
+    local_path_json_fuel_db: str = None,
+    data_path: str | os.PathLike | None = None,
+):
     """
     Reads a CSV fuel data file and its corresponding metadata JSON file to produce a dictionary
     of data with Pint quantities.
@@ -20,6 +26,8 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
         The name of the fuel model.
     local_path_json_fuel_db : str, optional
         The local path to the JSON fuel database. If not provided, the function will use the default package path.
+    data_path : str or os.PathLike, optional
+        Explicit path to the Firebench data directory.
 
 
     Returns
@@ -36,10 +44,20 @@ def read_fuel_data_file(fuel_model_name: str, local_path_json_fuel_db: str = Non
     # fuel models are in data/fuel_models/example_fuel_model.json
     fuel_models_path_within_firebench = "fuel_models"
 
-    return read_data_file(fuel_model_name, fuel_models_path_within_firebench, local_path_json_fuel_db)
+    return read_data_file(
+        fuel_model_name,
+        fuel_models_path_within_firebench,
+        local_path_json_fuel_db,
+        data_path=data_path,
+    )
 
 
-def read_data_file(dataset_name: str, path_within_firebench: str, local_json_path: str = None):
+def read_data_file(
+    dataset_name: str,
+    path_within_firebench: str,
+    local_json_path: str = None,
+    data_path: str | os.PathLike | None = None,
+):
     """
     Reads a CSV data file and its corresponding metadata JSON file to produce a dictionary
     of data with Pint quantities.
@@ -52,6 +70,8 @@ def read_data_file(dataset_name: str, path_within_firebench: str, local_json_pat
         Path leading to the data within firebench from the data directory.
     local_json_path : str, optional
         The local path to the JSON fuel database. If not provided, the function will use the default package path.
+    data_path : str or os.PathLike, optional
+        Explicit path to the Firebench data directory.
 
 
     Returns
@@ -66,7 +86,9 @@ def read_data_file(dataset_name: str, path_within_firebench: str, local_json_pat
         If there is an issue with the variable name in the metadata.
     """  # pylint: disable=line-too-long
     # Load metadata
-    json_file_path = _get_json_data_file_path(dataset_name, path_within_firebench, local_json_path)
+    json_file_path = _get_json_data_file_path(
+        dataset_name, path_within_firebench, local_json_path, data_path=data_path
+    )
     with open(json_file_path, "r") as f:
         metadata = json.load(f)
 
@@ -100,7 +122,8 @@ def read_data_file(dataset_name: str, path_within_firebench: str, local_json_pat
             std_var = svn(value["variable_name"])
         except ValueError:
             logger.warning(
-                "input value %s not found in SVN. Data imported without unit", value["variable_name"]
+                "input value %s not found in SVN. Data imported without unit",
+                value["variable_name"],
             )
             output_data[value["variable_name"]] = np.array(data_dict[key], dtype=value["type"])
         else:
@@ -136,7 +159,10 @@ def __add_suffix(filename: str, suffix: str) -> str:
 
 
 def _get_json_data_file_path(
-    dataset_name: str, path_within_firebench: str, local_json_path: str = None
+    dataset_name: str,
+    path_within_firebench: str,
+    local_json_path: str = None,
+    data_path: str | os.PathLike | None = None,
 ) -> str:
     """
     Get the path to the JSON metadata file. The function first checks the local path, if provided.
@@ -150,6 +176,8 @@ def _get_json_data_file_path(
         Path leading to the data within firebench from the data directory.
     local_json_path : str, optional
         The local path to the JSON dataset. If not provided, the function will use the default package path.
+    data_path : str or os.PathLike, optional
+        Explicit path to the Firebench data directory.
 
     Returns
     -------
@@ -166,7 +194,7 @@ def _get_json_data_file_path(
 
     if local_json_path is None:
         # Use default path to data
-        firebench_data_path = get_firebench_data_directory()
+        firebench_data_path = get_firebench_data_directory(data_path)
         json_file_path = os.path.join(firebench_data_path, path_within_firebench, json_filename)
         if not os.path.isfile(json_file_path):
             raise FileNotFoundError(f"File {json_file_path} not found in the package data path.")
@@ -179,29 +207,49 @@ def _get_json_data_file_path(
     return json_file_path
 
 
-def get_firebench_data_directory():
+def _default_firebench_data_directory() -> Path:
+    current_file = Path(__file__).resolve()
+    candidates = [
+        current_file.parents[3] / "data",
+        current_file.parents[2] / "data",
+        current_file.parents[1] / "data",
+        Path.cwd() / "data",
+    ]
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    return candidates[0]
+
+
+def get_firebench_data_directory(data_path: str | os.PathLike | None = None):
     """
     Retrieve the absolute path of the firebench data directory.
 
-    This function checks for the environment variable 'FIREBENCH_DATA_PATH'
-    to retrieve the path of the firebench data directory. If the environment
-    variable is not set, it raises an EnvironmentError with a message indicating
-    the need to define the path.
+    If ``data_path`` is not provided, this function uses the bundled repository
+    ``data`` directory. The legacy FIREBENCH_DATA_PATH environment variable is
+    still supported temporarily for backward compatibility.
 
     Returns
     -------
     str
         The absolute path of the firebench data directory.
 
-    Raises
-    ------
-    EnvironmentError
-        If the 'FIREBENCH_DATA_PATH' environment variable is not set.
+    Parameters
+    ----------
+    data_path : str or os.PathLike, optional
+        Explicit path to the Firebench data directory.
     """
+    if data_path is not None:
+        return os.path.abspath(os.fspath(data_path))
+
     firebench_data_path = os.getenv("FIREBENCH_DATA_PATH")
-    if not firebench_data_path:
-        raise EnvironmentError(
-            "Firebench data directory path is not set. Define the path using "
-            "'export FIREBENCH_DATA_PATH=/path/to/your/firebench/data'"
+    if firebench_data_path:
+        warnings.warn(
+            "FIREBENCH_DATA_PATH is deprecated and will be removed in a future release. "
+            "Use the Firebench data configuration or pass data_path explicitly instead.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-    return os.path.abspath(firebench_data_path)
+        return os.path.abspath(firebench_data_path)
+
+    return os.path.abspath(_default_firebench_data_directory())

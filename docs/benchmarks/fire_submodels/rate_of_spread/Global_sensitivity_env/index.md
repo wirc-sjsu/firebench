@@ -57,5 +57,3 @@ Balbi_2022_SB40.md
 Hamada_1_wudapt.md
 Hamada_2_wudapt.md
 ```
-
-If you don't find the content in the `data` directory, try `git lfs pull`.

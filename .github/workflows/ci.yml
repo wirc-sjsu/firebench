@@ -12,23 +12,13 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           lfs: true  # Fetch LFS files
-      
-      - name: Set up Git LFS
-        run: |
-          git lfs install
-        continue-on-error: true
-
-      - name: Pull LFS files
-        run: |
-          git lfs pull
-        continue-on-error: true
 
       - name: Set up Python
         uses: actions/setup-python@v5

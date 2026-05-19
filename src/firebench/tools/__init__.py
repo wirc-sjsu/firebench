@@ -28,6 +28,10 @@ from .local_db_management import (
 from .logging_config import (
     logger,
     logging,
+    configure_logging,
+    verbosity_to_level,
+    get_logger,
+    add_file_handler,
     set_logging_level,
     create_file_handler,
 )

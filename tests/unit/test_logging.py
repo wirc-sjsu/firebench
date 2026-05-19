@@ -1,107 +1,102 @@
-import os
+import logging
+
+import pytest
 
 import firebench.tools as ft
-import pytest
-import tempfile
-from firebench.tools.logging_config import create_file_handler
+from firebench.tools.logging_config import configure_logging, create_file_handler, verbosity_to_level
 
 
-def test_create_file_handler():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        log_path = os.path.join(temp_dir, "test_log.log")
-
-        # Ensure the log file does not exist initially
-        assert not os.path.isfile(log_path)
-
-        # Create the file handler
-        create_file_handler(log_path)
-
-        # Verify the log file was created
-        assert os.path.isfile(log_path)
-
-        # Verify the log file handler was added to the logger
-        handler_found = False
-        for handler in ft.logger.handlers:
-            if isinstance(handler, ft.logging.FileHandler) and handler.baseFilename == log_path:
-                handler_found = True
-                break
-        assert handler_found
-
-        # Verify the log file is empty
-        with open(log_path, "r") as log_file:
-            assert log_file.read() == ""
-
-        # Test logging to the file
-        ft.logger.warning("Test warning message")
-
-        # Verify the log message was written to the log file
-        with open(log_path, "r") as log_file:
-            log_content = log_file.read()
-            assert "Test warning message" in log_content
-
-        # Test the function's behavior when the log file already exists
-        create_file_handler(log_path)
-
-        # Verify the log file is empty after being recreated
-        with open(log_path, "r") as log_file:
-            assert log_file.read() == ""
+@pytest.fixture(autouse=True)
+def reset_firebench_logger():
+    configure_logging(2, use_console=False)
+    yield
+    configure_logging(2, use_console=False)
 
 
 @pytest.mark.parametrize(
-    "level, expected_levels",
+    "verbose, level",
     [
-        (ft.logging.DEBUG, ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
-        (ft.logging.INFO, ["INFO", "WARNING", "ERROR", "CRITICAL"]),
-        (ft.logging.WARNING, ["WARNING", "ERROR", "CRITICAL"]),
-        (ft.logging.ERROR, ["ERROR", "CRITICAL"]),
-        (ft.logging.CRITICAL, ["CRITICAL"]),
+        (0, logging.CRITICAL),
+        (1, logging.ERROR),
+        (2, logging.WARNING),
+        (3, logging.INFO),
+        (4, logging.DEBUG),
+        (10, logging.DEBUG),
     ],
 )
-def test_set_logging_level(caplog, level, expected_levels):
-    """
-    Test that set_logging_level sets the logger and handler levels correctly,
-    and that only messages at or above the set level are captured.
-    """
-    # Set the logging level using the function under test
+def test_verbosity_to_level(verbose, level):
+    assert verbosity_to_level(verbose) == level
+
+
+def test_configure_logging_resets_handlers(tmp_path):
+    first_log = tmp_path / "first.log"
+    second_log = tmp_path / "second.log"
+
+    app_logger = configure_logging(4, use_console=True, log_path=first_log)
+    assert app_logger.level == logging.DEBUG
+    assert app_logger.propagate is True
+    assert any(isinstance(handler, logging.StreamHandler) for handler in app_logger.handlers)
+    assert any(
+        isinstance(handler, logging.FileHandler) and handler.baseFilename == str(first_log.resolve())
+        for handler in app_logger.handlers
+    )
+
+    app_logger = configure_logging(3, use_console=False, log_path=second_log)
+    file_handlers = [handler for handler in app_logger.handlers if isinstance(handler, logging.FileHandler)]
+
+    assert app_logger.level == logging.INFO
+    assert len(file_handlers) == 1
+    assert file_handlers[0].baseFilename == str(second_log.resolve())
+
+
+def test_create_file_handler_overwrites_and_avoids_duplicates(tmp_path):
+    log_path = tmp_path / "test_log.log"
+    log_path.write_text("old content")
+
+    create_file_handler(log_path)
+    assert log_path.read_text() == ""
+
+    ft.logger.warning("Test warning message")
+    for handler in ft.logger.handlers:
+        handler.flush()
+    assert "Test warning message" in log_path.read_text()
+
+    create_file_handler(log_path)
+    file_handlers = [
+        handler
+        for handler in ft.logger.handlers
+        if isinstance(handler, logging.FileHandler) and handler.baseFilename == str(log_path.resolve())
+    ]
+
+    assert len(file_handlers) == 1
+    assert log_path.read_text() == ""
+
+
+@pytest.mark.parametrize(
+    "level, expected_messages, unexpected_messages",
+    [
+        (logging.DEBUG, ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], []),
+        (logging.INFO, ["INFO", "WARNING", "ERROR", "CRITICAL"], ["DEBUG"]),
+        (logging.WARNING, ["WARNING", "ERROR", "CRITICAL"], ["DEBUG", "INFO"]),
+        (logging.ERROR, ["ERROR", "CRITICAL"], ["DEBUG", "INFO", "WARNING"]),
+        (logging.CRITICAL, ["CRITICAL"], ["DEBUG", "INFO", "WARNING", "ERROR"]),
+    ],
+)
+def test_set_logging_level(tmp_path, level, expected_messages, unexpected_messages):
+    log_path = tmp_path / "levels.log"
+    create_file_handler(log_path, logging.DEBUG)
     ft.set_logging_level(level)
 
-    # Clear any existing records in caplog
-    caplog.clear()
+    ft.logger.debug("DEBUG")
+    ft.logger.info("INFO")
+    ft.logger.warning("WARNING")
+    ft.logger.error("ERROR")
+    ft.logger.critical("CRITICAL")
+    for handler in ft.logger.handlers:
+        handler.flush()
 
-    # Define log messages at all levels
-    log_messages = {
-        "DEBUG": "This is a DEBUG message",
-        "INFO": "This is an INFO message",
-        "WARNING": "This is a WARNING message",
-        "ERROR": "This is an ERROR message",
-        "CRITICAL": "This is a CRITICAL message",
-    }
-
-    # Emit log messages at all levels
-    ft.logger.debug(log_messages["DEBUG"])
-    ft.logger.info(log_messages["INFO"])
-    ft.logger.warning(log_messages["WARNING"])
-    ft.logger.error(log_messages["ERROR"])
-    ft.logger.critical(log_messages["CRITICAL"])
-
-    # Collect the levels of the captured log records
-    captured_levels = [record.levelname for record in caplog.records]
-
-    # Collect the messages of the captured log records
-    captured_messages = [record.message for record in caplog.records]
-
-    # Check that only the expected levels are captured
-    assert (
-        captured_levels == expected_levels
-    ), f"Expected levels {expected_levels}, but got {captured_levels}"
-
-    # Optional: Check that the messages correspond to the expected levels
-    expected_messages = [log_messages[level_name] for level_name in expected_levels]
-    assert (
-        captured_messages == expected_messages
-    ), f"Expected messages {expected_messages}, but got {captured_messages}"
-
-
-# Run the tests
-if __name__ == "__main__":
-    pytest.main()
+    log_content = log_path.read_text()
+    for message in expected_messages:
+        assert message in log_content
+    for message in unexpected_messages:
+        assert message not in log_content

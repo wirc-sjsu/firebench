@@ -1,3 +1,16 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:9e59bba1a66761275aa2c914c714dab5f5b40f39fdfd570c02d66dcb4b012424
-size 312
+{
+  "data_path": "data_WUDAPT_urban.csv",
+  "metadata": {
+    "side_length": {
+      "variable_name": "building_length_side",
+      "unit": "m",
+      "type": "float64"
+    },
+    "separation": {
+      "variable_name": "building_length_separation",
+      "unit": "m",
+      "type": "float64"
+    }      
+  }
+}
+  

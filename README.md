@@ -10,7 +10,7 @@
 [![pages-build-deployment](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment)
 [![codecov](https://codecov.io/github/wirc-sjsu/firebench/graph/badge.svg?token=8F44OX12EW)](https://codecov.io/github/wirc-sjsu/firebench)
 [![Security Analysis](https://github.com/wirc-sjsu/firebench/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/security.yml)
-![Pylint Score](https://img.shields.io/badge/Pylint-9.67-brightgreen.svg)
+![Pylint Score](https://img.shields.io/badge/Pylint-9.37-brightgreen.svg)
 [![Check linting with Pylint](https://github.com/wirc-sjsu/firebench/actions/workflows/pylint.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/pylint.yml)
 [![Black Code Formatting Check](https://github.com/wirc-sjsu/firebench/actions/workflows/black.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/black.yml)
 ![GitHub License](https://img.shields.io/github/license/wirc-sjsu/firebench)
@@ -32,8 +32,6 @@ FireBench offers a dual approach for evaluation: intercomparison without extensi
 ## Installation
 
 ### Prerequisites
-
-Before installing FireBench, you need to install [Git LFS](https://git-lfs.github.com/).
 
 To install the FireBench library, follow these steps:
 
@@ -57,24 +55,16 @@ Navigate to the cloned repository and install the FireBench library along with i
 
 ```bash
 cd firebench
-git lfs pull
 pip install .
 ```
 
-### 3. Set up the path to your local working directory
+### 3. Set up local paths
 
-In order to centralize all the files managed locally by firebench, a working directory called the `firebench local database` has to be defined.
-This directory will store the output of workflows.
-Add the following line to your `.bashrc` or `.zshrc`:
-```bash
-export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db
-```
+FireBench uses `~/.firebench/local_db` as the default local database directory for files managed locally by workflows.
+Functions that write workflow records also accept an explicit `local_db_path` argument.
 
-FireBench contains some data (fuel models, workflow runs, *etc*.) that is contained in the directory `firebench/data`. 
-In order to easily access this data, add the absolute path to the `firebench/data` directory to your `.bashrc` or `.zshrc`:
-```bash
-export FIREBENCH_DATA_PATH=/path/to/package/firebench/data
-```
+FireBench contains package data such as fuel models in the repository `data` directory.
+Data helpers use that directory by default, and `get_firebench_data_directory(data_path=...)` can be used when a custom data location is needed.
 
 ## Community Discussions
 

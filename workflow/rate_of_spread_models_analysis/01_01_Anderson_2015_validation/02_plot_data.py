@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import h5py
 
-
 #######################################################################################
 #                             SETUP SECTION
 # This section is for setting up parameters. Change these parameters as needed.

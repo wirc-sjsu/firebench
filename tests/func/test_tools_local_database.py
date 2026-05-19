@@ -5,15 +5,12 @@ import firebench.tools as ft
 import pytest
 
 
-def test_create_record_directory(mocker):
+def test_create_record_directory():
     workflow_record_name = "test_workflow"
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Mocking environment variable for local db path
-        mocker.patch("os.getenv", return_value=temp_dir)
-
         # Test directory creation
-        ft.create_record_directory(workflow_record_name)
+        ft.create_record_directory(workflow_record_name, local_db_path=temp_dir)
 
         # Verify the directory was created
         expected_path = os.path.join(temp_dir, workflow_record_name)
