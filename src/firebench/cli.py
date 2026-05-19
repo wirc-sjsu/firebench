@@ -66,6 +66,36 @@ def _filename_from_url(url: str) -> str:
     return filename
 
 
+def _download_with_progress(url: str, output_path: Path) -> None:
+    progress_bar = None
+    previous_bytes = 0
+
+    def reporthook(block_count: int, block_size: int, total_size: int) -> None:
+        nonlocal progress_bar, previous_bytes
+
+        if progress_bar is None:
+            progress_length = total_size if total_size > 0 else None
+            progress_bar = click.progressbar(
+                length=progress_length,
+                label=f"Downloading {output_path.name}",
+            )
+            progress_bar.__enter__()
+
+        downloaded_bytes = block_count * block_size
+        if total_size > 0:
+            downloaded_bytes = min(downloaded_bytes, total_size)
+        delta = downloaded_bytes - previous_bytes
+        if delta > 0:
+            progress_bar.update(delta)
+            previous_bytes = downloaded_bytes
+
+    try:
+        urlretrieve(url, output_path, reporthook=reporthook)
+    finally:
+        if progress_bar is not None:
+            progress_bar.__exit__(None, None, None)
+
+
 @main.command()
 @click.argument(
     "model_output",
@@ -234,7 +264,7 @@ def data_get(case: str, version: str, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / _filename_from_url(url)
     click.echo(f"Downloading case {case_id} data version {version} to {output_path}")
-    urlretrieve(url, output_path)
+    _download_with_progress(url, output_path)
     click.echo(f"Downloaded {output_path}")
     return 0
 

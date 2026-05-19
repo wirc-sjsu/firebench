@@ -179,8 +179,12 @@ def test_data_get_downloads_latest_by_default(monkeypatch, tmp_path):
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
     downloads = []
 
-    def fake_urlretrieve(url, output_path):
+    def fake_urlretrieve(url, output_path, reporthook=None):
         downloads.append((url, output_path))
+        if reporthook is not None:
+            reporthook(0, 8192, 16384)
+            reporthook(1, 8192, 16384)
+            reporthook(2, 8192, 16384)
         output_path.write_text("downloaded")
         return output_path, None
 
@@ -197,8 +201,12 @@ def test_data_get_downloads_selected_version(monkeypatch, tmp_path):
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
     downloads = []
 
-    def fake_urlretrieve(url, output_path):
+    def fake_urlretrieve(url, output_path, reporthook=None):
         downloads.append((url, output_path))
+        if reporthook is not None:
+            reporthook(0, 8192, 16384)
+            reporthook(1, 8192, 16384)
+            reporthook(2, 8192, 16384)
         output_path.write_text("downloaded")
         return output_path, None
 
