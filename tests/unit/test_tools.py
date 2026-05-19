@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import tempfile
 
 import firebench.tools as ft
@@ -74,8 +75,12 @@ def test_seed_reproducibility(scramble_1, seed_1, scramble_2, seed_2, expected_s
         svn.LENGTH: {"unit": ureg.meter, "range": [0.0, 1.0]},
         svn.TIME: {"unit": ureg.second, "range": [10.0, 20.0]},
     }
-    result_seed_42_a, _, _ = ft.sobol_seq(N, variables_info, scramble=scramble_1, seed=seed_1)
-    result_seed_42_b, _, _ = ft.sobol_seq(N, variables_info, scramble=scramble_2, seed=seed_2)
+    result_seed_42_a, _, _ = ft.sobol_seq(
+        N, variables_info, scramble=scramble_1, seed=seed_1
+    )
+    result_seed_42_b, _, _ = ft.sobol_seq(
+        N, variables_info, scramble=scramble_2, seed=seed_2
+    )
 
     for key in variables_info.keys():
         if expected_similar:
@@ -91,7 +96,11 @@ def test_seed_reproducibility(scramble_1, seed_1, scramble_2, seed_2, expected_s
 @pytest.mark.parametrize(
     "dict1, dict2, expected",
     [
-        ({"a": 1, "b": 2}, {"c": 3, "d": 4}, {"a": 1, "b": 2, "c": 3, "d": 4}),  # No conflicts
+        (
+            {"a": 1, "b": 2},
+            {"c": 3, "d": 4},
+            {"a": 1, "b": 2, "c": 3, "d": 4},
+        ),  # No conflicts
         ({"a": 1}, {"b": 2, "c": 3}, {"a": 1, "b": 2, "c": 3}),  # No conflicts
         ({}, {"a": 1}, {"a": 1}),  # One empty dictionary
         ({"a": 1}, {}, {"a": 1}),  # One empty dictionary
@@ -118,8 +127,18 @@ def test_merge_dictionaries_key_conflict(dict1, dict2, conflicting_keys):
 @pytest.mark.parametrize(
     "dict1, dict2, prefer, expected",
     [
-        ({"a": 1, "b": 2}, {"a": 3, "c": 4}, 1, {"a": 1, "b": 2, "c": 4}),  # dict 1 overrides dict 2
-        ({"a": 1, "b": 2}, {"a": 3, "c": 4}, 2, {"a": 3, "b": 2, "c": 4}),  # dict 2 overrides dict 1
+        (
+            {"a": 1, "b": 2},
+            {"a": 3, "c": 4},
+            1,
+            {"a": 1, "b": 2, "c": 4},
+        ),  # dict 1 overrides dict 2
+        (
+            {"a": 1, "b": 2},
+            {"a": 3, "c": 4},
+            2,
+            {"a": 3, "b": 2, "c": 4},
+        ),  # dict 2 overrides dict 1
     ],
 )
 def test_merge_dictionaries_key_conflict_prefered(dict1, dict2, prefer, expected):
@@ -134,7 +153,11 @@ def test_merge_dictionaries_key_conflict_prefered(dict1, dict2, prefer, expected
         ("file", "csv", "file.csv"),  # Case: No suffix, different suffix
         ("file.csv", "txt", "file.csv.txt"),  # Case: Different existing suffix
         ("", "txt", ".txt"),  # Case: Empty filename
-        ("file.name.with.dots", "txt", "file.name.with.dots.txt"),  # Case: Filename with dots
+        (
+            "file.name.with.dots",
+            "txt",
+            "file.name.with.dots.txt",
+        ),  # Case: Filename with dots
     ],
 )
 def test_add_suffix(filename, suffix, expected):
@@ -143,10 +166,13 @@ def test_add_suffix(filename, suffix, expected):
 
 def test_get_firebench_data_directory_success(mocker):
     # Mock the environment variable
-    mocker.patch.dict(os.environ, {"FIREBENCH_DATA_PATH": "/fake/path/to/firebench/data"})
+    mocker.patch.dict(
+        os.environ, {"FIREBENCH_DATA_PATH": "/fake/path/to/firebench/data"}
+    )
 
     # Call the function and check the result
-    result = ft.read_data.get_firebench_data_directory()
+    with pytest.warns(DeprecationWarning, match="FIREBENCH_DATA_PATH is deprecated"):
+        result = ft.read_data.get_firebench_data_directory()
     assert result == "/fake/path/to/firebench/data"
 
 
@@ -154,9 +180,9 @@ def test_get_firebench_data_directory_no_env_var(mocker):
     # Ensure the environment variable is not set
     mocker.patch.dict(os.environ, {}, clear=True)
 
-    # Call the function and expect an EnvironmentError
-    with pytest.raises(EnvironmentError, match="Firebench data directory path is not set"):
-        ft.get_firebench_data_directory()
+    result = ft.get_firebench_data_directory()
+    assert Path(result).name == "data"
+    assert os.path.isdir(result)
 
 
 def test_fuel_model_json_file_not_exists():
@@ -183,26 +209,32 @@ def test_fuel_model_json_file_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         custom_fuel_model_name = "mymodel"
         fuel_models_path_within_firebench = "fuel_models"
-        custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
+        custom_fuel_model_json_path = os.path.join(
+            temp_dir, f"{custom_fuel_model_name}.json"
+        )
 
         # Create a dummy file
         with open(custom_fuel_model_json_path, "w") as dummy_file:
             dummy_file.write("test content")
 
         result_path = ft.read_data._get_json_data_file_path(
-            custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=temp_dir
+            custom_fuel_model_name,
+            fuel_models_path_within_firebench,
+            local_json_path=temp_dir,
         )
 
         assert result_path == custom_fuel_model_json_path
 
 
-def test_fuel_model_default_json_file_not_exists():
+def test_fuel_model_default_json_file_not_exists(monkeypatch):
     with tempfile.TemporaryDirectory() as temp_dir:
-        os.environ["FIREBENCH_DATA_PATH"] = temp_dir
         custom_fuel_model_name = "mymodel"
         fuel_models_path_within_firebench = "fuel_models"
         custom_fuel_model_json_path = os.path.join(
             temp_dir, "fuel_models", f"{custom_fuel_model_name}.json"
+        )
+        monkeypatch.setattr(
+            ft.read_data, "_default_firebench_data_directory", lambda: Path(temp_dir)
         )
 
         # Ensure the file does not exist
@@ -210,23 +242,28 @@ def test_fuel_model_default_json_file_not_exists():
 
         with pytest.raises(FileNotFoundError, match="not found"):
             ft.read_data._get_json_data_file_path(
-                custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=None
+                custom_fuel_model_name,
+                fuel_models_path_within_firebench,
+                local_json_path=None,
             )
 
 
 def test_fuel_model_default_json_file_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
-        os.environ["FIREBENCH_DATA_PATH"] = temp_dir
         custom_fuel_model_name = "mymodel"
         fuel_models_path_within_firebench = "fuel_models"
-        custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
+        custom_fuel_model_json_path = os.path.join(
+            temp_dir, f"{custom_fuel_model_name}.json"
+        )
 
         # Create a dummy file
         with open(custom_fuel_model_json_path, "w") as dummy_file:
             dummy_file.write("test content")
 
         result_path = ft.read_data._get_json_data_file_path(
-            custom_fuel_model_name, fuel_models_path_within_firebench, local_json_path=temp_dir
+            custom_fuel_model_name,
+            fuel_models_path_within_firebench,
+            local_json_path=temp_dir,
         )
 
         assert result_path == custom_fuel_model_json_path
@@ -244,12 +281,16 @@ def test_check_input_completeness(caplog):
 
     # Test case with missing data
     incomplete_input_data = {"wind_speed": 5, "temperature": 25}
-    with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
+    with pytest.raises(
+        KeyError, match="The data 'humidity' is missing in the input dict"
+    ):
         ft.check_input_completeness(incomplete_input_data, metadata_dict)
 
     # Test case with empty input data
     empty_input_data = {}
-    with pytest.raises(KeyError, match="The data 'wind_speed' is missing in the input dict"):
+    with pytest.raises(
+        KeyError, match="The data 'wind_speed' is missing in the input dict"
+    ):
         ft.check_input_completeness(empty_input_data, metadata_dict)
 
     # Test case with empty metadata
@@ -262,7 +303,10 @@ def test_check_input_completeness(caplog):
         "wind": {"std_name": "wind_speed", "type": ft.ParameterType.input},
         "temp": {"std_name": "temperature", "type": ft.ParameterType.input},
         "hum": {"std_name": "humidity", "type": ft.ParameterType.input},
-        "ros": {"std_name": "ros", "type": ft.ParameterType.output},  # Should be ignored
+        "ros": {
+            "std_name": "ros",
+            "type": ft.ParameterType.output,
+        },  # Should be ignored
     }
     ft.check_input_completeness(input_data_with_output, metadata_with_output)
 
@@ -271,14 +315,23 @@ def test_check_input_completeness(caplog):
     metadata_with_output_incomplete = {
         "wind": {"std_name": "wind_speed", "type": ft.ParameterType.input},
         "temp": {"std_name": "temperature", "type": ft.ParameterType.input},
-        "ros": {"std_name": "ros", "type": ft.ParameterType.output},  # Should be ignored
+        "ros": {
+            "std_name": "ros",
+            "type": ft.ParameterType.output,
+        },  # Should be ignored
     }
     # This should not raise KeyError since 'humidity' is not in metadata_with_output_incomplete
-    ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output_incomplete)
+    ft.check_input_completeness(
+        incomplete_input_data_with_output, metadata_with_output_incomplete
+    )
 
     # Ensure the function raises KeyError for the incomplete input that doesn't have "humidity"
-    with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
-        ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output)
+    with pytest.raises(
+        KeyError, match="The data 'humidity' is missing in the input dict"
+    ):
+        ft.check_input_completeness(
+            incomplete_input_data_with_output, metadata_with_output
+        )
 
     # Change the logging level for the next tests
     ft.set_logging_level(ft.logging.INFO)
@@ -318,7 +371,11 @@ def test_check_input_completeness(caplog):
         (
             {"temperature": ureg.Quantity(25, ureg.celsius)},
             {
-                "temp": {"std_name": "temperature", "units": "kelvin", "type": ft.ParameterType.input},
+                "temp": {
+                    "std_name": "temperature",
+                    "units": "kelvin",
+                    "type": ft.ParameterType.input,
+                },
                 "output_test": {
                     "std_name": "value",
                     "units": "some_units",
@@ -330,7 +387,11 @@ def test_check_input_completeness(caplog):
         (
             {"distance": ureg.Quantity(1000, ureg.meter)},
             {
-                "dist": {"std_name": "distance", "units": "kilometer", "type": ft.ParameterType.input},
+                "dist": {
+                    "std_name": "distance",
+                    "units": "kilometer",
+                    "type": ft.ParameterType.input,
+                },
                 "output_test": {
                     "std_name": "value",
                     "units": "some_units",
@@ -342,7 +403,11 @@ def test_check_input_completeness(caplog):
         (
             {"speed": ureg.Quantity(100, ureg.kph)},
             {
-                "spd": {"std_name": "speed", "units": "m/s", "type": ft.ParameterType.input},
+                "spd": {
+                    "std_name": "speed",
+                    "units": "m/s",
+                    "type": ft.ParameterType.input,
+                },
                 "output_test": {
                     "std_name": "value",
                     "units": "some_units",
