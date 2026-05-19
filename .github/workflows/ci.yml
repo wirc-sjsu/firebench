@@ -19,16 +19,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true  # Fetch LFS files
-      
-      - name: Set up Git LFS
-        run: |
-          git lfs install
-        continue-on-error: true
-
-      - name: Pull LFS files
-        run: |
-          git lfs pull
-        continue-on-error: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
