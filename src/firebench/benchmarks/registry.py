@@ -15,5 +15,10 @@ AVAIL_BENCHMARKS = {
             "output_json": c001_caldor.DEFAULT_OUTPUT_PATH_JSON,
             "score_card_report": c001_caldor.DEFAULT_SCORE_CARD_REPORT_PATH,
         },
+        "data": {
+            "latest": "https://zenodo.org/records/19041000/files/v2026.1.zip?download=1",
+            "2026.1": "https://zenodo.org/records/19041000/files/v2026.1.zip?download=1",
+            "2026.0": "https://zenodo.org/records/18250104/files/2021_Caldor_v1.0.0.zip?download=1",
+        },
     },
 }

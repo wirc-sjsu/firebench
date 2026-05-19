@@ -24,6 +24,10 @@ def _fake_registry(tmp_path, call):
                 "output_json": tmp_path / "default_rslt.json",
                 "score_card_report": tmp_path / "default.pdf",
             },
+            "data": {
+                "latest": "https://example.test/files/latest.zip?download=1",
+                "2026.1": "https://example.test/files/v2026.1.zip?download=1",
+            },
         }
     }
 
@@ -151,3 +155,68 @@ def test_list_command_prints_case_names_and_docs(monkeypatch, tmp_path):
     assert result.output == "001  2021 Caldor Fire - docs: https://example.test/caldor\n"
     assert "func" not in result.output
     assert "{" not in result.output
+
+
+def test_data_versions_prints_available_versions(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    result = CliRunner().invoke(main, ["data", "versions", "001"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output == "001  2021 Caldor Fire\n  latest\n  2026.1\n"
+
+
+def test_data_versions_accepts_unpadded_case_id(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    result = CliRunner().invoke(main, ["data", "versions", "1"])
+
+    assert result.exit_code == 0, result.output
+    assert "001  2021 Caldor Fire" in result.output
+
+
+def test_data_get_downloads_latest_by_default(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+    downloads = []
+
+    def fake_urlretrieve(url, output_path):
+        downloads.append((url, output_path))
+        output_path.write_text("downloaded")
+        return output_path, None
+
+    monkeypatch.setattr("firebench.cli.urlretrieve", fake_urlretrieve)
+
+    result = CliRunner().invoke(main, ["data", "get", "001", "--output-dir", str(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+    assert downloads == [("https://example.test/files/latest.zip?download=1", tmp_path / "latest.zip")]
+    assert (tmp_path / "latest.zip").read_text() == "downloaded"
+
+
+def test_data_get_downloads_selected_version(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+    downloads = []
+
+    def fake_urlretrieve(url, output_path):
+        downloads.append((url, output_path))
+        output_path.write_text("downloaded")
+        return output_path, None
+
+    monkeypatch.setattr("firebench.cli.urlretrieve", fake_urlretrieve)
+
+    result = CliRunner().invoke(
+        main, ["data", "get", "1", "--version", "2026.1", "--output-dir", str(tmp_path)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert downloads == [("https://example.test/files/v2026.1.zip?download=1", tmp_path / "v2026.1.zip")]
+
+
+def test_data_get_unknown_version_fails(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    result = CliRunner().invoke(main, ["data", "get", "001", "--version", "missing"])
+
+    assert result.exit_code != 0
+    assert "Unknown data version 'missing'" in result.output
+    assert "latest, 2026.1" in result.output

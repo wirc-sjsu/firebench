@@ -1,5 +1,7 @@
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import urlretrieve
 
 import click
 
@@ -8,7 +10,9 @@ from .tools.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
-FIREBENCH_BANNER = "\b" + r"""
+FIREBENCH_BANNER = (
+    "\b"
+    + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -18,6 +22,8 @@ FIREBENCH_BANNER = "\b" + r"""
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
+)
+
 
 @click.group(help=FIREBENCH_BANNER)
 def main() -> None:
@@ -43,6 +49,21 @@ def _get_case_info(case: str) -> tuple[str, dict]:
 
 def _get_default(case_info: dict, key: str):
     return case_info.get("default_options", {}).get(key)
+
+
+def _get_case_data(case: str) -> tuple[str, dict, dict]:
+    case_id, case_info = _get_case_info(case)
+    data_versions = case_info.get("data", {})
+    if not data_versions:
+        raise click.UsageError(f"No data downloads are registered for benchmark case '{case_id}'.")
+    return case_id, case_info, data_versions
+
+
+def _filename_from_url(url: str) -> str:
+    filename = Path(urlparse(url).path).name
+    if not filename:
+        raise click.UsageError(f"Could not infer a file name from download URL: {url}")
+    return filename
 
 
 @main.command()
@@ -162,6 +183,59 @@ def list_cases() -> None:
     """
     for case_id, case_info in sorted(AVAIL_BENCHMARKS.items()):
         click.echo(f"{case_id}  {case_info['name']} - docs: {case_info['url']}")
+    return 0
+
+
+@main.group()
+def data() -> None:
+    """
+    Download benchmark data.
+    """
+    pass
+
+
+@data.command("versions")
+@click.argument("case", type=str)
+def data_versions(case: str) -> None:
+    """
+    List available data versions for a benchmark case.
+    """
+    case_id, case_info, data_by_version = _get_case_data(case)
+    click.echo(f"{case_id}  {case_info['name']}")
+    for version in data_by_version:
+        click.echo(f"  {version}")
+    return 0
+
+
+@data.command("get")
+@click.argument("case", type=str)
+@click.option("--version", default="latest", show_default=True, help="Data version to download.")
+@click.option(
+    "-o",
+    "--output-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Directory where the downloaded archive will be saved.",
+)
+def data_get(case: str, version: str, output_dir: Path) -> None:
+    """
+    Download data for a benchmark case.
+    """
+    case_id, _, data_by_version = _get_case_data(case)
+    if version not in data_by_version:
+        available_versions = ", ".join(data_by_version)
+        raise click.UsageError(
+            f"Unknown data version '{version}' for benchmark case '{case_id}'. "
+            f"Available versions: {available_versions}"
+        )
+
+    url = data_by_version[version]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / _filename_from_url(url)
+    click.echo(f"Downloading case {case_id} data version {version} to {output_path}")
+    urlretrieve(url, output_path)
+    click.echo(f"Downloaded {output_path}")
     return 0
 
 
