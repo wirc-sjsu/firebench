@@ -21,10 +21,7 @@ update-lint-score:
 
 # Run black code formatting
 code-formatting:
-	black --line-length 108 src/firebench
-	black --line-length 108 tests
-	black --line-length 108 .github/actions
-	black --line-length 108 workflow
+	black --check src/firebench tests .github/actions workflow
 
 # Run bandit analysis
 bandit:
