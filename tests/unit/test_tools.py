@@ -75,12 +75,8 @@ def test_seed_reproducibility(scramble_1, seed_1, scramble_2, seed_2, expected_s
         svn.LENGTH: {"unit": ureg.meter, "range": [0.0, 1.0]},
         svn.TIME: {"unit": ureg.second, "range": [10.0, 20.0]},
     }
-    result_seed_42_a, _, _ = ft.sobol_seq(
-        N, variables_info, scramble=scramble_1, seed=seed_1
-    )
-    result_seed_42_b, _, _ = ft.sobol_seq(
-        N, variables_info, scramble=scramble_2, seed=seed_2
-    )
+    result_seed_42_a, _, _ = ft.sobol_seq(N, variables_info, scramble=scramble_1, seed=seed_1)
+    result_seed_42_b, _, _ = ft.sobol_seq(N, variables_info, scramble=scramble_2, seed=seed_2)
 
     for key in variables_info.keys():
         if expected_similar:
@@ -166,9 +162,7 @@ def test_add_suffix(filename, suffix, expected):
 
 def test_get_firebench_data_directory_success(mocker):
     # Mock the environment variable
-    mocker.patch.dict(
-        os.environ, {"FIREBENCH_DATA_PATH": "/fake/path/to/firebench/data"}
-    )
+    mocker.patch.dict(os.environ, {"FIREBENCH_DATA_PATH": "/fake/path/to/firebench/data"})
 
     # Call the function and check the result
     with pytest.warns(DeprecationWarning, match="FIREBENCH_DATA_PATH is deprecated"):
@@ -209,9 +203,7 @@ def test_fuel_model_json_file_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         custom_fuel_model_name = "mymodel"
         fuel_models_path_within_firebench = "fuel_models"
-        custom_fuel_model_json_path = os.path.join(
-            temp_dir, f"{custom_fuel_model_name}.json"
-        )
+        custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
 
         # Create a dummy file
         with open(custom_fuel_model_json_path, "w") as dummy_file:
@@ -233,9 +225,7 @@ def test_fuel_model_default_json_file_not_exists(monkeypatch):
         custom_fuel_model_json_path = os.path.join(
             temp_dir, "fuel_models", f"{custom_fuel_model_name}.json"
         )
-        monkeypatch.setattr(
-            ft.read_data, "_default_firebench_data_directory", lambda: Path(temp_dir)
-        )
+        monkeypatch.setattr(ft.read_data, "_default_firebench_data_directory", lambda: Path(temp_dir))
 
         # Ensure the file does not exist
         assert not os.path.isfile(custom_fuel_model_json_path)
@@ -252,9 +242,7 @@ def test_fuel_model_default_json_file_exists():
     with tempfile.TemporaryDirectory() as temp_dir:
         custom_fuel_model_name = "mymodel"
         fuel_models_path_within_firebench = "fuel_models"
-        custom_fuel_model_json_path = os.path.join(
-            temp_dir, f"{custom_fuel_model_name}.json"
-        )
+        custom_fuel_model_json_path = os.path.join(temp_dir, f"{custom_fuel_model_name}.json")
 
         # Create a dummy file
         with open(custom_fuel_model_json_path, "w") as dummy_file:
@@ -281,16 +269,12 @@ def test_check_input_completeness(caplog):
 
     # Test case with missing data
     incomplete_input_data = {"wind_speed": 5, "temperature": 25}
-    with pytest.raises(
-        KeyError, match="The data 'humidity' is missing in the input dict"
-    ):
+    with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
         ft.check_input_completeness(incomplete_input_data, metadata_dict)
 
     # Test case with empty input data
     empty_input_data = {}
-    with pytest.raises(
-        KeyError, match="The data 'wind_speed' is missing in the input dict"
-    ):
+    with pytest.raises(KeyError, match="The data 'wind_speed' is missing in the input dict"):
         ft.check_input_completeness(empty_input_data, metadata_dict)
 
     # Test case with empty metadata
@@ -321,17 +305,11 @@ def test_check_input_completeness(caplog):
         },  # Should be ignored
     }
     # This should not raise KeyError since 'humidity' is not in metadata_with_output_incomplete
-    ft.check_input_completeness(
-        incomplete_input_data_with_output, metadata_with_output_incomplete
-    )
+    ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output_incomplete)
 
     # Ensure the function raises KeyError for the incomplete input that doesn't have "humidity"
-    with pytest.raises(
-        KeyError, match="The data 'humidity' is missing in the input dict"
-    ):
-        ft.check_input_completeness(
-            incomplete_input_data_with_output, metadata_with_output
-        )
+    with pytest.raises(KeyError, match="The data 'humidity' is missing in the input dict"):
+        ft.check_input_completeness(incomplete_input_data_with_output, metadata_with_output)
 
     # Change the logging level for the next tests
     ft.set_logging_level(ft.logging.INFO)

@@ -16,9 +16,7 @@ from firebench.tools.local_db_management import (
 
 def test_get_local_db_path(mocker):
     # Test when the environment variable is set
-    mocker.patch.dict(
-        os.environ, {"FIREBENCH_LOCAL_DB": "/path/to/your/firebench/local/db"}
-    )
+    mocker.patch.dict(os.environ, {"FIREBENCH_LOCAL_DB": "/path/to/your/firebench/local/db"})
     with pytest.warns(DeprecationWarning, match="FIREBENCH_LOCAL_DB is deprecated"):
         assert ft.get_local_db_path() == "/path/to/your/firebench/local/db"
 
@@ -42,9 +40,7 @@ def test_copy_file_to_workflow_record_success(mocker):
         os.makedirs(record_path)
 
         # Test successful copy
-        ft.copy_file_to_workflow_record(
-            workflow_record_name, file_path, local_db_path=temp_dir
-        )
+        ft.copy_file_to_workflow_record(workflow_record_name, file_path, local_db_path=temp_dir)
 
         # Check if the file is copied
         assert os.path.isfile(os.path.join(record_path, file_name))
@@ -61,9 +57,7 @@ def test_copy_file_to_workflow_record_file_not_found(mocker):
 
         # Test file not found error
         with pytest.raises(FileNotFoundError):
-            ft.copy_file_to_workflow_record(
-                workflow_record_name, file_path, local_db_path=temp_dir
-            )
+            ft.copy_file_to_workflow_record(workflow_record_name, file_path, local_db_path=temp_dir)
 
 
 def test_copy_file_to_workflow_record_directory_not_found(mocker):
@@ -80,9 +74,7 @@ def test_copy_file_to_workflow_record_directory_not_found(mocker):
 
         # Test workflow record directory not found error
         with pytest.raises(OSError):
-            ft.copy_file_to_workflow_record(
-                workflow_record_name, file_path, local_db_path=temp_dir
-            )
+            ft.copy_file_to_workflow_record(workflow_record_name, file_path, local_db_path=temp_dir)
 
 
 def test_copy_file_to_workflow_record_file_exists_no_overwrite(mocker):
@@ -102,9 +94,7 @@ def test_copy_file_to_workflow_record_file_exists_no_overwrite(mocker):
 
         # Test file already exists and overwrite is False
         with pytest.raises(OSError):
-            ft.copy_file_to_workflow_record(
-                workflow_record_name, file_path, local_db_path=temp_dir
-            )
+            ft.copy_file_to_workflow_record(workflow_record_name, file_path, local_db_path=temp_dir)
 
 
 def test_check_source_file_exists():
@@ -126,10 +116,7 @@ def test_check_source_file_exists():
         with pytest.raises(FileNotFoundError) as exc_info:
             _check_source_file_exists(non_existing_file_path)
 
-        assert (
-            str(exc_info.value)
-            == f"The file '{non_existing_file_path}' does not exist."
-        )
+        assert str(exc_info.value) == f"The file '{non_existing_file_path}' does not exist."
 
 
 def test_check_workflow_record_exists():
@@ -168,9 +155,7 @@ def test_handle_existing_destination_file():
         # Test when the file exists and overwrite is True
         try:
             _handle_existing_destination_file(existing_file_path, overwrite=True)
-            assert not os.path.isfile(
-                existing_file_path
-            ), "File should be removed when overwrite is True."
+            assert not os.path.isfile(existing_file_path), "File should be removed when overwrite is True."
         except OSError:
             pytest.fail("OSError raised unexpectedly when overwrite is True.")
 
@@ -193,9 +178,7 @@ def test_handle_existing_destination_file():
             pytest.fail("OSError raised unexpectedly for a non-existing file.")
 
         # Ensure the non-existing file is still non-existent
-        assert not os.path.isfile(
-            non_existing_file_path
-        ), "Non-existing file should remain non-existent."
+        assert not os.path.isfile(non_existing_file_path), "Non-existing file should remain non-existent."
 
 
 def test_generate_file_path_in_record(mocker):
@@ -208,9 +191,7 @@ def test_generate_file_path_in_record(mocker):
         os.makedirs(record_path)
 
         # Test creating a new file path
-        new_file_path = ft.generate_file_path_in_record(
-            new_file_name, record_name, local_db_path=temp_dir
-        )
+        new_file_path = ft.generate_file_path_in_record(new_file_name, record_name, local_db_path=temp_dir)
         assert new_file_path == os.path.join(record_path, new_file_name)
 
         # Create a dummy file
@@ -247,16 +228,12 @@ def test_get_file_path_in_record():
             f.write("test content")
 
         # Test successful retrieval of file path
-        result_path = ft.get_file_path_in_record(
-            file_name, record_name, local_db_path=temp_dir
-        )
+        result_path = ft.get_file_path_in_record(file_name, record_name, local_db_path=temp_dir)
         assert result_path == file_path
 
         # Test file not found
         with pytest.raises(OSError, match="does not exist"):
-            ft.get_file_path_in_record(
-                "non_existent_file.txt", record_name, local_db_path=temp_dir
-            )
+            ft.get_file_path_in_record("non_existent_file.txt", record_name, local_db_path=temp_dir)
 
 
 def test_update_markdown_with_hashes():
@@ -283,12 +260,11 @@ Some other content.
     }
 
     expected_hash_list = "\n".join(
-        [
-            f"- **{filename}**: `{hash_value}`"
-            for filename, hash_value in hash_dict.items()
-        ]
+        [f"- **{filename}**: `{hash_value}`" for filename, hash_value in hash_dict.items()]
     )
-    expected_section = f"<!-- firebench-hash-list -->\n{expected_hash_list}\n<!-- end of firebench-hash-list -->"
+    expected_section = (
+        f"<!-- firebench-hash-list -->\n{expected_hash_list}\n<!-- end of firebench-hash-list -->"
+    )
 
     expected_content = initial_content.replace(
         "<!-- firebench-hash-list -->\n<!-- end of firebench-hash-list -->",
@@ -296,9 +272,7 @@ Some other content.
     )
 
     # Create a temporary markdown file
-    with tempfile.NamedTemporaryFile(
-        mode="w+", delete=False, suffix=".md"
-    ) as temp_file:
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".md") as temp_file:
         temp_file_path = temp_file.name
         temp_file.write(initial_content)
         temp_file.flush()  # Ensure content is written
@@ -312,9 +286,7 @@ Some other content.
             updated_content = file.read()
 
         # Assert that the updated content matches the expected content
-        assert (
-            updated_content == expected_content
-        ), "The markdown file was not updated as expected."
+        assert updated_content == expected_content, "The markdown file was not updated as expected."
 
     finally:
         # Clean up the temporary file
@@ -345,9 +317,7 @@ Some other content.
     )
 
     # Create a temporary markdown file
-    with tempfile.NamedTemporaryFile(
-        mode="w+", delete=False, suffix=".md"
-    ) as temp_file:
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".md") as temp_file:
         temp_file_path = temp_file.name
         temp_file.write(initial_content)
         temp_file.flush()  # Ensure content is written

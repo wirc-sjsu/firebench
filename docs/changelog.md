@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026 / 05 / 18
+### Added
+- Add the `firebench` command line interface for benchmark discovery, data download, and benchmark execution:
+  - `firebench list` lists available benchmark cases.
+  - `firebench data versions` lists available data versions for a benchmark case.
+  - `firebench data get` downloads benchmark data.
+  - `firebench run` runs a benchmark case against a model output in FireBench standard HDF5 format.
+- Add regression tests covering import, CLI, benchmark discovery, and deprecated environment-variable behavior without requiring local environment configuration.
+
+### Benchmarks
+- Add the FB001 2021 Caldor Fire benchmark to the benchmark registry.
+- Add Caldor benchmark data version metadata for CLI downloads.
+
+### Documentation
+- Add a CLI tutorial showing how to download the Caldor Fire case and run it.
+- Update setup instructions to describe default FireBench data and local database paths instead of requiring environment variables.
+
+### Changed
+- Remove the mandatory dependency on `FIREBENCH_DATA_PATH` and `FIREBENCH_LOCAL_DB` for import, installation, CLI usage, tests, and benchmark discovery.
+- Use default paths when legacy environment variables are not set:
+  - FireBench data is resolved from the package or repository `data` directory.
+  - The local database defaults to `~/.firebench/local_db`.
+- Add explicit `data_path` and `local_db_path` arguments where local paths are needed.
+- Stop using Git LFS for repository-managed files.
+
+### Deprecated
+- Deprecate `FIREBENCH_DATA_PATH`. Use the FireBench data configuration or pass `data_path` explicitly instead.
+- Deprecate `FIREBENCH_LOCAL_DB`. Use the FireBench local database configuration or pass `local_db_path` explicitly instead.
+- Legacy environment-variable support remains available temporarily and now emits `DeprecationWarning`.
+
 ## [0.8.1] - 2026 / 03 / 15
 ### Fixes
 - bias metric: computes x1 mean only where x2 is not Nan

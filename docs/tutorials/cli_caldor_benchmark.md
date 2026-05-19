@@ -51,7 +51,7 @@ This command writes the default Caldor outputs in the working directory:
 - `Caldor.pdf`
 - `Caldor.log`
 
-Use a different model output file by replacing the final `my_model_output.h5` argument with the path to your FireBench standard HDF5 output.
+Use a different model output file by replacing the final `my_model_output.h5` argument with the path to your FireBench standard HDF5 output. If you don't have a model output yet, you can test using the observational dataset `Caldor.h5` as input to get a perfect scorecard. 
 
 ## 4. Useful CLI commands
 

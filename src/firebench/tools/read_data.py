@@ -93,9 +93,7 @@ def read_data_file(
         metadata = json.load(f)
 
     # Read CSV data
-    with open(
-        path.join(path.dirname(json_file_path), metadata["data_path"]), "r"
-    ) as file:
+    with open(path.join(path.dirname(json_file_path), metadata["data_path"]), "r") as file:
         content = file.readlines()
 
     # get no data value
@@ -127,9 +125,7 @@ def read_data_file(
                 "input value %s not found in SVN. Data imported without unit",
                 value["variable_name"],
             )
-            output_data[value["variable_name"]] = np.array(
-                data_dict[key], dtype=value["type"]
-            )
+            output_data[value["variable_name"]] = np.array(data_dict[key], dtype=value["type"])
         else:
             output_data[std_var] = ureg.Quantity(
                 np.array(data_dict[key], dtype=value["type"]), ureg(value["unit"])
@@ -199,20 +195,14 @@ def _get_json_data_file_path(
     if local_json_path is None:
         # Use default path to data
         firebench_data_path = get_firebench_data_directory(data_path)
-        json_file_path = os.path.join(
-            firebench_data_path, path_within_firebench, json_filename
-        )
+        json_file_path = os.path.join(firebench_data_path, path_within_firebench, json_filename)
         if not os.path.isfile(json_file_path):
-            raise FileNotFoundError(
-                f"File {json_file_path} not found in the package data path."
-            )
+            raise FileNotFoundError(f"File {json_file_path} not found in the package data path.")
     else:
         # Use specified local path to data
         json_file_path = os.path.join(local_json_path, json_filename)
         if not os.path.isfile(json_file_path):
-            raise FileNotFoundError(
-                f"File {json_filename} not found in the local path: {json_file_path}"
-            )
+            raise FileNotFoundError(f"File {json_filename} not found in the local path: {json_file_path}")
 
     return json_file_path
 

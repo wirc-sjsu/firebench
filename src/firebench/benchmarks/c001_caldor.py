@@ -1308,7 +1308,7 @@ def create_aggregation_schemes():
     }
     for i in range(2, 5):
         AGGREGATION[f"CDI"][f"Fire Perimeter W{i:1d}"] = GROUPS[f"Fire Perimeter W{i:1d}"].copy()
-    
+
     for i in range(2, 5):
         AGGREGATION[f"CDI"][f"Air Temp W{i:1d}"] = GROUPS[f"Air Temp W{i:1d}"].copy()
         AGGREGATION[f"CDI"][f"RH W{i:1d}"] = GROUPS[f"RH W{i:1d}"].copy()
@@ -1316,11 +1316,11 @@ def create_aggregation_schemes():
         AGGREGATION[f"CDI"][f"Wind Direction W{i:1d}"] = GROUPS[f"Wind Direction W{i:1d}"].copy()
         AGGREGATION[f"CDI"][f"FMC 10h W{i:1d}"] = GROUPS[f"FMC 10h W{i:1d}"].copy()
         # Null weight for weather as input check only
-        AGGREGATION[f"CDI"][f"Air Temp W{i:1d}"]["weight"] = 0 
-        AGGREGATION[f"CDI"][f"RH W{i:1d}"]["weight"] = 0 
-        AGGREGATION[f"CDI"][f"Wind Speed W{i:1d}"]["weight"] = 0 
-        AGGREGATION[f"CDI"][f"Wind Direction W{i:1d}"]["weight"] = 0 
-        AGGREGATION[f"CDI"][f"FMC 10h W{i:1d}"]["weight"] = 0 
+        AGGREGATION[f"CDI"][f"Air Temp W{i:1d}"]["weight"] = 0
+        AGGREGATION[f"CDI"][f"RH W{i:1d}"]["weight"] = 0
+        AGGREGATION[f"CDI"][f"Wind Speed W{i:1d}"]["weight"] = 0
+        AGGREGATION[f"CDI"][f"Wind Direction W{i:1d}"]["weight"] = 0
+        AGGREGATION[f"CDI"][f"FMC 10h W{i:1d}"]["weight"] = 0
     # For demo
     AGGREGATION["BS3"] = {
         "Building Damage": {

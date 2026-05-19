@@ -99,15 +99,11 @@ def generate_file_path_in_record(
     OSError
         If the file already exists and overwrite is set to False.
     """  # pylint: disable=line-too-long
-    tmp_file_path = os.path.join(
-        get_local_db_path(local_db_path), record_name, new_file_name
-    )
+    tmp_file_path = os.path.join(get_local_db_path(local_db_path), record_name, new_file_name)
     logging.debug("create file path %(tmp_file_path)s")
 
     if os.path.isfile(tmp_file_path) and not overwrite:
-        raise OSError(
-            f"file {tmp_file_path} already exists and overwrite option is set to False"
-        )
+        raise OSError(f"file {tmp_file_path} already exists and overwrite option is set to False")
 
     return tmp_file_path
 
@@ -137,9 +133,7 @@ def get_file_path_in_record(
     OSError
         If the file does not exist.
     """  # pylint: disable=line-too-long
-    tmp_file_path = os.path.join(
-        get_local_db_path(local_db_path), record_name, file_name
-    )
+    tmp_file_path = os.path.join(get_local_db_path(local_db_path), record_name, file_name)
 
     if not os.path.isfile(tmp_file_path):
         raise OSError(f"The file '{tmp_file_path}' does not exist.")
@@ -197,9 +191,7 @@ def copy_file_to_workflow_record(
     return hash_file
 
 
-def create_record_directory(
-    workflow_record_name: str, local_db_path: str | os.PathLike | None = None
-):
+def create_record_directory(workflow_record_name: str, local_db_path: str | os.PathLike | None = None):
     """
     Create a workflow record directory.
 
@@ -278,10 +270,7 @@ def update_markdown_with_hashes(markdown_path, hash_dict):
 
     # Prepare the new hash list section
     hash_list = "\n".join(
-        [
-            f"- **{filename}**: `{hash_value}`"
-            for filename, hash_value in hash_dict.items()
-        ]
+        [f"- **{filename}**: `{hash_value}`" for filename, hash_value in hash_dict.items()]
     )
     new_section = f"<!-- firebench-hash-list -->\n{hash_list}\n<!-- end of firebench-hash-list -->\n"
 
