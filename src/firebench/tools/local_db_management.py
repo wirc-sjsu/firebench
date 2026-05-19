@@ -1,6 +1,8 @@
 import logging
 import os
+from pathlib import Path
 import shutil
+import warnings
 
 from .logging_config import logger
 from .utils import calculate_sha256
@@ -67,7 +69,12 @@ def _handle_existing_destination_file(destination_file_path: str, overwrite: boo
             )
 
 
-def generate_file_path_in_record(new_file_name: str, record_name: str, overwrite: bool = False) -> str:
+def generate_file_path_in_record(
+    new_file_name: str,
+    record_name: str,
+    overwrite: bool = False,
+    local_db_path: str | os.PathLike | None = None,
+) -> str:
     """
     Get the file path for a new file in the specified workflow record directory.
 
@@ -79,6 +86,8 @@ def generate_file_path_in_record(new_file_name: str, record_name: str, overwrite
         The name of the workflow record directory where the file will be located.
     overwrite : bool, optional
         Whether to overwrite the file if it already exists. Defaults to False.
+    local_db_path : str or os.PathLike, optional
+        Explicit local database path.
 
     Returns
     -------
@@ -90,7 +99,7 @@ def generate_file_path_in_record(new_file_name: str, record_name: str, overwrite
     OSError
         If the file already exists and overwrite is set to False.
     """  # pylint: disable=line-too-long
-    tmp_file_path = os.path.join(get_local_db_path(), record_name, new_file_name)
+    tmp_file_path = os.path.join(get_local_db_path(local_db_path), record_name, new_file_name)
     logging.debug("create file path %(tmp_file_path)s")
 
     if os.path.isfile(tmp_file_path) and not overwrite:
@@ -99,7 +108,9 @@ def generate_file_path_in_record(new_file_name: str, record_name: str, overwrite
     return tmp_file_path
 
 
-def get_file_path_in_record(file_name: str, record_name: str) -> str:
+def get_file_path_in_record(
+    file_name: str, record_name: str, local_db_path: str | os.PathLike | None = None
+) -> str:
     """
     Get the file path for an existing file in the specified workflow record directory.
 
@@ -109,6 +120,8 @@ def get_file_path_in_record(file_name: str, record_name: str) -> str:
         The name of the existing file.
     record_name : str
         The name of the workflow record directory where the file will be located.
+    local_db_path : str or os.PathLike, optional
+        Explicit local database path.
 
     Returns
     -------
@@ -120,7 +133,7 @@ def get_file_path_in_record(file_name: str, record_name: str) -> str:
     OSError
         If the file does not exist.
     """  # pylint: disable=line-too-long
-    tmp_file_path = os.path.join(get_local_db_path(), record_name, file_name)
+    tmp_file_path = os.path.join(get_local_db_path(local_db_path), record_name, file_name)
 
     if not os.path.isfile(tmp_file_path):
         raise OSError(f"The file '{tmp_file_path}' does not exist.")
@@ -128,7 +141,12 @@ def get_file_path_in_record(file_name: str, record_name: str) -> str:
     return tmp_file_path
 
 
-def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, overwrite: bool = False):
+def copy_file_to_workflow_record(
+    workflow_record_name: str,
+    file_path: str,
+    overwrite: bool = False,
+    local_db_path: str | os.PathLike | None = None,
+):
     """
     Copy a file to the specified workflow record directory.
 
@@ -140,6 +158,8 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
         The path to the file that needs to be copied.
     overwrite : bool, optional
         Whether to overwrite the file if it already exists in the destination directory. Defaults to False.
+    local_db_path : str or os.PathLike, optional
+        Explicit local database path.
 
     Raises
     ------
@@ -149,7 +169,7 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
         If the workflow record directory does not exist or if the file already exists and overwrite is False.
     """  # pylint: disable=line-too-long
     # Get record path
-    record_path = os.path.join(get_local_db_path(), workflow_record_name)
+    record_path = os.path.join(get_local_db_path(local_db_path), workflow_record_name)
     destination_file_path = os.path.join(record_path, os.path.basename(file_path))
 
     # Check if the source file exists
@@ -171,7 +191,7 @@ def copy_file_to_workflow_record(workflow_record_name: str, file_path: str, over
     return hash_file
 
 
-def create_record_directory(workflow_record_name: str):
+def create_record_directory(workflow_record_name: str, local_db_path: str | os.PathLike | None = None):
     """
     Create a workflow record directory.
 
@@ -183,38 +203,53 @@ def create_record_directory(workflow_record_name: str):
     ----------
     workflow_record_name : str
         The name of the directory to be created.
+    local_db_path : str or os.PathLike, optional
+        Explicit local database path.
     """  # pylint: disable=line-too-long
     # Get record path
-    record_path = os.path.join(get_local_db_path(), workflow_record_name)
+    record_path = os.path.join(get_local_db_path(local_db_path), workflow_record_name)
 
     # Create the new record directory
     os.makedirs(record_path, exist_ok=True)
 
 
-def get_local_db_path():
-    """
-    Retrieve the local database path from the environment variable FIREBENCH_LOCAL_DB.
+def _default_local_db_path() -> Path:
+    return Path.home() / ".firebench" / "local_db"
 
-    This function checks for the presence of the environment variable FIREBENCH_LOCAL_DB, which should contain
-    the path to the local FireBench database. If the environment variable is not set, an exception is raised with
-    a message instructing the user to set the variable.
+
+def get_local_db_path(local_db_path: str | os.PathLike | None = None):
+    """
+    Retrieve the local database path.
+
+    If ``local_db_path`` is not provided, this function uses a default path under
+    ``~/.firebench/local_db``. The legacy FIREBENCH_LOCAL_DB environment variable
+    is still supported temporarily for backward compatibility.
+
+    Parameters
+    ----------
+    local_db_path : str or os.PathLike, optional
+        Explicit local database path.
 
     Returns
     -------
     str
         The path to the local FireBench database.
 
-    Raises
-    ------
-    EnvironmentError
-        If the FIREBENCH_LOCAL_DB environment variable is not set.
     """  # pylint: disable=line-too-long
-    local_db_path = os.getenv("FIREBENCH_LOCAL_DB")
-    if not local_db_path:
-        raise EnvironmentError(
-            "Firebench local database path is not set. Define the path using 'export FIREBENCH_LOCAL_DB=/path/to/your/firebench/local/db'"
+    if local_db_path is not None:
+        return os.path.abspath(os.fspath(local_db_path))
+
+    env_local_db_path = os.getenv("FIREBENCH_LOCAL_DB")
+    if env_local_db_path:
+        warnings.warn(
+            "FIREBENCH_LOCAL_DB is deprecated and will be removed in a future release. "
+            "Use the Firebench local database configuration or pass local_db_path explicitly instead.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-    return local_db_path
+        return os.path.abspath(env_local_db_path)
+
+    return os.path.abspath(_default_local_db_path())
 
 
 def update_markdown_with_hashes(markdown_path, hash_dict):
