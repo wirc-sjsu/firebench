@@ -26,7 +26,6 @@ This archive contains:
 `ROS_validation_using_Anderson_2015_dataset.tar.zst` *sha256: 8b4d736e3c6d9904e13c98d7bf3f388814759490f0ebcceec949499645283809*
 
 To uncompresse the archive, use `tar --zstd -xf ROS_validation_using_Anderson_2015_dataset.tar.zst`.
-If the archive file does not appear in the `data` directory, use `git lfs pull`.
 
 All of the data mentionned above is available within the package `FireBench`.
 
@@ -75,7 +74,6 @@ As the data provided is prior to January 1st, 2024, the commercial use of this d
 
 ## Additional notes
 - The worklow template can be found at `firebench/workflow/rate_of_spread_models_analysis/01_01_Anderson_2015_validation`.
-- If you don't find the content in the `data` directory, try `git lfs pull`.
 
 ## Reference
 

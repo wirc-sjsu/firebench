@@ -12,8 +12,6 @@ See the list of benchmarks for more information about datasets, metrics and eval
 
 ### Prerequisites
 
-Before installing FireBench, you need to install [Git LFS](https://git-lfs.github.com/).
-
 To install the FireBench library, follow these steps:
 
 ### 1. Clone the Repository
@@ -36,7 +34,6 @@ Navigate to the cloned repository and install the FireBench library along with i
 
 ```bash
 cd firebench
-git lfs pull
 pip install .
 ```
 

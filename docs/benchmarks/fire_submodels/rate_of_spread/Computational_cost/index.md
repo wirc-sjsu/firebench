@@ -28,5 +28,3 @@ efficiency_Rothermel_SFIRE.md
 efficiency_Hamada_1.md
 efficiency_Hamada_2.md
 ```
-
-If you don't find the content in the `data` directory, try `git lfs pull`.
