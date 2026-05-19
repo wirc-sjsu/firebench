@@ -1,3 +1,17 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a8ac7f64d3ed51040ccbdbd562ea6548a1bf6e72458553441dc8bcb16cb850a2
-size 313
+{
+  "data_path": "data_dummy_fuel_model.csv",
+  "no_data_value":"-9999",
+  "metadata": {
+    "var1": {
+      "variable_name": "fuel_height",
+      "unit": "m",
+      "type": "float64"
+    },
+    "var2": {
+      "variable_name": "fuel_load_dry_total",
+      "unit": "kg/m^2",
+      "type": "float64"
+    }
+  }
+}
+  
