@@ -1195,7 +1195,21 @@ Scheme CC contains only the canopy cover loss group. It is used to evaluate crow
 
 Group                  | Group Weight 
 ---------------------- | ------------
-Canopy Cover Loss        | 1 
+Canopy Cover Loss      | 1 
+
+### Scheme CDI
+
+Scheme CDI is designed to evaluate fire spread model on fire progression and building damage with passive evaluation of weather inputs (null weight of weather benchmarks = no influence of weather in total score). The index i is in [2, 4].
+
+Group                  | Group Weight 
+---------------------- | ------------
+Building Damage        | 1 
+Fire Perimeter Wi      | 1
+Air Temp Wi            | 0     
+FMC 10h Wi             | 0     
+RH Wi                  | 0     
+Wind Direction Wi      | 0     
+Wind Speed Wi          | 0     
 
 ### Scheme FP
 
