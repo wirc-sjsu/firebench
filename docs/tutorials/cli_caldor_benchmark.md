@@ -32,10 +32,10 @@ The command downloads the latest registered data archive for the Caldor Fire ben
 Extract the archive so that `Caldor.h5` is available in the working directory:
 
 ```bash
-unzip v2026.1.zip
+unzip v2026.2.zip
 ```
 
-If you downloaded a different version, replace `v2026.1.zip` with the archive file that `firebench data get 1` created.
+If you downloaded a different version, replace `v2026.2.zip` with the archive file that `firebench data get 1` created.
 
 ## 3. Run the benchmark
 
@@ -54,6 +54,15 @@ This command writes the default Caldor outputs in the working directory:
 Use a different model output file by replacing the final `my_model_output.h5` argument with the path to your FireBench standard HDF5 output.
 
 ## 4. Useful CLI commands
+
+Main helpers
+
+```bash
+firebench --help
+firebench list --help
+firebench data --help
+firebench run --help
+```
 
 List all benchmark cases:
 
