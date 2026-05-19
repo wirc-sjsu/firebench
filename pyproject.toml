@@ -71,3 +71,6 @@ features = ["dev"]
 firebench = "firebench.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/firebench"]
+[tool.black]
+line-length = 108
+target-version = ["py313"]
