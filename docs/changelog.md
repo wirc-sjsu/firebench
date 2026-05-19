@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - `firebench data get` downloads benchmark data.
   - `firebench run` runs a benchmark case against a model output in FireBench standard HDF5 format.
 - Add regression tests covering import, CLI, benchmark discovery, and deprecated environment-variable behavior without requiring local environment configuration.
+- Added official PyPI/TestPyPI packaging and distribution support for firebench.
+- Python 3.14 support
 
 ### Benchmarks
 - Add the FB001 2021 Caldor Fire benchmark to the benchmark registry.
