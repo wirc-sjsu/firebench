@@ -1,0 +1,2 @@
+*.h5 filter=lfs diff=lfs merge=lfs -text
+data/benchmarks/FB009/raw/situ_data.json filter=lfs diff=lfs merge=lfs -text
