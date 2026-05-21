@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] 
+### Added
+### Changed
+### Fixed
+### Deprecated
+
 ## [0.9.0] - 2026 / 05 / 18
 ### Added
 - Add the `firebench` command line interface for benchmark discovery, data download, and benchmark execution:
