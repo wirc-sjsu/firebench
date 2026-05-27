@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] 
 ### Added
+- Integrate the `firebench-adapter-common` source code into FireBench as `firebench.adapter_common`.
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
 ### Changed
 - Keep the `code-formatting` Makefile target as a Black check and add `fix-code-formatting` to apply Black formatting locally.
