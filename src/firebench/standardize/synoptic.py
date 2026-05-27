@@ -115,12 +115,12 @@ def standardize_synoptic_raws_from_json(
                 dts = []
 
                 for t in station_dict["OBSERVATIONS"]["date_time"]:
-                    # differntiates between YYYYMMDDHHMMSS or extended ISO 8601
-                    if t.endswith("Z"): # Detects if format in UTC timezone
+                    # differentiates between YYYYMMDDHHMMSS or extended ISO 8601
+                    if t.endswith("Z"):  # Detects if format in UTC timezone
                         fmt = "%Y%m%d%H%M%SZ" if t[:-1].isdigit() else "%Y-%m-%dT%H:%M:%SZ"
                         dt_temp = pytz.utc.localize(datetime.strptime(t, fmt)).astimezone(tz)
 
-                    else: # Assumes local timezone
+                    else:  # Assumes local timezone
                         fmt = "%Y%m%d%H%M%S" if t.isdigit() else "%Y-%m-%dT%H:%M:%S"
                         dt_temp = tz.localize(datetime.strptime(t, fmt))
 
