@@ -157,6 +157,17 @@ def test_list_command_prints_case_names_and_docs(monkeypatch, tmp_path):
     assert "{" not in result.output
 
 
+def test_data_list_matches_top_level_list(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    top_level = CliRunner().invoke(main, ["list"])
+    data_level = CliRunner().invoke(main, ["data", "list"])
+
+    assert top_level.exit_code == 0, top_level.output
+    assert data_level.exit_code == 0, data_level.output
+    assert data_level.output == top_level.output
+
+
 def test_data_versions_prints_available_versions(monkeypatch, tmp_path):
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
 

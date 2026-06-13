@@ -96,6 +96,11 @@ def _download_with_progress(url: str, output_path: Path) -> None:
             progress_bar.__exit__(None, None, None)
 
 
+def _echo_cases() -> None:
+    for case_id, case_info in sorted(AVAIL_BENCHMARKS.items()):
+        click.echo(f"{case_id}  {case_info['name']} - docs: {case_info['url']}")
+
+
 @main.command()
 @click.argument(
     "model_output",
@@ -211,8 +216,7 @@ def list_cases() -> None:
     """
     List all available benchmarks
     """
-    for case_id, case_info in sorted(AVAIL_BENCHMARKS.items()):
-        click.echo(f"{case_id}  {case_info['name']} - docs: {case_info['url']}")
+    _echo_cases()
     return 0
 
 
@@ -222,6 +226,15 @@ def data() -> None:
     Download benchmark data.
     """
     pass
+
+
+@data.command("list")
+def data_list_cases() -> None:
+    """
+    List all available benchmarks.
+    """
+    _echo_cases()
+    return 0
 
 
 @data.command("versions")
