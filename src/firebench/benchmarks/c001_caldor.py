@@ -7,27 +7,27 @@ from functools import partial
 from scipy.interpolate import NearestNDInterpolator
 from pathlib import Path
 from datetime import datetime, timedelta
-import pytz
 from firebench import tools as ft
 from firebench import standardize as fs
 from firebench import metrics as fm
 from firebench import signing as fsi
+from firebench.benchmarks import c001_caldor_config as cfg
 import numpy as np
 from firebench import __version__ as fb_version
 from firebench import Quantity
 
-CASE_NAME = "Caldor 2021"
-CASE_SHORT_NAME = "Caldor"
-CASE_ID = "FB001"
-DEFAULT_OBS_DATA_PATH = Path("Caldor.h5")
+CASE_NAME = cfg.CASE_NAME
+CASE_SHORT_NAME = cfg.CASE_SHORT_NAME
+CASE_ID = cfg.CASE_ID
+DEFAULT_OBS_DATA_PATH = cfg.DEFAULT_OBS_DATA_PATH
 OBS_DATA_PATH = DEFAULT_OBS_DATA_PATH
-LOG_FILENAME = "Caldor.log"
-DEFAULT_LOGGING_LEVEL = 20  # INFO
-DEFAULT_VERBOSITY = 3
-DEFAULT_AGGREGATION_SCHEME = "A"
+LOG_FILENAME = cfg.LOG_FILENAME
+DEFAULT_LOGGING_LEVEL = cfg.DEFAULT_LOGGING_LEVEL
+DEFAULT_VERBOSITY = cfg.DEFAULT_VERBOSITY
+DEFAULT_AGGREGATION_SCHEME = cfg.DEFAULT_AGGREGATION_SCHEME
 
-DEFAULT_OUTPUT_PATH_JSON = Path(f"{CASE_SHORT_NAME}_rslt.json")
-DEFAULT_SCORE_CARD_REPORT_PATH = Path(f"{CASE_SHORT_NAME}.pdf")
+DEFAULT_OUTPUT_PATH_JSON = cfg.DEFAULT_OUTPUT_PATH_JSON
+DEFAULT_SCORE_CARD_REPORT_PATH = cfg.DEFAULT_SCORE_CARD_REPORT_PATH
 output_path_json = DEFAULT_OUTPUT_PATH_JSON
 score_card_report_path = DEFAULT_SCORE_CARD_REPORT_PATH
 
@@ -970,228 +970,59 @@ _BASE_BENCHMARK_FUNCTIONS = BENCHMARK_FUNCTIONS.copy()
 # Utilities
 # ---------------------------
 
-LIST_PERIMETERS_W1 = [
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-18T20:30-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-19T20:45-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-20T20:20-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-21T21:15-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-24T22:07-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-26T03:30-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-26T22:15-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-27T00:22-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-28T21:30-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-29T22:32-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-30T21:09-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-31T21:08-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-01T21:12-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-03T00:40-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-04T23:29-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-05T23:41-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-06T23:09-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-07T22:40-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-08T22:33-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-10T23:34-07:00",
-]
+TZ_REF = cfg.TZ_REF
+CURATED_VALIDATION_WINDOWS = cfg.CURATED_VALIDATION_WINDOWS
+HRRR_VALIDATION_WINDOWS = cfg.HRRR_VALIDATION_WINDOWS
+WH_PERIODS = cfg.HRRR_PERIODS
+WH_PERIMETERS = cfg.HRRR_PERIMETERS
 
-LIST_PERIMETERS_W2 = [
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-20T20:20-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-21T21:15-07:00",
-]
+LIST_PERIMETERS_W1 = cfg.CURATED_PERIMETERS["W1"]
+LIST_PERIMETERS_W2 = cfg.CURATED_PERIMETERS["W2"]
+LIST_PERIMETERS_W3 = cfg.CURATED_PERIMETERS["W3"]
+LIST_PERIMETERS_W4 = cfg.CURATED_PERIMETERS["W4"]
 
-
-LIST_PERIMETERS_W3 = [
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-26T22:15-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-27T00:22-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-28T21:30-06:00",
-]
-
-LIST_PERIMETERS_W4 = [
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-29T22:32-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-30T21:09-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-31T21:08-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-01T21:12-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-03T00:40-07:00",
-]
-
-TZ_REF = pytz.timezone("US/Pacific")
-W1_PERIOD = (
-    TZ_REF.localize(datetime(2021, 8, 17, 20, 20)),
-    TZ_REF.localize(datetime(2021, 9, 10, 23, 34)),
-)
-W2_PERIOD = (
-    TZ_REF.localize(datetime(2021, 8, 19, 20, 45)),
-    TZ_REF.localize(datetime(2021, 8, 21, 21, 15)),
-)
-W3_PERIOD = (
-    TZ_REF.localize(datetime(2021, 8, 26, 2, 30)),
-    TZ_REF.localize(datetime(2021, 8, 28, 20, 30)),
-)
-W4_PERIOD = (
-    TZ_REF.localize(datetime(2021, 8, 28, 20, 30)),
-    TZ_REF.localize(datetime(2021, 9, 3, 0, 40)),
-)
+W1_PERIOD = cfg.CURATED_PERIODS["W1"]
+W2_PERIOD = cfg.CURATED_PERIODS["W2"]
+W3_PERIOD = cfg.CURATED_PERIODS["W3"]
+W4_PERIOD = cfg.CURATED_PERIODS["W4"]
 
 # list of all valid context dict structured key
-CTX_SPEC: dict[fm.CTXKey, str] = {
-    ("agg_bin", "building_damage", "obs"): "Aggregate building damage dataset to binary classes for obs",
-    (
-        "agg_bin",
-        "building_damage",
-        "model",
-    ): "Aggregate building damage dataset to binary classes for model",
-    ("agg_bin", "mtbs_severity", "obs"): "Aggregate mtbs severity dataset to binary classes for obs",
-    ("agg_bin", "mtbs_severity", "model"): "Aggregate mtbs severity dataset to binary classes for model",
-    (
-        "mask",
-        "landfire_canopy",
-        "all",
-    ): "LANDFIRE canopy mask using all canopy fields interpolated on benchmark field grid",
-}
+CTX_SPEC: dict[fm.CTXKey, str] = cfg.CTX_SPEC
 
 
 def add_wx_benchmarks():
-    study_period = {"W1": W1_PERIOD, "W2": W2_PERIOD, "W3": W3_PERIOD, "W4": W4_PERIOD}
-    metric_funcs = {"MAE": fm.stats.mae, "RMSE": fm.stats.rmse, "Bias": fm.stats.bias}
+    metric_funcs = {
+        "standard": {"MAE": fm.stats.mae, "RMSE": fm.stats.rmse, "Bias": fm.stats.bias},
+        "wind_direction": {"circular bias": fm.stats.circular_bias_deg},
+    }
     summary_stats_func = {"min": np.nanmin, "mean": np.nanmean, "max": np.nanmax}
-    trusted_source_only = {"TSO": False, "": True}
-
     bench_idx = 1
 
-    m_value = 5
-    common_units = "degC"
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"Air temp {metric_name} {func_name} {period_name} {trust_txt}"
+    for variable_spec in cfg.WX_VARIABLE_SPECS:
+        for period_name, period in cfg.CURATED_PERIODS.items():
+            for metric_name, metric_func in metric_funcs[variable_spec["metric_set"]].items():
+                for trust_txt, trust in cfg.WX_TRUSTED_SOURCE_OPTIONS:
+                    for func_name, stat_func in summary_stats_func.items():
+                        bench_id = f"FB001_WX{bench_idx:03d}"
+                        bench_name = (
+                            f"{variable_spec['label']} {metric_name} {func_name} "
+                            f"{period_name} {trust_txt}"
+                        )
 
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="air_temperature",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m degC = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R08"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
-
-    m_value = 15
-    common_units = "percent"
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"RH {metric_name} {func_name} {period_name} {trust_txt}"
-
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="relative_humidity",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m % = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R09"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
-
-    m_value = 5
-    common_units = "m/s"
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"Wind Speed {metric_name} {func_name} {period_name} {trust_txt}"
-
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="wind_speed",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m m/s = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R10"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
-
-    m_value = 45
-    common_units = "degree"
-    metric_funcs_wd = {"circular bias": fm.stats.circular_bias_deg}
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs_wd.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"Wind Direction {metric_name} {func_name} {period_name} {trust_txt}"
-
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="wind_direction",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m m/s = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R11"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
-
-    m_value = 5
-    common_units = "percent"
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"FMC 10h {metric_name} {func_name} {period_name} {trust_txt}"
-
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="fuel_moisture_content_10h",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m m/s = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R12"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
+                        BENCHMARK_FUNCTIONS[bench_id] = partial(
+                            bench_wx_generic_index,
+                            kpi_name_custom=bench_name,
+                            period=period,
+                            wx_variable_name=variable_spec["variable"],
+                            common_unit=variable_spec["common_unit"],
+                            metric_func=metric_func,
+                            stat_func=stat_func,
+                            value_norm_param_m=variable_spec["norm_m"],
+                            use_all_sensor_height_trust_lvl=trust,
+                        )
+                        ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
+                        REQUIREMENTS[variable_spec["requirement"]]["benchmarks"].append(bench_id)
+                        bench_idx += 1
 
 
 def create_benchmark_groups():
