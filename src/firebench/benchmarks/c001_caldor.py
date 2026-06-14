@@ -965,6 +965,8 @@ GROUPS = {}
 AGGREGATION = {}
 WX_GROUP_BENCHMARKS = {}
 WX_GROUPS_BY_PERIOD = {}
+HRRR_FP_GROUP_BENCHMARKS = {}
+FIRE_PERIMETER_GROUP_PERIMETERS = {}
 _BASE_REQUIREMENTS = copy.deepcopy(REQUIREMENTS)
 _BASE_BENCHMARK_FUNCTIONS = BENCHMARK_FUNCTIONS.copy()
 
@@ -1032,6 +1034,70 @@ def add_wx_benchmarks():
                             bench_idx += 1
 
 
+def add_hrrr_fire_perimeter_benchmarks():
+    bench_idx = 1
+    index_metrics = (
+        ("Average Jaccard", jaccard_from_list, np.mean, 1),
+        ("Minimum Jaccard", jaccard_from_list, np.min, 1),
+        ("Maximum Jaccard", jaccard_from_list, np.max, 1),
+        ("Average Dice-Sorensen", sorensen_dice_from_list, np.mean, 1),
+        ("Minimum Dice-Sorensen", sorensen_dice_from_list, np.min, 1),
+        ("Maximum Dice-Sorensen", sorensen_dice_from_list, np.max, 1),
+    )
+
+    for period_name, perimeters in cfg.HRRR_PERIMETERS.items():
+        period_number = period_name.removeprefix("WH")
+        group_name = f"FP_H{period_number}"
+        requirement_name = f"R_FP_H{period_number}"
+        HRRR_FP_GROUP_BENCHMARKS[group_name] = {}
+        FIRE_PERIMETER_GROUP_PERIMETERS[group_name] = list(perimeters)
+        REQUIREMENTS[requirement_name] = {
+            "main": lambda model_dataset, obs_dataset, list_benchmarks, required_datasets, ctx, req_name=requirement_name: req_generic(
+                model_dataset, obs_dataset, list_benchmarks, required_datasets, ctx, req_name=req_name
+            ),
+            "benchmarks": [],
+            "required_datasets": {perimeter: ["rel_path", "time"] for perimeter in perimeters},
+        }
+
+        for metric_name, metric_func, agg_func, weight in index_metrics:
+            bench_id = f"FB001_FPH{bench_idx:03d}"
+            BENCHMARK_FUNCTIONS[bench_id] = partial(
+                bench_fp_generic_index,
+                kpi_name_custom=metric_name,
+                period_name=period_name,
+                list_perims=perimeters,
+                func_index=metric_func,
+                func_index_rslt_agg=agg_func,
+            )
+            HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = weight
+            REQUIREMENTS[requirement_name]["benchmarks"].append(bench_id)
+            bench_idx += 1
+
+        bench_id = f"FB001_FPH{bench_idx:03d}"
+        BENCHMARK_FUNCTIONS[bench_id] = partial(
+            bench_fp_generic_area_final_bias,
+            period_name=period_name,
+            list_perims=perimeters,
+            value_norm_param_m=cfg.HRRR_FIRE_PERIMETER_NORM_M,
+        )
+        HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = 2
+        REQUIREMENTS[requirement_name]["benchmarks"].append(bench_id)
+        bench_idx += 1
+
+        bench_id = f"FB001_FPH{bench_idx:03d}"
+        BENCHMARK_FUNCTIONS[bench_id] = partial(
+            bench_fp_generic_area,
+            kpi_name_custom="Burn Area RMSE",
+            period_name=period_name,
+            list_perims=perimeters,
+            func=fm.stats.rmse,
+            value_norm_param_m=cfg.HRRR_FIRE_PERIMETER_NORM_M,
+        )
+        HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = 2
+        REQUIREMENTS[requirement_name]["benchmarks"].append(bench_id)
+        bench_idx += 1
+
+
 def create_benchmark_groups():
     new_grp_benchs = {f"FB001_BD{i:02d}": 1 for i in range(1, 7)}
     GROUPS["Building Damage"] = {"weight": 1, "benchmarks": new_grp_benchs.copy()}
@@ -1055,6 +1121,7 @@ def create_benchmark_groups():
             "FB001_FP29": 2,
         },
     }
+    FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W1"] = list(LIST_PERIMETERS_W1)
     GROUPS["Fire Perimeter W2"] = {
         "weight": 1,
         "benchmarks": {
@@ -1068,6 +1135,7 @@ def create_benchmark_groups():
             "FB001_FP30": 2,
         },
     }
+    FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W2"] = list(LIST_PERIMETERS_W2)
     GROUPS["Fire Perimeter W3"] = {
         "weight": 1,
         "benchmarks": {
@@ -1081,6 +1149,7 @@ def create_benchmark_groups():
             "FB001_FP31": 2,
         },
     }
+    FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W3"] = list(LIST_PERIMETERS_W3)
     GROUPS["Fire Perimeter W4"] = {
         "weight": 1,
         "benchmarks": {
@@ -1094,8 +1163,12 @@ def create_benchmark_groups():
             "FB001_FP32": 2,
         },
     }
+    FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W4"] = list(LIST_PERIMETERS_W4)
 
     for group_name, benchmark_weights in WX_GROUP_BENCHMARKS.items():
+        GROUPS[group_name] = {"weight": 1, "benchmarks": benchmark_weights.copy()}
+
+    for group_name, benchmark_weights in HRRR_FP_GROUP_BENCHMARKS.items():
         GROUPS[group_name] = {"weight": 1, "benchmarks": benchmark_weights.copy()}
 
 
@@ -1190,6 +1263,9 @@ def create_aggregation_schemes():
         AGGREGATION[f"WX_{period_name}"] = _weather_period_aggregation(period_name)
 
     AGGREGATION["WX_WH_ALL"] = _copy_groups(hrrr_weather_group_names)
+    for period_name in hrrr_period_names:
+        period_number = period_name.removeprefix("WH")
+        AGGREGATION[f"FP_H{period_number}"] = _copy_groups([f"FP_H{period_number}"])
 
     AGGREGATION[f"short_all"] = {}
     AGGREGATION[f"short_all"][f"Building Damage"] = GROUPS[f"Building Damage"].copy()
@@ -1214,9 +1290,19 @@ def create_aggregation_schemes():
         AGGREGATION[f"WX_short"][f"Wind Direction W{i:1d}"] = GROUPS[f"Wind Direction W{i:1d}"].copy()
         AGGREGATION[f"WX_short"][f"FMC 10h W{i:1d}"] = GROUPS[f"FMC 10h W{i:1d}"].copy()
 
+    AGGREGATION["DEMO"] = _weather_period_aggregation("WH12")
+    AGGREGATION["DEMO"]["FP_H12"] = GROUPS["FP_H12"].copy()
+
+    AGGREGATION["DEMO_WX0"] = _weather_period_aggregation("WH12")
+    for group_name in _weather_group_names("WH12"):
+        AGGREGATION["DEMO_WX0"][group_name]["weight"] = 0
+    AGGREGATION["DEMO_WX0"]["FP_H12"] = GROUPS["FP_H12"].copy()
+
 
 def build_registries():
-    global REQUIREMENTS, BENCHMARK_FUNCTIONS, GROUPS, AGGREGATION, WX_GROUP_BENCHMARKS, WX_GROUPS_BY_PERIOD
+    global REQUIREMENTS, BENCHMARK_FUNCTIONS, GROUPS, AGGREGATION
+    global WX_GROUP_BENCHMARKS, WX_GROUPS_BY_PERIOD, HRRR_FP_GROUP_BENCHMARKS
+    global FIRE_PERIMETER_GROUP_PERIMETERS
 
     REQUIREMENTS = copy.deepcopy(_BASE_REQUIREMENTS)
     BENCHMARK_FUNCTIONS = _BASE_BENCHMARK_FUNCTIONS.copy()
@@ -1224,8 +1310,11 @@ def build_registries():
     AGGREGATION = {}
     WX_GROUP_BENCHMARKS = {}
     WX_GROUPS_BY_PERIOD = {}
+    HRRR_FP_GROUP_BENCHMARKS = {}
+    FIRE_PERIMETER_GROUP_PERIMETERS = {}
 
     add_wx_benchmarks()
+    add_hrrr_fire_perimeter_benchmarks()
     create_benchmark_groups()
     create_aggregation_schemes()
 
@@ -1632,7 +1721,11 @@ def get_list_benchmark_with_agg(agg_dict: dict, agg_scheme: str):
 def _benchmark_debug_label(bench_id: str) -> str:
     benchmark = BENCHMARK_FUNCTIONS[bench_id]
     keywords = getattr(benchmark, "keywords", {}) or {}
-    return keywords.get("kpi_name_custom", "")
+    if "kpi_name_custom" in keywords:
+        return keywords["kpi_name_custom"]
+    if getattr(benchmark, "func", None) is bench_fp_generic_area_final_bias:
+        return "Final Burn Area Bias"
+    return ""
 
 
 def describe_benchmark_registry(agg_scheme: str = DEFAULT_AGGREGATION_SCHEME) -> str:
@@ -1670,6 +1763,11 @@ def describe_benchmark_registry(agg_scheme: str = DEFAULT_AGGREGATION_SCHEME) ->
             f"- {group_name} (weight={group_content['weight']}, "
             f"benchmarks={len(group_content['benchmarks'])})"
         )
+        perimeters = FIRE_PERIMETER_GROUP_PERIMETERS.get(group_name, [])
+        if perimeters:
+            lines.append("  Perimeters:")
+            for perimeter in perimeters:
+                lines.append(f"    - {perimeter}")
         for bench_id, bench_weight in group_content["benchmarks"].items():
             label = _benchmark_debug_label(bench_id)
             suffix = f" - {label}" if label else ""

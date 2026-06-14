@@ -218,6 +218,8 @@ WX_VARIABLE_SPECS = (
     },
 )
 
+HRRR_FIRE_PERIMETER_NORM_M = 5_000
+
 CTX_SPEC = {
     ("agg_bin", "building_damage", "obs"): "Aggregate building damage dataset to binary classes for obs",
     ("agg_bin", "building_damage", "model"): "Aggregate building damage dataset to binary classes for model",
