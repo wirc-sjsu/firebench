@@ -42,33 +42,34 @@ def test_hrrr_fire_perimeter_aggregation_schemes_are_generated():
     assert len(c001_caldor.REQUIREMENTS["R_FP_H12"]["benchmarks"]) == 8
 
 
-def test_demo_aggregation_contains_wh12_weather_and_fire_perimeter():
+def test_demo_aggregation_contains_wh16_weather_and_fire_perimeter():
     c001_caldor.build_registries()
 
     assert list(c001_caldor.AGGREGATION["DEMO"]) == [
-        "Air Temp WH12",
-        "RH WH12",
-        "Wind Speed WH12",
-        "Wind Direction WH12",
-        "FMC 10h WH12",
-        "FP_H12",
+        "Air Temp WH16",
+        "RH WH16",
+        "Wind Speed WH16",
+        "Wind Direction WH16",
+        "FMC 10h WH16",
+        "FP_H16",
     ]
     assert len(c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "DEMO")) == 86
+    assert "FB001_WX343" in c001_caldor.AGGREGATION["DEMO"]["Air Temp WH16"]["benchmarks"]
 
 
 def test_demo_wx0_sets_weather_group_weights_to_zero():
     c001_caldor.build_registries()
 
     assert list(c001_caldor.AGGREGATION["DEMO_WX0"]) == [
-        "Air Temp WH12",
-        "RH WH12",
-        "Wind Speed WH12",
-        "Wind Direction WH12",
-        "FMC 10h WH12",
-        "FP_H12",
+        "Air Temp WH16",
+        "RH WH16",
+        "Wind Speed WH16",
+        "Wind Direction WH16",
+        "FMC 10h WH16",
+        "FP_H16",
     ]
     for group_name, group in c001_caldor.AGGREGATION["DEMO_WX0"].items():
-        if group_name == "FP_H12":
+        if group_name == "FP_H16":
             assert group["weight"] == 1
         else:
             assert group["weight"] == 0
@@ -80,13 +81,13 @@ def test_describe_benchmark_registry_prints_selected_groups():
 
     assert "Aggregation scheme: DEMO" in description
     assert "Selected groups: 6" in description
-    assert "- Air Temp WH12" in description
-    assert "- FP_H12" in description
+    assert "- Air Temp WH16" in description
+    assert "- FP_H16" in description
     assert "FB001_WX" in description
     assert "FB001_FPH" in description
     assert "Air temp" in description
     assert "Perimeters:" in description
-    assert "/polygons/Caldor_2021-08-20T20:20-07:00" in description
+    assert "/polygons/Caldor_2021-08-21T21:15-07:00" in description
 
 
 def test_get_list_benchmark_with_aggregation_scheme():

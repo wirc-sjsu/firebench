@@ -1329,28 +1329,57 @@ def run_all_benchmarks(
 ):
     ft.logger.debug("run_all_benchmarks")
 
-    obs_dataset = File(obs_dataset_path, "r")
-    model_dataset = File(model_dataset_path, "r")
-
-    fs.validate_h5_std(model_dataset)
-
     rslt = {"benchmarks": {}}
     ctx = {}
-    for req_name, req_dict in REQUIREMENTS.items():
-        # filter list benchmarks
-        list_filtered = [bench for bench in req_dict["benchmarks"] if bench in list_bench]
-        ft.logger.debug("Filtered list of benchmarks to run with current requirement: %s", list_filtered)
-        rslt["benchmarks"] = ft.merge_dictionaries(
-            rslt["benchmarks"],
-            req_dict["main"](model_dataset, obs_dataset, list_filtered, req_dict["required_datasets"], ctx),
-        )
+    with File(obs_dataset_path, "r") as obs_dataset, File(model_dataset_path, "r") as model_dataset:
+        fs.validate_h5_std(model_dataset)
 
-    model_dataset.close()
-    obs_dataset.close()
+        for req_name, req_dict in REQUIREMENTS.items():
+            # filter list benchmarks
+            list_filtered = [bench for bench in req_dict["benchmarks"] if bench in list_bench]
+            ft.logger.debug("Filtered list of benchmarks to run with current requirement: %s", list_filtered)
+            rslt["benchmarks"] = ft.merge_dictionaries(
+                rslt["benchmarks"],
+                req_dict["main"](model_dataset, obs_dataset, list_filtered, req_dict["required_datasets"], ctx),
+            )
+
+    raise_if_selected_benchmarks_missing(rslt["benchmarks"], list_bench)
 
     rslt = aggregate_scores(rslt, agg_scheme)
 
     return rslt
+
+
+def get_benchmark_requirements() -> dict[str, list[str]]:
+    benchmark_requirements = {}
+    for req_name, req_dict in REQUIREMENTS.items():
+        for bench_id in req_dict["benchmarks"]:
+            benchmark_requirements.setdefault(bench_id, []).append(req_name)
+    return benchmark_requirements
+
+
+def raise_if_selected_benchmarks_missing(benchmark_results: dict, list_bench: list[str]) -> None:
+    missing_benchmarks = [bench_id for bench_id in list_bench if bench_id not in benchmark_results]
+    if not missing_benchmarks:
+        return
+
+    benchmark_requirements = get_benchmark_requirements()
+    missing_details = [
+        f"{bench_id} ({'/'.join(benchmark_requirements.get(bench_id, ['unknown requirement']))})"
+        for bench_id in missing_benchmarks
+    ]
+    visible_details = ", ".join(missing_details[:10])
+    if len(missing_details) > 10:
+        visible_details = f"{visible_details}, ... {len(missing_details) - 10} more"
+
+    ft.logger.error(
+        "Selected benchmarks did not run, probably because their input requirement was not satisfied: %s",
+        visible_details,
+    )
+    raise KeyError(
+        "Selected benchmark results missing before aggregation: "
+        f"{visible_details}. Check the requirement warning above for the missing HDF5 input."
+    )
 
 
 def aggregate_scores(benchmark_results, agg_scheme):
@@ -1376,7 +1405,7 @@ def aggregate_scores(benchmark_results, agg_scheme):
         for bench_id in group_bench.keys():
             if bench_id not in benchmark_results["benchmarks"].keys():
                 ft.logger.error("Benchmark ID: %s required for aggregation scheme not found.", bench_id)
-                raise KeyError("Benchmark result missing. Check log")
+                raise KeyError(f"Benchmark result missing for aggregation: {bench_id}. Check log")
             group_score += benchmark_results["benchmarks"][bench_id]["Score"] * group_bench[bench_id]
             group_sum_weight += group_bench[bench_id]
             # print(bench_id, benchmark_results["benchmarks"][bench_id]["Score"],  group_bench[bench_id])
