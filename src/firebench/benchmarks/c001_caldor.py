@@ -60,7 +60,7 @@ def req_generic(
             bench_output[bench_id] = BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
     else:
         ft.logger.warning(
-            "Requirement %s not satisfied. All related benchmarks ignored. First missing item: %s",
+            "Requirement %s not satisfied. All related benchmarks ignored. Missing item(s): %s",
             req_name,
             miss,
         )
@@ -83,8 +83,13 @@ def req_wx_station(
         return bench_output
 
     # Check requirement
+    periods = _wx_requirement_periods(list_benchmarks)
     req_ok, miss = fs.validate_h5_weather_stations_structure(
-        model_dataset, obs_dataset, required_datasets["variable"], required_datasets["station_pattern"]
+        model_dataset,
+        obs_dataset,
+        required_datasets["variable"],
+        required_datasets["station_pattern"],
+        periods=periods,
     )
 
     # run benchmarks
@@ -95,12 +100,48 @@ def req_wx_station(
             bench_output[bench_id] = BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
     else:
         ft.logger.warning(
-            "Requirement %s not satisfied. All related benchmarks ignored. First missing item: %s",
+            "Requirement %s not satisfied. All related benchmarks ignored. Missing item(s): %s",
             req_name,
             miss,
         )
+        _log_missing_wx_station_requirements(req_name, required_datasets["variable"], miss)
 
     return bench_output
+
+
+def _wx_requirement_periods(list_benchmarks: list[str]) -> list[tuple[datetime, datetime]]:
+    periods = []
+    for bench_id in list_benchmarks:
+        period = getattr(BENCHMARK_FUNCTIONS[bench_id], "keywords", {}).get("period")
+        if period is not None and period not in periods:
+            periods.append(period)
+    return periods
+
+
+def _log_missing_wx_station_requirements(req_name: str, variable_name: str, miss) -> None:
+    if not isinstance(miss, list):
+        ft.logger.warning(
+            "Weather station requirement %s missing variable %s: %s",
+            req_name,
+            variable_name,
+            miss,
+        )
+        return
+
+    ft.logger.warning(
+        "Weather station requirement %s missing %s for %d station(s).",
+        req_name,
+        variable_name,
+        len(miss),
+    )
+    for missing_station in miss:
+        ft.logger.warning(
+            "Weather station requirement %s missing for %s variable %s: %s",
+            req_name,
+            missing_station.get("station", "<unknown station>"),
+            missing_station.get("variable", variable_name),
+            ", ".join(missing_station.get("missing", [])),
+        )
 
 
 # ---------------------------
@@ -316,6 +357,8 @@ def bench_wx_generic_index(
         ):
             # process time
             mask_obs = get_mask_from_period(obs_dataset, f"{fs.TIME_SERIES}/{station}", period)
+            if not np.any(mask_obs):
+                continue
             mask_model = get_mask_from_period(model_dataset, f"{fs.TIME_SERIES}/{station}", period)
             assert np.sum(mask_obs) == np.sum(mask_model), "time vector size invalid"
 
@@ -1193,9 +1236,7 @@ def create_aggregation_schemes():
         for group_name in _weather_group_names(period_name)
     ]
     hrrr_weather_group_names = [
-        group_name
-        for period_name in hrrr_period_names
-        for group_name in _weather_group_names(period_name)
+        group_name for period_name in hrrr_period_names for group_name in _weather_group_names(period_name)
     ]
 
     AGGREGATION["A"] = _copy_groups(
@@ -1337,10 +1378,14 @@ def run_all_benchmarks(
         for req_name, req_dict in REQUIREMENTS.items():
             # filter list benchmarks
             list_filtered = [bench for bench in req_dict["benchmarks"] if bench in list_bench]
-            ft.logger.debug("Filtered list of benchmarks to run with current requirement: %s", list_filtered)
+            ft.logger.debug(
+                "Filtered list of benchmarks to run with current requirement: %s", list_filtered
+            )
             rslt["benchmarks"] = ft.merge_dictionaries(
                 rslt["benchmarks"],
-                req_dict["main"](model_dataset, obs_dataset, list_filtered, req_dict["required_datasets"], ctx),
+                req_dict["main"](
+                    model_dataset, obs_dataset, list_filtered, req_dict["required_datasets"], ctx
+                ),
             )
 
     raise_if_selected_benchmarks_missing(rslt["benchmarks"], list_bench)
@@ -1598,7 +1643,14 @@ def get_mask_from_period(dataset: File, group_path: str, period: tuple[datetime,
         # absolute time definition
         time_origin = period[0]
         time_units = "s"
-        time = [(datetime.fromisoformat(t) - time_origin).total_seconds() for t in time_ds[:]]
+        time = np.array(
+            [
+                (
+                    datetime.fromisoformat(t.decode() if isinstance(t, bytes) else t) - time_origin
+                ).total_seconds()
+                for t in time_ds[:]
+            ]
+        )
 
     return _mask_time_window_rel(time, time_origin, time_units, window=period, interval="closed")
 

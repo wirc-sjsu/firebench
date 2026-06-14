@@ -1,4 +1,9 @@
 from pathlib import Path
+from datetime import datetime
+
+import h5py
+import numpy as np
+import pytz
 
 from firebench.benchmarks import c001_caldor
 
@@ -135,3 +140,82 @@ def test_resolve_h5_relative_path(tmp_path):
 
     absolute_path = (tmp_path / "absolute.kml").resolve()
     assert c001_caldor.resolve_h5_relative_path(FakeH5File(), absolute_path) == absolute_path
+
+
+def test_get_mask_from_period_handles_byte_string_absolute_times(tmp_path):
+    h5_path = tmp_path / "times.h5"
+    with h5py.File(h5_path, "w") as h5:
+        station = h5.create_group("time_series/station_TEST")
+        station.create_dataset(
+            "time",
+            data=np.array(
+                [
+                    b"2021-08-20T16:00:00-07:00",
+                    b"2021-08-20T18:00:00-07:00",
+                    b"2021-08-20T20:00:00-07:00",
+                ]
+            ),
+        )
+
+    tz_ref = pytz.timezone("US/Pacific")
+    period = (
+        tz_ref.localize(datetime(2021, 8, 20, 17)),
+        tz_ref.localize(datetime(2021, 8, 20, 19)),
+    )
+    with h5py.File(h5_path, "r") as h5:
+        mask = c001_caldor.get_mask_from_period(h5, "time_series/station_TEST", period)
+
+    assert mask.tolist() == [False, True, False]
+
+
+def test_weather_benchmark_skips_missing_model_station_outside_period(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+
+    with h5py.File(obs_path, "w") as obs_h5:
+        time_series = obs_h5.create_group("time_series")
+        station_outside = time_series.create_group("station_OUTSIDE")
+        station_outside.create_dataset("time", data=[0, 1])
+        station_outside["time"].attrs["time_origin"] = "2021-08-20T00:00:00+00:00"
+        station_outside["time"].attrs["time_units"] = "hour"
+        outside_var = station_outside.create_dataset("air_temperature", data=[290, 291])
+        outside_var.attrs["units"] = "degK"
+        outside_var.attrs["sensor_height_source_confidence_lvl"] = [0]
+
+        station_inside = time_series.create_group("station_INSIDE")
+        station_inside.create_dataset("time", data=[24, 25])
+        station_inside["time"].attrs["time_origin"] = "2021-08-20T00:00:00+00:00"
+        station_inside["time"].attrs["time_units"] = "hour"
+        inside_var = station_inside.create_dataset("air_temperature", data=[292, 293])
+        inside_var.attrs["units"] = "degK"
+        inside_var.attrs["sensor_height_source_confidence_lvl"] = [0]
+
+    with h5py.File(model_path, "w") as model_h5:
+        time_series = model_h5.create_group("time_series")
+        station_inside = time_series.create_group("station_INSIDE")
+        station_inside.create_dataset("time", data=[24, 25])
+        station_inside["time"].attrs["time_origin"] = "2021-08-20T00:00:00+00:00"
+        station_inside["time"].attrs["time_units"] = "hour"
+        inside_var = station_inside.create_dataset("air_temperature", data=[292, 293])
+        inside_var.attrs["units"] = "degK"
+
+    period = (
+        datetime(2021, 8, 21, 0, tzinfo=pytz.UTC),
+        datetime(2021, 8, 21, 1, tzinfo=pytz.UTC),
+    )
+    with h5py.File(model_path, "r") as model_h5, h5py.File(obs_path, "r") as obs_h5:
+        result = c001_caldor.bench_wx_generic_index(
+            model_h5,
+            obs_h5,
+            {},
+            kpi_name_custom="Air temp test",
+            period=period,
+            wx_variable_name="air_temperature",
+            common_unit="degK",
+            metric_func=lambda model, obs: float(np.mean(model - obs)),
+            stat_func=lambda values: float(np.mean(values)),
+            value_norm_param_m=5,
+            use_all_sensor_height_trust_lvl=True,
+        )
+
+    assert result["Air temp test"] == 0.0

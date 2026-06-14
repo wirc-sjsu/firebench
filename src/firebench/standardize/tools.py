@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 import re
 import h5py
 import hdf5plugin
@@ -136,26 +137,74 @@ def validate_h5_weather_stations_structure(
     file_ref: h5py.File,
     variable_checked: str,
     station_grp_name_starts_with: str = "station",
+    periods: list[tuple[datetime, datetime]] | None = None,
 ):
     """
     Check if all datasets and associated attributs are present in the file.
     Return False and the name of the first missing item if either the dataset or an attribute is missing
     """
-    ref_paths = []
+    missing = []
     for station in file_ref[f"{TIME_SERIES}"].keys():
         if not station.startswith(station_grp_name_starts_with):
             continue
         # check if station contains variable
         station_path = f"{TIME_SERIES}/{station}"
         if variable_checked in map(str, file_ref[station_path].keys()):
-            ref_paths.append(f"{TIME_SERIES}/{station}/time")
-            ref_paths.append(f"{TIME_SERIES}/{station}/{variable_checked}")
+            if periods and not _station_has_samples_in_periods(file_ref, station_path, periods):
+                continue
 
-    for path in ref_paths:
-        if path not in file_checked:
-            return False, path
+            station_missing = []
+            for dataset_name in ("time", variable_checked):
+                path = f"{station_path}/{dataset_name}"
+                if path not in file_checked:
+                    station_missing.append(path)
+
+            if station_missing:
+                missing.append(
+                    {
+                        "station": station,
+                        "variable": variable_checked,
+                        "missing": station_missing,
+                    }
+                )
+
+    if missing:
+        return False, missing
 
     return True, None
+
+
+def _decode_h5_text(value):
+    if isinstance(value, bytes):
+        return value.decode()
+    return value
+
+
+def _station_has_samples_in_periods(
+    file_ref: h5py.File,
+    station_path: str,
+    periods: list[tuple[datetime, datetime]],
+) -> bool:
+    if f"{station_path}/time" not in file_ref:
+        return True
+
+    time_ds = file_ref[f"{station_path}/time"]
+    if "time_origin" in time_ds.attrs.keys() and "time_units" in time_ds.attrs.keys():
+        time_origin = datetime.fromisoformat(_decode_h5_text(time_ds.attrs["time_origin"]))
+        time_units = _decode_h5_text(time_ds.attrs["time_units"])
+        time_values = ureg.Quantity(np.asarray(time_ds[:], dtype=np.float64), time_units).to("s").magnitude
+        for period_start, period_end in periods:
+            period_start_s = (period_start - time_origin).total_seconds()
+            period_end_s = (period_end - time_origin).total_seconds()
+            if np.any((time_values >= period_start_s) & (time_values <= period_end_s)):
+                return True
+        return False
+
+    time_values = np.array([datetime.fromisoformat(_decode_h5_text(value)) for value in time_ds[:]])
+    for period_start, period_end in periods:
+        if np.any((time_values >= period_start) & (time_values <= period_end)):
+            return True
+    return False
 
 
 def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5py.Group | h5py.Dataset):
