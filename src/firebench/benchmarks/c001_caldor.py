@@ -1290,13 +1290,13 @@ def create_aggregation_schemes():
         AGGREGATION[f"WX_short"][f"Wind Direction W{i:1d}"] = GROUPS[f"Wind Direction W{i:1d}"].copy()
         AGGREGATION[f"WX_short"][f"FMC 10h W{i:1d}"] = GROUPS[f"FMC 10h W{i:1d}"].copy()
 
-    AGGREGATION["DEMO"] = _weather_period_aggregation("WH12")
-    AGGREGATION["DEMO"]["FP_H12"] = GROUPS["FP_H12"].copy()
+    AGGREGATION["DEMO"] = _weather_period_aggregation("WH16")
+    AGGREGATION["DEMO"]["FP_H16"] = GROUPS["FP_H16"].copy()
 
-    AGGREGATION["DEMO_WX0"] = _weather_period_aggregation("WH12")
-    for group_name in _weather_group_names("WH12"):
+    AGGREGATION["DEMO_WX0"] = _weather_period_aggregation("WH16")
+    for group_name in _weather_group_names("WH16"):
         AGGREGATION["DEMO_WX0"][group_name]["weight"] = 0
-    AGGREGATION["DEMO_WX0"]["FP_H12"] = GROUPS["FP_H12"].copy()
+    AGGREGATION["DEMO_WX0"]["FP_H16"] = GROUPS["FP_H16"].copy()
 
 
 def build_registries():
