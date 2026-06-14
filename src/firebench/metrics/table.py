@@ -58,11 +58,11 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
     # ------------------------------------------------------------------
     doc = SimpleDocTemplate(
         str(filename.resolve()),
-        pagesize=(165 * mm, nb_rows * 8 * mm),
-        leftMargin=0 * mm,
-        rightMargin=0 * mm,
-        topMargin=0 * mm,
-        bottomMargin=0 * mm,
+        pagesize=A4,
+        leftMargin=10 * mm,
+        rightMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
     )
 
     text_table = []
@@ -114,7 +114,12 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
                         # KPI
                         kpi_score = item
                 text_table.append(
-                    [f"{kpi_name}", f"{kpi_score:.2e}", f"{bench_weight}", f"{bench_score:.2f}"]
+                    [
+                        f"{bench_id}: {kpi_name}",
+                        f"{kpi_score:.2e}",
+                        f"{bench_weight}",
+                        f"{bench_score:.2f}",
+                    ]
                 )
     else:
         # Only print benchmarks
@@ -136,7 +141,7 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
         ]
     )
 
-    col_widths = [100 * mm, 20 * mm, 20 * mm, 20 * mm]
+    col_widths = [130 * mm, 20 * mm, 20 * mm, 20 * mm]
 
     # ------------------------------------------------------------------
     # 3) Table style with both merges
@@ -208,7 +213,7 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
         ),  # merged header row
     )
 
-    table = Table(text_table, colWidths=col_widths)
+    table = Table(text_table, colWidths=col_widths, repeatRows=2)
     style = TableStyle(table_style)
     table.setStyle(style)
 

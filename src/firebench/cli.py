@@ -104,7 +104,7 @@ def _echo_cases() -> None:
 @main.command()
 @click.argument(
     "model_output",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    type=click.Path(dir_okay=False, path_type=Path),
 )
 @click.option(
     "-c",
@@ -171,6 +171,11 @@ def _echo_cases() -> None:
     default=None,
     help="Path to write the score card PDF.",
 )
+@click.option(
+    "--no-run",
+    is_flag=True,
+    help="Build registries and print selected groups/benchmarks without running metrics.",
+)
 def run(
     model_output: Path,
     case_id: str,
@@ -184,6 +189,7 @@ def run(
     obs_data: Path | None,
     output_json: Path | None,
     score_card_report: Path | None,
+    no_run: bool,
 ) -> None:
     """
     Run a benchmark case against model std HDF5 output. Use firebench list to see all available cases.
@@ -198,6 +204,16 @@ def run(
 
     configure_logging(verbose, use_console=not no_console, log_path=log_file)
     logger.info("[CLI] run benchmark case %s with model output: %s", selected_case_id, model_output)
+    if no_run:
+        debug_func = case_info.get("debug_func")
+        if debug_func is None:
+            raise click.UsageError(f"Benchmark case '{selected_case_id}' does not support --no-run.")
+        debug_func(agg_scheme=agg_scheme)
+        return 0
+
+    if not model_output.is_file():
+        raise click.UsageError(f"Model output file does not exist: {model_output}")
+
     case_info["func"](
         model_output,
         agg_scheme=agg_scheme,

@@ -7,6 +7,7 @@ AVAIL_BENCHMARKS = {
         "name": "2021 Caldor Fire",
         "url": "https://firebench.readthedocs.io/en/latest/benchmarks/California/01_Caldor.html",
         "func": c001_caldor.run_caldor_benchmark,
+        "debug_func": c001_caldor.print_benchmark_registry,
         "default_options": {
             "agg_scheme": c001_caldor.DEFAULT_AGGREGATION_SCHEME,
             "verbose": c001_caldor.DEFAULT_VERBOSITY,

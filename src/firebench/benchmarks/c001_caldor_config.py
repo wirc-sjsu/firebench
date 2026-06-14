@@ -150,6 +150,21 @@ HRRR_PERIMETERS = {
     name: window["perimeters"] for name, window in HRRR_VALIDATION_WINDOWS.items()
 }
 
+WX_PERIOD_SETS = (
+    {
+        "name": "curated",
+        "periods": CURATED_PERIODS,
+        "aggregation_prefix": "WX",
+        "all_aggregation": None,
+    },
+    {
+        "name": "hrrr",
+        "periods": HRRR_PERIODS,
+        "aggregation_prefix": "WX_",
+        "all_aggregation": "WX_WH_ALL",
+    },
+)
+
 WX_SUMMARY_STATS = ("min", "mean", "max")
 WX_TRUSTED_SOURCE_OPTIONS = (
     ("TSO", False),
@@ -159,6 +174,7 @@ WX_VARIABLE_SPECS = (
     {
         "requirement": "R08",
         "label": "Air temp",
+        "group_label": "Air Temp",
         "variable": "air_temperature",
         "common_unit": "degC",
         "norm_m": 5,
@@ -167,6 +183,7 @@ WX_VARIABLE_SPECS = (
     {
         "requirement": "R09",
         "label": "RH",
+        "group_label": "RH",
         "variable": "relative_humidity",
         "common_unit": "percent",
         "norm_m": 15,
@@ -175,6 +192,7 @@ WX_VARIABLE_SPECS = (
     {
         "requirement": "R10",
         "label": "Wind Speed",
+        "group_label": "Wind Speed",
         "variable": "wind_speed",
         "common_unit": "m/s",
         "norm_m": 5,
@@ -183,6 +201,7 @@ WX_VARIABLE_SPECS = (
     {
         "requirement": "R11",
         "label": "Wind Direction",
+        "group_label": "Wind Direction",
         "variable": "wind_direction",
         "common_unit": "degree",
         "norm_m": 45,
@@ -191,6 +210,7 @@ WX_VARIABLE_SPECS = (
     {
         "requirement": "R12",
         "label": "FMC 10h",
+        "group_label": "FMC 10h",
         "variable": "fuel_moisture_content_10h",
         "common_unit": "percent",
         "norm_m": 5,

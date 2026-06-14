@@ -11,11 +11,15 @@ def _fake_registry(tmp_path, call):
         call.update(kwargs)
         return {"ok": True}
 
+    def fake_debug_func(agg_scheme):
+        call["debug_agg_scheme"] = agg_scheme
+
     return {
         "001": {
             "name": "2021 Caldor Fire",
             "url": "https://example.test/caldor",
             "func": fake_runner,
+            "debug_func": fake_debug_func,
             "default_options": {
                 "agg_scheme": "A",
                 "verbose": 3,
@@ -132,6 +136,19 @@ def test_run_command_overrides_registry_defaults(monkeypatch, tmp_path):
         "score_card_report": Path(score_card_report),
     }
     assert log_file.exists()
+
+
+def test_run_command_no_run_prints_registry_without_model_file(monkeypatch, tmp_path):
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    result = CliRunner().invoke(
+        main,
+        ["run", str(tmp_path / "missing_model.h5"), "-a", "WX_WH1", "--no-run"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert call == {"debug_agg_scheme": "WX_WH1"}
 
 
 def test_run_command_unknown_case_fails(monkeypatch, tmp_path):

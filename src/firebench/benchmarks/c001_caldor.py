@@ -963,6 +963,8 @@ BENCHMARK_FUNCTIONS = {
 
 GROUPS = {}
 AGGREGATION = {}
+WX_GROUP_BENCHMARKS = {}
+WX_GROUPS_BY_PERIOD = {}
 _BASE_REQUIREMENTS = copy.deepcopy(REQUIREMENTS)
 _BASE_BENCHMARK_FUNCTIONS = BENCHMARK_FUNCTIONS.copy()
 
@@ -999,30 +1001,35 @@ def add_wx_benchmarks():
     bench_idx = 1
 
     for variable_spec in cfg.WX_VARIABLE_SPECS:
-        for period_name, period in cfg.CURATED_PERIODS.items():
-            for metric_name, metric_func in metric_funcs[variable_spec["metric_set"]].items():
-                for trust_txt, trust in cfg.WX_TRUSTED_SOURCE_OPTIONS:
-                    for func_name, stat_func in summary_stats_func.items():
-                        bench_id = f"FB001_WX{bench_idx:03d}"
-                        bench_name = (
-                            f"{variable_spec['label']} {metric_name} {func_name} "
-                            f"{period_name} {trust_txt}"
-                        )
+        for period_set in cfg.WX_PERIOD_SETS:
+            for period_name, period in period_set["periods"].items():
+                group_name = f"{variable_spec['group_label']} {period_name}"
+                WX_GROUP_BENCHMARKS.setdefault(group_name, {})
+                WX_GROUPS_BY_PERIOD.setdefault(period_name, []).append(group_name)
+                for metric_name, metric_func in metric_funcs[variable_spec["metric_set"]].items():
+                    for trust_txt, trust in cfg.WX_TRUSTED_SOURCE_OPTIONS:
+                        for func_name, stat_func in summary_stats_func.items():
+                            bench_id = f"FB001_WX{bench_idx:03d}"
+                            bench_name = (
+                                f"{variable_spec['label']} {metric_name} {func_name} "
+                                f"{period_name} {trust_txt}"
+                            )
 
-                        BENCHMARK_FUNCTIONS[bench_id] = partial(
-                            bench_wx_generic_index,
-                            kpi_name_custom=bench_name,
-                            period=period,
-                            wx_variable_name=variable_spec["variable"],
-                            common_unit=variable_spec["common_unit"],
-                            metric_func=metric_func,
-                            stat_func=stat_func,
-                            value_norm_param_m=variable_spec["norm_m"],
-                            use_all_sensor_height_trust_lvl=trust,
-                        )
-                        ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                        REQUIREMENTS[variable_spec["requirement"]]["benchmarks"].append(bench_id)
-                        bench_idx += 1
+                            BENCHMARK_FUNCTIONS[bench_id] = partial(
+                                bench_wx_generic_index,
+                                kpi_name_custom=bench_name,
+                                period=period,
+                                wx_variable_name=variable_spec["variable"],
+                                common_unit=variable_spec["common_unit"],
+                                metric_func=metric_func,
+                                stat_func=stat_func,
+                                value_norm_param_m=variable_spec["norm_m"],
+                                use_all_sensor_height_trust_lvl=trust,
+                            )
+                            WX_GROUP_BENCHMARKS[group_name][bench_id] = 1
+                            ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
+                            REQUIREMENTS[variable_spec["requirement"]]["benchmarks"].append(bench_id)
+                            bench_idx += 1
 
 
 def create_benchmark_groups():
@@ -1088,43 +1095,48 @@ def create_benchmark_groups():
         },
     }
 
-    cur = 1
-    groups_wx = {
-        "Air Temp W1": 18,
-        "Air Temp W2": 18,
-        "Air Temp W3": 18,
-        "Air Temp W4": 18,
-        "RH W1": 18,
-        "RH W2": 18,
-        "RH W3": 18,
-        "RH W4": 18,
-        "Wind Speed W1": 18,
-        "Wind Speed W2": 18,
-        "Wind Speed W3": 18,
-        "Wind Speed W4": 18,
-        "Wind Direction W1": 6,
-        "Wind Direction W2": 6,
-        "Wind Direction W3": 6,
-        "Wind Direction W4": 6,
-        "FMC 10h W1": 18,
-        "FMC 10h W2": 18,
-        "FMC 10h W3": 18,
-        "FMC 10h W4": 18,
-    }
-    for grp, offset in groups_wx.items():
-        new_grp_benchs = {f"FB001_WX{i:03d}": 1 for i in range(cur, cur + offset)}
-        ft.logger.debug(
-            "Benchmarks from %s to %s added to Group %s",
-            f"FB001_WX{cur:03d}",
-            f"FB001_WX{ cur + offset-1:03d}",
-            grp,
-        )
-        GROUPS[grp] = {"weight": 1, "benchmarks": new_grp_benchs.copy()}
-        cur += offset
+    for group_name, benchmark_weights in WX_GROUP_BENCHMARKS.items():
+        GROUPS[group_name] = {"weight": 1, "benchmarks": benchmark_weights.copy()}
+
+
+def _copy_groups(group_names: list[str]) -> dict:
+    return {group_name: GROUPS[group_name].copy() for group_name in group_names}
+
+
+def _weather_group_names(period_name: str) -> list[str]:
+    return WX_GROUPS_BY_PERIOD[period_name]
+
+
+def _weather_period_aggregation(period_name: str) -> dict:
+    return _copy_groups(_weather_group_names(period_name))
 
 
 def create_aggregation_schemes():
-    AGGREGATION["A"] = {grp: GROUPS[grp].copy() for grp in GROUPS.keys()}
+    curated_period_names = list(cfg.CURATED_PERIODS.keys())
+    hrrr_period_names = list(cfg.HRRR_PERIODS.keys())
+    curated_weather_group_names = [
+        group_name
+        for period_name in curated_period_names
+        for group_name in _weather_group_names(period_name)
+    ]
+    hrrr_weather_group_names = [
+        group_name
+        for period_name in hrrr_period_names
+        for group_name in _weather_group_names(period_name)
+    ]
+
+    AGGREGATION["A"] = _copy_groups(
+        [
+            "Building Damage",
+            "Burn Severity",
+            "Canopy Cover Loss",
+            "Fire Perimeter W1",
+            "Fire Perimeter W2",
+            "Fire Perimeter W3",
+            "Fire Perimeter W4",
+            *curated_weather_group_names,
+        ]
+    )
     AGGREGATION["B"] = {
         "Building Damage": GROUPS["Building Damage"].copy(),
     }
@@ -1171,14 +1183,13 @@ def create_aggregation_schemes():
             },
         },
     }
-    for i in range(1, 5):
-        AGGREGATION[f"WX{i:1d}"] = {
-            f"Air Temp W{i:1d}": GROUPS[f"Air Temp W{i:1d}"].copy(),
-            f"RH W{i:1d}": GROUPS[f"RH W{i:1d}"].copy(),
-            f"Wind Speed W{i:1d}": GROUPS[f"Wind Speed W{i:1d}"].copy(),
-            f"Wind Direction W{i:1d}": GROUPS[f"Wind Direction W{i:1d}"].copy(),
-            f"FMC 10h W{i:1d}": GROUPS[f"FMC 10h W{i:1d}"].copy(),
-        }
+    for period_name in curated_period_names:
+        AGGREGATION[f"WX{period_name.removeprefix('W')}"] = _weather_period_aggregation(period_name)
+
+    for period_name in hrrr_period_names:
+        AGGREGATION[f"WX_{period_name}"] = _weather_period_aggregation(period_name)
+
+    AGGREGATION["WX_WH_ALL"] = _copy_groups(hrrr_weather_group_names)
 
     AGGREGATION[f"short_all"] = {}
     AGGREGATION[f"short_all"][f"Building Damage"] = GROUPS[f"Building Damage"].copy()
@@ -1205,12 +1216,14 @@ def create_aggregation_schemes():
 
 
 def build_registries():
-    global REQUIREMENTS, BENCHMARK_FUNCTIONS, GROUPS, AGGREGATION
+    global REQUIREMENTS, BENCHMARK_FUNCTIONS, GROUPS, AGGREGATION, WX_GROUP_BENCHMARKS, WX_GROUPS_BY_PERIOD
 
     REQUIREMENTS = copy.deepcopy(_BASE_REQUIREMENTS)
     BENCHMARK_FUNCTIONS = _BASE_BENCHMARK_FUNCTIONS.copy()
     GROUPS = {}
     AGGREGATION = {}
+    WX_GROUP_BENCHMARKS = {}
+    WX_GROUPS_BY_PERIOD = {}
 
     add_wx_benchmarks()
     create_benchmark_groups()
@@ -1614,6 +1627,59 @@ def get_list_benchmark_with_agg(agg_dict: dict, agg_scheme: str):
                 bench_list.append(bench)
 
     return bench_list
+
+
+def _benchmark_debug_label(bench_id: str) -> str:
+    benchmark = BENCHMARK_FUNCTIONS[bench_id]
+    keywords = getattr(benchmark, "keywords", {}) or {}
+    return keywords.get("kpi_name_custom", "")
+
+
+def describe_benchmark_registry(agg_scheme: str = DEFAULT_AGGREGATION_SCHEME) -> str:
+    build_registries()
+    if agg_scheme == "0":
+        selected_groups = {
+            "All Benchmarks": {
+                "weight": 1,
+                "benchmarks": {bench_id: 1 for bench_id in BENCHMARK_FUNCTIONS},
+            }
+        }
+    elif agg_scheme in AGGREGATION:
+        selected_groups = AGGREGATION[agg_scheme]
+    else:
+        available = ", ".join(sorted(AGGREGATION))
+        raise ValueError(f"Unknown aggregation scheme '{agg_scheme}'. Available schemes: {available}")
+
+    selected_benchmarks = []
+    for group_content in selected_groups.values():
+        for bench_id in group_content["benchmarks"]:
+            if bench_id not in selected_benchmarks:
+                selected_benchmarks.append(bench_id)
+
+    lines = [
+        f"Aggregation scheme: {agg_scheme}",
+        f"Registered benchmarks: {len(BENCHMARK_FUNCTIONS)}",
+        f"Registered groups: {len(GROUPS)}",
+        f"Selected groups: {len(selected_groups)}",
+        f"Selected benchmarks: {len(selected_benchmarks)}",
+        "",
+        "Groups:",
+    ]
+    for group_name, group_content in selected_groups.items():
+        lines.append(
+            f"- {group_name} (weight={group_content['weight']}, "
+            f"benchmarks={len(group_content['benchmarks'])})"
+        )
+        for bench_id, bench_weight in group_content["benchmarks"].items():
+            label = _benchmark_debug_label(bench_id)
+            suffix = f" - {label}" if label else ""
+            lines.append(f"  - {bench_id} (weight={bench_weight}){suffix}")
+
+    return "\n".join(lines)
+
+
+def print_benchmark_registry(agg_scheme: str = DEFAULT_AGGREGATION_SCHEME) -> None:
+    print(describe_benchmark_registry(agg_scheme))
 
 
 def run_caldor_benchmark(
