@@ -6,6 +6,7 @@ from urllib.request import urlretrieve
 import click
 
 from .benchmarks import AVAIL_BENCHMARKS
+from .plotting import plot_from_config
 from .tools.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -233,6 +234,21 @@ def list_cases() -> None:
     List all available benchmarks
     """
     _echo_cases()
+    return 0
+
+
+@main.command()
+@click.argument(
+    "config",
+    type=click.Path(dir_okay=False, path_type=Path),
+)
+def plot(config: Path) -> None:
+    """
+    Generate plots from a TOML configuration file.
+    """
+    written = plot_from_config(config)
+    for output_path in written:
+        click.echo(f"Wrote {output_path}")
     return 0
 
 
