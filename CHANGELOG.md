@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
 - Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
 ### Changed
+- Increase fire perimeter burn-area normalization from 5000 m to 10000 m.
 - Add an observed-versus-modeled perimeter contour figure with KPI and burn-area annotations to generated reports.
 - Include benchmark target details in reports generated with `firebench run --report`.
 - Show period, perimeter, KPI, weight, and normalization details in `firebench list CASE TARGET`.

@@ -86,14 +86,14 @@ def test_describe_available_targets_with_full_target_includes_details():
             "name": "Final Burn Area Bias",
             "group": "Fire Perimeters",
             "weight": 2,
-            "value_norm_param_m": 5000,
+            "value_norm_param_m": 10000,
         },
         {
             "id": "FB001_FPH104",
             "name": "Burn Area RMSE",
             "group": "Fire Perimeters",
             "weight": 2,
-            "value_norm_param_m": 5000,
+            "value_norm_param_m": 10000,
         },
     ]
 

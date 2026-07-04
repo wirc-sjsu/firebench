@@ -914,10 +914,10 @@ BENCHMARK_FUNCTIONS = {
         model_dataset, obs_dataset, ctx, "W1", LIST_PERIMETERS_W1, 80_000
     ),
     "FB001_FP26": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
-        model_dataset, obs_dataset, ctx, "W2", LIST_PERIMETERS_W2, 5_000
+        model_dataset, obs_dataset, ctx, "W2", LIST_PERIMETERS_W2, 10_000
     ),
     "FB001_FP27": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
-        model_dataset, obs_dataset, ctx, "W3", LIST_PERIMETERS_W3, 5_000
+        model_dataset, obs_dataset, ctx, "W3", LIST_PERIMETERS_W3, 10_000
     ),
     "FB001_FP28": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
         model_dataset, obs_dataset, ctx, "W4", LIST_PERIMETERS_W4, 17_000
@@ -940,7 +940,7 @@ BENCHMARK_FUNCTIONS = {
         "W2",
         LIST_PERIMETERS_W2,
         fm.stats.rmse,
-        5_000,
+        10_000,
     ),
     "FB001_FP31": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area(
         model_dataset,
@@ -950,7 +950,7 @@ BENCHMARK_FUNCTIONS = {
         "W3",
         LIST_PERIMETERS_W3,
         fm.stats.rmse,
-        5_000,
+        10_000,
     ),
     "FB001_FP32": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area(
         model_dataset,

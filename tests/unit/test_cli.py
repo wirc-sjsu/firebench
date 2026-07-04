@@ -50,7 +50,7 @@ def _fake_registry(tmp_path, call):
                         "name": "Final Burn Area Bias",
                         "group": "Fire Perimeters",
                         "weight": 2,
-                        "value_norm_param_m": 5000,
+                        "value_norm_param_m": 10000,
                     },
                 ],
             }
@@ -312,7 +312,7 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
             "| ID | KPI | Weight | value_norm_param_m |\n"
             "| --- | --- | --- | --- |\n"
             "| FB001_FPH097 | Average Jaccard Index | 1 |  |\n"
-            "| FB001_FPH103 | Final Burn Area Bias | 2 | 5000 |\n"
+            "| FB001_FPH103 | Final Burn Area Bias | 2 | 10000 |\n"
             "\n"
             "## Submitters' comments\n"
             "This section is reserved for the model users who have submitted the model output "
@@ -438,7 +438,7 @@ def test_list_command_prints_target_details(monkeypatch, tmp_path):
         "KPIs\n"
         "ID   KPI   Weight   value_norm_param_m\n"
         "FB001_FPH097  Average Jaccard Index  1  \n"
-        "FB001_FPH103  Final Burn Area Bias  2  5000\n"
+        "FB001_FPH103  Final Burn Area Bias  2  10000\n"
     )
 
 
