@@ -255,13 +255,16 @@ def test_run_command_unknown_case_fails(monkeypatch, tmp_path):
     assert "firebench list" in result.output
 
 
-def test_list_command_prints_case_names_and_docs(monkeypatch, tmp_path):
+def test_list_command_prints_case_ids_short_names_and_docs(monkeypatch, tmp_path):
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
 
     result = CliRunner().invoke(main, ["list"])
 
     assert result.exit_code == 0, result.output
-    assert result.output == "001  2021 Caldor Fire - docs: https://example.test/caldor\n"
+    assert result.output == (
+        "ID   Short name   Documentation\n"
+        "001  2021_Caldor  https://example.test/caldor\n"
+    )
     assert "func" not in result.output
     assert "{" not in result.output
 

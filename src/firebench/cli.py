@@ -113,8 +113,10 @@ def _download_with_progress(url: str, output_path: Path) -> None:
 
 
 def _echo_cases() -> None:
+    click.echo("ID   Short name   Documentation")
     for case_id, case_info in sorted(AVAIL_BENCHMARKS.items()):
-        click.echo(f"{case_id}  {case_info['name']} - docs: {case_info['url']}")
+        short_name = case_info.get("short_name", "")
+        click.echo(f"{case_id}  {short_name}  {case_info['url']}")
 
 
 def _get_model_name(model_output: Path, name: str) -> str:
