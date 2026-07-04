@@ -27,6 +27,7 @@ Tests use `pytest`. Place fast behavioral checks in `tests/unit/`, workflow-leve
 ## Commit & Pull Request Guidelines
 
 Recent commits use short, imperative, lower-case summaries, for example `fix perimeter extraction` or `add firebench data list cli to reproduce firebench list cli`. Keep commits focused on one logical change. Pull requests should describe the user-visible behavior, list tests run, link related issues when applicable, and include documentation or example command updates for CLI, benchmark, or data workflow changes.
+Add a short `CHANGELOG.md` entry under `[Unreleased]` for user-visible features, fixes, deprecations, and behavior changes.
 
 ## Commit Message Workflow
 

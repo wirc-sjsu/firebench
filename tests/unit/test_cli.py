@@ -17,6 +17,7 @@ def _fake_registry(tmp_path, call):
     return {
         "001": {
             "name": "2021 Caldor Fire",
+            "short_name": "2021_Caldor",
             "url": "https://example.test/caldor",
             "func": fake_runner,
             "debug_func": fake_debug_func,
@@ -296,6 +297,24 @@ def test_data_get_downloads_selected_version(monkeypatch, tmp_path):
 
     assert result.exit_code == 0, result.output
     assert downloads == [("https://example.test/files/v2026.1.zip?download=1", tmp_path / "v2026.1.zip")]
+
+
+def test_data_get_accepts_short_name(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+    downloads = []
+
+    def fake_urlretrieve(url, output_path, reporthook=None):
+        downloads.append((url, output_path))
+        output_path.write_text("downloaded")
+        return output_path, None
+
+    monkeypatch.setattr("firebench.cli.urlretrieve", fake_urlretrieve)
+
+    result = CliRunner().invoke(main, ["data", "get", "2021_Caldor", "--output-dir", str(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+    assert downloads == [("https://example.test/files/latest.zip?download=1", tmp_path / "latest.zip")]
+    assert "Downloading case 001 data version latest" in result.output
 
 
 def test_data_get_unknown_version_fails(monkeypatch, tmp_path):

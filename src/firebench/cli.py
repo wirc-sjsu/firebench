@@ -41,8 +41,20 @@ def _normalize_case_id(case: str) -> str:
     return case_id
 
 
-def _get_case_info(case: str) -> tuple[str, dict]:
+def _resolve_case_id(case: str) -> str:
     case_id = _normalize_case_id(case)
+    if case_id in AVAIL_BENCHMARKS:
+        return case_id
+
+    for registered_case_id, case_info in AVAIL_BENCHMARKS.items():
+        if case_id == case_info.get("short_name"):
+            return registered_case_id
+
+    return case_id
+
+
+def _get_case_info(case: str) -> tuple[str, dict]:
+    case_id = _resolve_case_id(case)
     try:
         return case_id, AVAIL_BENCHMARKS[case_id]
     except KeyError as exc:
