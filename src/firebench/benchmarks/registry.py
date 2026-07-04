@@ -9,8 +9,8 @@ AVAIL_BENCHMARKS = {
         "url": "https://firebench.readthedocs.io/en/latest/benchmarks/California/01_Caldor.html",
         "func": c001_caldor.run_caldor_benchmark,
         "debug_func": c001_caldor.print_benchmark_registry,
+        "target_normalizer": c001_caldor.normalize_benchmark_target,
         "default_options": {
-            "agg_scheme": c001_caldor.DEFAULT_AGGREGATION_SCHEME,
             "verbose": c001_caldor.DEFAULT_VERBOSITY,
             "log_file": Path(c001_caldor.LOG_FILENAME),
             "obs_data": c001_caldor.DEFAULT_OBS_DATA_PATH,

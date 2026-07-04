@@ -151,23 +151,11 @@ def _write_report_skeleton(benchmark_name: str, model_name: str) -> None:
 
 
 @main.command()
+@click.argument("case", type=str)
+@click.argument("target", type=str)
 @click.argument(
     "model_output",
     type=click.Path(dir_okay=False, path_type=Path),
-)
-@click.option(
-    "-c",
-    "--case",
-    "case_id",
-    default="001",
-    show_default=True,
-    help="Benchmark case ID.",
-)
-@click.option(
-    "-a",
-    "--agg-scheme",
-    default=None,
-    help="Aggregation scheme.",
 )
 @click.option(
     "-n",
@@ -231,9 +219,9 @@ def _write_report_skeleton(benchmark_name: str, model_name: str) -> None:
     help="Create firebench_report.md and the figures directory for the benchmark run.",
 )
 def run(
+    case: str,
+    target: str,
     model_output: Path,
-    case_id: str,
-    agg_scheme: str | None,
     name: str,
     overwrite: bool,
     sign: tuple[str, str] | None,
@@ -247,10 +235,16 @@ def run(
     report: bool,
 ) -> None:
     """
-    Run a benchmark case against model std HDF5 output. Use firebench list to see all available cases.
+    Run a benchmark target against model std HDF5 output.
     """
-    selected_case_id, case_info = _get_case_info(case_id)
-    agg_scheme = agg_scheme or _get_default(case_info, "agg_scheme")
+    selected_case_id, case_info = _get_case_info(case)
+    target_normalizer = case_info.get("target_normalizer")
+    if target_normalizer is not None:
+        try:
+            target = target_normalizer(target)
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
+
     verbose = verbose if verbose is not None else _get_default(case_info, "verbose")
     log_file = log_file or _get_default(case_info, "log_file")
     obs_data = obs_data or _get_default(case_info, "obs_data")
@@ -258,12 +252,17 @@ def run(
     score_card_report = score_card_report or _get_default(case_info, "score_card_report")
 
     configure_logging(verbose, use_console=not no_console, log_path=log_file)
-    logger.info("[CLI] run benchmark case %s with model output: %s", selected_case_id, model_output)
+    logger.info(
+        "[CLI] run benchmark case %s target %s with model output: %s",
+        selected_case_id,
+        target,
+        model_output,
+    )
     if no_run:
         debug_func = case_info.get("debug_func")
         if debug_func is None:
             raise click.UsageError(f"Benchmark case '{selected_case_id}' does not support --no-run.")
-        debug_func(agg_scheme=agg_scheme)
+        debug_func(benchmark_target=target)
         return 0
 
     if not model_output.is_file():
@@ -273,7 +272,7 @@ def run(
 
     case_info["func"](
         model_output,
-        agg_scheme=agg_scheme,
+        benchmark_target=target,
         name=name,
         overwrite=overwrite,
         sign=sign,

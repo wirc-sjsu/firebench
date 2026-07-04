@@ -3,6 +3,7 @@ from datetime import datetime
 
 import h5py
 import numpy as np
+import pytest
 import pytz
 
 from firebench.benchmarks import c001_caldor
@@ -47,6 +48,38 @@ def test_hrrr_fire_perimeter_aggregation_schemes_are_generated():
     assert len(c001_caldor.REQUIREMENTS["R_FP_H12"]["benchmarks"]) == 8
 
 
+def test_hrrr_benchmark_target_selects_matching_fire_perimeter_group():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("h013_p")
+
+    assert selected_target == "H013_P"
+    assert c001_caldor.AGGREGATION["H013_P"] == c001_caldor.AGGREGATION["FP_H13"]
+    assert c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "H013_P") == (
+        c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "FP_H13")
+    )
+
+
+def test_curated_benchmark_target_selects_matching_fire_perimeter_group():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("P02_P")
+
+    assert selected_target == "P02_P"
+    assert list(c001_caldor.AGGREGATION["P02_P"]) == ["Fire Perimeter W2"]
+    assert c001_caldor.AGGREGATION["P02_P"]["Fire Perimeter W2"] == (
+        c001_caldor.GROUPS["Fire Perimeter W2"]
+    )
+
+
+@pytest.mark.parametrize("benchmark_target", ["H999_P", "P99_P", "H013_X", "bad"])
+def test_invalid_benchmark_target_fails_clearly(benchmark_target):
+    c001_caldor.build_registries()
+
+    with pytest.raises(ValueError, match="benchmark target|Unsupported|Unknown"):
+        c001_caldor.resolve_benchmark_target(benchmark_target)
+
+
 def test_demo_aggregation_contains_wh16_weather_and_fire_perimeter():
     c001_caldor.build_registries()
 
@@ -84,7 +117,7 @@ def test_demo_wx0_sets_weather_group_weights_to_zero():
 def test_describe_benchmark_registry_prints_selected_groups():
     description = c001_caldor.describe_benchmark_registry("DEMO")
 
-    assert "Aggregation scheme: DEMO" in description
+    assert "Benchmark target: DEMO" in description
     assert "Selected groups: 6" in description
     assert "- Air Temp WH16" in description
     assert "- FP_H16" in description

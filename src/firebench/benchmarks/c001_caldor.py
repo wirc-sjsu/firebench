@@ -1227,6 +1227,80 @@ def _weather_period_aggregation(period_name: str) -> dict:
     return _copy_groups(_weather_group_names(period_name))
 
 
+def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
+    target = str(benchmark_target).strip().upper()
+    parts = target.split("_")
+    if len(parts) != 2:
+        raise ValueError(
+            f"Invalid benchmark target '{benchmark_target}'. Expected format like H013_P or P02_P."
+        )
+
+    period_selector, analysis_flags = parts
+    if not analysis_flags:
+        raise ValueError(f"Invalid benchmark target '{benchmark_target}'. Missing analysis flags.")
+
+    unsupported_flags = sorted(set(analysis_flags) - {"P"})
+    if unsupported_flags:
+        raise ValueError(
+            f"Invalid benchmark target '{benchmark_target}'. Unsupported analysis flags: "
+            f"{', '.join(unsupported_flags)}."
+        )
+
+    group_names = []
+    canonical_flags = "".join(dict.fromkeys(analysis_flags))
+    if period_selector.startswith("H"):
+        period_number_text = period_selector.removeprefix("H")
+        if not period_number_text.isdigit():
+            raise ValueError(
+                f"Invalid benchmark target '{benchmark_target}'. HRRR period must look like H013."
+            )
+        period_number = int(period_number_text)
+        period_name = f"WH{period_number}"
+        if period_name not in cfg.HRRR_PERIODS:
+            raise ValueError(f"Unknown HRRR period selector '{period_selector}'.")
+        canonical_period = f"H{period_number:03d}"
+        if "P" in canonical_flags:
+            group_names.append(f"FP_H{period_number}")
+    elif period_selector.startswith("P"):
+        period_number_text = period_selector.removeprefix("P")
+        if not period_number_text.isdigit():
+            raise ValueError(
+                f"Invalid benchmark target '{benchmark_target}'. Curated period must look like P02."
+            )
+        period_number = int(period_number_text)
+        period_name = f"W{period_number}"
+        if period_name not in cfg.CURATED_PERIODS:
+            raise ValueError(f"Unknown curated period selector '{period_selector}'.")
+        canonical_period = f"P{period_number:02d}"
+        if "P" in canonical_flags:
+            group_names.append(f"Fire Perimeter W{period_number}")
+    else:
+        raise ValueError(
+            f"Invalid benchmark target '{benchmark_target}'. Period selector must start with H or P."
+        )
+
+    return f"{canonical_period}_{canonical_flags}", group_names
+
+
+def normalize_benchmark_target(benchmark_target: str) -> str:
+    canonical_target, _ = _parse_benchmark_target(benchmark_target)
+    return canonical_target
+
+
+def resolve_benchmark_target(benchmark_target: str) -> str:
+    raw_target = str(benchmark_target).strip()
+    if raw_target == "0" or raw_target in AGGREGATION:
+        return raw_target
+
+    target = raw_target.upper()
+    if target in AGGREGATION:
+        return target
+
+    canonical_target, group_names = _parse_benchmark_target(benchmark_target)
+    AGGREGATION[canonical_target] = _copy_groups(group_names)
+    return canonical_target
+
+
 def create_aggregation_schemes():
     curated_period_names = list(cfg.CURATED_PERIODS.keys())
     hrrr_period_names = list(cfg.HRRR_PERIODS.keys())
@@ -1469,6 +1543,7 @@ def aggregate_scores(benchmark_results, agg_scheme):
     ft.logger.info("Total Score = %.2f", benchmark_results["score_card"]["Score Total"])
 
     benchmark_results["score_card"]["aggregation_scheme_name"] = agg_scheme
+    benchmark_results["score_card"]["benchmark_target_name"] = agg_scheme
 
     return benchmark_results
 
@@ -1809,20 +1884,23 @@ def _benchmark_debug_label(bench_id: str) -> str:
     return ""
 
 
-def describe_benchmark_registry(agg_scheme: str = DEFAULT_AGGREGATION_SCHEME) -> str:
+def describe_benchmark_registry(benchmark_target: str = DEFAULT_AGGREGATION_SCHEME) -> str:
     build_registries()
-    if agg_scheme == "0":
+    selected_target = resolve_benchmark_target(benchmark_target)
+    if selected_target == "0":
         selected_groups = {
             "All Benchmarks": {
                 "weight": 1,
                 "benchmarks": {bench_id: 1 for bench_id in BENCHMARK_FUNCTIONS},
             }
         }
-    elif agg_scheme in AGGREGATION:
-        selected_groups = AGGREGATION[agg_scheme]
+    elif selected_target in AGGREGATION:
+        selected_groups = AGGREGATION[selected_target]
     else:
         available = ", ".join(sorted(AGGREGATION))
-        raise ValueError(f"Unknown aggregation scheme '{agg_scheme}'. Available schemes: {available}")
+        raise ValueError(
+            f"Unknown benchmark target '{benchmark_target}'. Available schemes: {available}"
+        )
 
     selected_benchmarks = []
     for group_content in selected_groups.values():
@@ -1831,7 +1909,7 @@ def describe_benchmark_registry(agg_scheme: str = DEFAULT_AGGREGATION_SCHEME) ->
                 selected_benchmarks.append(bench_id)
 
     lines = [
-        f"Aggregation scheme: {agg_scheme}",
+        f"Benchmark target: {selected_target}",
         f"Registered benchmarks: {len(BENCHMARK_FUNCTIONS)}",
         f"Registered groups: {len(GROUPS)}",
         f"Selected groups: {len(selected_groups)}",
@@ -1857,13 +1935,13 @@ def describe_benchmark_registry(agg_scheme: str = DEFAULT_AGGREGATION_SCHEME) ->
     return "\n".join(lines)
 
 
-def print_benchmark_registry(agg_scheme: str = DEFAULT_AGGREGATION_SCHEME) -> None:
-    print(describe_benchmark_registry(agg_scheme))
+def print_benchmark_registry(benchmark_target: str = DEFAULT_AGGREGATION_SCHEME) -> None:
+    print(describe_benchmark_registry(benchmark_target))
 
 
 def run_caldor_benchmark(
     model_output: Path,
-    agg_scheme: str = DEFAULT_AGGREGATION_SCHEME,
+    benchmark_target: str,
     name: str = "",
     overwrite: bool = False,
     sign: tuple[str, str] | None = None,
@@ -1900,9 +1978,10 @@ def run_caldor_benchmark(
     output_dict = ft.merge_dictionaries(output_dict, get_files_hash(model_output, obs_data))
 
     build_registries()
-    list_bench = get_list_benchmark_with_agg(AGGREGATION, agg_scheme)
+    aggregation_scheme = resolve_benchmark_target(benchmark_target)
+    list_bench = get_list_benchmark_with_agg(AGGREGATION, aggregation_scheme)
 
-    rslt = run_all_benchmarks(model_output, agg_scheme, list_bench, obs_data)
+    rslt = run_all_benchmarks(model_output, aggregation_scheme, list_bench, obs_data)
     output_dict = ft.merge_dictionaries(output_dict, rslt)
 
     # certification
@@ -1930,6 +2009,7 @@ def run_caldor_benchmark(
 def main(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description="Run benchmark against a model HDF5 output.")
 
+    parser.add_argument("benchmark_target", type=str, help="Benchmark target, for example H013_P")
     parser.add_argument("model_output", type=Path, help="Path to your model output HDF5 file")
 
     parser.add_argument(
@@ -1938,14 +2018,6 @@ def main(argv: list[str] | None = None):
         type=int,
         default=DEFAULT_LOGGING_LEVEL,
         help=f"Logging level (default: {DEFAULT_LOGGING_LEVEL})",
-    )
-
-    parser.add_argument(
-        "-a",
-        "--agg_scheme",
-        type=str,
-        default=DEFAULT_AGGREGATION_SCHEME,
-        help=f"Aggregation scheme (default: {DEFAULT_AGGREGATION_SCHEME})",
     )
 
     parser.add_argument(
@@ -1973,7 +2045,7 @@ def main(argv: list[str] | None = None):
     ft.create_file_handler(LOG_FILENAME, args.logging_level)
     run_caldor_benchmark(
         args.model_output,
-        agg_scheme=args.agg_scheme,
+        benchmark_target=args.benchmark_target,
         name=args.name,
         overwrite=args.overwrite,
         sign=tuple(args.sign) if args.sign else None,

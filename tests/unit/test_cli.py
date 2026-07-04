@@ -11,8 +11,8 @@ def _fake_registry(tmp_path, call):
         call.update(kwargs)
         return {"ok": True}
 
-    def fake_debug_func(agg_scheme):
-        call["debug_agg_scheme"] = agg_scheme
+    def fake_debug_func(benchmark_target):
+        call["debug_benchmark_target"] = benchmark_target
 
     return {
         "001": {
@@ -22,7 +22,6 @@ def _fake_registry(tmp_path, call):
             "func": fake_runner,
             "debug_func": fake_debug_func,
             "default_options": {
-                "agg_scheme": "A",
                 "verbose": 3,
                 "log_file": tmp_path / "default.log",
                 "obs_data": tmp_path / "default_obs.h5",
@@ -43,12 +42,12 @@ def test_run_command_uses_registry_defaults(monkeypatch, tmp_path):
     call = {}
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
 
-    result = CliRunner().invoke(main, ["run", str(model_output)])
+    result = CliRunner().invoke(main, ["run", "001", "H013_P", str(model_output)])
 
     assert result.exit_code == 0, result.output
     assert call == {
         "model_output": Path(model_output),
-        "agg_scheme": "A",
+        "benchmark_target": "H013_P",
         "name": "",
         "overwrite": False,
         "sign": None,
@@ -65,11 +64,11 @@ def test_run_command_accepts_unpadded_case_id(monkeypatch, tmp_path):
     call = {}
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
 
-    result = CliRunner().invoke(main, ["run", "-c", "1", str(model_output)])
+    result = CliRunner().invoke(main, ["run", "1", "H013_P", str(model_output)])
 
     assert result.exit_code == 0, result.output
     assert call["model_output"] == Path(model_output)
-    assert call["agg_scheme"] == "A"
+    assert call["benchmark_target"] == "H013_P"
 
 
 def test_run_command_accepts_padded_case_id(monkeypatch, tmp_path):
@@ -78,11 +77,37 @@ def test_run_command_accepts_padded_case_id(monkeypatch, tmp_path):
     call = {}
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
 
-    result = CliRunner().invoke(main, ["run", "-c", "001", str(model_output)])
+    result = CliRunner().invoke(main, ["run", "001", "H013_P", str(model_output)])
 
     assert result.exit_code == 0, result.output
     assert call["model_output"] == Path(model_output)
-    assert call["agg_scheme"] == "A"
+    assert call["benchmark_target"] == "H013_P"
+
+
+def test_run_command_accepts_short_name(monkeypatch, tmp_path):
+    model_output = tmp_path / "model.h5"
+    model_output.write_text("model")
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    result = CliRunner().invoke(main, ["run", "2021_Caldor", "H013_P", str(model_output)])
+
+    assert result.exit_code == 0, result.output
+    assert call["model_output"] == Path(model_output)
+    assert call["benchmark_target"] == "H013_P"
+
+
+def test_run_command_requires_case(monkeypatch, tmp_path):
+    model_output = tmp_path / "model.h5"
+    model_output.write_text("model")
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    result = CliRunner().invoke(main, ["run", "001", str(model_output)])
+
+    assert result.exit_code != 0
+    assert "Missing argument 'MODEL_OUTPUT'" in result.output
+    assert call == {}
 
 
 def test_run_command_overrides_registry_defaults(monkeypatch, tmp_path):
@@ -100,11 +125,9 @@ def test_run_command_overrides_registry_defaults(monkeypatch, tmp_path):
         main,
         [
             "run",
-            str(model_output),
-            "-c",
             "001",
-            "-a",
-            "B",
+            "H013_P",
+            str(model_output),
             "-n",
             "demo",
             "-o",
@@ -128,7 +151,7 @@ def test_run_command_overrides_registry_defaults(monkeypatch, tmp_path):
     assert result.exit_code == 0, result.output
     assert call == {
         "model_output": Path(model_output),
-        "agg_scheme": "B",
+        "benchmark_target": "H013_P",
         "name": "demo",
         "overwrite": True,
         "sign": ("KEYID", "Signer"),
@@ -145,11 +168,24 @@ def test_run_command_no_run_prints_registry_without_model_file(monkeypatch, tmp_
 
     result = CliRunner().invoke(
         main,
-        ["run", str(tmp_path / "missing_model.h5"), "-a", "WX_WH1", "--no-run"],
+        ["run", "001", "H013_P", str(tmp_path / "missing_model.h5"), "--no-run"],
     )
 
     assert result.exit_code == 0, result.output
-    assert call == {"debug_agg_scheme": "WX_WH1"}
+    assert call == {"debug_benchmark_target": "H013_P"}
+
+
+def test_run_command_rejects_legacy_agg_scheme_option(monkeypatch, tmp_path):
+    model_output = tmp_path / "model.h5"
+    model_output.write_text("model")
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    result = CliRunner().invoke(main, ["run", "001", "H013_P", str(model_output), "-a", "B"])
+
+    assert result.exit_code != 0
+    assert "No such option: -a" in result.output
+    assert call == {}
 
 
 def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
@@ -160,7 +196,9 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
 
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path) as cwd:
-        result = runner.invoke(main, ["run", str(model_output), "--report", "-n", "Demo Model"])
+        result = runner.invoke(
+            main, ["run", "001", "H013_P", str(model_output), "--report", "-n", "Demo Model"]
+        )
 
         report_path = Path(cwd) / "firebench_report.md"
         figures_dir = Path(cwd) / "figures"
@@ -194,7 +232,7 @@ def test_run_command_report_does_not_overwrite_existing_report(monkeypatch, tmp_
         report_path = Path(cwd) / "firebench_report.md"
         report_path.write_text("existing report", encoding="utf-8")
 
-        result = runner.invoke(main, ["run", str(model_output), "--report"])
+        result = runner.invoke(main, ["run", "001", "H013_P", str(model_output), "--report"])
 
         assert result.exit_code != 0
         assert "Report file already exists: firebench_report.md" in result.output
@@ -207,7 +245,7 @@ def test_run_command_unknown_case_fails(monkeypatch, tmp_path):
     model_output.write_text("model")
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
 
-    result = CliRunner().invoke(main, ["run", "-c", "999", str(model_output)])
+    result = CliRunner().invoke(main, ["run", "999", "H013_P", str(model_output)])
 
     assert result.exit_code != 0
     assert "Unknown benchmark case '999'" in result.output
