@@ -119,6 +119,38 @@ def _echo_cases() -> None:
         click.echo(f"{case_id}  {short_name}  {case_info['url']}")
 
 
+def _format_target_datetime(value) -> str:
+    return value.isoformat(timespec="minutes")
+
+
+def _echo_case_targets(case: str) -> None:
+    case_id, case_info = _get_case_info(case)
+    click.echo(f"ID: {case_id}")
+    click.echo(f"Short name: {case_info.get('short_name', '')}")
+    click.echo(f"Documentation: {case_info['url']}")
+
+    target_describer = case_info.get("target_describer")
+    if target_describer is None:
+        click.echo("No benchmark targets are registered.")
+        return
+
+    target_info = target_describer()
+    click.echo("")
+    click.echo("Temporal periods")
+    click.echo("Target   Start   End")
+    for period in target_info["periods"]:
+        click.echo(
+            f"{period['target']}  "
+            f"{_format_target_datetime(period['start'])}  "
+            f"{_format_target_datetime(period['end'])}"
+        )
+
+    click.echo("")
+    click.echo("KPI groups")
+    for flag, description in target_info["kpi_groups"].items():
+        click.echo(f"{flag}: {description}")
+
+
 def _get_model_name(model_output: Path, name: str) -> str:
     if name:
         return name
@@ -299,10 +331,14 @@ def run(
 
 
 @main.command("list")
-def list_cases() -> None:
+@click.argument("case", required=False, type=str)
+def list_cases(case: str | None) -> None:
     """
-    List all available benchmarks
+    List available benchmarks or targets for a benchmark case.
     """
+    if case:
+        _echo_case_targets(case)
+        return 0
     _echo_cases()
     return 0
 

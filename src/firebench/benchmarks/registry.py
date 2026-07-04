@@ -10,6 +10,7 @@ AVAIL_BENCHMARKS = {
         "func": c001_caldor.run_caldor_benchmark,
         "debug_func": c001_caldor.print_benchmark_registry,
         "target_normalizer": c001_caldor.normalize_benchmark_target,
+        "target_describer": c001_caldor.describe_available_targets,
         "default_options": {
             "verbose": c001_caldor.DEFAULT_VERBOSITY,
             "log_file": Path(c001_caldor.LOG_FILENAME),

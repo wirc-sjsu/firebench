@@ -1288,6 +1288,35 @@ def normalize_benchmark_target(benchmark_target: str) -> str:
     return canonical_target
 
 
+def describe_available_targets() -> dict:
+    periods = []
+    for period_name, (start, end) in cfg.HRRR_PERIODS.items():
+        period_number = int(period_name.removeprefix("WH"))
+        periods.append(
+            {
+                "target": f"H{period_number:03d}",
+                "start": start,
+                "end": end,
+            }
+        )
+    for period_name, (start, end) in cfg.CURATED_PERIODS.items():
+        period_number = int(period_name.removeprefix("W"))
+        periods.append(
+            {
+                "target": f"P{period_number:02d}",
+                "start": start,
+                "end": end,
+            }
+        )
+
+    return {
+        "periods": periods,
+        "kpi_groups": {
+            "P": "Fire Perimeters",
+        },
+    }
+
+
 def _target_group_display_names(aggregation_scheme: str) -> dict[str, str]:
     if aggregation_scheme not in AGGREGATION:
         return {}

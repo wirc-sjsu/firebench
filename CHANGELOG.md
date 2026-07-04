@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
 - Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
 ### Changed
+- Print available benchmark targets when `firebench list` receives a case ID or short name.
 - Show benchmark IDs, short names, and documentation links in `firebench list`.
 - Use short KPI labels in score-card PDFs by default and add `--full-name` for full labels.
 - Use benchmark short names and readable perimeter group labels in score-card PDFs.

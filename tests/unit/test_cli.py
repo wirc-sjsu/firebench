@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timezone
 
 from click.testing import CliRunner
 
@@ -14,6 +15,25 @@ def _fake_registry(tmp_path, call):
     def fake_debug_func(benchmark_target):
         call["debug_benchmark_target"] = benchmark_target
 
+    def fake_target_describer():
+        return {
+            "periods": [
+                {
+                    "target": "H000",
+                    "start": datetime(2021, 8, 17, 12, 0, tzinfo=timezone.utc),
+                    "end": datetime(2021, 8, 19, 12, 0, tzinfo=timezone.utc),
+                },
+                {
+                    "target": "P01",
+                    "start": datetime(2021, 8, 17, 20, 20, tzinfo=timezone.utc),
+                    "end": datetime(2021, 9, 10, 23, 34, tzinfo=timezone.utc),
+                },
+            ],
+            "kpi_groups": {
+                "P": "Fire Perimeters",
+            },
+        }
+
     return {
         "001": {
             "name": "2021 Caldor Fire",
@@ -21,6 +41,7 @@ def _fake_registry(tmp_path, call):
             "url": "https://example.test/caldor",
             "func": fake_runner,
             "debug_func": fake_debug_func,
+            "target_describer": fake_target_describer,
             "default_options": {
                 "verbose": 3,
                 "log_file": tmp_path / "default.log",
@@ -267,6 +288,38 @@ def test_list_command_prints_case_ids_short_names_and_docs(monkeypatch, tmp_path
     )
     assert "func" not in result.output
     assert "{" not in result.output
+
+
+def test_list_command_prints_case_targets(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    result = CliRunner().invoke(main, ["list", "001"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output == (
+        "ID: 001\n"
+        "Short name: 2021_Caldor\n"
+        "Documentation: https://example.test/caldor\n"
+        "\n"
+        "Temporal periods\n"
+        "Target   Start   End\n"
+        "H000  2021-08-17T12:00+00:00  2021-08-19T12:00+00:00\n"
+        "P01  2021-08-17T20:20+00:00  2021-09-10T23:34+00:00\n"
+        "\n"
+        "KPI groups\n"
+        "P: Fire Perimeters\n"
+    )
+
+
+def test_list_command_accepts_case_short_name(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    result = CliRunner().invoke(main, ["list", "2021_Caldor"])
+
+    assert result.exit_code == 0, result.output
+    assert "ID: 001" in result.output
+    assert "H000" in result.output
+    assert "P: Fire Perimeters" in result.output
 
 
 def test_data_list_matches_top_level_list(monkeypatch, tmp_path):
