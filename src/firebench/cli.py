@@ -187,8 +187,60 @@ def _get_model_name(model_output: Path, name: str) -> str:
     return model_output.stem
 
 
-def _render_report_skeleton(benchmark_name: str, model_name: str) -> str:
+def _render_report_target_information(target: str, target_info: dict | None = None) -> str:
+    lines = [
+        "## Benchmark target information",
+        f"Benchmark target: {target_info['target'] if target_info is not None else target}",
+    ]
+
+    if target_info is None:
+        return "\n".join(lines)
+
+    lines.extend(
+        [
+            "",
+            "### Temporal period",
+            f"Target: {target_info['period']['target']}",
+            f"Start: {_format_target_datetime(target_info['period']['start'])}",
+            f"End: {_format_target_datetime(target_info['period']['end'])}",
+            "",
+            "### KPI groups",
+        ]
+    )
+    for flag, description in target_info["kpi_groups"].items():
+        lines.append(f"- {flag}: {description}")
+
+    if target_info.get("perimeters"):
+        lines.extend(["", "### Perimeters", "| Time |", "| --- |"])
+        for perimeter in target_info["perimeters"]:
+            lines.append(f"| {perimeter['time']} |")
+
+    if target_info.get("kpis"):
+        lines.extend(
+            [
+                "",
+                "### KPIs",
+                "| ID | KPI | Weight | value_norm_param_m |",
+                "| --- | --- | --- | --- |",
+            ]
+        )
+        for kpi in target_info["kpis"]:
+            norm_param = "" if kpi["value_norm_param_m"] is None else kpi["value_norm_param_m"]
+            lines.append(f"| {kpi['id']} | {kpi['name']} | {kpi['weight']} | {norm_param} |")
+
+    return "\n".join(lines)
+
+
+def _render_report_skeleton(
+    benchmark_name: str,
+    model_name: str,
+    target: str,
+    target_info: dict | None = None,
+) -> str:
+    target_information = _render_report_target_information(target, target_info)
     return f"""# Report {benchmark_name} for {model_name}
+{target_information}
+
 ## Submitters' comments
 This section is reserved for the model users who have submitted the model output to this benchmark.
 ### Short model description and keywords
@@ -209,9 +261,17 @@ def _check_report_skeleton_paths(overwrite: bool) -> None:
         raise click.UsageError(f"Figures path exists and is not a directory: {FIGURES_DIR}")
 
 
-def _write_report_skeleton(benchmark_name: str, model_name: str) -> None:
+def _write_report_skeleton(
+    benchmark_name: str,
+    model_name: str,
+    target: str,
+    target_info: dict | None = None,
+) -> None:
     FIGURES_DIR.mkdir(exist_ok=True)
-    REPORT_PATH.write_text(_render_report_skeleton(benchmark_name, model_name), encoding="utf-8")
+    REPORT_PATH.write_text(
+        _render_report_skeleton(benchmark_name, model_name, target, target_info),
+        encoding="utf-8",
+    )
 
 
 @main.command()
@@ -340,6 +400,14 @@ def run(
         raise click.UsageError(f"Model output file does not exist: {model_output}")
     if report:
         _check_report_skeleton_paths(overwrite)
+        target_describer = case_info.get("target_describer")
+        if target_describer is not None:
+            try:
+                target_info = target_describer(target)
+            except ValueError as exc:
+                raise click.UsageError(str(exc)) from exc
+        else:
+            target_info = None
 
     case_info["func"](
         model_output,
@@ -356,6 +424,8 @@ def run(
         _write_report_skeleton(
             benchmark_name=case_info["name"],
             model_name=_get_model_name(model_output, name),
+            target=target,
+            target_info=target_info,
         )
     return 0
 
