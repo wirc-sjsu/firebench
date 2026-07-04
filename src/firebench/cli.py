@@ -209,6 +209,12 @@ def _write_report_skeleton(benchmark_name: str, model_name: str) -> None:
     help="Path to write the score card PDF.",
 )
 @click.option(
+    "--full-name",
+    "--full_name",
+    is_flag=True,
+    help="Use full benchmark IDs and KPI names in the score-card PDF.",
+)
+@click.option(
     "--no-run",
     is_flag=True,
     help="Build registries and print selected groups/benchmarks without running metrics.",
@@ -231,6 +237,7 @@ def run(
     obs_data: Path | None,
     output_json: Path | None,
     score_card_report: Path | None,
+    full_name: bool,
     no_run: bool,
     report: bool,
 ) -> None:
@@ -279,6 +286,7 @@ def run(
         obs_data=obs_data,
         output_json=output_json,
         score_card_report=score_card_report,
+        score_card_full_name=full_name,
     )
     if report:
         _write_report_skeleton(

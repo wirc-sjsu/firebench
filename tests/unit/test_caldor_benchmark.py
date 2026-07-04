@@ -58,6 +58,7 @@ def test_hrrr_benchmark_target_selects_matching_fire_perimeter_group():
     assert c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "H013_P") == (
         c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "FP_H13")
     )
+    assert c001_caldor._target_group_display_names("H013_P") == {"FP_H13": "Fire Perimeters"}
 
 
 def test_curated_benchmark_target_selects_matching_fire_perimeter_group():

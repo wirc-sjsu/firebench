@@ -5,7 +5,7 @@ from . import c001_caldor
 AVAIL_BENCHMARKS = {
     "001": {
         "name": "2021 Caldor Fire",
-        "short_name": "2021_Caldor",
+        "short_name": c001_caldor.BENCHMARK_SHORT_NAME,
         "url": "https://firebench.readthedocs.io/en/latest/benchmarks/California/01_Caldor.html",
         "func": c001_caldor.run_caldor_benchmark,
         "debug_func": c001_caldor.print_benchmark_registry,

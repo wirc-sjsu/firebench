@@ -18,6 +18,7 @@ from firebench import Quantity
 
 CASE_NAME = cfg.CASE_NAME
 CASE_SHORT_NAME = cfg.CASE_SHORT_NAME
+BENCHMARK_SHORT_NAME = cfg.BENCHMARK_SHORT_NAME
 CASE_ID = cfg.CASE_ID
 DEFAULT_OBS_DATA_PATH = cfg.DEFAULT_OBS_DATA_PATH
 OBS_DATA_PATH = DEFAULT_OBS_DATA_PATH
@@ -1287,6 +1288,23 @@ def normalize_benchmark_target(benchmark_target: str) -> str:
     return canonical_target
 
 
+def _target_group_display_names(aggregation_scheme: str) -> dict[str, str]:
+    if aggregation_scheme not in AGGREGATION:
+        return {}
+    if "_" not in aggregation_scheme:
+        return {}
+
+    _, analysis_flags = aggregation_scheme.rsplit("_", 1)
+    if "P" not in analysis_flags:
+        return {}
+
+    return {
+        group_name: "Fire Perimeters"
+        for group_name in AGGREGATION[aggregation_scheme]
+        if group_name.startswith("FP_H") or group_name.startswith("Fire Perimeter W")
+    }
+
+
 def resolve_benchmark_target(benchmark_target: str) -> str:
     raw_target = str(benchmark_target).strip()
     if raw_target == "0" or raw_target in AGGREGATION:
@@ -1544,6 +1562,9 @@ def aggregate_scores(benchmark_results, agg_scheme):
 
     benchmark_results["score_card"]["aggregation_scheme_name"] = agg_scheme
     benchmark_results["score_card"]["benchmark_target_name"] = agg_scheme
+    group_display_names = _target_group_display_names(agg_scheme)
+    if group_display_names:
+        benchmark_results["score_card"]["group_display_names"] = group_display_names
 
     return benchmark_results
 
@@ -1948,6 +1969,7 @@ def run_caldor_benchmark(
     obs_data: Path = DEFAULT_OBS_DATA_PATH,
     output_json: Path = DEFAULT_OUTPUT_PATH_JSON,
     score_card_report: Path = DEFAULT_SCORE_CARD_REPORT_PATH,
+    score_card_full_name: bool = False,
 ):
     model_output = Path(model_output)
     obs_data = Path(obs_data)
@@ -1970,6 +1992,7 @@ def run_caldor_benchmark(
         "case_version": obs_data_version,
         "firebench_version": fb_version,
         "case_name": CASE_NAME,
+        "benchmark_short_name": BENCHMARK_SHORT_NAME,
         "case_id": CASE_ID,
         "evaluated_model_name": str(model_output).strip(".h5"),
     }
@@ -1992,7 +2015,13 @@ def run_caldor_benchmark(
         output_dict = fsi.certify_benchmark_run(output_dict, key, signer)
         signed = True
 
-    fm.save_as_table(score_card_report, output_dict, signed, "certificate_verif_lvl")
+    fm.save_as_table(
+        score_card_report,
+        output_dict,
+        signed,
+        "certificate_verif_lvl",
+        full_name=score_card_full_name,
+    )
     if not score_card_report.exists():
         ft.logger.error("Score card report: %s not found", score_card_report)
         raise FileExistsError()
@@ -2039,6 +2068,12 @@ def main(argv: list[str] | None = None):
         metavar=("KEYID", "SIGNER"),
         help="Sign with Verification Level (VL) using KEYID and SIGNER",
     )
+    parser.add_argument(
+        "--full-name",
+        "--full_name",
+        action="store_true",
+        help="Use full benchmark IDs and KPI names in the score-card PDF.",
+    )
 
     args = parser.parse_args(argv)
 
@@ -2049,6 +2084,7 @@ def main(argv: list[str] | None = None):
         name=args.name,
         overwrite=args.overwrite,
         sign=tuple(args.sign) if args.sign else None,
+        score_card_full_name=args.full_name,
     )
 
 

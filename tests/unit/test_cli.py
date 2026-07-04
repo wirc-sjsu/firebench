@@ -54,6 +54,7 @@ def test_run_command_uses_registry_defaults(monkeypatch, tmp_path):
         "obs_data": tmp_path / "default_obs.h5",
         "output_json": tmp_path / "default_rslt.json",
         "score_card_report": tmp_path / "default.pdf",
+        "score_card_full_name": False,
     }
     assert (tmp_path / "default.log").exists()
 
@@ -145,6 +146,7 @@ def test_run_command_overrides_registry_defaults(monkeypatch, tmp_path):
             str(output_json),
             "--score-card-report",
             str(score_card_report),
+            "--full_name",
         ],
     )
 
@@ -158,6 +160,7 @@ def test_run_command_overrides_registry_defaults(monkeypatch, tmp_path):
         "obs_data": Path(obs_data),
         "output_json": Path(output_json),
         "score_card_report": Path(score_card_report),
+        "score_card_full_name": True,
     }
     assert log_file.exists()
 

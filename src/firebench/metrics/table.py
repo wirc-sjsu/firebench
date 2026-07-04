@@ -3,6 +3,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from pathlib import Path
+import re
 from ..tools import logger
 from ..signing import verify_certificate_in_dict, DEFAULT_VL, VERIFICATION_LEVEL_COLORS
 
@@ -21,7 +22,36 @@ def _score_to_color(score):
     return "#6BAF5F"
 
 
-def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: str):
+def _scorecard_benchmark_name(data: dict) -> str:
+    return data.get("benchmark_short_name") or data.get("case_short_name") or data["case_id"]
+
+
+def _scorecard_title(data: dict, scheme_name: str, verif_lvl: str, score: str) -> list[str]:
+    return [
+        f"Total Score {_scorecard_benchmark_name(data)} {scheme_name} for {data['evaluated_model_name']}",
+        "",
+        f"{verif_lvl}",
+        score,
+    ]
+
+
+def _scorecard_group_name(data: dict, group_name: str) -> str:
+    return data.get("score_card", {}).get("group_display_names", {}).get(group_name, group_name)
+
+
+def _scorecard_kpi_name(bench_id: str, kpi_name: str, full_name: bool = False) -> str:
+    if full_name:
+        return f"{bench_id}: {kpi_name}"
+    return re.sub(r"\s+(?:WH\d+|W\d+)$", "", kpi_name)
+
+
+def save_as_table(
+    filename: Path,
+    data: dict,
+    signed: bool,
+    certificate_name: str,
+    full_name: bool = False,
+):
     logger.info("Save data dict as score card report pdf")
     if filename.suffix.lower() != ".pdf":
         filename = filename.with_suffix(".pdf")
@@ -74,24 +104,12 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
         scheme_name = data["score_card"]["aggregation_scheme_name"]
         valid_scheme = True
         text_table.append(
-            [
-                f"Total Score {data['case_id']} agg. {scheme_name}: {data['evaluated_model_name']}",
-                "",
-                f"{verif_lvl}",
-                f"{data['score_card']['Score Total']:.2f}",
-            ]
+            _scorecard_title(data, scheme_name, verif_lvl, f"{data['score_card']['Score Total']:.2f}")
         )
     else:
         # Aggregation scheme is 0 or invalid
         scheme_name = "No agg"
-        text_table.append(
-            [
-                f"Total Score {data['case_id']} agg. {scheme_name}: {data['evaluated_model_name']}",
-                "",
-                f"{verif_lvl}",
-                f"Invalid",
-            ]
-        )
+        text_table.append(_scorecard_title(data, scheme_name, verif_lvl, "Invalid"))
     text_table.append(["Benchmark ID/Group Name", "KPI value", "Weight", "Score"])
 
     # rows
@@ -102,7 +120,12 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
             group_score = data["score_card"][f"Score {group_name}"]
             group_rows.append(len(text_table))
             text_table.append(
-                [f"Group: {group_name}", "", f"{group_content['weight']}", f"{group_score:.2f}"]
+                [
+                    f"Group: {_scorecard_group_name(data, group_name)}",
+                    "",
+                    f"{group_content['weight']}",
+                    f"{group_score:.2f}",
+                ]
             )
             # add benchamrk rows
             for bench_id, bench_weight in group_content["benchmarks"].items():
@@ -115,7 +138,7 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
                         kpi_score = item
                 text_table.append(
                     [
-                        f"{bench_id}: {kpi_name}",
+                        _scorecard_kpi_name(bench_id, kpi_name, full_name=full_name),
                         f"{kpi_score:.2e}",
                         f"{bench_weight}",
                         f"{bench_score:.2f}",
@@ -129,12 +152,20 @@ def save_as_table(filename: Path, data: dict, signed: bool, certificate_name: st
                     bench_score = item
                 else:
                     kpi_score = item
-            text_table.append([f"{bench_id}", f"{kpi_score:.2e}", "None", f"{bench_score:.2f}"])
+            text_table.append(
+                [
+                    _scorecard_kpi_name(bench_id, bench_id, full_name=full_name),
+                    f"{kpi_score:.2e}",
+                    "None",
+                    f"{bench_score:.2f}",
+                ]
+            )
 
     # footer
     text_table.append(
         [
-            f"FireBench version: {data['firebench_version']}   Reference dataset version: {data['case_version']}",
+            f"FireBench version: {data['firebench_version']}   "
+            f"Reference dataset version: {data['case_version']}",
             "",
             "",
             "",

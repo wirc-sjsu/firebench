@@ -10,6 +10,7 @@ from firebench import standardize as fs
 
 CASE_NAME = "Caldor 2021"
 CASE_SHORT_NAME = "Caldor"
+BENCHMARK_SHORT_NAME = "2021_Caldor"
 CASE_ID = "FB001"
 DEFAULT_OBS_DATA_PATH = Path("Caldor.h5")
 LOG_FILENAME = "Caldor.log"
