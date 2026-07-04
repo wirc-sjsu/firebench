@@ -151,6 +151,56 @@ def test_run_command_no_run_prints_registry_without_model_file(monkeypatch, tmp_
     assert call == {"debug_agg_scheme": "WX_WH1"}
 
 
+def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
+    model_output = tmp_path / "model.h5"
+    model_output.write_text("model")
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as cwd:
+        result = runner.invoke(main, ["run", str(model_output), "--report", "-n", "Demo Model"])
+
+        report_path = Path(cwd) / "firebench_report.md"
+        figures_dir = Path(cwd) / "figures"
+
+        assert result.exit_code == 0, result.output
+        assert figures_dir.is_dir()
+        assert report_path.read_text(encoding="utf-8") == (
+            "# Report 2021 Caldor Fire for Demo Model\n"
+            "## Submitters' comments\n"
+            "This section is reserved for the model users who have submitted the model output "
+            "to this benchmark.\n"
+            "### Short model description and keywords\n"
+            "### Setup/Configuration\n"
+            "### Inputs\n"
+            "### Post-processing\n"
+            "### FireBench adapter used\n"
+            "## FireBench Team comments\n"
+            "This section is reserved to the FireBench team validating this benchmark results\n"
+            "## Results\n"
+        )
+
+
+def test_run_command_report_does_not_overwrite_existing_report(monkeypatch, tmp_path):
+    model_output = tmp_path / "model.h5"
+    model_output.write_text("model")
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as cwd:
+        report_path = Path(cwd) / "firebench_report.md"
+        report_path.write_text("existing report", encoding="utf-8")
+
+        result = runner.invoke(main, ["run", str(model_output), "--report"])
+
+        assert result.exit_code != 0
+        assert "Report file already exists: firebench_report.md" in result.output
+        assert report_path.read_text(encoding="utf-8") == "existing report"
+        assert call == {}
+
+
 def test_run_command_unknown_case_fails(monkeypatch, tmp_path):
     model_output = tmp_path / "model.h5"
     model_output.write_text("model")

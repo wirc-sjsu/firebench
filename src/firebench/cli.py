@@ -11,6 +11,9 @@ from .tools.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
+REPORT_PATH = Path("firebench_report.md")
+FIGURES_DIR = Path("figures")
+
 FIREBENCH_BANNER = (
     "\b"
     + r"""
@@ -102,6 +105,39 @@ def _echo_cases() -> None:
         click.echo(f"{case_id}  {case_info['name']} - docs: {case_info['url']}")
 
 
+def _get_model_name(model_output: Path, name: str) -> str:
+    if name:
+        return name
+    return model_output.stem
+
+
+def _render_report_skeleton(benchmark_name: str, model_name: str) -> str:
+    return f"""# Report {benchmark_name} for {model_name}
+## Submitters' comments
+This section is reserved for the model users who have submitted the model output to this benchmark.
+### Short model description and keywords
+### Setup/Configuration
+### Inputs
+### Post-processing
+### FireBench adapter used
+## FireBench Team comments
+This section is reserved to the FireBench team validating this benchmark results
+## Results
+"""
+
+
+def _check_report_skeleton_paths(overwrite: bool) -> None:
+    if REPORT_PATH.exists() and not overwrite:
+        raise click.UsageError(f"Report file already exists: {REPORT_PATH}. Use --overwrite to replace it.")
+    if FIGURES_DIR.exists() and not FIGURES_DIR.is_dir():
+        raise click.UsageError(f"Figures path exists and is not a directory: {FIGURES_DIR}")
+
+
+def _write_report_skeleton(benchmark_name: str, model_name: str) -> None:
+    FIGURES_DIR.mkdir(exist_ok=True)
+    REPORT_PATH.write_text(_render_report_skeleton(benchmark_name, model_name), encoding="utf-8")
+
+
 @main.command()
 @click.argument(
     "model_output",
@@ -177,6 +213,11 @@ def _echo_cases() -> None:
     is_flag=True,
     help="Build registries and print selected groups/benchmarks without running metrics.",
 )
+@click.option(
+    "--report",
+    is_flag=True,
+    help="Create firebench_report.md and the figures directory for the benchmark run.",
+)
 def run(
     model_output: Path,
     case_id: str,
@@ -191,6 +232,7 @@ def run(
     output_json: Path | None,
     score_card_report: Path | None,
     no_run: bool,
+    report: bool,
 ) -> None:
     """
     Run a benchmark case against model std HDF5 output. Use firebench list to see all available cases.
@@ -214,6 +256,8 @@ def run(
 
     if not model_output.is_file():
         raise click.UsageError(f"Model output file does not exist: {model_output}")
+    if report:
+        _check_report_skeleton_paths(overwrite)
 
     case_info["func"](
         model_output,
@@ -225,6 +269,11 @@ def run(
         output_json=output_json,
         score_card_report=score_card_report,
     )
+    if report:
+        _write_report_skeleton(
+            benchmark_name=case_info["name"],
+            model_name=_get_model_name(model_output, name),
+        )
     return 0
 
 
