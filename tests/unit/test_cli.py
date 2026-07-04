@@ -72,6 +72,22 @@ def _fake_registry(tmp_path, call):
             },
         }
 
+    def fake_report_figure_func(model_output, obs_data, benchmark_target, target_info, output_dir):
+        figure_path = output_dir / f"perimeters_{benchmark_target}.png"
+        output_dir.mkdir(exist_ok=True)
+        figure_path.write_text("fake figure")
+        call["report_figure_model_output"] = model_output
+        call["report_figure_obs_data"] = obs_data
+        call["report_figure_target"] = benchmark_target
+        call["report_figure_target_info"] = target_info
+        return [
+            {
+                "title": "Fire perimeter comparison",
+                "path": figure_path,
+                "alt": "Observed and modeled fire perimeter contours",
+            }
+        ]
+
     return {
         "001": {
             "name": "2021 Caldor Fire",
@@ -80,6 +96,7 @@ def _fake_registry(tmp_path, call):
             "func": fake_runner,
             "debug_func": fake_debug_func,
             "target_describer": fake_target_describer,
+            "report_figure_func": fake_report_figure_func,
             "default_options": {
                 "verbose": 3,
                 "log_file": tmp_path / "default.log",
@@ -267,6 +284,11 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
 
         assert result.exit_code == 0, result.output
         assert figures_dir.is_dir()
+        assert (figures_dir / "perimeters_H013_P.png").is_file()
+        assert call["report_figure_model_output"] == model_output
+        assert call["report_figure_obs_data"] == tmp_path / "default_obs.h5"
+        assert call["report_figure_target"] == "H013_P"
+        assert call["report_figure_target_info"]["target"] == "H013_P"
         assert report_path.read_text(encoding="utf-8") == (
             "# Report 2021 Caldor Fire for Demo Model\n"
             "## Benchmark target information\n"
@@ -303,6 +325,11 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
             "## FireBench Team comments\n"
             "This section is reserved to the FireBench team validating this benchmark results\n"
             "## Results\n"
+            "### Fire perimeter comparison\n"
+            '<p align="center">\n'
+            '  <img src="figures/perimeters_H013_P.png" '
+            'alt="Observed and modeled fire perimeter contours">\n'
+            "</p>\n"
         )
 
 

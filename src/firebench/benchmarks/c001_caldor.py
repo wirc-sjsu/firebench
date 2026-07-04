@@ -12,6 +12,7 @@ from firebench import standardize as fs
 from firebench import metrics as fm
 from firebench import signing as fsi
 from firebench.benchmarks import c001_caldor_config as cfg
+from firebench.plotting import plot_perimeter_contours
 import numpy as np
 from firebench import __version__ as fb_version
 from firebench import Quantity
@@ -2050,6 +2051,36 @@ def describe_benchmark_registry(benchmark_target: str = DEFAULT_AGGREGATION_SCHE
             lines.append(f"  - {bench_id} (weight={bench_weight}){suffix}")
 
     return "\n".join(lines)
+
+
+def create_report_figures(
+    model_output: Path,
+    obs_data: Path,
+    benchmark_target: str,
+    target_info: dict | None,
+    output_dir: Path,
+) -> list[dict]:
+    if target_info is None:
+        return []
+
+    perimeter_paths = [perimeter["path"] for perimeter in target_info.get("perimeters", [])]
+    if not perimeter_paths:
+        return []
+
+    output_path = Path(output_dir) / f"perimeters_{benchmark_target}.png"
+    plot_perimeter_contours(
+        model_output=model_output,
+        obs_data=obs_data,
+        perimeter_paths=perimeter_paths,
+        output_path=output_path,
+    )
+    return [
+        {
+            "title": "Fire perimeter comparison",
+            "path": output_path,
+            "alt": "Observed and modeled fire perimeter contours",
+        }
+    ]
 
 
 def print_benchmark_registry(benchmark_target: str = DEFAULT_AGGREGATION_SCHEME) -> None:

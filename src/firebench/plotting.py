@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import h5py
+import numpy as np
 
 try:  # pragma: no cover - exercised only on Python 3.10
     import tomllib
@@ -97,7 +98,6 @@ def common_perimeter_paths(files: tuple[PlotInput, ...], perimeter: PerimeterPlo
 
 
 def plot_perimeters(config: PlotConfig) -> list[Path]:
-    import contextily as cx
     import geopandas as gpd
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
@@ -149,6 +149,8 @@ def plot_perimeters(config: PlotConfig) -> list[Path]:
             continue
 
         if config.perimeter.satellite:
+            import contextily as cx
+
             cx.add_basemap(
                 ax,
                 source=_basemap_source(cx, config.perimeter.basemap_source),
@@ -166,6 +168,121 @@ def plot_perimeters(config: PlotConfig) -> list[Path]:
         written.append(output_path)
 
     return written
+
+
+def plot_perimeter_contours(
+    model_output: Path,
+    obs_data: Path,
+    perimeter_paths: list[str] | tuple[str, ...],
+    output_path: Path,
+    projection: str = "EPSG:4326",
+    area_projection: str = "EPSG:5070",
+    basemap_source: str | None = "USGS.USImagery",
+    dpi: int = 150,
+    figure_width: float = 8.0,
+) -> Path:
+    import geopandas as gpd
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Rectangle
+
+    layers = []
+    perimeter_pairs = []
+    for perimeter_path in perimeter_paths:
+        perimeter_pair = []
+        for h5_path, color in (
+            (obs_data, "blue"),
+            (model_output, "red"),
+        ):
+            with h5py.File(h5_path, "r") as h5:
+                kml_path = _resolve_h5_relative_path(h5, h5[perimeter_path].attrs["rel_path"])
+            gdf = gpd.read_file(kml_path, driver="KML")
+            if gdf.empty:
+                continue
+            if gdf.crs is None:
+                gdf = gdf.set_crs("EPSG:4326")
+            perimeter_pair.append(gdf)
+            layers.append((gdf.to_crs(projection), color))
+        if len(perimeter_pair) == 2:
+            perimeter_pairs.append(tuple(perimeter_pair))
+
+    if not layers:
+        raise ValueError("No perimeter geometries were available for report plotting.")
+
+    minx, miny, maxx, maxy = _combined_bounds([gdf for gdf, _ in layers])
+    x_range = max(maxx - minx, 1.0)
+    y_range = max(maxy - miny, 1.0)
+    x_padding = x_range * 0.05
+    y_padding = y_range * 0.05
+    minx -= x_padding
+    maxx += x_padding
+    miny -= y_padding
+    maxy += y_padding
+
+    figure_height = figure_width * ((maxy - miny) / (maxx - minx))
+    fig, ax = plt.subplots(figsize=(figure_width, figure_height))
+    ax.set_xlim(minx, maxx)
+    ax.set_ylim(miny, maxy)
+    ax.set_aspect("equal", adjustable="box")
+
+    if basemap_source is not None:
+        try:
+            import contextily as cx
+
+            cx.add_basemap(ax, source=_basemap_source(cx, basemap_source), crs=projection)
+        except Exception as exc:  # pragma: no cover - depends on external tile services
+            import logging
+
+            logging.getLogger(__name__).warning("Could not add satellite basemap: %s", exc)
+
+    for gdf, color in layers:
+        gdf.boundary.plot(ax=ax, color=color, linewidth=2.0, alpha=1.0)
+
+    ax.minorticks_on()
+    ax.tick_params(direction="in", top=True, right=True, which="both")
+    ax.tick_params(which="major", length=6)
+    ax.tick_params(which="minor", length=3)
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.legend(
+        handles=[
+            Line2D([0], [0], color="blue", linewidth=2.0, label="Observations"),
+            Line2D([0], [0], color="red", linewidth=2.0, label="Model"),
+        ],
+        loc="best",
+    )
+    ax.set_title(f"Fire perimeter comparison - {_perimeter_times_title(perimeter_paths)}")
+    summary = _perimeter_metrics_summary(perimeter_pairs, area_projection)
+    if summary:
+        ax.add_patch(
+            Rectangle(
+                (0.0, 0.0),
+                1.0,
+                0.075,
+                transform=ax.transAxes,
+                facecolor="white",
+                edgecolor="none",
+                alpha=0.9,
+                zorder=3,
+            )
+        )
+        ax.text(
+            0.5,
+            0.0375,
+            summary,
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=8,
+            zorder=4,
+        )
+    fig.tight_layout()
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=dpi)
+    plt.close(fig)
+    return output_path
 
 
 def _load_inputs(value: Any, base_dir: Path) -> tuple[PlotInput, ...]:
@@ -265,6 +382,62 @@ def _safe_filename(path: str) -> str:
     filename = path.strip("/") or "root"
     filename = re.sub(r"[^A-Za-z0-9_.-]+", "_", filename)
     return filename.strip("_") or "perimeter"
+
+
+def _combined_bounds(layers: list[Any]) -> tuple[float, float, float, float]:
+    bounds = np.array([layer.total_bounds for layer in layers])
+    return (
+        float(bounds[:, 0].min()),
+        float(bounds[:, 1].min()),
+        float(bounds[:, 2].max()),
+        float(bounds[:, 3].max()),
+    )
+
+
+def _perimeter_times_title(perimeter_paths: list[str] | tuple[str, ...]) -> str:
+    return ", ".join(path.rsplit("_", maxsplit=1)[-1] for path in perimeter_paths)
+
+
+def _perimeter_metrics_summary(perimeter_pairs: list[tuple[Any, Any]], area_projection: str) -> str:
+    if not perimeter_pairs:
+        return ""
+
+    from firebench.metrics import perimeter as perimeter_metrics
+
+    jaccard_values = []
+    sorensen_values = []
+    obs_area_m2 = 0.0
+    model_area_m2 = 0.0
+
+    for obs_gdf, model_gdf in perimeter_pairs:
+        jaccard_values.append(
+            perimeter_metrics.jaccard_polygon(obs_gdf, model_gdf, projection=area_projection)
+        )
+        sorensen_values.append(
+            perimeter_metrics.sorensen_dice_polygon(obs_gdf, model_gdf, projection=area_projection)
+        )
+        obs_area_m2 += _burn_area_m2(obs_gdf, area_projection)
+        model_area_m2 += _burn_area_m2(model_gdf, area_projection)
+
+    return (
+        f"IoU = {np.mean(jaccard_values):.3f} | "
+        f"DS = {np.mean(sorensen_values):.3f} | "
+        f"Obs burn = {_format_burn_area(obs_area_m2)} | "
+        f"Model burn = {_format_burn_area(model_area_m2)}"
+    )
+
+
+def _burn_area_m2(gdf: Any, area_projection: str) -> float:
+    return float(gdf.to_crs(area_projection).area.sum())
+
+
+def _format_burn_area(area_m2: float) -> str:
+    acres = area_m2 / 4046.8564224
+    if acres >= 1_000_000:
+        return f"{acres / 1_000_000:.4g} 1e6 acre"
+    if acres >= 1_000:
+        return f"{acres / 1_000:.4g} 1e3 acre"
+    return f"{acres:.4g} acre"
 
 
 def _basemap_source(cx: Any, source_name: str) -> Any:

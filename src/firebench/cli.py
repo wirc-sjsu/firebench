@@ -231,13 +231,33 @@ def _render_report_target_information(target: str, target_info: dict | None = No
     return "\n".join(lines)
 
 
+def _render_report_figures(figures: list[dict] | None = None) -> str:
+    if not figures:
+        return ""
+
+    lines = []
+    for figure in figures:
+        lines.extend(
+            [
+                f"### {figure['title']}",
+                '<p align="center">',
+                f'  <img src="{Path(figure["path"]).as_posix()}" alt="{figure["alt"]}">',
+                "</p>",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
 def _render_report_skeleton(
     benchmark_name: str,
     model_name: str,
     target: str,
     target_info: dict | None = None,
+    figures: list[dict] | None = None,
 ) -> str:
     target_information = _render_report_target_information(target, target_info)
+    report_figures = _render_report_figures(figures)
     return f"""# Report {benchmark_name} for {model_name}
 {target_information}
 
@@ -251,7 +271,7 @@ This section is reserved for the model users who have submitted the model output
 ## FireBench Team comments
 This section is reserved to the FireBench team validating this benchmark results
 ## Results
-"""
+{report_figures}"""
 
 
 def _check_report_skeleton_paths(overwrite: bool) -> None:
@@ -266,12 +286,35 @@ def _write_report_skeleton(
     model_name: str,
     target: str,
     target_info: dict | None = None,
+    figures: list[dict] | None = None,
 ) -> None:
     FIGURES_DIR.mkdir(exist_ok=True)
     REPORT_PATH.write_text(
-        _render_report_skeleton(benchmark_name, model_name, target, target_info),
+        _render_report_skeleton(benchmark_name, model_name, target, target_info, figures),
         encoding="utf-8",
     )
+
+
+def _create_report_figures(
+    case_info: dict,
+    model_output: Path,
+    obs_data: Path,
+    target: str,
+    target_info: dict | None,
+) -> list[dict]:
+    report_figure_func = case_info.get("report_figure_func")
+    if report_figure_func is None:
+        return []
+    try:
+        return report_figure_func(
+            model_output=model_output,
+            obs_data=obs_data,
+            benchmark_target=target,
+            target_info=target_info,
+            output_dir=FIGURES_DIR,
+        )
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
 
 
 @main.command()
@@ -421,11 +464,19 @@ def run(
         score_card_full_name=full_name,
     )
     if report:
+        report_figures = _create_report_figures(
+            case_info=case_info,
+            model_output=model_output,
+            obs_data=obs_data,
+            target=target,
+            target_info=target_info,
+        )
         _write_report_skeleton(
             benchmark_name=case_info["name"],
             model_name=_get_model_name(model_output, name),
             target=target,
             target_info=target_info,
+            figures=report_figures,
         )
     return 0
 

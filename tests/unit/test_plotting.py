@@ -2,10 +2,18 @@ from pathlib import Path
 
 import h5py
 import matplotlib
+import geopandas as gpd
 from click.testing import CliRunner
+from shapely.geometry import Polygon
 
 from firebench.cli import main
-from firebench.plotting import common_perimeter_paths, load_plot_config, plot_from_config
+from firebench.plotting import (
+    _perimeter_metrics_summary,
+    common_perimeter_paths,
+    load_plot_config,
+    plot_from_config,
+    plot_perimeter_contours,
+)
 
 matplotlib.use("Agg")
 
@@ -150,6 +158,49 @@ satellite = false
 
     assert written == [tmp_path / "plots" / "polygons_A.png"]
     assert written[0].is_file()
+
+
+def test_plot_perimeter_contours_writes_report_figure_without_basemap(tmp_path):
+    obs = tmp_path / "obs.h5"
+    model = tmp_path / "model.h5"
+    _write_h5(obs, ("/polygons/A",))
+    _write_h5(model, ("/polygons/A",))
+    output_path = tmp_path / "figures" / "perimeters_H013_P.png"
+
+    written = plot_perimeter_contours(
+        model_output=model,
+        obs_data=obs,
+        perimeter_paths=["/polygons/A"],
+        output_path=output_path,
+        basemap_source=None,
+        dpi=72,
+    )
+
+    assert written == output_path
+    assert output_path.is_file()
+
+
+def test_perimeter_metrics_summary_formats_kpis_and_burn_areas():
+    obs = gpd.GeoDataFrame(
+        geometry=[Polygon([(0, 0), (1000, 0), (1000, 1000), (0, 1000), (0, 0)])],
+        crs="EPSG:5070",
+    )
+    model = gpd.GeoDataFrame(
+        geometry=[Polygon([(500, 0), (1500, 0), (1500, 1000), (500, 1000), (500, 0)])],
+        crs="EPSG:5070",
+    )
+
+    summary = _perimeter_metrics_summary([(obs, model)], "EPSG:5070")
+
+    assert summary == "IoU = 0.333 | DS = 0.500 | Obs burn = 247.1 acre | Model burn = 247.1 acre"
+
+
+def test_format_burn_area_uses_scaled_acres():
+    from firebench.plotting import _format_burn_area
+
+    assert _format_burn_area(1_000_000) == "247.1 acre"
+    assert _format_burn_area(100_000 * 4046.8564224) == "100 1e3 acre"
+    assert _format_burn_area(2_500_000 * 4046.8564224) == "2.5 1e6 acre"
 
 
 def test_plot_command_delegates_to_plot_config(monkeypatch, tmp_path):
