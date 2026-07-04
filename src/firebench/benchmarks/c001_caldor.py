@@ -1288,7 +1288,76 @@ def normalize_benchmark_target(benchmark_target: str) -> str:
     return canonical_target
 
 
-def describe_available_targets() -> dict:
+def _target_period(period_selector: str) -> tuple[datetime, datetime]:
+    if period_selector.startswith("H"):
+        period_name = f"WH{int(period_selector.removeprefix('H'))}"
+        return cfg.HRRR_PERIODS[period_name]
+    if period_selector.startswith("P"):
+        period_name = f"W{int(period_selector.removeprefix('P'))}"
+        return cfg.CURATED_PERIODS[period_name]
+    raise ValueError(f"Unknown period selector '{period_selector}'.")
+
+
+def _perimeter_time_from_path(perimeter_path: str) -> str:
+    return perimeter_path.rsplit("_", maxsplit=1)[-1]
+
+
+def _benchmark_kpi_name(bench_id: str) -> str:
+    benchmark = BENCHMARK_FUNCTIONS[bench_id]
+    keywords = getattr(benchmark, "keywords", {}) or {}
+    if getattr(benchmark, "func", None) is bench_fp_generic_index:
+        return f"{keywords['kpi_name_custom']} Index"
+    if getattr(benchmark, "func", None) is bench_fp_generic_area_final_bias:
+        return "Final Burn Area Bias"
+    return keywords.get("kpi_name_custom", _benchmark_debug_label(bench_id))
+
+
+def describe_available_targets(benchmark_target: str | None = None) -> dict:
+    kpi_groups = {
+        "P": "Fire Perimeters",
+    }
+
+    if benchmark_target is not None:
+        build_registries()
+        canonical_target = resolve_benchmark_target(benchmark_target)
+        period_selector, analysis_flags = canonical_target.split("_", maxsplit=1)
+        start, end = _target_period(period_selector)
+        group_display_names = _target_group_display_names(canonical_target)
+
+        perimeters = []
+        kpis = []
+        for group_name, group_content in AGGREGATION[canonical_target].items():
+            for perimeter_path in FIRE_PERIMETER_GROUP_PERIMETERS.get(group_name, []):
+                perimeters.append(
+                    {
+                        "time": _perimeter_time_from_path(perimeter_path),
+                        "path": perimeter_path,
+                    }
+                )
+            for bench_id, weight in group_content["benchmarks"].items():
+                keywords = getattr(BENCHMARK_FUNCTIONS[bench_id], "keywords", {}) or {}
+                kpis.append(
+                    {
+                        "id": bench_id,
+                        "name": _benchmark_kpi_name(bench_id),
+                        "group": group_display_names.get(group_name, group_name),
+                        "weight": weight,
+                        "value_norm_param_m": keywords.get("value_norm_param_m"),
+                    }
+                )
+
+        return {
+            "target": canonical_target,
+            "period": {
+                "target": period_selector,
+                "start": start,
+                "end": end,
+            },
+            "kpi_groups": {flag: kpi_groups[flag] for flag in analysis_flags},
+            "perimeters": perimeters,
+            "kpis": kpis,
+        }
+
     periods = []
     for period_name, (start, end) in cfg.HRRR_PERIODS.items():
         period_number = int(period_name.removeprefix("WH"))
@@ -1311,9 +1380,7 @@ def describe_available_targets() -> dict:
 
     return {
         "periods": periods,
-        "kpi_groups": {
-            "P": "Fire Perimeters",
-        },
+        "kpi_groups": kpi_groups,
     }
 
 

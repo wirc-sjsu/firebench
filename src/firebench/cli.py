@@ -123,7 +123,7 @@ def _format_target_datetime(value) -> str:
     return value.isoformat(timespec="minutes")
 
 
-def _echo_case_targets(case: str) -> None:
+def _echo_case_targets(case: str, target: str | None = None) -> None:
     case_id, case_info = _get_case_info(case)
     click.echo(f"ID: {case_id}")
     click.echo(f"Short name: {case_info.get('short_name', '')}")
@@ -134,7 +134,37 @@ def _echo_case_targets(case: str) -> None:
         click.echo("No benchmark targets are registered.")
         return
 
-    target_info = target_describer()
+    try:
+        target_info = target_describer(target) if target is not None else target_describer()
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+    if target is not None:
+        click.echo(f"Benchmark target: {target_info['target']}")
+        click.echo("")
+        click.echo("Temporal period")
+        click.echo(f"Target: {target_info['period']['target']}")
+        click.echo(f"Start: {_format_target_datetime(target_info['period']['start'])}")
+        click.echo(f"End: {_format_target_datetime(target_info['period']['end'])}")
+
+        click.echo("")
+        click.echo("KPI groups")
+        for flag, description in target_info["kpi_groups"].items():
+            click.echo(f"{flag}: {description}")
+
+        click.echo("")
+        click.echo("Perimeters")
+        click.echo("Time")
+        for perimeter in target_info["perimeters"]:
+            click.echo(perimeter["time"])
+
+        click.echo("")
+        click.echo("KPIs")
+        click.echo("ID   KPI   Weight   value_norm_param_m")
+        for kpi in target_info["kpis"]:
+            norm_param = "" if kpi["value_norm_param_m"] is None else kpi["value_norm_param_m"]
+            click.echo(f"{kpi['id']}  {kpi['name']}  {kpi['weight']}  {norm_param}")
+        return
+
     click.echo("")
     click.echo("Temporal periods")
     click.echo("Target   Start   End")
@@ -332,12 +362,13 @@ def run(
 
 @main.command("list")
 @click.argument("case", required=False, type=str)
-def list_cases(case: str | None) -> None:
+@click.argument("target", required=False, type=str)
+def list_cases(case: str | None, target: str | None) -> None:
     """
     List available benchmarks or targets for a benchmark case.
     """
     if case:
-        _echo_case_targets(case)
+        _echo_case_targets(case, target)
         return 0
     _echo_cases()
     return 0

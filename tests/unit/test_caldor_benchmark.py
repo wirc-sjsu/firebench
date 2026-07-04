@@ -61,6 +61,43 @@ def test_hrrr_benchmark_target_selects_matching_fire_perimeter_group():
     assert c001_caldor._target_group_display_names("H013_P") == {"FP_H13": "Fire Perimeters"}
 
 
+def test_describe_available_targets_with_full_target_includes_details():
+    target_info = c001_caldor.describe_available_targets("H013_P")
+
+    assert target_info["target"] == "H013_P"
+    assert target_info["period"]["target"] == "H013"
+    assert target_info["kpi_groups"] == {"P": "Fire Perimeters"}
+    assert target_info["perimeters"] == [
+        {
+            "time": "2021-08-21T21:15-07:00",
+            "path": "/polygons/Caldor_2021-08-21T21:15-07:00",
+        },
+    ]
+    assert target_info["kpis"][0] == {
+        "id": "FB001_FPH097",
+        "name": "Average Jaccard Index",
+        "group": "Fire Perimeters",
+        "weight": 1,
+        "value_norm_param_m": None,
+    }
+    assert target_info["kpis"][-2:] == [
+        {
+            "id": "FB001_FPH103",
+            "name": "Final Burn Area Bias",
+            "group": "Fire Perimeters",
+            "weight": 2,
+            "value_norm_param_m": 5000,
+        },
+        {
+            "id": "FB001_FPH104",
+            "name": "Burn Area RMSE",
+            "group": "Fire Perimeters",
+            "weight": 2,
+            "value_norm_param_m": 5000,
+        },
+    ]
+
+
 def test_curated_benchmark_target_selects_matching_fire_perimeter_group():
     c001_caldor.build_registries()
 

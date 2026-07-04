@@ -15,7 +15,45 @@ def _fake_registry(tmp_path, call):
     def fake_debug_func(benchmark_target):
         call["debug_benchmark_target"] = benchmark_target
 
-    def fake_target_describer():
+    def fake_target_describer(target=None):
+        if target is not None:
+            return {
+                "target": "H013_P",
+                "period": {
+                    "target": "H013",
+                    "start": datetime(2021, 8, 19, 23, 0, tzinfo=timezone.utc),
+                    "end": datetime(2021, 8, 21, 23, 0, tzinfo=timezone.utc),
+                },
+                "kpi_groups": {
+                    "P": "Fire Perimeters",
+                },
+                "perimeters": [
+                    {
+                        "time": "2021-08-20T20:20-07:00",
+                        "path": "/polygons/Caldor_2021-08-20T20:20-07:00",
+                    },
+                    {
+                        "time": "2021-08-21T21:15-07:00",
+                        "path": "/polygons/Caldor_2021-08-21T21:15-07:00",
+                    },
+                ],
+                "kpis": [
+                    {
+                        "id": "FB001_FPH097",
+                        "name": "Average Jaccard Index",
+                        "group": "Fire Perimeters",
+                        "weight": 1,
+                        "value_norm_param_m": None,
+                    },
+                    {
+                        "id": "FB001_FPH103",
+                        "name": "Final Burn Area Bias",
+                        "group": "Fire Perimeters",
+                        "weight": 2,
+                        "value_norm_param_m": 5000,
+                    },
+                ],
+            }
         return {
             "periods": [
                 {
@@ -320,6 +358,38 @@ def test_list_command_accepts_case_short_name(monkeypatch, tmp_path):
     assert "ID: 001" in result.output
     assert "H000" in result.output
     assert "P: Fire Perimeters" in result.output
+
+
+def test_list_command_prints_target_details(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    result = CliRunner().invoke(main, ["list", "2021_Caldor", "H013_P"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output == (
+        "ID: 001\n"
+        "Short name: 2021_Caldor\n"
+        "Documentation: https://example.test/caldor\n"
+        "Benchmark target: H013_P\n"
+        "\n"
+        "Temporal period\n"
+        "Target: H013\n"
+        "Start: 2021-08-19T23:00+00:00\n"
+        "End: 2021-08-21T23:00+00:00\n"
+        "\n"
+        "KPI groups\n"
+        "P: Fire Perimeters\n"
+        "\n"
+        "Perimeters\n"
+        "Time\n"
+        "2021-08-20T20:20-07:00\n"
+        "2021-08-21T21:15-07:00\n"
+        "\n"
+        "KPIs\n"
+        "ID   KPI   Weight   value_norm_param_m\n"
+        "FB001_FPH097  Average Jaccard Index  1  \n"
+        "FB001_FPH103  Final Burn Area Bias  2  5000\n"
+    )
 
 
 def test_data_list_matches_top_level_list(monkeypatch, tmp_path):
