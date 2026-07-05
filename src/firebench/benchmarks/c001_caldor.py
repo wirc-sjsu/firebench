@@ -1234,14 +1234,14 @@ def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
     parts = target.split("_")
     if len(parts) != 2:
         raise ValueError(
-            f"Invalid benchmark target '{benchmark_target}'. Expected format like H013_P or P02_P."
+            f"Invalid benchmark target '{benchmark_target}'. Expected format like H013_P, H013_W, or P02_P."
         )
 
     period_selector, analysis_flags = parts
     if not analysis_flags:
         raise ValueError(f"Invalid benchmark target '{benchmark_target}'. Missing analysis flags.")
 
-    unsupported_flags = sorted(set(analysis_flags) - {"P"})
+    unsupported_flags = sorted(set(analysis_flags) - {"P", "W"})
     if unsupported_flags:
         raise ValueError(
             f"Invalid benchmark target '{benchmark_target}'. Unsupported analysis flags: "
@@ -1263,6 +1263,8 @@ def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
         canonical_period = f"H{period_number:03d}"
         if "P" in canonical_flags:
             group_names.append(f"FP_H{period_number}")
+        if "W" in canonical_flags:
+            group_names.extend(_weather_group_names(period_name))
     elif period_selector.startswith("P"):
         period_number_text = period_selector.removeprefix("P")
         if not period_number_text.isdigit():
@@ -1276,6 +1278,8 @@ def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
         canonical_period = f"P{period_number:02d}"
         if "P" in canonical_flags:
             group_names.append(f"Fire Perimeter W{period_number}")
+        if "W" in canonical_flags:
+            group_names.extend(_weather_group_names(period_name))
     else:
         raise ValueError(
             f"Invalid benchmark target '{benchmark_target}'. Period selector must start with H or P."
@@ -1313,9 +1317,51 @@ def _benchmark_kpi_name(bench_id: str) -> str:
     return keywords.get("kpi_name_custom", _benchmark_debug_label(bench_id))
 
 
-def describe_available_targets(benchmark_target: str | None = None) -> dict:
+def _weather_station_counts(obs_data: Path, period: tuple[datetime, datetime]) -> list[dict]:
+    if not obs_data.is_file():
+        return []
+
+    weather_stations = []
+    with File(obs_data, "r") as obs_dataset:
+        if fs.TIME_SERIES not in obs_dataset:
+            return []
+
+        for variable_spec in cfg.WX_VARIABLE_SPECS:
+            variable = variable_spec["variable"]
+            stations = 0
+            trusted_stations = 0
+            for station in obs_dataset[fs.TIME_SERIES].keys():
+                if not station.startswith("station"):
+                    continue
+
+                station_path = f"{fs.TIME_SERIES}/{station}"
+                data_path = f"{station_path}/{variable}"
+                if data_path not in obs_dataset:
+                    continue
+                if not np.any(get_mask_from_period(obs_dataset, station_path, period)):
+                    continue
+
+                stations += 1
+                confidence = obs_dataset[data_path].attrs.get("sensor_height_source_confidence_lvl")
+                if confidence is not None and int(confidence[0]) == fs.SH_TRUST_HIGHEST:
+                    trusted_stations += 1
+
+            weather_stations.append(
+                {
+                    "variable": variable,
+                    "label": variable_spec["label"],
+                    "stations": stations,
+                    "trusted_stations": trusted_stations,
+                }
+            )
+
+    return weather_stations
+
+
+def describe_available_targets(benchmark_target: str | None = None, obs_data: Path | None = None) -> dict:
     kpi_groups = {
         "P": "Fire Perimeters",
+        "W": "Weather Stations",
     }
 
     if benchmark_target is not None:
@@ -1324,6 +1370,7 @@ def describe_available_targets(benchmark_target: str | None = None) -> dict:
         period_selector, analysis_flags = canonical_target.split("_", maxsplit=1)
         start, end = _target_period(period_selector)
         group_display_names = _target_group_display_names(canonical_target)
+        obs_data = obs_data or DEFAULT_OBS_DATA_PATH
 
         perimeters = []
         kpis = []
@@ -1356,6 +1403,9 @@ def describe_available_targets(benchmark_target: str | None = None) -> dict:
             },
             "kpi_groups": {flag: kpi_groups[flag] for flag in analysis_flags},
             "perimeters": perimeters,
+            "weather_stations": (
+                _weather_station_counts(obs_data, (start, end)) if "W" in analysis_flags else []
+            ),
             "kpis": kpis,
         }
 
@@ -1392,14 +1442,21 @@ def _target_group_display_names(aggregation_scheme: str) -> dict[str, str]:
         return {}
 
     _, analysis_flags = aggregation_scheme.rsplit("_", 1)
-    if "P" not in analysis_flags:
-        return {}
-
-    return {
+    display_names = {
         group_name: "Fire Perimeters"
         for group_name in AGGREGATION[aggregation_scheme]
         if group_name.startswith("FP_H") or group_name.startswith("Fire Perimeter W")
     }
+    if "W" in analysis_flags:
+        display_names.update(
+            {
+                group_name: "Weather Stations"
+                for group_name in AGGREGATION[aggregation_scheme]
+                if group_name in WX_GROUP_BENCHMARKS
+            }
+        )
+
+    return display_names
 
 
 def resolve_benchmark_target(benchmark_target: str) -> str:
@@ -2016,9 +2073,7 @@ def describe_benchmark_registry(benchmark_target: str = DEFAULT_AGGREGATION_SCHE
         selected_groups = AGGREGATION[selected_target]
     else:
         available = ", ".join(sorted(AGGREGATION))
-        raise ValueError(
-            f"Unknown benchmark target '{benchmark_target}'. Available schemes: {available}"
-        )
+        raise ValueError(f"Unknown benchmark target '{benchmark_target}'. Available schemes: {available}")
 
     selected_benchmarks = []
     for group_content in selected_groups.values():

@@ -15,8 +15,45 @@ def _fake_registry(tmp_path, call):
     def fake_debug_func(benchmark_target):
         call["debug_benchmark_target"] = benchmark_target
 
-    def fake_target_describer(target=None):
+    def fake_target_describer(target=None, obs_data=None):
         if target is not None:
+            call["target_describer_obs_data"] = obs_data
+            if target == "H013_W":
+                return {
+                    "target": "H013_W",
+                    "period": {
+                        "target": "H013",
+                        "start": datetime(2021, 8, 19, 23, 0, tzinfo=timezone.utc),
+                        "end": datetime(2021, 8, 21, 23, 0, tzinfo=timezone.utc),
+                    },
+                    "kpi_groups": {
+                        "W": "Weather Stations",
+                    },
+                    "perimeters": [],
+                    "weather_stations": [
+                        {
+                            "variable": "air_temperature",
+                            "label": "Air temp",
+                            "stations": 103,
+                            "trusted_stations": 14,
+                        },
+                        {
+                            "variable": "wind_speed",
+                            "label": "Wind Speed",
+                            "stations": 87,
+                            "trusted_stations": 10,
+                        },
+                    ],
+                    "kpis": [
+                        {
+                            "id": "FB001_WX343",
+                            "name": "Air temp MAE min WH13 TSO",
+                            "group": "Weather Stations",
+                            "weight": 1,
+                            "value_norm_param_m": 5,
+                        },
+                    ],
+                }
             return {
                 "target": "H013_P",
                 "period": {
@@ -371,8 +408,7 @@ def test_list_command_prints_case_ids_short_names_and_docs(monkeypatch, tmp_path
 
     assert result.exit_code == 0, result.output
     assert result.output == (
-        "ID   Short name   Documentation\n"
-        "001  2021_Caldor  https://example.test/caldor\n"
+        "ID   Short name   Documentation\n" "001  2021_Caldor  https://example.test/caldor\n"
     )
     assert "func" not in result.output
     assert "{" not in result.output
@@ -439,6 +475,40 @@ def test_list_command_prints_target_details(monkeypatch, tmp_path):
         "ID   KPI   Weight   value_norm_param_m\n"
         "FB001_FPH097  Average Jaccard Index  1  \n"
         "FB001_FPH103  Final Burn Area Bias  2  10000\n"
+    )
+
+
+def test_list_command_prints_weather_target_details(monkeypatch, tmp_path):
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    obs_data = tmp_path / "obs.h5"
+    result = CliRunner().invoke(main, ["list", "2021_Caldor", "H013_W", "--obs-data", str(obs_data)])
+
+    assert result.exit_code == 0, result.output
+    assert call["target_describer_obs_data"] == obs_data
+    assert result.output == (
+        "ID: 001\n"
+        "Short name: 2021_Caldor\n"
+        "Documentation: https://example.test/caldor\n"
+        "Benchmark target: H013_W\n"
+        "\n"
+        "Temporal period\n"
+        "Target: H013\n"
+        "Start: 2021-08-19T23:00+00:00\n"
+        "End: 2021-08-21T23:00+00:00\n"
+        "\n"
+        "KPI groups\n"
+        "W: Weather Stations\n"
+        "\n"
+        "Weather stations\n"
+        "Variable   Stations   Trusted stations\n"
+        "air_temperature  103  14\n"
+        "wind_speed  87  10\n"
+        "\n"
+        "KPIs\n"
+        "ID   KPI   Weight   value_norm_param_m\n"
+        "FB001_WX343  Air temp MAE min WH13 TSO  1  5\n"
     )
 
 

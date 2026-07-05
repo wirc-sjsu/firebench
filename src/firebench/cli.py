@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
 
-FIREBENCH_BANNER = (
-    "\b"
-    + r"""
+FIREBENCH_BANNER = "\b" + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -26,7 +24,6 @@ FIREBENCH_BANNER = (
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
-)
 
 
 @click.group(help=FIREBENCH_BANNER)
@@ -123,7 +120,20 @@ def _format_target_datetime(value) -> str:
     return value.isoformat(timespec="minutes")
 
 
-def _echo_case_targets(case: str, target: str | None = None) -> None:
+def _describe_target(target_describer, target: str | None, obs_data: Path | None = None) -> dict:
+    if target is None:
+        return target_describer()
+    if obs_data is None:
+        return target_describer(target)
+    try:
+        return target_describer(target, obs_data=obs_data)
+    except TypeError as exc:
+        if "obs_data" not in str(exc):
+            raise
+        return target_describer(target)
+
+
+def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | None = None) -> None:
     case_id, case_info = _get_case_info(case)
     click.echo(f"ID: {case_id}")
     click.echo(f"Short name: {case_info.get('short_name', '')}")
@@ -135,7 +145,7 @@ def _echo_case_targets(case: str, target: str | None = None) -> None:
         return
 
     try:
-        target_info = target_describer(target) if target is not None else target_describer()
+        target_info = _describe_target(target_describer, target, obs_data)
     except ValueError as exc:
         raise click.UsageError(str(exc)) from exc
     if target is not None:
@@ -151,11 +161,23 @@ def _echo_case_targets(case: str, target: str | None = None) -> None:
         for flag, description in target_info["kpi_groups"].items():
             click.echo(f"{flag}: {description}")
 
-        click.echo("")
-        click.echo("Perimeters")
-        click.echo("Time")
-        for perimeter in target_info["perimeters"]:
-            click.echo(perimeter["time"])
+        if target_info.get("perimeters"):
+            click.echo("")
+            click.echo("Perimeters")
+            click.echo("Time")
+            for perimeter in target_info["perimeters"]:
+                click.echo(perimeter["time"])
+
+        if target_info.get("weather_stations"):
+            click.echo("")
+            click.echo("Weather stations")
+            click.echo("Variable   Stations   Trusted stations")
+            for station_info in target_info["weather_stations"]:
+                click.echo(
+                    f"{station_info['variable']}  "
+                    f"{station_info['stations']}  "
+                    f"{station_info['trusted_stations']}"
+                )
 
         click.echo("")
         click.echo("KPIs")
@@ -214,6 +236,22 @@ def _render_report_target_information(target: str, target_info: dict | None = No
         lines.extend(["", "### Perimeters", "| Time |", "| --- |"])
         for perimeter in target_info["perimeters"]:
             lines.append(f"| {perimeter['time']} |")
+
+    if target_info.get("weather_stations"):
+        lines.extend(
+            [
+                "",
+                "### Weather stations",
+                "| Variable | Stations | Trusted stations |",
+                "| --- | --- | --- |",
+            ]
+        )
+        for station_info in target_info["weather_stations"]:
+            lines.append(
+                f"| {station_info['variable']} | "
+                f"{station_info['stations']} | "
+                f"{station_info['trusted_stations']} |"
+            )
 
     if target_info.get("kpis"):
         lines.extend(
@@ -484,12 +522,18 @@ def run(
 @main.command("list")
 @click.argument("case", required=False, type=str)
 @click.argument("target", required=False, type=str)
-def list_cases(case: str | None, target: str | None) -> None:
+@click.option(
+    "--obs-data",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to the observational HDF5 file for target data summaries.",
+)
+def list_cases(case: str | None, target: str | None, obs_data: Path | None) -> None:
     """
     List available benchmarks or targets for a benchmark case.
     """
     if case:
-        _echo_case_targets(case, target)
+        _echo_case_targets(case, target, obs_data)
         return 0
     _echo_cases()
     return 0

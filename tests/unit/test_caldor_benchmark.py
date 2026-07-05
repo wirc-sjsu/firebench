@@ -61,6 +61,31 @@ def test_hrrr_benchmark_target_selects_matching_fire_perimeter_group():
     assert c001_caldor._target_group_display_names("H013_P") == {"FP_H13": "Fire Perimeters"}
 
 
+def test_hrrr_benchmark_target_selects_matching_weather_groups():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("h013_w")
+
+    assert selected_target == "H013_W"
+    assert list(c001_caldor.AGGREGATION["H013_W"]) == [
+        "Air Temp WH13",
+        "RH WH13",
+        "Wind Speed WH13",
+        "Wind Direction WH13",
+        "FMC 10h WH13",
+    ]
+    assert c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "H013_W") == (
+        c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "WX_WH13")
+    )
+    assert c001_caldor._target_group_display_names("H013_W") == {
+        "Air Temp WH13": "Weather Stations",
+        "RH WH13": "Weather Stations",
+        "Wind Speed WH13": "Weather Stations",
+        "Wind Direction WH13": "Weather Stations",
+        "FMC 10h WH13": "Weather Stations",
+    }
+
+
 def test_describe_available_targets_with_full_target_includes_details():
     target_info = c001_caldor.describe_available_targets("H013_P")
 
@@ -96,6 +121,46 @@ def test_describe_available_targets_with_full_target_includes_details():
             "value_norm_param_m": 10000,
         },
     ]
+
+
+def test_describe_available_weather_target_includes_station_counts(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    period_start, period_end = c001_caldor._target_period("H013")
+
+    with h5py.File(obs_path, "w") as h5:
+        time_series = h5.create_group("time_series")
+        station_trusted = time_series.create_group("station_TRUSTED")
+        station_trusted.create_dataset("time", data=[0, 1])
+        station_trusted["time"].attrs["time_origin"] = period_start.isoformat()
+        station_trusted["time"].attrs["time_units"] = "hour"
+        trusted_var = station_trusted.create_dataset("air_temperature", data=[290, 291])
+        trusted_var.attrs["sensor_height_source_confidence_lvl"] = [c001_caldor.fs.SH_TRUST_HIGHEST]
+
+        station_untrusted = time_series.create_group("station_UNTRUSTED")
+        station_untrusted.create_dataset("time", data=[0, 1])
+        station_untrusted["time"].attrs["time_origin"] = period_start.isoformat()
+        station_untrusted["time"].attrs["time_units"] = "hour"
+        untrusted_var = station_untrusted.create_dataset("air_temperature", data=[292, 293])
+        untrusted_var.attrs["sensor_height_source_confidence_lvl"] = [0]
+
+        station_outside = time_series.create_group("station_OUTSIDE")
+        station_outside.create_dataset("time", data=[1, 2])
+        station_outside["time"].attrs["time_origin"] = period_end.isoformat()
+        station_outside["time"].attrs["time_units"] = "hour"
+        outside_var = station_outside.create_dataset("air_temperature", data=[294, 295])
+        outside_var.attrs["sensor_height_source_confidence_lvl"] = [c001_caldor.fs.SH_TRUST_HIGHEST]
+
+    target_info = c001_caldor.describe_available_targets("H013_W", obs_data=obs_path)
+
+    assert target_info["target"] == "H013_W"
+    assert target_info["kpi_groups"] == {"W": "Weather Stations"}
+    assert target_info["perimeters"] == []
+    assert target_info["weather_stations"][0] == {
+        "variable": "air_temperature",
+        "label": "Air temp",
+        "stations": 2,
+        "trusted_stations": 1,
+    }
 
 
 def test_curated_benchmark_target_selects_matching_fire_perimeter_group():
