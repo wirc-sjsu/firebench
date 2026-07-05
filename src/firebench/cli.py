@@ -150,11 +150,12 @@ def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | No
         raise click.UsageError(str(exc)) from exc
     if target is not None:
         click.echo(f"Benchmark target: {target_info['target']}")
-        click.echo("")
-        click.echo("Temporal period")
-        click.echo(f"Target: {target_info['period']['target']}")
-        click.echo(f"Start: {_format_target_datetime(target_info['period']['start'])}")
-        click.echo(f"End: {_format_target_datetime(target_info['period']['end'])}")
+        if target_info.get("period"):
+            click.echo("")
+            click.echo("Temporal period")
+            click.echo(f"Target: {target_info['period']['target']}")
+            click.echo(f"Start: {_format_target_datetime(target_info['period']['start'])}")
+            click.echo(f"End: {_format_target_datetime(target_info['period']['end'])}")
 
         click.echo("")
         click.echo("KPI groups")
@@ -218,17 +219,18 @@ def _render_report_target_information(target: str, target_info: dict | None = No
     if target_info is None:
         return "\n".join(lines)
 
-    lines.extend(
-        [
-            "",
-            "### Temporal period",
-            f"Target: {target_info['period']['target']}",
-            f"Start: {_format_target_datetime(target_info['period']['start'])}",
-            f"End: {_format_target_datetime(target_info['period']['end'])}",
-            "",
-            "### KPI groups",
-        ]
-    )
+    if target_info.get("period"):
+        lines.extend(
+            [
+                "",
+                "### Temporal period",
+                f"Target: {target_info['period']['target']}",
+                f"Start: {_format_target_datetime(target_info['period']['start'])}",
+                f"End: {_format_target_datetime(target_info['period']['end'])}",
+            ]
+        )
+
+    lines.extend(["", "### KPI groups"])
     for flag, description in target_info["kpi_groups"].items():
         lines.append(f"- {flag}: {description}")
 

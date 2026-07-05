@@ -18,6 +18,40 @@ def _fake_registry(tmp_path, call):
     def fake_target_describer(target=None, obs_data=None):
         if target is not None:
             call["target_describer_obs_data"] = obs_data
+            if target in {"B", "H013_B"}:
+                return {
+                    "target": target,
+                    "period": (
+                        None
+                        if target == "B"
+                        else {
+                            "target": "H013",
+                            "start": datetime(2021, 8, 19, 23, 0, tzinfo=timezone.utc),
+                            "end": datetime(2021, 8, 21, 23, 0, tzinfo=timezone.utc),
+                        }
+                    ),
+                    "kpi_groups": {
+                        "B": "Building Damage",
+                    },
+                    "perimeters": [],
+                    "weather_stations": [],
+                    "kpis": [
+                        {
+                            "id": "FB001_BD01",
+                            "name": "",
+                            "group": "Building Damage",
+                            "weight": 1,
+                            "value_norm_param_m": None,
+                        },
+                        {
+                            "id": "FB001_BD06",
+                            "name": "",
+                            "group": "Building Damage",
+                            "weight": 1,
+                            "value_norm_param_m": None,
+                        },
+                    ],
+                }
             if target == "H013_W":
                 return {
                     "target": "H013_W",
@@ -105,7 +139,9 @@ def _fake_registry(tmp_path, call):
                 },
             ],
             "kpi_groups": {
+                "B": "Building Damage",
                 "P": "Fire Perimeters",
+                "W": "Weather Stations",
             },
         }
 
@@ -431,7 +467,9 @@ def test_list_command_prints_case_targets(monkeypatch, tmp_path):
         "P01  2021-08-17T20:20+00:00  2021-09-10T23:34+00:00\n"
         "\n"
         "KPI groups\n"
+        "B: Building Damage\n"
         "P: Fire Perimeters\n"
+        "W: Weather Stations\n"
     )
 
 
@@ -443,7 +481,9 @@ def test_list_command_accepts_case_short_name(monkeypatch, tmp_path):
     assert result.exit_code == 0, result.output
     assert "ID: 001" in result.output
     assert "H000" in result.output
+    assert "B: Building Damage" in result.output
     assert "P: Fire Perimeters" in result.output
+    assert "W: Weather Stations" in result.output
 
 
 def test_list_command_prints_target_details(monkeypatch, tmp_path):
@@ -509,6 +549,55 @@ def test_list_command_prints_weather_target_details(monkeypatch, tmp_path):
         "KPIs\n"
         "ID   KPI   Weight   value_norm_param_m\n"
         "FB001_WX343  Air temp MAE min WH13 TSO  1  5\n"
+    )
+
+
+def test_list_command_prints_building_damage_target_details(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    result = CliRunner().invoke(main, ["list", "2021_Caldor", "H013_B"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output == (
+        "ID: 001\n"
+        "Short name: 2021_Caldor\n"
+        "Documentation: https://example.test/caldor\n"
+        "Benchmark target: H013_B\n"
+        "\n"
+        "Temporal period\n"
+        "Target: H013\n"
+        "Start: 2021-08-19T23:00+00:00\n"
+        "End: 2021-08-21T23:00+00:00\n"
+        "\n"
+        "KPI groups\n"
+        "B: Building Damage\n"
+        "\n"
+        "KPIs\n"
+        "ID   KPI   Weight   value_norm_param_m\n"
+        "FB001_BD01    1  \n"
+        "FB001_BD06    1  \n"
+    )
+
+
+def test_list_command_prints_standalone_building_damage_target_details(monkeypatch, tmp_path):
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+
+    result = CliRunner().invoke(main, ["list", "2021_Caldor", "B"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output == (
+        "ID: 001\n"
+        "Short name: 2021_Caldor\n"
+        "Documentation: https://example.test/caldor\n"
+        "Benchmark target: B\n"
+        "\n"
+        "KPI groups\n"
+        "B: Building Damage\n"
+        "\n"
+        "KPIs\n"
+        "ID   KPI   Weight   value_norm_param_m\n"
+        "FB001_BD01    1  \n"
+        "FB001_BD06    1  \n"
     )
 
 

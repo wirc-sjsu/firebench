@@ -86,6 +86,32 @@ def test_hrrr_benchmark_target_selects_matching_weather_groups():
     }
 
 
+def test_hrrr_benchmark_target_selects_building_damage_group():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("h013_b")
+
+    assert selected_target == "H013_B"
+    assert c001_caldor.AGGREGATION["H013_B"] == c001_caldor.AGGREGATION["B"]
+    assert c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "H013_B") == (
+        c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "B")
+    )
+    assert c001_caldor._target_group_display_names("H013_B") == {"Building Damage": "Building Damage"}
+
+
+def test_hrrr_benchmark_target_can_combine_building_damage_and_perimeters():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("h013_bp")
+
+    assert selected_target == "H013_BP"
+    assert list(c001_caldor.AGGREGATION["H013_BP"]) == ["Building Damage", "FP_H13"]
+    assert c001_caldor._target_group_display_names("H013_BP") == {
+        "Building Damage": "Building Damage",
+        "FP_H13": "Fire Perimeters",
+    }
+
+
 def test_describe_available_targets_with_full_target_includes_details():
     target_info = c001_caldor.describe_available_targets("H013_P")
 
@@ -121,6 +147,44 @@ def test_describe_available_targets_with_full_target_includes_details():
             "value_norm_param_m": 10000,
         },
     ]
+
+
+def test_describe_available_building_damage_target_includes_details():
+    target_info = c001_caldor.describe_available_targets("H013_B")
+
+    assert target_info["target"] == "H013_B"
+    assert target_info["period"]["target"] == "H013"
+    assert target_info["kpi_groups"] == {"B": "Building Damage"}
+    assert target_info["perimeters"] == []
+    assert target_info["weather_stations"] == []
+    assert target_info["kpis"][0] == {
+        "id": "FB001_BD01",
+        "name": "",
+        "group": "Building Damage",
+        "weight": 1,
+        "value_norm_param_m": None,
+    }
+
+
+def test_describe_available_standalone_building_damage_target_includes_details():
+    target_info = c001_caldor.describe_available_targets("B")
+
+    assert target_info["target"] == "B"
+    assert target_info["period"] is None
+    assert target_info["kpi_groups"] == {"B": "Building Damage"}
+    assert [kpi["id"] for kpi in target_info["kpis"]] == [
+        "FB001_BD01",
+        "FB001_BD02",
+        "FB001_BD03",
+        "FB001_BD04",
+        "FB001_BD05",
+        "FB001_BD06",
+    ]
+
+
+def test_normalize_benchmark_target_accepts_building_damage_targets():
+    assert c001_caldor.normalize_benchmark_target("B") == "B"
+    assert c001_caldor.normalize_benchmark_target("h013_b") == "H013_B"
 
 
 def test_describe_available_weather_target_includes_station_counts(tmp_path):
