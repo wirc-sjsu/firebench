@@ -6,8 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] 
 ### Added
+- Integrate the `firebench-adapter-common` source code into FireBench as `firebench.adapter_common`.
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
+- Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
 ### Changed
+- Add building damage target nomenclature such as `H013_B`.
+- Add weather target nomenclature such as `H013_W` and show weather station counts in target listings.
+- Increase fire perimeter burn-area normalization from 5000 m to 10000 m.
+- Add an observed-versus-modeled perimeter contour figure with KPI and burn-area annotations to generated reports.
+- Include benchmark target details in reports generated with `firebench run --report`.
+- Show period, perimeter, KPI, weight, and normalization details in `firebench list CASE TARGET`.
+- Print available benchmark targets when `firebench list` receives a case ID or short name.
+- Show benchmark IDs, short names, and documentation links in `firebench list`.
+- Use short KPI labels in score-card PDFs by default and add `--full-name` for full labels.
+- Use benchmark short names and readable perimeter group labels in score-card PDFs.
+- Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
 - Keep the `code-formatting` Makefile target as a Black check and add `fix-code-formatting` to apply Black formatting locally.
 ### Fixed
 - Support UTC and extended ISO 8601 `date_time` values when standardizing Synoptic observations.

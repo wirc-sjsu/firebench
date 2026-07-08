@@ -39,10 +39,10 @@ If you downloaded a different version, replace `v2026.2.zip` with the archive fi
 
 ## 3. Run the benchmark
 
-Run benchmark case `1` with the `CDI` aggregation scheme and allow existing outputs to be overwritten:
+Run benchmark case `2021_Caldor` with target `H013_P` and allow existing outputs to be overwritten:
 
 ```bash
-firebench run -c 1 -o -a CDI my_model_output.h5
+firebench run 2021_Caldor H013_P my_model_output.h5 -o
 ```
 
 This command writes the default Caldor outputs in the working directory:

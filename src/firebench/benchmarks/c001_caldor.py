@@ -7,27 +7,29 @@ from functools import partial
 from scipy.interpolate import NearestNDInterpolator
 from pathlib import Path
 from datetime import datetime, timedelta
-import pytz
 from firebench import tools as ft
 from firebench import standardize as fs
 from firebench import metrics as fm
 from firebench import signing as fsi
+from firebench.benchmarks import c001_caldor_config as cfg
+from firebench.plotting import plot_perimeter_contours
 import numpy as np
 from firebench import __version__ as fb_version
 from firebench import Quantity
 
-CASE_NAME = "Caldor 2021"
-CASE_SHORT_NAME = "Caldor"
-CASE_ID = "FB001"
-DEFAULT_OBS_DATA_PATH = Path("Caldor.h5")
+CASE_NAME = cfg.CASE_NAME
+CASE_SHORT_NAME = cfg.CASE_SHORT_NAME
+BENCHMARK_SHORT_NAME = cfg.BENCHMARK_SHORT_NAME
+CASE_ID = cfg.CASE_ID
+DEFAULT_OBS_DATA_PATH = cfg.DEFAULT_OBS_DATA_PATH
 OBS_DATA_PATH = DEFAULT_OBS_DATA_PATH
-LOG_FILENAME = "Caldor.log"
-DEFAULT_LOGGING_LEVEL = 20  # INFO
-DEFAULT_VERBOSITY = 3
-DEFAULT_AGGREGATION_SCHEME = "A"
+LOG_FILENAME = cfg.LOG_FILENAME
+DEFAULT_LOGGING_LEVEL = cfg.DEFAULT_LOGGING_LEVEL
+DEFAULT_VERBOSITY = cfg.DEFAULT_VERBOSITY
+DEFAULT_AGGREGATION_SCHEME = cfg.DEFAULT_AGGREGATION_SCHEME
 
-DEFAULT_OUTPUT_PATH_JSON = Path(f"{CASE_SHORT_NAME}_rslt.json")
-DEFAULT_SCORE_CARD_REPORT_PATH = Path(f"{CASE_SHORT_NAME}.pdf")
+DEFAULT_OUTPUT_PATH_JSON = cfg.DEFAULT_OUTPUT_PATH_JSON
+DEFAULT_SCORE_CARD_REPORT_PATH = cfg.DEFAULT_SCORE_CARD_REPORT_PATH
 output_path_json = DEFAULT_OUTPUT_PATH_JSON
 score_card_report_path = DEFAULT_SCORE_CARD_REPORT_PATH
 
@@ -60,7 +62,7 @@ def req_generic(
             bench_output[bench_id] = BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
     else:
         ft.logger.warning(
-            "Requirement %s not satisfied. All related benchmarks ignored. First missing item: %s",
+            "Requirement %s not satisfied. All related benchmarks ignored. Missing item(s): %s",
             req_name,
             miss,
         )
@@ -83,8 +85,13 @@ def req_wx_station(
         return bench_output
 
     # Check requirement
+    periods = _wx_requirement_periods(list_benchmarks)
     req_ok, miss = fs.validate_h5_weather_stations_structure(
-        model_dataset, obs_dataset, required_datasets["variable"], required_datasets["station_pattern"]
+        model_dataset,
+        obs_dataset,
+        required_datasets["variable"],
+        required_datasets["station_pattern"],
+        periods=periods,
     )
 
     # run benchmarks
@@ -95,12 +102,48 @@ def req_wx_station(
             bench_output[bench_id] = BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
     else:
         ft.logger.warning(
-            "Requirement %s not satisfied. All related benchmarks ignored. First missing item: %s",
+            "Requirement %s not satisfied. All related benchmarks ignored. Missing item(s): %s",
             req_name,
             miss,
         )
+        _log_missing_wx_station_requirements(req_name, required_datasets["variable"], miss)
 
     return bench_output
+
+
+def _wx_requirement_periods(list_benchmarks: list[str]) -> list[tuple[datetime, datetime]]:
+    periods = []
+    for bench_id in list_benchmarks:
+        period = getattr(BENCHMARK_FUNCTIONS[bench_id], "keywords", {}).get("period")
+        if period is not None and period not in periods:
+            periods.append(period)
+    return periods
+
+
+def _log_missing_wx_station_requirements(req_name: str, variable_name: str, miss) -> None:
+    if not isinstance(miss, list):
+        ft.logger.warning(
+            "Weather station requirement %s missing variable %s: %s",
+            req_name,
+            variable_name,
+            miss,
+        )
+        return
+
+    ft.logger.warning(
+        "Weather station requirement %s missing %s for %d station(s).",
+        req_name,
+        variable_name,
+        len(miss),
+    )
+    for missing_station in miss:
+        ft.logger.warning(
+            "Weather station requirement %s missing for %s variable %s: %s",
+            req_name,
+            missing_station.get("station", "<unknown station>"),
+            missing_station.get("variable", variable_name),
+            ", ".join(missing_station.get("missing", [])),
+        )
 
 
 # ---------------------------
@@ -316,6 +359,8 @@ def bench_wx_generic_index(
         ):
             # process time
             mask_obs = get_mask_from_period(obs_dataset, f"{fs.TIME_SERIES}/{station}", period)
+            if not np.any(mask_obs):
+                continue
             mask_model = get_mask_from_period(model_dataset, f"{fs.TIME_SERIES}/{station}", period)
             assert np.sum(mask_obs) == np.sum(mask_model), "time vector size invalid"
 
@@ -869,10 +914,10 @@ BENCHMARK_FUNCTIONS = {
         model_dataset, obs_dataset, ctx, "W1", LIST_PERIMETERS_W1, 80_000
     ),
     "FB001_FP26": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
-        model_dataset, obs_dataset, ctx, "W2", LIST_PERIMETERS_W2, 5_000
+        model_dataset, obs_dataset, ctx, "W2", LIST_PERIMETERS_W2, 10_000
     ),
     "FB001_FP27": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
-        model_dataset, obs_dataset, ctx, "W3", LIST_PERIMETERS_W3, 5_000
+        model_dataset, obs_dataset, ctx, "W3", LIST_PERIMETERS_W3, 10_000
     ),
     "FB001_FP28": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
         model_dataset, obs_dataset, ctx, "W4", LIST_PERIMETERS_W4, 17_000
@@ -895,7 +940,7 @@ BENCHMARK_FUNCTIONS = {
         "W2",
         LIST_PERIMETERS_W2,
         fm.stats.rmse,
-        5_000,
+        10_000,
     ),
     "FB001_FP31": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area(
         model_dataset,
@@ -905,7 +950,7 @@ BENCHMARK_FUNCTIONS = {
         "W3",
         LIST_PERIMETERS_W3,
         fm.stats.rmse,
-        5_000,
+        10_000,
     ),
     "FB001_FP32": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area(
         model_dataset,
@@ -963,6 +1008,10 @@ BENCHMARK_FUNCTIONS = {
 
 GROUPS = {}
 AGGREGATION = {}
+WX_GROUP_BENCHMARKS = {}
+WX_GROUPS_BY_PERIOD = {}
+HRRR_FP_GROUP_BENCHMARKS = {}
+FIRE_PERIMETER_GROUP_PERIMETERS = {}
 _BASE_REQUIREMENTS = copy.deepcopy(REQUIREMENTS)
 _BASE_BENCHMARK_FUNCTIONS = BENCHMARK_FUNCTIONS.copy()
 
@@ -970,228 +1019,128 @@ _BASE_BENCHMARK_FUNCTIONS = BENCHMARK_FUNCTIONS.copy()
 # Utilities
 # ---------------------------
 
-LIST_PERIMETERS_W1 = [
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-18T20:30-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-19T20:45-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-20T20:20-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-21T21:15-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-24T22:07-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-26T03:30-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-26T22:15-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-27T00:22-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-28T21:30-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-29T22:32-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-30T21:09-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-31T21:08-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-01T21:12-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-03T00:40-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-04T23:29-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-05T23:41-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-06T23:09-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-07T22:40-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-08T22:33-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-10T23:34-07:00",
-]
+TZ_REF = cfg.TZ_REF
+CURATED_VALIDATION_WINDOWS = cfg.CURATED_VALIDATION_WINDOWS
+HRRR_VALIDATION_WINDOWS = cfg.HRRR_VALIDATION_WINDOWS
+WH_PERIODS = cfg.HRRR_PERIODS
+WH_PERIMETERS = cfg.HRRR_PERIMETERS
 
-LIST_PERIMETERS_W2 = [
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-20T20:20-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-21T21:15-07:00",
-]
+LIST_PERIMETERS_W1 = cfg.CURATED_PERIMETERS["W1"]
+LIST_PERIMETERS_W2 = cfg.CURATED_PERIMETERS["W2"]
+LIST_PERIMETERS_W3 = cfg.CURATED_PERIMETERS["W3"]
+LIST_PERIMETERS_W4 = cfg.CURATED_PERIMETERS["W4"]
 
-
-LIST_PERIMETERS_W3 = [
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-26T22:15-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-27T00:22-06:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-28T21:30-06:00",
-]
-
-LIST_PERIMETERS_W4 = [
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-29T22:32-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-30T21:09-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-08-31T21:08-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-01T21:12-07:00",
-    f"/{fs.GEOPOLYGONS}/Caldor_2021-09-03T00:40-07:00",
-]
-
-TZ_REF = pytz.timezone("US/Pacific")
-W1_PERIOD = (
-    TZ_REF.localize(datetime(2021, 8, 17, 20, 20)),
-    TZ_REF.localize(datetime(2021, 9, 10, 23, 34)),
-)
-W2_PERIOD = (
-    TZ_REF.localize(datetime(2021, 8, 19, 20, 45)),
-    TZ_REF.localize(datetime(2021, 8, 21, 21, 15)),
-)
-W3_PERIOD = (
-    TZ_REF.localize(datetime(2021, 8, 26, 2, 30)),
-    TZ_REF.localize(datetime(2021, 8, 28, 20, 30)),
-)
-W4_PERIOD = (
-    TZ_REF.localize(datetime(2021, 8, 28, 20, 30)),
-    TZ_REF.localize(datetime(2021, 9, 3, 0, 40)),
-)
+W1_PERIOD = cfg.CURATED_PERIODS["W1"]
+W2_PERIOD = cfg.CURATED_PERIODS["W2"]
+W3_PERIOD = cfg.CURATED_PERIODS["W3"]
+W4_PERIOD = cfg.CURATED_PERIODS["W4"]
 
 # list of all valid context dict structured key
-CTX_SPEC: dict[fm.CTXKey, str] = {
-    ("agg_bin", "building_damage", "obs"): "Aggregate building damage dataset to binary classes for obs",
-    (
-        "agg_bin",
-        "building_damage",
-        "model",
-    ): "Aggregate building damage dataset to binary classes for model",
-    ("agg_bin", "mtbs_severity", "obs"): "Aggregate mtbs severity dataset to binary classes for obs",
-    ("agg_bin", "mtbs_severity", "model"): "Aggregate mtbs severity dataset to binary classes for model",
-    (
-        "mask",
-        "landfire_canopy",
-        "all",
-    ): "LANDFIRE canopy mask using all canopy fields interpolated on benchmark field grid",
-}
+CTX_SPEC: dict[fm.CTXKey, str] = cfg.CTX_SPEC
 
 
 def add_wx_benchmarks():
-    study_period = {"W1": W1_PERIOD, "W2": W2_PERIOD, "W3": W3_PERIOD, "W4": W4_PERIOD}
-    metric_funcs = {"MAE": fm.stats.mae, "RMSE": fm.stats.rmse, "Bias": fm.stats.bias}
+    metric_funcs = {
+        "standard": {"MAE": fm.stats.mae, "RMSE": fm.stats.rmse, "Bias": fm.stats.bias},
+        "wind_direction": {"circular bias": fm.stats.circular_bias_deg},
+    }
     summary_stats_func = {"min": np.nanmin, "mean": np.nanmean, "max": np.nanmax}
-    trusted_source_only = {"TSO": False, "": True}
-
     bench_idx = 1
 
-    m_value = 5
-    common_units = "degC"
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"Air temp {metric_name} {func_name} {period_name} {trust_txt}"
+    for variable_spec in cfg.WX_VARIABLE_SPECS:
+        for period_set in cfg.WX_PERIOD_SETS:
+            for period_name, period in period_set["periods"].items():
+                group_name = f"{variable_spec['group_label']} {period_name}"
+                WX_GROUP_BENCHMARKS.setdefault(group_name, {})
+                WX_GROUPS_BY_PERIOD.setdefault(period_name, []).append(group_name)
+                for metric_name, metric_func in metric_funcs[variable_spec["metric_set"]].items():
+                    for trust_txt, trust in cfg.WX_TRUSTED_SOURCE_OPTIONS:
+                        for func_name, stat_func in summary_stats_func.items():
+                            bench_id = f"FB001_WX{bench_idx:03d}"
+                            bench_name = (
+                                f"{variable_spec['label']} {metric_name} {func_name} "
+                                f"{period_name} {trust_txt}"
+                            )
 
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="air_temperature",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m degC = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R08"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
+                            BENCHMARK_FUNCTIONS[bench_id] = partial(
+                                bench_wx_generic_index,
+                                kpi_name_custom=bench_name,
+                                period=period,
+                                wx_variable_name=variable_spec["variable"],
+                                common_unit=variable_spec["common_unit"],
+                                metric_func=metric_func,
+                                stat_func=stat_func,
+                                value_norm_param_m=variable_spec["norm_m"],
+                                use_all_sensor_height_trust_lvl=trust,
+                            )
+                            WX_GROUP_BENCHMARKS[group_name][bench_id] = 1
+                            ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
+                            REQUIREMENTS[variable_spec["requirement"]]["benchmarks"].append(bench_id)
+                            bench_idx += 1
 
-    m_value = 15
-    common_units = "percent"
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"RH {metric_name} {func_name} {period_name} {trust_txt}"
 
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="relative_humidity",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m % = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R09"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
+def add_hrrr_fire_perimeter_benchmarks():
+    bench_idx = 1
+    index_metrics = (
+        ("Average Jaccard", jaccard_from_list, np.mean, 1),
+        ("Minimum Jaccard", jaccard_from_list, np.min, 1),
+        ("Maximum Jaccard", jaccard_from_list, np.max, 1),
+        ("Average Dice-Sorensen", sorensen_dice_from_list, np.mean, 1),
+        ("Minimum Dice-Sorensen", sorensen_dice_from_list, np.min, 1),
+        ("Maximum Dice-Sorensen", sorensen_dice_from_list, np.max, 1),
+    )
 
-    m_value = 5
-    common_units = "m/s"
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"Wind Speed {metric_name} {func_name} {period_name} {trust_txt}"
+    for period_name, perimeters in cfg.HRRR_PERIMETERS.items():
+        period_number = period_name.removeprefix("WH")
+        group_name = f"FP_H{period_number}"
+        requirement_name = f"R_FP_H{period_number}"
+        HRRR_FP_GROUP_BENCHMARKS[group_name] = {}
+        FIRE_PERIMETER_GROUP_PERIMETERS[group_name] = list(perimeters)
+        REQUIREMENTS[requirement_name] = {
+            "main": lambda model_dataset, obs_dataset, list_benchmarks, required_datasets, ctx, req_name=requirement_name: req_generic(
+                model_dataset, obs_dataset, list_benchmarks, required_datasets, ctx, req_name=req_name
+            ),
+            "benchmarks": [],
+            "required_datasets": {perimeter: ["rel_path", "time"] for perimeter in perimeters},
+        }
 
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="wind_speed",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m m/s = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R10"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
+        for metric_name, metric_func, agg_func, weight in index_metrics:
+            bench_id = f"FB001_FPH{bench_idx:03d}"
+            BENCHMARK_FUNCTIONS[bench_id] = partial(
+                bench_fp_generic_index,
+                kpi_name_custom=metric_name,
+                period_name=period_name,
+                list_perims=perimeters,
+                func_index=metric_func,
+                func_index_rslt_agg=agg_func,
+            )
+            HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = weight
+            REQUIREMENTS[requirement_name]["benchmarks"].append(bench_id)
+            bench_idx += 1
 
-    m_value = 45
-    common_units = "degree"
-    metric_funcs_wd = {"circular bias": fm.stats.circular_bias_deg}
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs_wd.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"Wind Direction {metric_name} {func_name} {period_name} {trust_txt}"
+        bench_id = f"FB001_FPH{bench_idx:03d}"
+        BENCHMARK_FUNCTIONS[bench_id] = partial(
+            bench_fp_generic_area_final_bias,
+            period_name=period_name,
+            list_perims=perimeters,
+            value_norm_param_m=cfg.HRRR_FIRE_PERIMETER_NORM_M,
+        )
+        HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = 2
+        REQUIREMENTS[requirement_name]["benchmarks"].append(bench_id)
+        bench_idx += 1
 
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="wind_direction",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m m/s = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R11"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
-
-    m_value = 5
-    common_units = "percent"
-    for period_name, period in study_period.items():
-        for metric_name, metric_func in metric_funcs.items():
-            for trust_txt, trust in trusted_source_only.items():
-                for func_name, stat_func in summary_stats_func.items():
-                    bench_id = f"FB001_WX{bench_idx:03d}"
-                    bench_name = f"FMC 10h {metric_name} {func_name} {period_name} {trust_txt}"
-
-                    BENCHMARK_FUNCTIONS[bench_id] = partial(
-                        bench_wx_generic_index,
-                        kpi_name_custom=bench_name,
-                        period=period,
-                        wx_variable_name="fuel_moisture_content_10h",
-                        common_unit=common_units,
-                        metric_func=metric_func,
-                        stat_func=stat_func,
-                        value_norm_param_m=m_value,  # m m/s = 50.00 score
-                        use_all_sensor_height_trust_lvl=trust,
-                    )
-                    ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
-                    # for docs
-                    # print(f"{bench_id.removeprefix("FB001_")} | {period_name:<12} | {metric_name:<18} | {bench_name:<30} | {m_value:5.1f} {common_units:15} | {trust}")
-                    # Add to requirements
-                    REQUIREMENTS["R12"]["benchmarks"].append(bench_id)
-                    bench_idx += 1
+        bench_id = f"FB001_FPH{bench_idx:03d}"
+        BENCHMARK_FUNCTIONS[bench_id] = partial(
+            bench_fp_generic_area,
+            kpi_name_custom="Burn Area RMSE",
+            period_name=period_name,
+            list_perims=perimeters,
+            func=fm.stats.rmse,
+            value_norm_param_m=cfg.HRRR_FIRE_PERIMETER_NORM_M,
+        )
+        HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = 2
+        REQUIREMENTS[requirement_name]["benchmarks"].append(bench_id)
+        bench_idx += 1
 
 
 def create_benchmark_groups():
@@ -1217,6 +1166,7 @@ def create_benchmark_groups():
             "FB001_FP29": 2,
         },
     }
+    FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W1"] = list(LIST_PERIMETERS_W1)
     GROUPS["Fire Perimeter W2"] = {
         "weight": 1,
         "benchmarks": {
@@ -1230,6 +1180,7 @@ def create_benchmark_groups():
             "FB001_FP30": 2,
         },
     }
+    FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W2"] = list(LIST_PERIMETERS_W2)
     GROUPS["Fire Perimeter W3"] = {
         "weight": 1,
         "benchmarks": {
@@ -1243,6 +1194,7 @@ def create_benchmark_groups():
             "FB001_FP31": 2,
         },
     }
+    FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W3"] = list(LIST_PERIMETERS_W3)
     GROUPS["Fire Perimeter W4"] = {
         "weight": 1,
         "benchmarks": {
@@ -1256,44 +1208,315 @@ def create_benchmark_groups():
             "FB001_FP32": 2,
         },
     }
+    FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W4"] = list(LIST_PERIMETERS_W4)
 
-    cur = 1
-    groups_wx = {
-        "Air Temp W1": 18,
-        "Air Temp W2": 18,
-        "Air Temp W3": 18,
-        "Air Temp W4": 18,
-        "RH W1": 18,
-        "RH W2": 18,
-        "RH W3": 18,
-        "RH W4": 18,
-        "Wind Speed W1": 18,
-        "Wind Speed W2": 18,
-        "Wind Speed W3": 18,
-        "Wind Speed W4": 18,
-        "Wind Direction W1": 6,
-        "Wind Direction W2": 6,
-        "Wind Direction W3": 6,
-        "Wind Direction W4": 6,
-        "FMC 10h W1": 18,
-        "FMC 10h W2": 18,
-        "FMC 10h W3": 18,
-        "FMC 10h W4": 18,
-    }
-    for grp, offset in groups_wx.items():
-        new_grp_benchs = {f"FB001_WX{i:03d}": 1 for i in range(cur, cur + offset)}
-        ft.logger.debug(
-            "Benchmarks from %s to %s added to Group %s",
-            f"FB001_WX{cur:03d}",
-            f"FB001_WX{ cur + offset-1:03d}",
-            grp,
+    for group_name, benchmark_weights in WX_GROUP_BENCHMARKS.items():
+        GROUPS[group_name] = {"weight": 1, "benchmarks": benchmark_weights.copy()}
+
+    for group_name, benchmark_weights in HRRR_FP_GROUP_BENCHMARKS.items():
+        GROUPS[group_name] = {"weight": 1, "benchmarks": benchmark_weights.copy()}
+
+
+def _copy_groups(group_names: list[str]) -> dict:
+    return {group_name: GROUPS[group_name].copy() for group_name in group_names}
+
+
+def _weather_group_names(period_name: str) -> list[str]:
+    return WX_GROUPS_BY_PERIOD[period_name]
+
+
+def _weather_period_aggregation(period_name: str) -> dict:
+    return _copy_groups(_weather_group_names(period_name))
+
+
+def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
+    target = str(benchmark_target).strip().upper()
+    parts = target.split("_")
+    if len(parts) != 2:
+        raise ValueError(
+            f"Invalid benchmark target '{benchmark_target}'. Expected format like H013_B, H013_P, H013_W, or P02_P."
         )
-        GROUPS[grp] = {"weight": 1, "benchmarks": new_grp_benchs.copy()}
-        cur += offset
+
+    period_selector, analysis_flags = parts
+    if not analysis_flags:
+        raise ValueError(f"Invalid benchmark target '{benchmark_target}'. Missing analysis flags.")
+
+    unsupported_flags = sorted(set(analysis_flags) - {"B", "P", "W"})
+    if unsupported_flags:
+        raise ValueError(
+            f"Invalid benchmark target '{benchmark_target}'. Unsupported analysis flags: "
+            f"{', '.join(unsupported_flags)}."
+        )
+
+    group_names = []
+    canonical_flags = "".join(dict.fromkeys(analysis_flags))
+    if period_selector.startswith("H"):
+        period_number_text = period_selector.removeprefix("H")
+        if not period_number_text.isdigit():
+            raise ValueError(
+                f"Invalid benchmark target '{benchmark_target}'. HRRR period must look like H013."
+            )
+        period_number = int(period_number_text)
+        period_name = f"WH{period_number}"
+        if period_name not in cfg.HRRR_PERIODS:
+            raise ValueError(f"Unknown HRRR period selector '{period_selector}'.")
+        canonical_period = f"H{period_number:03d}"
+        if "B" in canonical_flags:
+            group_names.append("Building Damage")
+        if "P" in canonical_flags:
+            group_names.append(f"FP_H{period_number}")
+        if "W" in canonical_flags:
+            group_names.extend(_weather_group_names(period_name))
+    elif period_selector.startswith("P"):
+        period_number_text = period_selector.removeprefix("P")
+        if not period_number_text.isdigit():
+            raise ValueError(
+                f"Invalid benchmark target '{benchmark_target}'. Curated period must look like P02."
+            )
+        period_number = int(period_number_text)
+        period_name = f"W{period_number}"
+        if period_name not in cfg.CURATED_PERIODS:
+            raise ValueError(f"Unknown curated period selector '{period_selector}'.")
+        canonical_period = f"P{period_number:02d}"
+        if "B" in canonical_flags:
+            group_names.append("Building Damage")
+        if "P" in canonical_flags:
+            group_names.append(f"Fire Perimeter W{period_number}")
+        if "W" in canonical_flags:
+            group_names.extend(_weather_group_names(period_name))
+    else:
+        raise ValueError(
+            f"Invalid benchmark target '{benchmark_target}'. Period selector must start with H or P."
+        )
+
+    return f"{canonical_period}_{canonical_flags}", group_names
+
+
+def normalize_benchmark_target(benchmark_target: str) -> str:
+    build_registries()
+    return resolve_benchmark_target(benchmark_target)
+
+
+def _target_period(period_selector: str) -> tuple[datetime, datetime]:
+    if period_selector.startswith("H"):
+        period_name = f"WH{int(period_selector.removeprefix('H'))}"
+        return cfg.HRRR_PERIODS[period_name]
+    if period_selector.startswith("P"):
+        period_name = f"W{int(period_selector.removeprefix('P'))}"
+        return cfg.CURATED_PERIODS[period_name]
+    raise ValueError(f"Unknown period selector '{period_selector}'.")
+
+
+def _perimeter_time_from_path(perimeter_path: str) -> str:
+    return perimeter_path.rsplit("_", maxsplit=1)[-1]
+
+
+def _benchmark_kpi_name(bench_id: str) -> str:
+    benchmark = BENCHMARK_FUNCTIONS[bench_id]
+    keywords = getattr(benchmark, "keywords", {}) or {}
+    if getattr(benchmark, "func", None) is bench_fp_generic_index:
+        return f"{keywords['kpi_name_custom']} Index"
+    if getattr(benchmark, "func", None) is bench_fp_generic_area_final_bias:
+        return "Final Burn Area Bias"
+    return keywords.get("kpi_name_custom", _benchmark_debug_label(bench_id))
+
+
+def _weather_station_counts(obs_data: Path, period: tuple[datetime, datetime]) -> list[dict]:
+    if not obs_data.is_file():
+        return []
+
+    weather_stations = []
+    with File(obs_data, "r") as obs_dataset:
+        if fs.TIME_SERIES not in obs_dataset:
+            return []
+
+        for variable_spec in cfg.WX_VARIABLE_SPECS:
+            variable = variable_spec["variable"]
+            stations = 0
+            trusted_stations = 0
+            for station in obs_dataset[fs.TIME_SERIES].keys():
+                if not station.startswith("station"):
+                    continue
+
+                station_path = f"{fs.TIME_SERIES}/{station}"
+                data_path = f"{station_path}/{variable}"
+                if data_path not in obs_dataset:
+                    continue
+                if not np.any(get_mask_from_period(obs_dataset, station_path, period)):
+                    continue
+
+                stations += 1
+                confidence = obs_dataset[data_path].attrs.get("sensor_height_source_confidence_lvl")
+                if confidence is not None and int(confidence[0]) == fs.SH_TRUST_HIGHEST:
+                    trusted_stations += 1
+
+            weather_stations.append(
+                {
+                    "variable": variable,
+                    "label": variable_spec["label"],
+                    "stations": stations,
+                    "trusted_stations": trusted_stations,
+                }
+            )
+
+    return weather_stations
+
+
+def describe_available_targets(benchmark_target: str | None = None, obs_data: Path | None = None) -> dict:
+    kpi_groups = {
+        "B": "Building Damage",
+        "P": "Fire Perimeters",
+        "W": "Weather Stations",
+    }
+
+    if benchmark_target is not None:
+        build_registries()
+        canonical_target = resolve_benchmark_target(benchmark_target)
+        if "_" in canonical_target:
+            period_selector, analysis_flags = canonical_target.split("_", maxsplit=1)
+            start, end = _target_period(period_selector)
+            period = {
+                "target": period_selector,
+                "start": start,
+                "end": end,
+            }
+        else:
+            analysis_flags = canonical_target
+            period = None
+        group_display_names = _target_group_display_names(canonical_target)
+        obs_data = obs_data or DEFAULT_OBS_DATA_PATH
+
+        perimeters = []
+        kpis = []
+        for group_name, group_content in AGGREGATION[canonical_target].items():
+            for perimeter_path in FIRE_PERIMETER_GROUP_PERIMETERS.get(group_name, []):
+                perimeters.append(
+                    {
+                        "time": _perimeter_time_from_path(perimeter_path),
+                        "path": perimeter_path,
+                    }
+                )
+            for bench_id, weight in group_content["benchmarks"].items():
+                keywords = getattr(BENCHMARK_FUNCTIONS[bench_id], "keywords", {}) or {}
+                kpis.append(
+                    {
+                        "id": bench_id,
+                        "name": _benchmark_kpi_name(bench_id),
+                        "group": group_display_names.get(group_name, group_name),
+                        "weight": weight,
+                        "value_norm_param_m": keywords.get("value_norm_param_m"),
+                    }
+                )
+
+        return {
+            "target": canonical_target,
+            "period": period,
+            "kpi_groups": {flag: kpi_groups[flag] for flag in analysis_flags},
+            "perimeters": perimeters,
+            "weather_stations": (
+                _weather_station_counts(obs_data, (start, end))
+                if "W" in analysis_flags and period is not None
+                else []
+            ),
+            "kpis": kpis,
+        }
+
+    periods = []
+    for period_name, (start, end) in cfg.HRRR_PERIODS.items():
+        period_number = int(period_name.removeprefix("WH"))
+        periods.append(
+            {
+                "target": f"H{period_number:03d}",
+                "start": start,
+                "end": end,
+            }
+        )
+    for period_name, (start, end) in cfg.CURATED_PERIODS.items():
+        period_number = int(period_name.removeprefix("W"))
+        periods.append(
+            {
+                "target": f"P{period_number:02d}",
+                "start": start,
+                "end": end,
+            }
+        )
+
+    return {
+        "periods": periods,
+        "kpi_groups": kpi_groups,
+    }
+
+
+def _target_group_display_names(aggregation_scheme: str) -> dict[str, str]:
+    if aggregation_scheme not in AGGREGATION:
+        return {}
+
+    display_names = {
+        group_name: "Building Damage"
+        for group_name in AGGREGATION[aggregation_scheme]
+        if group_name == "Building Damage"
+    }
+    display_names.update(
+        {
+            group_name: "Fire Perimeters"
+            for group_name in AGGREGATION[aggregation_scheme]
+            if group_name.startswith("FP_H") or group_name.startswith("Fire Perimeter W")
+        }
+    )
+    if "_" not in aggregation_scheme:
+        return display_names
+
+    _, analysis_flags = aggregation_scheme.rsplit("_", 1)
+    if "W" in analysis_flags:
+        display_names.update(
+            {
+                group_name: "Weather Stations"
+                for group_name in AGGREGATION[aggregation_scheme]
+                if group_name in WX_GROUP_BENCHMARKS
+            }
+        )
+
+    return display_names
+
+
+def resolve_benchmark_target(benchmark_target: str) -> str:
+    raw_target = str(benchmark_target).strip()
+    if raw_target == "0" or raw_target in AGGREGATION:
+        return raw_target
+
+    target = raw_target.upper()
+    if target in AGGREGATION:
+        return target
+
+    canonical_target, group_names = _parse_benchmark_target(benchmark_target)
+    AGGREGATION[canonical_target] = _copy_groups(group_names)
+    return canonical_target
 
 
 def create_aggregation_schemes():
-    AGGREGATION["A"] = {grp: GROUPS[grp].copy() for grp in GROUPS.keys()}
+    curated_period_names = list(cfg.CURATED_PERIODS.keys())
+    hrrr_period_names = list(cfg.HRRR_PERIODS.keys())
+    curated_weather_group_names = [
+        group_name
+        for period_name in curated_period_names
+        for group_name in _weather_group_names(period_name)
+    ]
+    hrrr_weather_group_names = [
+        group_name for period_name in hrrr_period_names for group_name in _weather_group_names(period_name)
+    ]
+
+    AGGREGATION["A"] = _copy_groups(
+        [
+            "Building Damage",
+            "Burn Severity",
+            "Canopy Cover Loss",
+            "Fire Perimeter W1",
+            "Fire Perimeter W2",
+            "Fire Perimeter W3",
+            "Fire Perimeter W4",
+            *curated_weather_group_names,
+        ]
+    )
     AGGREGATION["B"] = {
         "Building Damage": GROUPS["Building Damage"].copy(),
     }
@@ -1340,14 +1563,16 @@ def create_aggregation_schemes():
             },
         },
     }
-    for i in range(1, 5):
-        AGGREGATION[f"WX{i:1d}"] = {
-            f"Air Temp W{i:1d}": GROUPS[f"Air Temp W{i:1d}"].copy(),
-            f"RH W{i:1d}": GROUPS[f"RH W{i:1d}"].copy(),
-            f"Wind Speed W{i:1d}": GROUPS[f"Wind Speed W{i:1d}"].copy(),
-            f"Wind Direction W{i:1d}": GROUPS[f"Wind Direction W{i:1d}"].copy(),
-            f"FMC 10h W{i:1d}": GROUPS[f"FMC 10h W{i:1d}"].copy(),
-        }
+    for period_name in curated_period_names:
+        AGGREGATION[f"WX{period_name.removeprefix('W')}"] = _weather_period_aggregation(period_name)
+
+    for period_name in hrrr_period_names:
+        AGGREGATION[f"WX_{period_name}"] = _weather_period_aggregation(period_name)
+
+    AGGREGATION["WX_WH_ALL"] = _copy_groups(hrrr_weather_group_names)
+    for period_name in hrrr_period_names:
+        period_number = period_name.removeprefix("WH")
+        AGGREGATION[f"FP_H{period_number}"] = _copy_groups([f"FP_H{period_number}"])
 
     AGGREGATION[f"short_all"] = {}
     AGGREGATION[f"short_all"][f"Building Damage"] = GROUPS[f"Building Damage"].copy()
@@ -1372,16 +1597,31 @@ def create_aggregation_schemes():
         AGGREGATION[f"WX_short"][f"Wind Direction W{i:1d}"] = GROUPS[f"Wind Direction W{i:1d}"].copy()
         AGGREGATION[f"WX_short"][f"FMC 10h W{i:1d}"] = GROUPS[f"FMC 10h W{i:1d}"].copy()
 
+    AGGREGATION["DEMO"] = _weather_period_aggregation("WH16")
+    AGGREGATION["DEMO"]["FP_H16"] = GROUPS["FP_H16"].copy()
+
+    AGGREGATION["DEMO_WX0"] = _weather_period_aggregation("WH16")
+    for group_name in _weather_group_names("WH16"):
+        AGGREGATION["DEMO_WX0"][group_name]["weight"] = 0
+    AGGREGATION["DEMO_WX0"]["FP_H16"] = GROUPS["FP_H16"].copy()
+
 
 def build_registries():
     global REQUIREMENTS, BENCHMARK_FUNCTIONS, GROUPS, AGGREGATION
+    global WX_GROUP_BENCHMARKS, WX_GROUPS_BY_PERIOD, HRRR_FP_GROUP_BENCHMARKS
+    global FIRE_PERIMETER_GROUP_PERIMETERS
 
     REQUIREMENTS = copy.deepcopy(_BASE_REQUIREMENTS)
     BENCHMARK_FUNCTIONS = _BASE_BENCHMARK_FUNCTIONS.copy()
     GROUPS = {}
     AGGREGATION = {}
+    WX_GROUP_BENCHMARKS = {}
+    WX_GROUPS_BY_PERIOD = {}
+    HRRR_FP_GROUP_BENCHMARKS = {}
+    FIRE_PERIMETER_GROUP_PERIMETERS = {}
 
     add_wx_benchmarks()
+    add_hrrr_fire_perimeter_benchmarks()
     create_benchmark_groups()
     create_aggregation_schemes()
 
@@ -1396,28 +1636,61 @@ def run_all_benchmarks(
 ):
     ft.logger.debug("run_all_benchmarks")
 
-    obs_dataset = File(obs_dataset_path, "r")
-    model_dataset = File(model_dataset_path, "r")
-
-    fs.validate_h5_std(model_dataset)
-
     rslt = {"benchmarks": {}}
     ctx = {}
-    for req_name, req_dict in REQUIREMENTS.items():
-        # filter list benchmarks
-        list_filtered = [bench for bench in req_dict["benchmarks"] if bench in list_bench]
-        ft.logger.debug("Filtered list of benchmarks to run with current requirement: %s", list_filtered)
-        rslt["benchmarks"] = ft.merge_dictionaries(
-            rslt["benchmarks"],
-            req_dict["main"](model_dataset, obs_dataset, list_filtered, req_dict["required_datasets"], ctx),
-        )
+    with File(obs_dataset_path, "r") as obs_dataset, File(model_dataset_path, "r") as model_dataset:
+        fs.validate_h5_std(model_dataset)
 
-    model_dataset.close()
-    obs_dataset.close()
+        for req_name, req_dict in REQUIREMENTS.items():
+            # filter list benchmarks
+            list_filtered = [bench for bench in req_dict["benchmarks"] if bench in list_bench]
+            ft.logger.debug(
+                "Filtered list of benchmarks to run with current requirement: %s", list_filtered
+            )
+            rslt["benchmarks"] = ft.merge_dictionaries(
+                rslt["benchmarks"],
+                req_dict["main"](
+                    model_dataset, obs_dataset, list_filtered, req_dict["required_datasets"], ctx
+                ),
+            )
+
+    raise_if_selected_benchmarks_missing(rslt["benchmarks"], list_bench)
 
     rslt = aggregate_scores(rslt, agg_scheme)
 
     return rslt
+
+
+def get_benchmark_requirements() -> dict[str, list[str]]:
+    benchmark_requirements = {}
+    for req_name, req_dict in REQUIREMENTS.items():
+        for bench_id in req_dict["benchmarks"]:
+            benchmark_requirements.setdefault(bench_id, []).append(req_name)
+    return benchmark_requirements
+
+
+def raise_if_selected_benchmarks_missing(benchmark_results: dict, list_bench: list[str]) -> None:
+    missing_benchmarks = [bench_id for bench_id in list_bench if bench_id not in benchmark_results]
+    if not missing_benchmarks:
+        return
+
+    benchmark_requirements = get_benchmark_requirements()
+    missing_details = [
+        f"{bench_id} ({'/'.join(benchmark_requirements.get(bench_id, ['unknown requirement']))})"
+        for bench_id in missing_benchmarks
+    ]
+    visible_details = ", ".join(missing_details[:10])
+    if len(missing_details) > 10:
+        visible_details = f"{visible_details}, ... {len(missing_details) - 10} more"
+
+    ft.logger.error(
+        "Selected benchmarks did not run, probably because their input requirement was not satisfied: %s",
+        visible_details,
+    )
+    raise KeyError(
+        "Selected benchmark results missing before aggregation: "
+        f"{visible_details}. Check the requirement warning above for the missing HDF5 input."
+    )
 
 
 def aggregate_scores(benchmark_results, agg_scheme):
@@ -1443,7 +1716,7 @@ def aggregate_scores(benchmark_results, agg_scheme):
         for bench_id in group_bench.keys():
             if bench_id not in benchmark_results["benchmarks"].keys():
                 ft.logger.error("Benchmark ID: %s required for aggregation scheme not found.", bench_id)
-                raise KeyError("Benchmark result missing. Check log")
+                raise KeyError(f"Benchmark result missing for aggregation: {bench_id}. Check log")
             group_score += benchmark_results["benchmarks"][bench_id]["Score"] * group_bench[bench_id]
             group_sum_weight += group_bench[bench_id]
             # print(bench_id, benchmark_results["benchmarks"][bench_id]["Score"],  group_bench[bench_id])
@@ -1462,6 +1735,10 @@ def aggregate_scores(benchmark_results, agg_scheme):
     ft.logger.info("Total Score = %.2f", benchmark_results["score_card"]["Score Total"])
 
     benchmark_results["score_card"]["aggregation_scheme_name"] = agg_scheme
+    benchmark_results["score_card"]["benchmark_target_name"] = agg_scheme
+    group_display_names = _target_group_display_names(agg_scheme)
+    if group_display_names:
+        benchmark_results["score_card"]["group_display_names"] = group_display_names
 
     return benchmark_results
 
@@ -1636,7 +1913,14 @@ def get_mask_from_period(dataset: File, group_path: str, period: tuple[datetime,
         # absolute time definition
         time_origin = period[0]
         time_units = "s"
-        time = [(datetime.fromisoformat(t) - time_origin).total_seconds() for t in time_ds[:]]
+        time = np.array(
+            [
+                (
+                    datetime.fromisoformat(t.decode() if isinstance(t, bytes) else t) - time_origin
+                ).total_seconds()
+                for t in time_ds[:]
+            ]
+        )
 
     return _mask_time_window_rel(time, time_origin, time_units, window=period, interval="closed")
 
@@ -1785,15 +2069,109 @@ def get_list_benchmark_with_agg(agg_dict: dict, agg_scheme: str):
     return bench_list
 
 
+def _benchmark_debug_label(bench_id: str) -> str:
+    benchmark = BENCHMARK_FUNCTIONS[bench_id]
+    keywords = getattr(benchmark, "keywords", {}) or {}
+    if "kpi_name_custom" in keywords:
+        return keywords["kpi_name_custom"]
+    if getattr(benchmark, "func", None) is bench_fp_generic_area_final_bias:
+        return "Final Burn Area Bias"
+    return ""
+
+
+def describe_benchmark_registry(benchmark_target: str = DEFAULT_AGGREGATION_SCHEME) -> str:
+    build_registries()
+    selected_target = resolve_benchmark_target(benchmark_target)
+    if selected_target == "0":
+        selected_groups = {
+            "All Benchmarks": {
+                "weight": 1,
+                "benchmarks": {bench_id: 1 for bench_id in BENCHMARK_FUNCTIONS},
+            }
+        }
+    elif selected_target in AGGREGATION:
+        selected_groups = AGGREGATION[selected_target]
+    else:
+        available = ", ".join(sorted(AGGREGATION))
+        raise ValueError(f"Unknown benchmark target '{benchmark_target}'. Available schemes: {available}")
+
+    selected_benchmarks = []
+    for group_content in selected_groups.values():
+        for bench_id in group_content["benchmarks"]:
+            if bench_id not in selected_benchmarks:
+                selected_benchmarks.append(bench_id)
+
+    lines = [
+        f"Benchmark target: {selected_target}",
+        f"Registered benchmarks: {len(BENCHMARK_FUNCTIONS)}",
+        f"Registered groups: {len(GROUPS)}",
+        f"Selected groups: {len(selected_groups)}",
+        f"Selected benchmarks: {len(selected_benchmarks)}",
+        "",
+        "Groups:",
+    ]
+    for group_name, group_content in selected_groups.items():
+        lines.append(
+            f"- {group_name} (weight={group_content['weight']}, "
+            f"benchmarks={len(group_content['benchmarks'])})"
+        )
+        perimeters = FIRE_PERIMETER_GROUP_PERIMETERS.get(group_name, [])
+        if perimeters:
+            lines.append("  Perimeters:")
+            for perimeter in perimeters:
+                lines.append(f"    - {perimeter}")
+        for bench_id, bench_weight in group_content["benchmarks"].items():
+            label = _benchmark_debug_label(bench_id)
+            suffix = f" - {label}" if label else ""
+            lines.append(f"  - {bench_id} (weight={bench_weight}){suffix}")
+
+    return "\n".join(lines)
+
+
+def create_report_figures(
+    model_output: Path,
+    obs_data: Path,
+    benchmark_target: str,
+    target_info: dict | None,
+    output_dir: Path,
+) -> list[dict]:
+    if target_info is None:
+        return []
+
+    perimeter_paths = [perimeter["path"] for perimeter in target_info.get("perimeters", [])]
+    if not perimeter_paths:
+        return []
+
+    output_path = Path(output_dir) / f"perimeters_{benchmark_target}.png"
+    plot_perimeter_contours(
+        model_output=model_output,
+        obs_data=obs_data,
+        perimeter_paths=perimeter_paths,
+        output_path=output_path,
+    )
+    return [
+        {
+            "title": "Fire perimeter comparison",
+            "path": output_path,
+            "alt": "Observed and modeled fire perimeter contours",
+        }
+    ]
+
+
+def print_benchmark_registry(benchmark_target: str = DEFAULT_AGGREGATION_SCHEME) -> None:
+    print(describe_benchmark_registry(benchmark_target))
+
+
 def run_caldor_benchmark(
     model_output: Path,
-    agg_scheme: str = DEFAULT_AGGREGATION_SCHEME,
+    benchmark_target: str,
     name: str = "",
     overwrite: bool = False,
     sign: tuple[str, str] | None = None,
     obs_data: Path = DEFAULT_OBS_DATA_PATH,
     output_json: Path = DEFAULT_OUTPUT_PATH_JSON,
     score_card_report: Path = DEFAULT_SCORE_CARD_REPORT_PATH,
+    score_card_full_name: bool = False,
 ):
     model_output = Path(model_output)
     obs_data = Path(obs_data)
@@ -1816,6 +2194,7 @@ def run_caldor_benchmark(
         "case_version": obs_data_version,
         "firebench_version": fb_version,
         "case_name": CASE_NAME,
+        "benchmark_short_name": BENCHMARK_SHORT_NAME,
         "case_id": CASE_ID,
         "evaluated_model_name": str(model_output).strip(".h5"),
     }
@@ -1824,9 +2203,10 @@ def run_caldor_benchmark(
     output_dict = ft.merge_dictionaries(output_dict, get_files_hash(model_output, obs_data))
 
     build_registries()
-    list_bench = get_list_benchmark_with_agg(AGGREGATION, agg_scheme)
+    aggregation_scheme = resolve_benchmark_target(benchmark_target)
+    list_bench = get_list_benchmark_with_agg(AGGREGATION, aggregation_scheme)
 
-    rslt = run_all_benchmarks(model_output, agg_scheme, list_bench, obs_data)
+    rslt = run_all_benchmarks(model_output, aggregation_scheme, list_bench, obs_data)
     output_dict = ft.merge_dictionaries(output_dict, rslt)
 
     # certification
@@ -1837,7 +2217,13 @@ def run_caldor_benchmark(
         output_dict = fsi.certify_benchmark_run(output_dict, key, signer)
         signed = True
 
-    fm.save_as_table(score_card_report, output_dict, signed, "certificate_verif_lvl")
+    fm.save_as_table(
+        score_card_report,
+        output_dict,
+        signed,
+        "certificate_verif_lvl",
+        full_name=score_card_full_name,
+    )
     if not score_card_report.exists():
         ft.logger.error("Score card report: %s not found", score_card_report)
         raise FileExistsError()
@@ -1854,6 +2240,7 @@ def run_caldor_benchmark(
 def main(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description="Run benchmark against a model HDF5 output.")
 
+    parser.add_argument("benchmark_target", type=str, help="Benchmark target, for example H013_P")
     parser.add_argument("model_output", type=Path, help="Path to your model output HDF5 file")
 
     parser.add_argument(
@@ -1862,14 +2249,6 @@ def main(argv: list[str] | None = None):
         type=int,
         default=DEFAULT_LOGGING_LEVEL,
         help=f"Logging level (default: {DEFAULT_LOGGING_LEVEL})",
-    )
-
-    parser.add_argument(
-        "-a",
-        "--agg_scheme",
-        type=str,
-        default=DEFAULT_AGGREGATION_SCHEME,
-        help=f"Aggregation scheme (default: {DEFAULT_AGGREGATION_SCHEME})",
     )
 
     parser.add_argument(
@@ -1891,16 +2270,23 @@ def main(argv: list[str] | None = None):
         metavar=("KEYID", "SIGNER"),
         help="Sign with Verification Level (VL) using KEYID and SIGNER",
     )
+    parser.add_argument(
+        "--full-name",
+        "--full_name",
+        action="store_true",
+        help="Use full benchmark IDs and KPI names in the score-card PDF.",
+    )
 
     args = parser.parse_args(argv)
 
     ft.create_file_handler(LOG_FILENAME, args.logging_level)
     run_caldor_benchmark(
         args.model_output,
-        agg_scheme=args.agg_scheme,
+        benchmark_target=args.benchmark_target,
         name=args.name,
         overwrite=args.overwrite,
         sign=tuple(args.sign) if args.sign else None,
+        score_card_full_name=args.full_name,
     )
 
 

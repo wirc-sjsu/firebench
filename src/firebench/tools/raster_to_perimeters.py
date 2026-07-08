@@ -51,6 +51,7 @@ def array_to_geopolygons(
     masked_field = np.ma.masked_invalid(field)
     valid_field = masked_field.compressed()
     if valid_field.size == 0:
+        print("array_to_geopolygons: Empty valid_field")
         return gpd.GeoDataFrame(geometry=final_polygons, crs=original_crs).assign(iso_value=iso_value)
 
     # Filled contours preserve polygon topology: each returned block is one

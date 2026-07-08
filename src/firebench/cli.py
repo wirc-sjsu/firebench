@@ -6,13 +6,15 @@ from urllib.request import urlretrieve
 import click
 
 from .benchmarks import AVAIL_BENCHMARKS
+from .plotting import plot_from_config
 from .tools.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
-FIREBENCH_BANNER = (
-    "\b"
-    + r"""
+REPORT_PATH = Path("firebench_report.md")
+FIGURES_DIR = Path("figures")
+
+FIREBENCH_BANNER = "\b" + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -22,7 +24,6 @@ FIREBENCH_BANNER = (
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
-)
 
 
 @click.group(help=FIREBENCH_BANNER)
@@ -37,8 +38,20 @@ def _normalize_case_id(case: str) -> str:
     return case_id
 
 
-def _get_case_info(case: str) -> tuple[str, dict]:
+def _resolve_case_id(case: str) -> str:
     case_id = _normalize_case_id(case)
+    if case_id in AVAIL_BENCHMARKS:
+        return case_id
+
+    for registered_case_id, case_info in AVAIL_BENCHMARKS.items():
+        if case_id == case_info.get("short_name"):
+            return registered_case_id
+
+    return case_id
+
+
+def _get_case_info(case: str) -> tuple[str, dict]:
+    case_id = _resolve_case_id(case)
     try:
         return case_id, AVAIL_BENCHMARKS[case_id]
     except KeyError as exc:
@@ -96,24 +109,260 @@ def _download_with_progress(url: str, output_path: Path) -> None:
             progress_bar.__exit__(None, None, None)
 
 
+def _echo_cases() -> None:
+    click.echo("ID   Short name   Documentation")
+    for case_id, case_info in sorted(AVAIL_BENCHMARKS.items()):
+        short_name = case_info.get("short_name", "")
+        click.echo(f"{case_id}  {short_name}  {case_info['url']}")
+
+
+def _format_target_datetime(value) -> str:
+    return value.isoformat(timespec="minutes")
+
+
+def _describe_target(target_describer, target: str | None, obs_data: Path | None = None) -> dict:
+    if target is None:
+        return target_describer()
+    if obs_data is None:
+        return target_describer(target)
+    try:
+        return target_describer(target, obs_data=obs_data)
+    except TypeError as exc:
+        if "obs_data" not in str(exc):
+            raise
+        return target_describer(target)
+
+
+def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | None = None) -> None:
+    case_id, case_info = _get_case_info(case)
+    click.echo(f"ID: {case_id}")
+    click.echo(f"Short name: {case_info.get('short_name', '')}")
+    click.echo(f"Documentation: {case_info['url']}")
+
+    target_describer = case_info.get("target_describer")
+    if target_describer is None:
+        click.echo("No benchmark targets are registered.")
+        return
+
+    try:
+        target_info = _describe_target(target_describer, target, obs_data)
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+    if target is not None:
+        click.echo(f"Benchmark target: {target_info['target']}")
+        if target_info.get("period"):
+            click.echo("")
+            click.echo("Temporal period")
+            click.echo(f"Target: {target_info['period']['target']}")
+            click.echo(f"Start: {_format_target_datetime(target_info['period']['start'])}")
+            click.echo(f"End: {_format_target_datetime(target_info['period']['end'])}")
+
+        click.echo("")
+        click.echo("KPI groups")
+        for flag, description in target_info["kpi_groups"].items():
+            click.echo(f"{flag}: {description}")
+
+        if target_info.get("perimeters"):
+            click.echo("")
+            click.echo("Perimeters")
+            click.echo("Time")
+            for perimeter in target_info["perimeters"]:
+                click.echo(perimeter["time"])
+
+        if target_info.get("weather_stations"):
+            click.echo("")
+            click.echo("Weather stations")
+            click.echo("Variable   Stations   Trusted stations")
+            for station_info in target_info["weather_stations"]:
+                click.echo(
+                    f"{station_info['variable']}  "
+                    f"{station_info['stations']}  "
+                    f"{station_info['trusted_stations']}"
+                )
+
+        click.echo("")
+        click.echo("KPIs")
+        click.echo("ID   KPI   Weight   value_norm_param_m")
+        for kpi in target_info["kpis"]:
+            norm_param = "" if kpi["value_norm_param_m"] is None else kpi["value_norm_param_m"]
+            click.echo(f"{kpi['id']}  {kpi['name']}  {kpi['weight']}  {norm_param}")
+        return
+
+    click.echo("")
+    click.echo("Temporal periods")
+    click.echo("Target   Start   End")
+    for period in target_info["periods"]:
+        click.echo(
+            f"{period['target']}  "
+            f"{_format_target_datetime(period['start'])}  "
+            f"{_format_target_datetime(period['end'])}"
+        )
+
+    click.echo("")
+    click.echo("KPI groups")
+    for flag, description in target_info["kpi_groups"].items():
+        click.echo(f"{flag}: {description}")
+
+
+def _get_model_name(model_output: Path, name: str) -> str:
+    if name:
+        return name
+    return model_output.stem
+
+
+def _render_report_target_information(target: str, target_info: dict | None = None) -> str:
+    lines = [
+        "## Benchmark target information",
+        f"Benchmark target: {target_info['target'] if target_info is not None else target}",
+    ]
+
+    if target_info is None:
+        return "\n".join(lines)
+
+    if target_info.get("period"):
+        lines.extend(
+            [
+                "",
+                "### Temporal period",
+                f"Target: {target_info['period']['target']}",
+                f"Start: {_format_target_datetime(target_info['period']['start'])}",
+                f"End: {_format_target_datetime(target_info['period']['end'])}",
+            ]
+        )
+
+    lines.extend(["", "### KPI groups"])
+    for flag, description in target_info["kpi_groups"].items():
+        lines.append(f"- {flag}: {description}")
+
+    if target_info.get("perimeters"):
+        lines.extend(["", "### Perimeters", "| Time |", "| --- |"])
+        for perimeter in target_info["perimeters"]:
+            lines.append(f"| {perimeter['time']} |")
+
+    if target_info.get("weather_stations"):
+        lines.extend(
+            [
+                "",
+                "### Weather stations",
+                "| Variable | Stations | Trusted stations |",
+                "| --- | --- | --- |",
+            ]
+        )
+        for station_info in target_info["weather_stations"]:
+            lines.append(
+                f"| {station_info['variable']} | "
+                f"{station_info['stations']} | "
+                f"{station_info['trusted_stations']} |"
+            )
+
+    if target_info.get("kpis"):
+        lines.extend(
+            [
+                "",
+                "### KPIs",
+                "| ID | KPI | Weight | value_norm_param_m |",
+                "| --- | --- | --- | --- |",
+            ]
+        )
+        for kpi in target_info["kpis"]:
+            norm_param = "" if kpi["value_norm_param_m"] is None else kpi["value_norm_param_m"]
+            lines.append(f"| {kpi['id']} | {kpi['name']} | {kpi['weight']} | {norm_param} |")
+
+    return "\n".join(lines)
+
+
+def _render_report_figures(figures: list[dict] | None = None) -> str:
+    if not figures:
+        return ""
+
+    lines = []
+    for figure in figures:
+        lines.extend(
+            [
+                f"### {figure['title']}",
+                '<p align="center">',
+                f'  <img src="{Path(figure["path"]).as_posix()}" alt="{figure["alt"]}">',
+                "</p>",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _render_report_skeleton(
+    benchmark_name: str,
+    model_name: str,
+    target: str,
+    target_info: dict | None = None,
+    figures: list[dict] | None = None,
+) -> str:
+    target_information = _render_report_target_information(target, target_info)
+    report_figures = _render_report_figures(figures)
+    return f"""# Report {benchmark_name} for {model_name}
+{target_information}
+
+## Submitters' comments
+This section is reserved for the model users who have submitted the model output to this benchmark.
+### Short model description and keywords
+### Setup/Configuration
+### Inputs
+### Post-processing
+### FireBench adapter used
+## FireBench Team comments
+This section is reserved to the FireBench team validating this benchmark results
+## Results
+{report_figures}"""
+
+
+def _check_report_skeleton_paths(overwrite: bool) -> None:
+    if REPORT_PATH.exists() and not overwrite:
+        raise click.UsageError(f"Report file already exists: {REPORT_PATH}. Use --overwrite to replace it.")
+    if FIGURES_DIR.exists() and not FIGURES_DIR.is_dir():
+        raise click.UsageError(f"Figures path exists and is not a directory: {FIGURES_DIR}")
+
+
+def _write_report_skeleton(
+    benchmark_name: str,
+    model_name: str,
+    target: str,
+    target_info: dict | None = None,
+    figures: list[dict] | None = None,
+) -> None:
+    FIGURES_DIR.mkdir(exist_ok=True)
+    REPORT_PATH.write_text(
+        _render_report_skeleton(benchmark_name, model_name, target, target_info, figures),
+        encoding="utf-8",
+    )
+
+
+def _create_report_figures(
+    case_info: dict,
+    model_output: Path,
+    obs_data: Path,
+    target: str,
+    target_info: dict | None,
+) -> list[dict]:
+    report_figure_func = case_info.get("report_figure_func")
+    if report_figure_func is None:
+        return []
+    try:
+        return report_figure_func(
+            model_output=model_output,
+            obs_data=obs_data,
+            benchmark_target=target,
+            target_info=target_info,
+            output_dir=FIGURES_DIR,
+        )
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+
+
 @main.command()
+@click.argument("case", type=str)
+@click.argument("target", type=str)
 @click.argument(
     "model_output",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
-)
-@click.option(
-    "-c",
-    "--case",
-    "case_id",
-    default="001",
-    show_default=True,
-    help="Benchmark case ID.",
-)
-@click.option(
-    "-a",
-    "--agg-scheme",
-    default=None,
-    help="Aggregation scheme.",
+    type=click.Path(dir_okay=False, path_type=Path),
 )
 @click.option(
     "-n",
@@ -166,10 +415,26 @@ def _download_with_progress(url: str, output_path: Path) -> None:
     default=None,
     help="Path to write the score card PDF.",
 )
+@click.option(
+    "--full-name",
+    "--full_name",
+    is_flag=True,
+    help="Use full benchmark IDs and KPI names in the score-card PDF.",
+)
+@click.option(
+    "--no-run",
+    is_flag=True,
+    help="Build registries and print selected groups/benchmarks without running metrics.",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    help="Create firebench_report.md and the figures directory for the benchmark run.",
+)
 def run(
+    case: str,
+    target: str,
     model_output: Path,
-    case_id: str,
-    agg_scheme: str | None,
     name: str,
     overwrite: bool,
     sign: tuple[str, str] | None,
@@ -179,12 +444,21 @@ def run(
     obs_data: Path | None,
     output_json: Path | None,
     score_card_report: Path | None,
+    full_name: bool,
+    no_run: bool,
+    report: bool,
 ) -> None:
     """
-    Run a benchmark case against model std HDF5 output. Use firebench list to see all available cases.
+    Run a benchmark target against model std HDF5 output.
     """
-    selected_case_id, case_info = _get_case_info(case_id)
-    agg_scheme = agg_scheme or _get_default(case_info, "agg_scheme")
+    selected_case_id, case_info = _get_case_info(case)
+    target_normalizer = case_info.get("target_normalizer")
+    if target_normalizer is not None:
+        try:
+            target = target_normalizer(target)
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
+
     verbose = verbose if verbose is not None else _get_default(case_info, "verbose")
     log_file = log_file or _get_default(case_info, "log_file")
     obs_data = obs_data or _get_default(case_info, "obs_data")
@@ -192,27 +466,93 @@ def run(
     score_card_report = score_card_report or _get_default(case_info, "score_card_report")
 
     configure_logging(verbose, use_console=not no_console, log_path=log_file)
-    logger.info("[CLI] run benchmark case %s with model output: %s", selected_case_id, model_output)
+    logger.info(
+        "[CLI] run benchmark case %s target %s with model output: %s",
+        selected_case_id,
+        target,
+        model_output,
+    )
+    if no_run:
+        debug_func = case_info.get("debug_func")
+        if debug_func is None:
+            raise click.UsageError(f"Benchmark case '{selected_case_id}' does not support --no-run.")
+        debug_func(benchmark_target=target)
+        return 0
+
+    if not model_output.is_file():
+        raise click.UsageError(f"Model output file does not exist: {model_output}")
+    if report:
+        _check_report_skeleton_paths(overwrite)
+        target_describer = case_info.get("target_describer")
+        if target_describer is not None:
+            try:
+                target_info = target_describer(target)
+            except ValueError as exc:
+                raise click.UsageError(str(exc)) from exc
+        else:
+            target_info = None
+
     case_info["func"](
         model_output,
-        agg_scheme=agg_scheme,
+        benchmark_target=target,
         name=name,
         overwrite=overwrite,
         sign=sign,
         obs_data=obs_data,
         output_json=output_json,
         score_card_report=score_card_report,
+        score_card_full_name=full_name,
     )
+    if report:
+        report_figures = _create_report_figures(
+            case_info=case_info,
+            model_output=model_output,
+            obs_data=obs_data,
+            target=target,
+            target_info=target_info,
+        )
+        _write_report_skeleton(
+            benchmark_name=case_info["name"],
+            model_name=_get_model_name(model_output, name),
+            target=target,
+            target_info=target_info,
+            figures=report_figures,
+        )
     return 0
 
 
 @main.command("list")
-def list_cases() -> None:
+@click.argument("case", required=False, type=str)
+@click.argument("target", required=False, type=str)
+@click.option(
+    "--obs-data",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to the observational HDF5 file for target data summaries.",
+)
+def list_cases(case: str | None, target: str | None, obs_data: Path | None) -> None:
     """
-    List all available benchmarks
+    List available benchmarks or targets for a benchmark case.
     """
-    for case_id, case_info in sorted(AVAIL_BENCHMARKS.items()):
-        click.echo(f"{case_id}  {case_info['name']} - docs: {case_info['url']}")
+    if case:
+        _echo_case_targets(case, target, obs_data)
+        return 0
+    _echo_cases()
+    return 0
+
+
+@main.command()
+@click.argument(
+    "config",
+    type=click.Path(dir_okay=False, path_type=Path),
+)
+def plot(config: Path) -> None:
+    """
+    Generate plots from a TOML configuration file.
+    """
+    written = plot_from_config(config)
+    for output_path in written:
+        click.echo(f"Wrote {output_path}")
     return 0
 
 
@@ -222,6 +562,15 @@ def data() -> None:
     Download benchmark data.
     """
     pass
+
+
+@data.command("list")
+def data_list_cases() -> None:
+    """
+    List all available benchmarks.
+    """
+    _echo_cases()
+    return 0
 
 
 @data.command("versions")
