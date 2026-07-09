@@ -7,19 +7,34 @@ import re
 from ..tools import logger
 from ..signing import verify_certificate_in_dict, DEFAULT_VL, VERIFICATION_LEVEL_COLORS
 
+SCORECARD_COLORS = {
+    "header": "#1F3A5F",
+    "subheader": "#3D6FA3",
+    "group_row": "#D7E5C8",
+    "row_even": "#F8F9FA",
+    "row_odd": "#E8EDF3",
+    "footer": "#7F8B99",
+    "grid": "#9AA4AA",
+    "body_text": "#1F2933",
+    "low_score": "#8A8F98",
+    "medium_score": "#4477AA",
+    "high_score": "#228833",
+    "invalid_score": "#595959",
+}
+
 
 def _score_to_color(score):
     """
-    Map a score from 0 to 100 to a color from red -> yellow -> green.
+    Map a score from 0 to 100 to a colorblind-safer gray -> blue -> green scale.
     Output: hex string "#RRGGBB".
     """
     if score < 33.33:
-        return "#D6452A"
+        return SCORECARD_COLORS["low_score"]
 
     if score < 66.66:
-        return "#E8C441"
+        return SCORECARD_COLORS["medium_score"]
 
-    return "#6BAF5F"
+    return SCORECARD_COLORS["high_score"]
 
 
 def _scorecard_benchmark_name(data: dict) -> str:
@@ -57,8 +72,8 @@ def save_as_table(
         filename = filename.with_suffix(".pdf")
 
     COLOR_ROWS = [
-        "#f7d5cd",
-        "#fbebe8",
+        SCORECARD_COLORS["row_even"],
+        SCORECARD_COLORS["row_odd"],
     ]
 
     # Default Verification lvl
@@ -184,16 +199,28 @@ def save_as_table(
         ("SPAN", (0, nb_rows - 1), (3, nb_rows - 1)),
         # Borders
         ("BOX", (0, 0), (-1, -1), 0.75, colors.black),
-        ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.grey),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor(SCORECARD_COLORS["grid"])),
         # Background colors for clarity
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#c04f15")),  # merged header row
-        ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#e97132")),  # merged header row
+        (
+            "BACKGROUND",
+            (0, 0),
+            (-1, -1),
+            colors.HexColor(SCORECARD_COLORS["header"]),
+        ),  # merged header row
+        (
+            "BACKGROUND",
+            (0, 1),
+            (-1, 1),
+            colors.HexColor(SCORECARD_COLORS["subheader"]),
+        ),  # merged header row
         (
             "BACKGROUND",
             (0, -1),
             (-1, -1),
-            colors.HexColor("#A79F9A"),
+            colors.HexColor(SCORECARD_COLORS["footer"]),
         ),  # merged footer row
+        ("TEXTCOLOR", (0, 0), (-1, 1), colors.white),
+        ("TEXTCOLOR", (0, -1), (-1, -1), colors.white),
         # Alignment
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("ALIGN", (0, 0), (0, -1), "LEFT"),
@@ -214,6 +241,9 @@ def save_as_table(
                 colors.HexColor(COLOR_ROWS[i % len(COLOR_ROWS)]),
             ),  # merged header row
         )
+        table_style.append(
+            ("TEXTCOLOR", (0, i + 2), (-1, i + 2), colors.HexColor(SCORECARD_COLORS["body_text"]))
+        )
         table_style.append(("ALIGN", (0, i + 1), (0, i + 1), "LEFT"))
 
     if valid_scheme:
@@ -225,15 +255,30 @@ def save_as_table(
                 colors.HexColor(_score_to_color(data["score_card"]["Score Total"])),
             ),  # merged header row
         )
+        table_style.append(("TEXTCOLOR", (3, 0), (3, 0), colors.white))
         for i_row in group_rows:
             table_style.append(
-                ("BACKGROUND", (0, i_row), (-1, i_row), colors.HexColor("#f2aa84")),
+                (
+                    "BACKGROUND",
+                    (0, i_row),
+                    (-1, i_row),
+                    colors.HexColor(SCORECARD_COLORS["group_row"]),
+                ),
+            )
+            table_style.append(
+                ("TEXTCOLOR", (0, i_row), (-1, i_row), colors.HexColor(SCORECARD_COLORS["body_text"]))
             )
     else:
         text_table[0][3] = "INVALID"
         table_style.append(
-            ("BACKGROUND", (3, 0), (3, 0), colors.HexColor("#ff0000")),  # merged header row
+            (
+                "BACKGROUND",
+                (3, 0),
+                (3, 0),
+                colors.HexColor(SCORECARD_COLORS["invalid_score"]),
+            ),  # merged header row
         )
+        table_style.append(("TEXTCOLOR", (3, 0), (3, 0), colors.white))
     # VL colors
     table_style.append(
         (
