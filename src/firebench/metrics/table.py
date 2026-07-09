@@ -156,8 +156,10 @@ def save_comparison_as_table(
     margin = 12 * mm
     header_height = 22 * mm
     title_height = 9 * mm
-    row_height = 10 * mm
-    footer_height = 9 * mm
+    row_height = 7 * mm
+    footer_height = 7 * mm
+    row_text_offset = 2.2 * mm
+    footer_text_offset = 2.2 * mm
     usable_width = page_width - 2 * margin
     label_width = 45 * mm
     for label, _scores in rows:
@@ -227,7 +229,7 @@ def save_comparison_as_table(
         pdf_canvas.rect(x0, footer_y, table_width, footer_height, stroke=1, fill=1)
         pdf_canvas.setFillColor(colors.white)
         pdf_canvas.setFont(base_font, base_font_size)
-        pdf_canvas.drawString(x0 + 2 * mm, footer_y + 3 * mm, footer)
+        pdf_canvas.drawString(x0 + 2 * mm, footer_y + footer_text_offset, footer)
 
     def draw_score_row(row_index: int, row_y: float, label: str, scores: list[float]):
         is_total = row_index == 0
@@ -263,7 +265,7 @@ def save_comparison_as_table(
             min_size=6,
         )
         pdf_canvas.setFont(label_font, label_font_size)
-        pdf_canvas.drawString(x0 + 2 * mm, row_y + 3.2 * mm, label)
+        pdf_canvas.drawString(x0 + 2 * mm, row_y + row_text_offset, label)
 
         for model_index, (score, background) in enumerate(
             zip(scores, _scorecard_comparison_cell_colors(scores))
@@ -279,7 +281,9 @@ def save_comparison_as_table(
             pdf_canvas.setFont(score_font, row_font_size)
             score_text = f"{score:.2f}"
             text_width = pdf_canvas.stringWidth(score_text, score_font, row_font_size)
-            pdf_canvas.drawString(cell_x + (model_col_width - text_width) / 2, row_y + 3.2 * mm, score_text)
+            pdf_canvas.drawString(
+                cell_x + (model_col_width - text_width) / 2, row_y + row_text_offset, score_text
+            )
 
     pdf_canvas.setTitle("FireBench comparison scorecard")
     row_start_y = draw_header()
