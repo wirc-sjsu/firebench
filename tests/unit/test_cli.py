@@ -437,6 +437,138 @@ def test_run_command_unknown_case_fails(monkeypatch, tmp_path):
     assert "firebench list" in result.output
 
 
+def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
+    config_dir = tmp_path / "case"
+    config_dir.mkdir()
+    obs_data = config_dir / "obs.h5"
+    model_a = config_dir / "model_a.h5"
+    model_b = config_dir / "model_b.h5"
+    obs_data.write_text("obs")
+    model_a.write_text("model-a")
+    model_b.write_text("model-b")
+    calls = []
+
+    def fake_runner(model_output, **kwargs):
+        calls.append({"model_output": model_output, **kwargs})
+        total_score = 80.0 if kwargs["name"] == "Model A" else 60.0
+        group_score = 90.0 if kwargs["name"] == "Model A" else 50.0
+        return {
+            "case_id": "FB001",
+            "benchmark_short_name": "2021_Caldor",
+            "evaluated_model_name": kwargs["name"],
+            "firebench_version": "test",
+            "case_version": "test",
+            "score_card": {
+                "Scheme": {
+                    "FP_H13": {
+                        "weight": 1,
+                        "benchmarks": {},
+                    },
+                },
+                "Score Total": total_score,
+                "Score FP_H13": group_score,
+                "aggregation_scheme_name": "H013_P",
+            },
+        }
+
+    monkeypatch.setattr(
+        "firebench.cli.AVAIL_BENCHMARKS",
+        {
+            "001": {
+                "name": "2021 Caldor Fire",
+                "short_name": "2021_Caldor",
+                "url": "https://example.test/caldor",
+                "func": fake_runner,
+                "default_options": {
+                    "verbose": 3,
+                    "obs_data": tmp_path / "default_obs.h5",
+                },
+            }
+        },
+    )
+    config_path = config_dir / "multirun.yml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "case: 2021_Caldor",
+                "target: H013_P",
+                "output_dir: out",
+                "overwrite: true",
+                "obs_data: obs.h5",
+                "models:",
+                "  - name: Model A",
+                "    model_output: model_a.h5",
+                "  - name: Model B",
+                "    model_output: model_b.h5",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(main, ["multirun", str(config_path)])
+
+    output_dir = config_dir / "out"
+    assert result.exit_code == 0, result.output
+    assert calls == [
+        {
+            "model_output": model_a,
+            "benchmark_target": "H013_P",
+            "name": "Model A",
+            "overwrite": True,
+            "sign": None,
+            "obs_data": obs_data,
+            "output_json": output_dir / "model-a_rslt.json",
+            "score_card_report": output_dir / "model-a_scorecard.pdf",
+            "score_card_full_name": False,
+        },
+        {
+            "model_output": model_b,
+            "benchmark_target": "H013_P",
+            "name": "Model B",
+            "overwrite": True,
+            "sign": None,
+            "obs_data": obs_data,
+            "output_json": output_dir / "model-b_rslt.json",
+            "score_card_report": output_dir / "model-b_scorecard.pdf",
+            "score_card_full_name": False,
+        },
+    ]
+    assert (output_dir / "comparison_scorecard.pdf").exists()
+    assert f"Wrote {output_dir / 'comparison_scorecard.pdf'}" in result.output
+
+
+def test_multirun_command_rejects_duplicate_output_slugs(monkeypatch, tmp_path):
+    config_dir = tmp_path / "case"
+    config_dir.mkdir()
+    model_a = config_dir / "model_a.h5"
+    model_b = config_dir / "model_b.h5"
+    model_a.write_text("model-a")
+    model_b.write_text("model-b")
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+    config_path = config_dir / "multirun.yml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "case: 001",
+                "target: H013_P",
+                "models:",
+                "  - name: Model A",
+                "    model_output: model_a.h5",
+                "  - name: Model-A",
+                "    model_output: model_b.h5",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(main, ["multirun", str(config_path)])
+
+    assert result.exit_code != 0
+    assert "Duplicate model output slug 'model-a'" in result.output
+
+
 def test_list_command_prints_case_ids_short_names_and_docs(monkeypatch, tmp_path):
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
 
