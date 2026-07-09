@@ -463,6 +463,7 @@ def _resolve_multirun_config(config_path: Path) -> dict:
         "no_console": bool(config.get("no_console", False)),
         "obs_data": obs_data,
         "full_name": bool(config.get("full_name", False)),
+        "comparison_include_kpis": bool(config.get("comparison_include_kpis", False)),
         "comparison_score_card_report": comparison_report,
         "models": _validate_multirun_models(config, config_dir),
     }
@@ -687,7 +688,12 @@ def multirun(config: Path) -> None:
             )
         results.append(result)
 
-    save_comparison_as_table(comparison_report, results)
+    save_comparison_as_table(
+        comparison_report,
+        results,
+        include_kpis=resolved_config["comparison_include_kpis"],
+        full_name=resolved_config["full_name"],
+    )
     click.echo(f"Wrote {comparison_report}")
 
 

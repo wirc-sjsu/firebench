@@ -95,15 +95,29 @@ def test_scorecard_comparison_rows_include_total_and_groups():
         {
             "case_id": "FB001",
             "evaluated_model_name": "model-a",
+            "benchmarks": {
+                "FB001_FPH097": {
+                    "Average Jaccard Index WH13": 0.8,
+                    "Score": 80.0,
+                },
+                "FB001_WX343": {
+                    "Air temp MAE min WH13 TSO": 1.5,
+                    "Score": 70.0,
+                },
+            },
             "score_card": {
                 "Scheme": {
                     "FP_H13": {
                         "weight": 1,
-                        "benchmarks": {},
+                        "benchmarks": {
+                            "FB001_FPH097": 1,
+                        },
                     },
                     "Air Temp WH1": {
                         "weight": 1,
-                        "benchmarks": {},
+                        "benchmarks": {
+                            "FB001_WX343": 1,
+                        },
                     },
                 },
                 "Score Total": 80.0,
@@ -118,15 +132,29 @@ def test_scorecard_comparison_rows_include_total_and_groups():
         {
             "case_id": "FB001",
             "evaluated_model_name": "model-b",
+            "benchmarks": {
+                "FB001_FPH097": {
+                    "Average Jaccard Index WH13": 0.6,
+                    "Score": 60.0,
+                },
+                "FB001_WX343": {
+                    "Air temp MAE min WH13 TSO": 1.0,
+                    "Score": 75.0,
+                },
+            },
             "score_card": {
                 "Scheme": {
                     "FP_H13": {
                         "weight": 1,
-                        "benchmarks": {},
+                        "benchmarks": {
+                            "FB001_FPH097": 1,
+                        },
                     },
                     "Air Temp WH1": {
                         "weight": 1,
-                        "benchmarks": {},
+                        "benchmarks": {
+                            "FB001_WX343": 1,
+                        },
                     },
                 },
                 "Score Total": 60.0,
@@ -141,6 +169,13 @@ def test_scorecard_comparison_rows_include_total_and_groups():
         ("Total Score", [80.0, 60.0]),
         ("Group: Fire Perimeters", [90.0, 50.0]),
         ("Group: Air Temp WH1", [70.0, 75.0]),
+    ]
+    assert _scorecard_comparison_rows(results, include_kpis=True) == [
+        ("Total Score", [80.0, 60.0]),
+        ("Group: Fire Perimeters", [90.0, 50.0]),
+        ("Average Jaccard Index", [80.0, 60.0]),
+        ("Group: Air Temp WH1", [70.0, 75.0]),
+        ("Air temp MAE min WH13 TSO", [70.0, 75.0]),
     ]
 
 

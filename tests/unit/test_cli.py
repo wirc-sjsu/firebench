@@ -447,6 +447,7 @@ def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
     model_a.write_text("model-a")
     model_b.write_text("model-b")
     calls = []
+    comparison_call = {}
 
     def fake_runner(model_output, **kwargs):
         calls.append({"model_output": model_output, **kwargs})
@@ -486,6 +487,15 @@ def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
             }
         },
     )
+
+    def fake_save_comparison_as_table(filename, results, include_kpis=False, full_name=False):
+        comparison_call["filename"] = filename
+        comparison_call["results"] = results
+        comparison_call["include_kpis"] = include_kpis
+        comparison_call["full_name"] = full_name
+        filename.write_text("fake pdf")
+
+    monkeypatch.setattr("firebench.cli.save_comparison_as_table", fake_save_comparison_as_table)
     config_path = config_dir / "multirun.yml"
     config_path.write_text(
         "\n".join(
@@ -495,6 +505,7 @@ def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
                 "output_dir: out",
                 "overwrite: true",
                 "obs_data: obs.h5",
+                "comparison_include_kpis: true",
                 "models:",
                 "  - name: Model A",
                 "    model_output: model_a.h5",
@@ -535,6 +546,13 @@ def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
         },
     ]
     assert (output_dir / "comparison_scorecard.pdf").exists()
+    assert comparison_call["filename"] == output_dir / "comparison_scorecard.pdf"
+    assert comparison_call["include_kpis"] is True
+    assert comparison_call["full_name"] is False
+    assert [result["evaluated_model_name"] for result in comparison_call["results"]] == [
+        "Model A",
+        "Model B",
+    ]
     assert f"Wrote {output_dir / 'comparison_scorecard.pdf'}" in result.output
 
 

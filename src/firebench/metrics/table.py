@@ -65,7 +65,9 @@ def _scorecard_kpi_name(bench_id: str, kpi_name: str, full_name: bool = False) -
     return re.sub(r"\s+(?:WH\d+|W\d+)$", "", kpi_name)
 
 
-def _scorecard_comparison_rows(results: list[dict]) -> list[tuple[str, list[float]]]:
+def _scorecard_comparison_rows(
+    results: list[dict], include_kpis: bool = False, full_name: bool = False
+) -> list[tuple[str, list[float]]]:
     first_result = results[0]
     score_card = first_result.get("score_card")
     if score_card is None:
@@ -73,12 +75,24 @@ def _scorecard_comparison_rows(results: list[dict]) -> list[tuple[str, list[floa
 
     rows = [("Total Score", [result["score_card"]["Score Total"] for result in results])]
     for group_name in score_card["Scheme"].keys():
+        group_content = score_card["Scheme"][group_name]
         rows.append(
             (
                 f"Group: {_scorecard_group_name(first_result, group_name)}",
                 [result["score_card"][f"Score {group_name}"] for result in results],
             )
         )
+        if include_kpis:
+            for bench_id in group_content["benchmarks"].keys():
+                kpi_name = next(
+                    key for key in first_result["benchmarks"][bench_id].keys() if key != "Score"
+                )
+                rows.append(
+                    (
+                        _scorecard_kpi_name(bench_id, kpi_name, full_name=full_name),
+                        [result["benchmarks"][bench_id]["Score"] for result in results],
+                    )
+                )
     return rows
 
 
@@ -124,14 +138,20 @@ def _draw_centered_text(
     pdf_canvas.drawString(x + max((width - text_width) / 2, 0), y, str(text))
 
 
-def save_comparison_as_table(filename: Path, results: list[dict]):
+def save_comparison_as_table(
+    filename: Path, results: list[dict], include_kpis: bool = False, full_name: bool = False
+):
     logger.info("Save multi-model comparison score card report pdf")
     if len(results) < 2:
         raise ValueError("Comparison scorecard requires at least two benchmark results")
     if filename.suffix.lower() != ".pdf":
         filename = filename.with_suffix(".pdf")
 
-    rows = _scorecard_comparison_rows(results)
+    rows = _scorecard_comparison_rows(results, include_kpis=include_kpis, full_name=full_name)
+    base_font = "Helvetica"
+    bold_font = "Helvetica-Bold"
+    base_font_size = 9
+    total_font_size = 10
     page_width, page_height = landscape(A4)
     margin = 12 * mm
     header_height = 22 * mm
@@ -141,7 +161,7 @@ def save_comparison_as_table(filename: Path, results: list[dict]):
     usable_width = page_width - 2 * margin
     label_width = 45 * mm
     for label, _scores in rows:
-        label_width = max(label_width, stringWidth(label, "Helvetica-Bold", 8) + 8 * mm)
+        label_width = max(label_width, stringWidth(label, bold_font, base_font_size) + 8 * mm)
     label_width = min(label_width, 78 * mm)
     model_col_width = (usable_width - label_width) / len(results)
     min_model_col_width = 24 * mm
@@ -151,86 +171,136 @@ def save_comparison_as_table(filename: Path, results: list[dict]):
 
     pdf_canvas = canvas.Canvas(str(filename.resolve()), pagesize=(page_width, page_height))
     x0 = margin
-    y_top = page_height - margin
     table_width = label_width + model_col_width * len(results)
-    row_start_y = y_top - header_height
-    footer_y = row_start_y - row_height * len(rows) - footer_height
-
-    pdf_canvas.setTitle("FireBench comparison scorecard")
-    pdf_canvas.setStrokeColor(colors.HexColor(SCORECARD_COLORS["grid"]))
-    pdf_canvas.setLineWidth(0.35)
-
-    pdf_canvas.setFillColor(colors.HexColor(SCORECARD_COLORS["header"]))
-    pdf_canvas.rect(x0, row_start_y, table_width, header_height, stroke=1, fill=1)
-    pdf_canvas.setFillColor(colors.white)
-    pdf_canvas.setFont("Helvetica-Bold", 10)
     case_name = _scorecard_benchmark_name(results[0])
     scheme_name = results[0]["score_card"]["aggregation_scheme_name"]
-    pdf_canvas.drawString(x0 + 3 * mm, y_top - 8 * mm, f"FireBench comparison {case_name} {scheme_name}")
-    pdf_canvas.line(x0, y_top - title_height, x0 + table_width, y_top - title_height)
-    pdf_canvas.setFont("Helvetica-Bold", 8)
-    pdf_canvas.drawString(x0 + 2 * mm, row_start_y + 5 * mm, "Score")
+    footer = (
+        f"FireBench version: {results[0]['firebench_version']}   "
+        f"Reference dataset version: {results[0]['case_version']}"
+    )
 
-    for index, result in enumerate(results):
-        cell_x = x0 + label_width + model_col_width * index
-        pdf_canvas.line(cell_x, row_start_y, cell_x, y_top - title_height)
+    def draw_header() -> float:
+        y_top_page = page_height - margin
+        row_start = y_top_page - header_height
+
+        pdf_canvas.setStrokeColor(colors.HexColor(SCORECARD_COLORS["grid"]))
+        pdf_canvas.setLineWidth(0.35)
+        pdf_canvas.setFillColor(colors.HexColor(SCORECARD_COLORS["header"]))
+        pdf_canvas.rect(x0, row_start, table_width, header_height, stroke=1, fill=1)
         pdf_canvas.setFillColor(colors.white)
-        header_text = result["evaluated_model_name"]
-        font_size = _fit_font_size(
-            pdf_canvas,
-            header_text,
-            "Helvetica-Bold",
-            model_col_width - 4 * mm,
-            max_size=8,
-            min_size=4,
+        pdf_canvas.setFont(bold_font, base_font_size)
+        pdf_canvas.drawString(
+            x0 + 3 * mm, y_top_page - 8 * mm, f"FireBench comparison {case_name} {scheme_name}"
         )
-        pdf_canvas.setFont("Helvetica-Bold", font_size)
-        _draw_centered_text(
-            pdf_canvas,
-            header_text,
-            cell_x,
-            row_start_y + 5 * mm,
-            model_col_width,
-            "Helvetica-Bold",
-            font_size,
-        )
-    pdf_canvas.line(x0 + table_width, row_start_y, x0 + table_width, y_top - title_height)
+        pdf_canvas.line(x0, y_top_page - title_height, x0 + table_width, y_top_page - title_height)
+        pdf_canvas.setFont(bold_font, base_font_size)
+        pdf_canvas.drawString(x0 + 2 * mm, row_start + 5 * mm, "Score")
 
-    for row_index, (label, scores) in enumerate(rows):
-        y = row_start_y - row_height * (row_index + 1)
-        label_bg = SCORECARD_COLORS["row_even"] if row_index % 2 == 0 else SCORECARD_COLORS["row_odd"]
+        for index, result in enumerate(results):
+            cell_x = x0 + label_width + model_col_width * index
+            pdf_canvas.line(cell_x, row_start, cell_x, y_top_page - title_height)
+            pdf_canvas.setFillColor(colors.white)
+            header_text = result["evaluated_model_name"]
+            font_size = _fit_font_size(
+                pdf_canvas,
+                header_text,
+                bold_font,
+                model_col_width - 4 * mm,
+                max_size=base_font_size,
+                min_size=5,
+            )
+            pdf_canvas.setFont(bold_font, font_size)
+            _draw_centered_text(
+                pdf_canvas,
+                header_text,
+                cell_x,
+                row_start + 5 * mm,
+                model_col_width,
+                bold_font,
+                font_size,
+            )
+        pdf_canvas.line(x0 + table_width, row_start, x0 + table_width, y_top_page - title_height)
+        return row_start
+
+    def draw_footer(footer_y: float):
+        pdf_canvas.setFillColor(colors.HexColor(SCORECARD_COLORS["footer"]))
+        pdf_canvas.rect(x0, footer_y, table_width, footer_height, stroke=1, fill=1)
+        pdf_canvas.setFillColor(colors.white)
+        pdf_canvas.setFont(base_font, base_font_size)
+        pdf_canvas.drawString(x0 + 2 * mm, footer_y + 3 * mm, footer)
+
+    def draw_score_row(row_index: int, row_y: float, label: str, scores: list[float]):
+        is_total = row_index == 0
+        is_group = label.startswith("Group:")
+        if is_total:
+            label_bg = SCORECARD_COLORS["subheader"]
+            label_text_color = colors.white
+            label_font = bold_font
+            score_font = bold_font
+            row_font_size = total_font_size
+        elif is_group:
+            label_bg = SCORECARD_COLORS["group_row"]
+            label_text_color = colors.HexColor(SCORECARD_COLORS["body_text"])
+            label_font = bold_font
+            score_font = bold_font
+            row_font_size = base_font_size
+        else:
+            label_bg = SCORECARD_COLORS["row_even"] if row_index % 2 == 0 else SCORECARD_COLORS["row_odd"]
+            label_text_color = colors.HexColor(SCORECARD_COLORS["body_text"])
+            label_font = base_font
+            score_font = base_font
+            row_font_size = base_font_size
+
         pdf_canvas.setFillColor(colors.HexColor(label_bg))
-        pdf_canvas.rect(x0, y, label_width, row_height, stroke=1, fill=1)
-        pdf_canvas.setFillColor(colors.HexColor(SCORECARD_COLORS["body_text"]))
-        pdf_canvas.setFont("Helvetica-Bold" if row_index == 0 else "Helvetica", 8)
-        pdf_canvas.drawString(x0 + 2 * mm, y + 3.2 * mm, label)
+        pdf_canvas.rect(x0, row_y, label_width, row_height, stroke=1, fill=1)
+        pdf_canvas.setFillColor(label_text_color)
+        label_font_size = _fit_font_size(
+            pdf_canvas,
+            label,
+            label_font,
+            label_width - 4 * mm,
+            max_size=row_font_size,
+            min_size=6,
+        )
+        pdf_canvas.setFont(label_font, label_font_size)
+        pdf_canvas.drawString(x0 + 2 * mm, row_y + 3.2 * mm, label)
 
         for model_index, (score, background) in enumerate(
             zip(scores, _scorecard_comparison_cell_colors(scores))
         ):
             cell_x = x0 + label_width + model_col_width * model_index
             pdf_canvas.setFillColor(colors.HexColor(background))
-            pdf_canvas.rect(cell_x, y, model_col_width, row_height, stroke=1, fill=1)
+            pdf_canvas.rect(cell_x, row_y, model_col_width, row_height, stroke=1, fill=1)
             pdf_canvas.setFillColor(
                 colors.white
                 if background in {SCORECARD_COLORS["comparison_best"], SCORECARD_COLORS["comparison_worst"]}
                 else colors.HexColor(SCORECARD_COLORS["body_text"])
             )
-            pdf_canvas.setFont("Helvetica-Bold", 8)
+            pdf_canvas.setFont(score_font, row_font_size)
             score_text = f"{score:.2f}"
-            text_width = pdf_canvas.stringWidth(score_text, "Helvetica-Bold", 8)
-            pdf_canvas.drawString(cell_x + (model_col_width - text_width) / 2, y + 3.2 * mm, score_text)
+            text_width = pdf_canvas.stringWidth(score_text, score_font, row_font_size)
+            pdf_canvas.drawString(cell_x + (model_col_width - text_width) / 2, row_y + 3.2 * mm, score_text)
 
-    pdf_canvas.setFillColor(colors.HexColor(SCORECARD_COLORS["footer"]))
-    pdf_canvas.rect(x0, footer_y, table_width, footer_height, stroke=1, fill=1)
-    pdf_canvas.setFillColor(colors.white)
-    pdf_canvas.setFont("Helvetica", 8)
-    footer = (
-        f"FireBench version: {results[0]['firebench_version']}   "
-        f"Reference dataset version: {results[0]['case_version']}"
-    )
-    pdf_canvas.drawString(x0 + 2 * mm, footer_y + 3 * mm, footer)
+    pdf_canvas.setTitle("FireBench comparison scorecard")
+    row_start_y = draw_header()
+    footer_top = margin + footer_height
+    page_row_index = 0
+    current_table_bottom = row_start_y
 
+    for row_index, (label, scores) in enumerate(rows):
+        y = row_start_y - row_height * (page_row_index + 1)
+        if y < footer_top:
+            draw_footer(current_table_bottom - footer_height)
+            pdf_canvas.showPage()
+            row_start_y = draw_header()
+            page_row_index = 0
+            current_table_bottom = row_start_y
+            y = row_start_y - row_height
+        draw_score_row(row_index, y, label, scores)
+        current_table_bottom = y
+        page_row_index += 1
+
+    draw_footer(current_table_bottom - footer_height)
     pdf_canvas.showPage()
     pdf_canvas.save()
 
