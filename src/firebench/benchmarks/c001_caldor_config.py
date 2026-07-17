@@ -140,7 +140,7 @@ def _build_hrrr_validation_windows() -> dict[str, dict[str, tuple[datetime, date
         name = f"WH{len(windows) + 1}"
         windows[name] = {
             "period": (_localize_in_ref_tz(start), _localize_in_ref_tz(end)),
-            "perimeters": [_perimeter_path(value) for value in contained[1:]],
+            "perimeters": [_perimeter_path(value) for value in contained[:]],
         }
     return windows
 
