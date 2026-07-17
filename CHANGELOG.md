@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 - Add building damage target nomenclature such as `H013_B`.
 - Add weather target nomenclature such as `H013_W` and show weather station counts in target listings.
+- Color multi-model comparison score-card cells by their absolute score using the `RdYlGn` scale.
 - Use a blue, gray, and green colorblind-safer palette for score-card PDFs.
 - Increase fire perimeter burn-area normalization from 5000 m to 10000 m.
 - Add an observed-versus-modeled perimeter contour figure with KPI and burn-area annotations to generated reports.

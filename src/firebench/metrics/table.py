@@ -1,11 +1,15 @@
+import re
+from pathlib import Path
+
+from matplotlib import colormaps
+from matplotlib.colors import to_hex
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
-from pathlib import Path
-import re
+
 from ..tools import logger
 from ..signing import verify_certificate_in_dict, DEFAULT_VL, VERIFICATION_LEVEL_COLORS
 
@@ -22,9 +26,6 @@ SCORECARD_COLORS = {
     "medium_score": "#4477AA",
     "high_score": "#228833",
     "invalid_score": "#595959",
-    "comparison_best": "#228833",
-    "comparison_worst": "#B03A2E",
-    "comparison_neutral": "#FFFFFF",
 }
 
 
@@ -97,24 +98,20 @@ def _scorecard_comparison_rows(
 
 
 def _scorecard_comparison_cell_colors(scores: list[float]) -> list[str]:
-    if not scores:
-        return []
+    score_colormap = colormaps["RdYlGn"]
+    return [
+        to_hex(score_colormap(min(max(score, 0), 100) / 100), keep_alpha=False).upper() for score in scores
+    ]
 
-    unique_scores = set(scores)
-    if len(unique_scores) <= 1:
-        return [SCORECARD_COLORS["comparison_neutral"] for _ in scores]
 
-    best_score = max(scores)
-    worst_score = min(scores)
-    score_colors = []
-    for score in scores:
-        if score == best_score:
-            score_colors.append(SCORECARD_COLORS["comparison_best"])
-        elif score == worst_score:
-            score_colors.append(SCORECARD_COLORS["comparison_worst"])
-        else:
-            score_colors.append(SCORECARD_COLORS["comparison_neutral"])
-    return score_colors
+def _scorecard_contrasting_text_color(background: str):
+    background_color = colors.HexColor(background)
+    luminance = (
+        0.2126 * background_color.red + 0.7152 * background_color.green + 0.0722 * background_color.blue
+    )
+    if luminance < 0.45:
+        return colors.white
+    return colors.HexColor(SCORECARD_COLORS["body_text"])
 
 
 def _fit_font_size(
@@ -273,11 +270,7 @@ def save_comparison_as_table(
             cell_x = x0 + label_width + model_col_width * model_index
             pdf_canvas.setFillColor(colors.HexColor(background))
             pdf_canvas.rect(cell_x, row_y, model_col_width, row_height, stroke=1, fill=1)
-            pdf_canvas.setFillColor(
-                colors.white
-                if background in {SCORECARD_COLORS["comparison_best"], SCORECARD_COLORS["comparison_worst"]}
-                else colors.HexColor(SCORECARD_COLORS["body_text"])
-            )
+            pdf_canvas.setFillColor(_scorecard_contrasting_text_color(background))
             pdf_canvas.setFont(score_font, row_font_size)
             score_text = f"{score:.2f}"
             text_width = pdf_canvas.stringWidth(score_text, score_font, row_font_size)

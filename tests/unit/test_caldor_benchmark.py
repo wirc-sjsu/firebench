@@ -120,6 +120,10 @@ def test_describe_available_targets_with_full_target_includes_details():
     assert target_info["kpi_groups"] == {"P": "Fire Perimeters"}
     assert target_info["perimeters"] == [
         {
+            "time": "2021-08-20T20:20-07:00",
+            "path": "/polygons/Caldor_2021-08-20T20:20-07:00",
+        },
+        {
             "time": "2021-08-21T21:15-07:00",
             "path": "/polygons/Caldor_2021-08-21T21:15-07:00",
         },

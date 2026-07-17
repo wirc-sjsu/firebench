@@ -437,38 +437,113 @@ def test_run_command_unknown_case_fails(monkeypatch, tmp_path):
     assert "firebench list" in result.output
 
 
-def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
+def test_multirun_command_creates_four_model_comparison_scorecard(monkeypatch, tmp_path):
     config_dir = tmp_path / "case"
     config_dir.mkdir()
     obs_data = config_dir / "obs.h5"
     model_a = config_dir / "model_a.h5"
     model_b = config_dir / "model_b.h5"
+    model_c = config_dir / "model_c.h5"
+    model_d = config_dir / "model_d.h5"
     obs_data.write_text("obs")
     model_a.write_text("model-a")
     model_b.write_text("model-b")
+    model_c.write_text("model-c")
+    model_d.write_text("model-d")
     calls = []
-    comparison_call = {}
+
+    # Use two representative H013_P metric families to exercise the comparison's group rows.
+    model_scores = {
+        "WRF-SFIRE Baseline": {
+            "total": 75.0,
+            "overlap": 80.0,
+            "burn_area": 70.0,
+            "jaccard": 78.0,
+            "dice": 82.0,
+            "burn_bias": 68.0,
+            "burn_rmse": 72.0,
+        },
+        "WRF-SFIRE Calibrated": {
+            "total": 87.0,
+            "overlap": 92.0,
+            "burn_area": 82.0,
+            "jaccard": 91.0,
+            "dice": 93.0,
+            "burn_bias": 80.0,
+            "burn_rmse": 84.0,
+        },
+        "QUIC-Fire": {
+            "total": 76.5,
+            "overlap": 74.0,
+            "burn_area": 79.0,
+            "jaccard": 72.0,
+            "dice": 76.0,
+            "burn_bias": 78.0,
+            "burn_rmse": 80.0,
+        },
+        "FARSITE": {
+            "total": 76.25,
+            "overlap": 86.5,
+            "burn_area": 66.0,
+            "jaccard": 85.0,
+            "dice": 88.0,
+            "burn_bias": 64.0,
+            "burn_rmse": 68.0,
+        },
+    }
 
     def fake_runner(model_output, **kwargs):
         calls.append({"model_output": model_output, **kwargs})
-        total_score = 80.0 if kwargs["name"] == "Model A" else 60.0
-        group_score = 90.0 if kwargs["name"] == "Model A" else 50.0
+        scores = model_scores[kwargs["name"]]
         return {
             "case_id": "FB001",
             "benchmark_short_name": "2021_Caldor",
             "evaluated_model_name": kwargs["name"],
             "firebench_version": "test",
             "case_version": "test",
+            "benchmarks": {
+                "FB001_FPH097": {
+                    "Average Jaccard Index WH13": scores["jaccard"] / 100,
+                    "Score": scores["jaccard"],
+                },
+                "FB001_FPH100": {
+                    "Average Dice-Sorensen Index WH13": scores["dice"] / 100,
+                    "Score": scores["dice"],
+                },
+                "FB001_FPH103": {
+                    "Final Burn Area Bias WH13": 10_000 * (1 - scores["burn_bias"] / 100),
+                    "Score": scores["burn_bias"],
+                },
+                "FB001_FPH104": {
+                    "Burn Area RMSE WH13": 10_000 * (1 - scores["burn_rmse"] / 100),
+                    "Score": scores["burn_rmse"],
+                },
+            },
             "score_card": {
                 "Scheme": {
-                    "FP_H13": {
+                    "Perimeter Overlap": {
                         "weight": 1,
-                        "benchmarks": {},
+                        "benchmarks": {
+                            "FB001_FPH097": 1,
+                            "FB001_FPH100": 1,
+                        },
+                    },
+                    "Burn Area Accuracy": {
+                        "weight": 1,
+                        "benchmarks": {
+                            "FB001_FPH103": 2,
+                            "FB001_FPH104": 2,
+                        },
                     },
                 },
-                "Score Total": total_score,
-                "Score FP_H13": group_score,
+                "Score Total": scores["total"],
+                "Score Perimeter Overlap": scores["overlap"],
+                "Score Burn Area Accuracy": scores["burn_area"],
                 "aggregation_scheme_name": "H013_P",
+                "group_display_names": {
+                    "Perimeter Overlap": "Perimeter Overlap",
+                    "Burn Area Accuracy": "Burn Area Accuracy",
+                },
             },
         }
 
@@ -488,14 +563,6 @@ def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
         },
     )
 
-    def fake_save_comparison_as_table(filename, results, include_kpis=False, full_name=False):
-        comparison_call["filename"] = filename
-        comparison_call["results"] = results
-        comparison_call["include_kpis"] = include_kpis
-        comparison_call["full_name"] = full_name
-        filename.write_text("fake pdf")
-
-    monkeypatch.setattr("firebench.cli.save_comparison_as_table", fake_save_comparison_as_table)
     config_path = config_dir / "multirun.yml"
     config_path.write_text(
         "\n".join(
@@ -507,10 +574,14 @@ def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
                 "obs_data: obs.h5",
                 "comparison_include_kpis: true",
                 "models:",
-                "  - name: Model A",
+                "  - name: WRF-SFIRE Baseline",
                 "    model_output: model_a.h5",
-                "  - name: Model B",
+                "  - name: WRF-SFIRE Calibrated",
                 "    model_output: model_b.h5",
+                "  - name: QUIC-Fire",
+                "    model_output: model_c.h5",
+                "  - name: FARSITE",
+                "    model_output: model_d.h5",
                 "",
             ]
         ),
@@ -525,35 +596,52 @@ def test_multirun_command_runs_models_from_yaml_config(monkeypatch, tmp_path):
         {
             "model_output": model_a,
             "benchmark_target": "H013_P",
-            "name": "Model A",
+            "name": "WRF-SFIRE Baseline",
             "overwrite": True,
             "sign": None,
             "obs_data": obs_data,
-            "output_json": output_dir / "model-a_rslt.json",
-            "score_card_report": output_dir / "model-a_scorecard.pdf",
+            "output_json": output_dir / "wrf-sfire-baseline_rslt.json",
+            "score_card_report": output_dir / "wrf-sfire-baseline_scorecard.pdf",
             "score_card_full_name": False,
         },
         {
             "model_output": model_b,
             "benchmark_target": "H013_P",
-            "name": "Model B",
+            "name": "WRF-SFIRE Calibrated",
             "overwrite": True,
             "sign": None,
             "obs_data": obs_data,
-            "output_json": output_dir / "model-b_rslt.json",
-            "score_card_report": output_dir / "model-b_scorecard.pdf",
+            "output_json": output_dir / "wrf-sfire-calibrated_rslt.json",
+            "score_card_report": output_dir / "wrf-sfire-calibrated_scorecard.pdf",
+            "score_card_full_name": False,
+        },
+        {
+            "model_output": model_c,
+            "benchmark_target": "H013_P",
+            "name": "QUIC-Fire",
+            "overwrite": True,
+            "sign": None,
+            "obs_data": obs_data,
+            "output_json": output_dir / "quic-fire_rslt.json",
+            "score_card_report": output_dir / "quic-fire_scorecard.pdf",
+            "score_card_full_name": False,
+        },
+        {
+            "model_output": model_d,
+            "benchmark_target": "H013_P",
+            "name": "FARSITE",
+            "overwrite": True,
+            "sign": None,
+            "obs_data": obs_data,
+            "output_json": output_dir / "farsite_rslt.json",
+            "score_card_report": output_dir / "farsite_scorecard.pdf",
             "score_card_full_name": False,
         },
     ]
-    assert (output_dir / "comparison_scorecard.pdf").exists()
-    assert comparison_call["filename"] == output_dir / "comparison_scorecard.pdf"
-    assert comparison_call["include_kpis"] is True
-    assert comparison_call["full_name"] is False
-    assert [result["evaluated_model_name"] for result in comparison_call["results"]] == [
-        "Model A",
-        "Model B",
-    ]
-    assert f"Wrote {output_dir / 'comparison_scorecard.pdf'}" in result.output
+    comparison_scorecard = output_dir / "comparison_scorecard.pdf"
+    assert comparison_scorecard.read_bytes().startswith(b"%PDF")
+    assert comparison_scorecard.stat().st_size > 1_000
+    assert f"Wrote {comparison_scorecard}" in result.output
 
 
 def test_multirun_command_rejects_duplicate_output_slugs(monkeypatch, tmp_path):

@@ -179,20 +179,15 @@ def test_scorecard_comparison_rows_include_total_and_groups():
     ]
 
 
-def test_scorecard_comparison_cell_colors_mark_best_worst_and_ties():
-    assert _scorecard_comparison_cell_colors([90.0, 70.0, 80.0]) == [
-        "#228833",
-        "#B03A2E",
-        "#FFFFFF",
-    ]
-    assert _scorecard_comparison_cell_colors([90.0, 90.0, 70.0]) == [
-        "#228833",
-        "#228833",
-        "#B03A2E",
-    ]
-    assert _scorecard_comparison_cell_colors([90.0, 90.0]) == [
-        "#FFFFFF",
-        "#FFFFFF",
+def test_scorecard_comparison_cell_colors_map_absolute_scores_with_rdylgn():
+    assert _scorecard_comparison_cell_colors([-10.0, 0.0, 25.0, 50.0, 75.0, 100.0, 110.0]) == [
+        "#A50026",
+        "#A50026",
+        "#F98E52",
+        "#FEFFBE",
+        "#84CA66",
+        "#006837",
+        "#006837",
     ]
 
 
