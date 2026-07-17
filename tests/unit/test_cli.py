@@ -113,15 +113,16 @@ def _fake_registry(tmp_path, call):
                         "id": "FB001_FPH097",
                         "name": "Average Jaccard Index",
                         "group": "Fire Perimeters",
-                        "weight": 1,
+                        "weight": 2,
                         "value_norm_param_m": None,
                     },
                     {
                         "id": "FB001_FPH103",
                         "name": "Final Burn Area Bias",
                         "group": "Fire Perimeters",
-                        "weight": 2,
-                        "value_norm_param_m": 10000,
+                        "weight": 1,
+                        "value_norm_param_m": None,
+                        "value_norm_param_m_definition": "20% of final observed area",
                     },
                 ],
             }
@@ -362,6 +363,7 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
         assert call["report_figure_obs_data"] == tmp_path / "default_obs.h5"
         assert call["report_figure_target"] == "H013_P"
         assert call["report_figure_target_info"]["target"] == "H013_P"
+        assert call["target_describer_obs_data"] == tmp_path / "default_obs.h5"
         assert report_path.read_text(encoding="utf-8") == (
             "# Report 2021 Caldor Fire for Demo Model\n"
             "## Benchmark target information\n"
@@ -384,8 +386,8 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
             "### KPIs\n"
             "| ID | KPI | Weight | value_norm_param_m |\n"
             "| --- | --- | --- | --- |\n"
-            "| FB001_FPH097 | Average Jaccard Index | 1 |  |\n"
-            "| FB001_FPH103 | Final Burn Area Bias | 2 | 10000 |\n"
+            "| FB001_FPH097 | Average Jaccard Index | 2 |  |\n"
+            "| FB001_FPH103 | Final Burn Area Bias | 1 | 20% of final observed area |\n"
             "\n"
             "## Submitters' comments\n"
             "This section is reserved for the model users who have submitted the model output "
@@ -524,15 +526,15 @@ def test_multirun_command_creates_four_model_comparison_scorecard(monkeypatch, t
                     "Perimeter Overlap": {
                         "weight": 1,
                         "benchmarks": {
-                            "FB001_FPH097": 1,
-                            "FB001_FPH100": 1,
+                            "FB001_FPH097": 2,
+                            "FB001_FPH100": 0,
                         },
                     },
                     "Burn Area Accuracy": {
                         "weight": 1,
                         "benchmarks": {
-                            "FB001_FPH103": 2,
-                            "FB001_FPH104": 2,
+                            "FB001_FPH103": 1,
+                            "FB001_FPH104": 1,
                         },
                     },
                 },
@@ -751,8 +753,8 @@ def test_list_command_prints_target_details(monkeypatch, tmp_path):
         "\n"
         "KPIs\n"
         "ID   KPI   Weight   value_norm_param_m\n"
-        "FB001_FPH097  Average Jaccard Index  1  \n"
-        "FB001_FPH103  Final Burn Area Bias  2  10000\n"
+        "FB001_FPH097  Average Jaccard Index  2  \n"
+        "FB001_FPH103  Final Burn Area Bias  1  20% of final observed area\n"
     )
 
 

@@ -527,16 +527,16 @@ FP24 | W4           | Minimum Dice-Sorensen Index W4
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
 The bias is calculated on the last perimeter of the study period as the difference between the model and the observed burn area.
-A bias of $m$ acres, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means greater difficulty) and must be chosen by the community.
+The normalization parameter $m$ is 20% of the final observed burn area. Therefore, an absolute final-area bias equal to 20% of the observed area leads to a score of 50.00.
 
 The following Table gives the correspondence between the benchmark ID and the study period:
 
-ID   | Study period | Name in Score Card | $m$    | $B_{50}$
------|--------------|--------------------|--------|---------
-FP25 | W1           | Burn Area Bias W1  | 80,000 | 48%
-FP26 | W2           | Burn Area Bias W2  | 5,000  | 20%
-FP27 | W3           | Burn Area Bias W3  | 5,000  | 25%
-FP28 | W4           | Burn Area Bias W4  | 17,000 | 30%
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP25 | W1           | Burn Area Bias W1
+FP26 | W2           | Burn Area Bias W2
+FP27 | W3           | Burn Area Bias W3
+FP28 | W4           | Burn Area Bias W4
 
 #### Burn Area RMSE
 
@@ -545,16 +545,16 @@ FP28 | W4           | Burn Area Bias W4  | 17,000 | 30%
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
-A bias of $m$ acres, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means greater difficulty) and must be chosen by the community.
+The normalization parameter $m$ is 20% of the root mean square (RMS) of the observed burn areas in the study period. Therefore, a burn-area RMSE equal to 20% of the observed-area RMS leads to a score of 50.00.
 
 The following Table gives the correspondence between the benchmark ID and the study period:
 
-ID   | Study period | Name in Score Card | $m$    | $B_{50}$
------|--------------|--------------------|--------|---------
-FP29 | W1           | Burn Area RMSE W1  | 80,000 | 48%
-FP30 | W2           | Burn Area RMSE W2  | 5,000  | 20%
-FP31 | W3           | Burn Area RMSE W3  | 5,000  | 25%
-FP32 | W4           | Burn Area RMSE W4  | 17,000 | 30%
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP29 | W1           | Burn Area RMSE W1
+FP30 | W2           | Burn Area RMSE W2
+FP31 | W3           | Burn Area RMSE W3
+FP32 | W4           | Burn Area RMSE W4
 
 ## Weather stations
 

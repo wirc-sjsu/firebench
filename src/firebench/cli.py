@@ -123,6 +123,15 @@ def _format_target_datetime(value) -> str:
     return value.isoformat(timespec="minutes")
 
 
+def _format_norm_param_m(kpi: dict) -> str:
+    value = kpi.get("value_norm_param_m")
+    if value is None:
+        return kpi.get("value_norm_param_m_definition") or ""
+    if isinstance(value, float):
+        return f"{value:.6g}"
+    return str(value)
+
+
 def _describe_target(target_describer, target: str | None, obs_data: Path | None = None) -> dict:
     if target is None:
         return target_describer()
@@ -187,7 +196,7 @@ def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | No
         click.echo("KPIs")
         click.echo("ID   KPI   Weight   value_norm_param_m")
         for kpi in target_info["kpis"]:
-            norm_param = "" if kpi["value_norm_param_m"] is None else kpi["value_norm_param_m"]
+            norm_param = _format_norm_param_m(kpi)
             click.echo(f"{kpi['id']}  {kpi['name']}  {kpi['weight']}  {norm_param}")
         return
 
@@ -268,7 +277,7 @@ def _render_report_target_information(target: str, target_info: dict | None = No
             ]
         )
         for kpi in target_info["kpis"]:
-            norm_param = "" if kpi["value_norm_param_m"] is None else kpi["value_norm_param_m"]
+            norm_param = _format_norm_param_m(kpi)
             lines.append(f"| {kpi['id']} | {kpi['name']} | {kpi['weight']} | {norm_param} |")
 
     return "\n".join(lines)
@@ -598,7 +607,7 @@ def run(
         target_describer = case_info.get("target_describer")
         if target_describer is not None:
             try:
-                target_info = target_describer(target)
+                target_info = _describe_target(target_describer, target, obs_data)
             except ValueError as exc:
                 raise click.UsageError(str(exc)) from exc
         else:

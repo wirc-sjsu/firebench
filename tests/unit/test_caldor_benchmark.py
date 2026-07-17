@@ -48,6 +48,16 @@ def test_hrrr_fire_perimeter_aggregation_schemes_are_generated():
     assert len(c001_caldor.REQUIREMENTS["R_FP_H12"]["benchmarks"]) == 8
 
 
+def test_fire_perimeter_aggregation_scores_jaccard_and_keeps_diagnostics_unweighted():
+    c001_caldor.build_registries()
+
+    curated_weights = list(c001_caldor.GROUPS["Fire Perimeter W1"]["benchmarks"].values())
+    hrrr_weights = list(c001_caldor.GROUPS["FP_H13"]["benchmarks"].values())
+
+    assert curated_weights == [2, 1, 0, 0, 0, 0, 1, 1]
+    assert hrrr_weights == [2, 1, 0, 0, 0, 0, 1, 1]
+
+
 def test_hrrr_benchmark_target_selects_matching_fire_perimeter_group():
     c001_caldor.build_registries()
 
@@ -132,7 +142,7 @@ def test_describe_available_targets_with_full_target_includes_details():
         "id": "FB001_FPH097",
         "name": "Average Jaccard Index",
         "group": "Fire Perimeters",
-        "weight": 1,
+        "weight": 2,
         "value_norm_param_m": None,
     }
     assert target_info["kpis"][-2:] == [
@@ -140,17 +150,84 @@ def test_describe_available_targets_with_full_target_includes_details():
             "id": "FB001_FPH103",
             "name": "Final Burn Area Bias",
             "group": "Fire Perimeters",
-            "weight": 2,
-            "value_norm_param_m": 10000,
+            "weight": 1,
+            "value_norm_param_m": None,
+            "value_norm_param_m_definition": "20% of final observed area",
         },
         {
             "id": "FB001_FPH104",
             "name": "Burn Area RMSE",
             "group": "Fire Perimeters",
-            "weight": 2,
-            "value_norm_param_m": 10000,
+            "weight": 1,
+            "value_norm_param_m": None,
+            "value_norm_param_m_definition": "20% of RMS observed area",
         },
     ]
+
+
+def test_describe_available_targets_calculates_fire_area_norm_params(monkeypatch, tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    with h5py.File(obs_path, "w"):
+        pass
+
+    monkeypatch.setattr(
+        c001_caldor,
+        "area_from_list",
+        lambda dataset, perimeters, projection: c001_caldor.Quantity(np.array([100.0, 200.0]), "acre"),
+    )
+
+    target_info = c001_caldor.describe_available_targets("H013_P", obs_data=obs_path)
+
+    assert target_info["kpis"][-2]["value_norm_param_m"] == pytest.approx(40.0)
+    assert target_info["kpis"][-1]["value_norm_param_m"] == pytest.approx(
+        0.20 * np.sqrt(np.mean(np.square([100.0, 200.0])))
+    )
+
+
+def test_fire_area_kpis_derive_norm_params_from_observed_area(monkeypatch):
+    model_dataset = object()
+    obs_dataset = object()
+
+    def fake_area_from_list(dataset, perimeters, projection):
+        if len(perimeters) == 1:
+            values = [250.0] if dataset is model_dataset else [200.0]
+        else:
+            values = [120.0, 260.0] if dataset is model_dataset else [100.0, 200.0]
+        return c001_caldor.Quantity(np.array(values), "acre")
+
+    monkeypatch.setattr(c001_caldor, "area_from_list", fake_area_from_list)
+
+    bias_result = c001_caldor.bench_fp_generic_area_final_bias(
+        model_dataset, obs_dataset, {}, "TEST", ["first", "final"]
+    )
+    rmse_result = c001_caldor.bench_fp_generic_area(
+        model_dataset,
+        obs_dataset,
+        {},
+        "Burn Area RMSE",
+        "TEST",
+        ["first", "final"],
+        c001_caldor.fm.stats.rmse,
+    )
+
+    bias_m = 0.20 * 200.0
+    area_rmse = np.sqrt(np.mean(np.square([20.0, 60.0])))
+    rmse_m = 0.20 * np.sqrt(np.mean(np.square([100.0, 200.0])))
+    assert bias_result["Final Burn Area Bias TEST"] == pytest.approx(50.0)
+    assert bias_result["Score"] == pytest.approx(
+        c001_caldor.fm.kpi_norm_symmetric_open_exponential(50.0, bias_m)
+    )
+    assert rmse_result["Burn Area RMSE TEST"] == pytest.approx(area_rmse)
+    assert rmse_result["Score"] == pytest.approx(
+        c001_caldor.fm.kpi_norm_symmetric_open_exponential(area_rmse, rmse_m)
+    )
+
+
+def test_fire_area_norm_params_do_not_floor_zero_observed_area():
+    with pytest.raises(ValueError, match="must be positive"):
+        c001_caldor.fire_area_final_bias_norm_param_m([0.0])
+    with pytest.raises(ValueError, match="must be positive"):
+        c001_caldor.fire_area_rmse_norm_param_m([0.0, 0.0])
 
 
 def test_describe_available_building_damage_target_includes_details():
