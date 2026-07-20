@@ -20,6 +20,7 @@ dependencies = [
     "h5py < 4.0",
     "hdf5plugin >= 6.0",
     "matplotlib > 3.8",
+    "numba >= 0.59, < 1.0",
     "numpy < 3.0",
     "pint < 1.0",
     "pyproj < 4.0",

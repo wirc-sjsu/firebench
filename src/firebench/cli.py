@@ -269,5 +269,15 @@ def data_get(case: str, version: str, output_dir: Path) -> None:
     return 0
 
 
+@main.command("wx-qc")
+def wx_qc() -> None:
+    """
+    Launch the weather station QC GUI.
+    """
+    from .tools.wx_qc.app import App
+
+    App().mainloop()
+
+
 if __name__ == "__main__":
     main()
