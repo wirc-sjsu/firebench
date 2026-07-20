@@ -27,6 +27,7 @@ LOG_FILENAME = cfg.LOG_FILENAME
 DEFAULT_LOGGING_LEVEL = cfg.DEFAULT_LOGGING_LEVEL
 DEFAULT_VERBOSITY = cfg.DEFAULT_VERBOSITY
 DEFAULT_AGGREGATION_SCHEME = cfg.DEFAULT_AGGREGATION_SCHEME
+AREA_RELATIVE_ERROR_AT_SCORE_50 = cfg.AREA_RELATIVE_ERROR_AT_SCORE_50
 
 DEFAULT_OUTPUT_PATH_JSON = cfg.DEFAULT_OUTPUT_PATH_JSON
 DEFAULT_SCORE_CARD_REPORT_PATH = cfg.DEFAULT_SCORE_CARD_REPORT_PATH
@@ -149,6 +150,29 @@ def _log_missing_wx_station_requirements(req_name: str, variable_name: str, miss
 # ---------------------------
 # Benchmarks
 # ---------------------------
+def _require_positive_norm_param_m(value_norm_param_m: float) -> float:
+    if not np.isfinite(value_norm_param_m) or value_norm_param_m <= 0:
+        raise ValueError(
+            "Fire-area normalization parameter m must be positive; check the observed perimeter areas."
+        )
+    return value_norm_param_m
+
+
+def fire_area_final_bias_norm_param_m(observed_areas) -> float:
+    observed_areas = np.asarray(observed_areas, dtype=float)
+    if observed_areas.size == 0:
+        raise ValueError("Cannot calculate fire-area normalization parameter m without observed areas.")
+    return _require_positive_norm_param_m(AREA_RELATIVE_ERROR_AT_SCORE_50 * float(observed_areas[-1]))
+
+
+def fire_area_rmse_norm_param_m(observed_areas) -> float:
+    observed_areas = np.asarray(observed_areas, dtype=float)
+    if observed_areas.size == 0:
+        raise ValueError("Cannot calculate fire-area normalization parameter m without observed areas.")
+    observed_area_rms = float(np.sqrt(np.mean(np.square(observed_areas))))
+    return _require_positive_norm_param_m(AREA_RELATIVE_ERROR_AT_SCORE_50 * observed_area_rms)
+
+
 def bench_bd_generic(
     model_dataset: File,
     obs_dataset: File,
@@ -214,20 +238,20 @@ def bench_fp_generic_area_final_bias(
     ctx: dict,
     period_name: str,
     list_perims: list[str],
-    value_norm_param_m: float,
 ):
     KPI_NAME = f"Final Burn Area Bias"
-    KPI_NORM_PARAM_M = value_norm_param_m
     EPSG_PROJ = 3310
 
     area_obs = area_from_list(obs_dataset, [list_perims[-1]], EPSG_PROJ).to("acre")
     area_model = area_from_list(model_dataset, [list_perims[-1]], EPSG_PROJ).to("acre")
     rslt = fm.stats.bias(area_model.magnitude, area_obs.magnitude)
+    value_norm_param_m = fire_area_final_bias_norm_param_m(area_obs.magnitude)
 
     ft.logger.info("%s: %f", KPI_NAME, rslt)
+    ft.logger.info("%s normalization parameter m: %f acres", KPI_NAME, value_norm_param_m)
     return {
         f"{KPI_NAME} {period_name}": rslt,
-        "Score": fm.kpi_norm_symmetric_open_exponential(rslt, KPI_NORM_PARAM_M),
+        "Score": fm.kpi_norm_symmetric_open_exponential(rslt, value_norm_param_m),
     }
 
 
@@ -239,15 +263,16 @@ def bench_fp_generic_area(
     period_name: str,
     list_perims: list[str],
     func: any,
-    value_norm_param_m: float,
 ):
     EPSG_PROJ = 3310
 
     area_obs = area_from_list(obs_dataset, list_perims, EPSG_PROJ).to("acre")
     area_model = area_from_list(model_dataset, list_perims, EPSG_PROJ).to("acre")
     rslt = func(area_model.magnitude, area_obs.magnitude)
+    value_norm_param_m = fire_area_rmse_norm_param_m(area_obs.magnitude)
 
     ft.logger.info("%s: %f", kpi_name_custom, rslt)
+    ft.logger.info("%s normalization parameter m: %f acres", kpi_name_custom, value_norm_param_m)
     return {
         f"{kpi_name_custom} {period_name}": rslt,
         "Score": fm.kpi_norm_symmetric_open_exponential(rslt, value_norm_param_m),
@@ -589,6 +614,12 @@ REQUIREMENTS = {
     },
 }
 
+LIST_PERIMETERS_W1 = cfg.CURATED_PERIMETERS["W1"]
+LIST_PERIMETERS_W2 = cfg.CURATED_PERIMETERS["W2"]
+LIST_PERIMETERS_W3 = cfg.CURATED_PERIMETERS["W3"]
+LIST_PERIMETERS_W4 = cfg.CURATED_PERIMETERS["W4"]
+
+
 BENCHMARK_FUNCTIONS = {
     "FB001_BD01": lambda model_dataset, obs_dataset, ctx: bench_bd_generic(
         model_dataset,
@@ -910,57 +941,53 @@ BENCHMARK_FUNCTIONS = {
         sorensen_dice_from_list,
         np.max,
     ),
-    "FB001_FP25": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
-        model_dataset, obs_dataset, ctx, "W1", LIST_PERIMETERS_W1, 80_000
+    "FB001_FP25": partial(
+        bench_fp_generic_area_final_bias,
+        period_name="W1",
+        list_perims=LIST_PERIMETERS_W1,
     ),
-    "FB001_FP26": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
-        model_dataset, obs_dataset, ctx, "W2", LIST_PERIMETERS_W2, 10_000
+    "FB001_FP26": partial(
+        bench_fp_generic_area_final_bias,
+        period_name="W2",
+        list_perims=LIST_PERIMETERS_W2,
     ),
-    "FB001_FP27": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
-        model_dataset, obs_dataset, ctx, "W3", LIST_PERIMETERS_W3, 10_000
+    "FB001_FP27": partial(
+        bench_fp_generic_area_final_bias,
+        period_name="W3",
+        list_perims=LIST_PERIMETERS_W3,
     ),
-    "FB001_FP28": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area_final_bias(
-        model_dataset, obs_dataset, ctx, "W4", LIST_PERIMETERS_W4, 17_000
+    "FB001_FP28": partial(
+        bench_fp_generic_area_final_bias,
+        period_name="W4",
+        list_perims=LIST_PERIMETERS_W4,
     ),
-    "FB001_FP29": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area(
-        model_dataset,
-        obs_dataset,
-        ctx,
-        "Burn Area RMSE",
-        "W1",
-        LIST_PERIMETERS_W1,
-        fm.stats.rmse,
-        80_000,
+    "FB001_FP29": partial(
+        bench_fp_generic_area,
+        kpi_name_custom="Burn Area RMSE",
+        period_name="W1",
+        list_perims=LIST_PERIMETERS_W1,
+        func=fm.stats.rmse,
     ),
-    "FB001_FP30": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area(
-        model_dataset,
-        obs_dataset,
-        ctx,
-        "Burn Area RMSE",
-        "W2",
-        LIST_PERIMETERS_W2,
-        fm.stats.rmse,
-        10_000,
+    "FB001_FP30": partial(
+        bench_fp_generic_area,
+        kpi_name_custom="Burn Area RMSE",
+        period_name="W2",
+        list_perims=LIST_PERIMETERS_W2,
+        func=fm.stats.rmse,
     ),
-    "FB001_FP31": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area(
-        model_dataset,
-        obs_dataset,
-        ctx,
-        "Burn Area RMSE",
-        "W3",
-        LIST_PERIMETERS_W3,
-        fm.stats.rmse,
-        10_000,
+    "FB001_FP31": partial(
+        bench_fp_generic_area,
+        kpi_name_custom="Burn Area RMSE",
+        period_name="W3",
+        list_perims=LIST_PERIMETERS_W3,
+        func=fm.stats.rmse,
     ),
-    "FB001_FP32": lambda model_dataset, obs_dataset, ctx: bench_fp_generic_area(
-        model_dataset,
-        obs_dataset,
-        ctx,
-        "Burn Area RMSE",
-        "W4",
-        LIST_PERIMETERS_W4,
-        fm.stats.rmse,
-        17_000,
+    "FB001_FP32": partial(
+        bench_fp_generic_area,
+        kpi_name_custom="Burn Area RMSE",
+        period_name="W4",
+        list_perims=LIST_PERIMETERS_W4,
+        func=fm.stats.rmse,
     ),
     "FB001_CC01": lambda model_dataset, obs_dataset, ctx: bench_cc_generic_index(
         model_dataset,
@@ -1025,11 +1052,6 @@ HRRR_VALIDATION_WINDOWS = cfg.HRRR_VALIDATION_WINDOWS
 WH_PERIODS = cfg.HRRR_PERIODS
 WH_PERIMETERS = cfg.HRRR_PERIMETERS
 
-LIST_PERIMETERS_W1 = cfg.CURATED_PERIMETERS["W1"]
-LIST_PERIMETERS_W2 = cfg.CURATED_PERIMETERS["W2"]
-LIST_PERIMETERS_W3 = cfg.CURATED_PERIMETERS["W3"]
-LIST_PERIMETERS_W4 = cfg.CURATED_PERIMETERS["W4"]
-
 W1_PERIOD = cfg.CURATED_PERIODS["W1"]
 W2_PERIOD = cfg.CURATED_PERIODS["W2"]
 W3_PERIOD = cfg.CURATED_PERIODS["W3"]
@@ -1082,12 +1104,12 @@ def add_wx_benchmarks():
 def add_hrrr_fire_perimeter_benchmarks():
     bench_idx = 1
     index_metrics = (
-        ("Average Jaccard", jaccard_from_list, np.mean, 1),
+        ("Average Jaccard", jaccard_from_list, np.mean, 2),
         ("Minimum Jaccard", jaccard_from_list, np.min, 1),
-        ("Maximum Jaccard", jaccard_from_list, np.max, 1),
-        ("Average Dice-Sorensen", sorensen_dice_from_list, np.mean, 1),
-        ("Minimum Dice-Sorensen", sorensen_dice_from_list, np.min, 1),
-        ("Maximum Dice-Sorensen", sorensen_dice_from_list, np.max, 1),
+        ("Maximum Jaccard", jaccard_from_list, np.max, 0),
+        ("Average Dice-Sorensen", sorensen_dice_from_list, np.mean, 0),
+        ("Minimum Dice-Sorensen", sorensen_dice_from_list, np.min, 0),
+        ("Maximum Dice-Sorensen", sorensen_dice_from_list, np.max, 0),
     )
 
     for period_name, perimeters in cfg.HRRR_PERIMETERS.items():
@@ -1123,9 +1145,8 @@ def add_hrrr_fire_perimeter_benchmarks():
             bench_fp_generic_area_final_bias,
             period_name=period_name,
             list_perims=perimeters,
-            value_norm_param_m=cfg.HRRR_FIRE_PERIMETER_NORM_M,
         )
-        HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = 2
+        HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = 1
         REQUIREMENTS[requirement_name]["benchmarks"].append(bench_id)
         bench_idx += 1
 
@@ -1136,9 +1157,8 @@ def add_hrrr_fire_perimeter_benchmarks():
             period_name=period_name,
             list_perims=perimeters,
             func=fm.stats.rmse,
-            value_norm_param_m=cfg.HRRR_FIRE_PERIMETER_NORM_M,
         )
-        HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = 2
+        HRRR_FP_GROUP_BENCHMARKS[group_name][bench_id] = 1
         REQUIREMENTS[requirement_name]["benchmarks"].append(bench_id)
         bench_idx += 1
 
@@ -1156,56 +1176,56 @@ def create_benchmark_groups():
     GROUPS["Fire Perimeter W1"] = {
         "weight": 1,
         "benchmarks": {
-            "FB001_FP01": 1,
+            "FB001_FP01": 2,
             "FB001_FP05": 1,
-            "FB001_FP09": 1,
-            "FB001_FP13": 1,
-            "FB001_FP17": 1,
-            "FB001_FP21": 1,
-            "FB001_FP25": 2,
-            "FB001_FP29": 2,
+            "FB001_FP09": 0,
+            "FB001_FP13": 0,
+            "FB001_FP17": 0,
+            "FB001_FP21": 0,
+            "FB001_FP25": 1,
+            "FB001_FP29": 1,
         },
     }
     FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W1"] = list(LIST_PERIMETERS_W1)
     GROUPS["Fire Perimeter W2"] = {
         "weight": 1,
         "benchmarks": {
-            "FB001_FP02": 1,
+            "FB001_FP02": 2,
             "FB001_FP06": 1,
-            "FB001_FP10": 1,
-            "FB001_FP14": 1,
-            "FB001_FP18": 1,
-            "FB001_FP22": 1,
-            "FB001_FP26": 2,
-            "FB001_FP30": 2,
+            "FB001_FP10": 0,
+            "FB001_FP14": 0,
+            "FB001_FP18": 0,
+            "FB001_FP22": 0,
+            "FB001_FP26": 1,
+            "FB001_FP30": 1,
         },
     }
     FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W2"] = list(LIST_PERIMETERS_W2)
     GROUPS["Fire Perimeter W3"] = {
         "weight": 1,
         "benchmarks": {
-            "FB001_FP03": 1,
+            "FB001_FP03": 2,
             "FB001_FP07": 1,
-            "FB001_FP11": 1,
-            "FB001_FP15": 1,
-            "FB001_FP19": 1,
-            "FB001_FP23": 1,
-            "FB001_FP27": 2,
-            "FB001_FP31": 2,
+            "FB001_FP11": 0,
+            "FB001_FP15": 0,
+            "FB001_FP19": 0,
+            "FB001_FP23": 0,
+            "FB001_FP27": 1,
+            "FB001_FP31": 1,
         },
     }
     FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W3"] = list(LIST_PERIMETERS_W3)
     GROUPS["Fire Perimeter W4"] = {
         "weight": 1,
         "benchmarks": {
-            "FB001_FP04": 1,
+            "FB001_FP04": 2,
             "FB001_FP08": 1,
-            "FB001_FP12": 1,
-            "FB001_FP16": 1,
-            "FB001_FP20": 1,
-            "FB001_FP24": 1,
-            "FB001_FP28": 2,
-            "FB001_FP32": 2,
+            "FB001_FP12": 0,
+            "FB001_FP16": 0,
+            "FB001_FP20": 0,
+            "FB001_FP24": 0,
+            "FB001_FP28": 1,
+            "FB001_FP32": 1,
         },
     }
     FIRE_PERIMETER_GROUP_PERIMETERS["Fire Perimeter W4"] = list(LIST_PERIMETERS_W4)
@@ -1321,6 +1341,37 @@ def _benchmark_kpi_name(bench_id: str) -> str:
     return keywords.get("kpi_name_custom", _benchmark_debug_label(bench_id))
 
 
+def _fire_area_norm_params(obs_data: Path, perimeter_paths: list[str]) -> dict[str, float]:
+    if not perimeter_paths or not obs_data.is_file():
+        return {}
+
+    with File(obs_data, "r") as obs_dataset:
+        observed_areas = area_from_list(obs_dataset, perimeter_paths, 3310).to("acre").magnitude
+    return {
+        "final_bias": fire_area_final_bias_norm_param_m(observed_areas),
+        "rmse": fire_area_rmse_norm_param_m(observed_areas),
+    }
+
+
+def _benchmark_norm_param_m(benchmark, fire_area_norm_params: dict[str, float]):
+    benchmark_func = getattr(benchmark, "func", None)
+    if benchmark_func is bench_fp_generic_area_final_bias:
+        return fire_area_norm_params.get("final_bias")
+    if benchmark_func is bench_fp_generic_area:
+        return fire_area_norm_params.get("rmse")
+    keywords = getattr(benchmark, "keywords", {}) or {}
+    return keywords.get("value_norm_param_m")
+
+
+def _benchmark_norm_param_m_definition(benchmark) -> str | None:
+    benchmark_func = getattr(benchmark, "func", None)
+    if benchmark_func is bench_fp_generic_area_final_bias:
+        return f"{AREA_RELATIVE_ERROR_AT_SCORE_50:.0%} of final observed area"
+    if benchmark_func is bench_fp_generic_area:
+        return f"{AREA_RELATIVE_ERROR_AT_SCORE_50:.0%} of RMS observed area"
+    return None
+
+
 def _weather_station_counts(obs_data: Path, period: tuple[datetime, datetime]) -> list[dict]:
     if not obs_data.is_file():
         return []
@@ -1389,7 +1440,9 @@ def describe_available_targets(benchmark_target: str | None = None, obs_data: Pa
         perimeters = []
         kpis = []
         for group_name, group_content in AGGREGATION[canonical_target].items():
-            for perimeter_path in FIRE_PERIMETER_GROUP_PERIMETERS.get(group_name, []):
+            perimeter_paths = FIRE_PERIMETER_GROUP_PERIMETERS.get(group_name, [])
+            fire_area_norm_params = _fire_area_norm_params(obs_data, perimeter_paths)
+            for perimeter_path in perimeter_paths:
                 perimeters.append(
                     {
                         "time": _perimeter_time_from_path(perimeter_path),
@@ -1397,16 +1450,18 @@ def describe_available_targets(benchmark_target: str | None = None, obs_data: Pa
                     }
                 )
             for bench_id, weight in group_content["benchmarks"].items():
-                keywords = getattr(BENCHMARK_FUNCTIONS[bench_id], "keywords", {}) or {}
-                kpis.append(
-                    {
-                        "id": bench_id,
-                        "name": _benchmark_kpi_name(bench_id),
-                        "group": group_display_names.get(group_name, group_name),
-                        "weight": weight,
-                        "value_norm_param_m": keywords.get("value_norm_param_m"),
-                    }
-                )
+                benchmark = BENCHMARK_FUNCTIONS[bench_id]
+                kpi = {
+                    "id": bench_id,
+                    "name": _benchmark_kpi_name(bench_id),
+                    "group": group_display_names.get(group_name, group_name),
+                    "weight": weight,
+                    "value_norm_param_m": _benchmark_norm_param_m(benchmark, fire_area_norm_params),
+                }
+                norm_param_definition = _benchmark_norm_param_m_definition(benchmark)
+                if norm_param_definition is not None:
+                    kpi["value_norm_param_m_definition"] = norm_param_definition
+                kpis.append(kpi)
 
         return {
             "target": canonical_target,

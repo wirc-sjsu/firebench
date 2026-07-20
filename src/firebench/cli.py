@@ -1,11 +1,14 @@
 import logging
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
 import click
+import yaml
 
 from .benchmarks import AVAIL_BENCHMARKS
+from .metrics.table import save_comparison_as_table
 from .plotting import plot_from_config
 from .tools.logging_config import configure_logging
 
@@ -120,6 +123,15 @@ def _format_target_datetime(value) -> str:
     return value.isoformat(timespec="minutes")
 
 
+def _format_norm_param_m(kpi: dict) -> str:
+    value = kpi.get("value_norm_param_m")
+    if value is None:
+        return kpi.get("value_norm_param_m_definition") or ""
+    if isinstance(value, float):
+        return f"{value:.6g}"
+    return str(value)
+
+
 def _describe_target(target_describer, target: str | None, obs_data: Path | None = None) -> dict:
     if target is None:
         return target_describer()
@@ -184,7 +196,7 @@ def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | No
         click.echo("KPIs")
         click.echo("ID   KPI   Weight   value_norm_param_m")
         for kpi in target_info["kpis"]:
-            norm_param = "" if kpi["value_norm_param_m"] is None else kpi["value_norm_param_m"]
+            norm_param = _format_norm_param_m(kpi)
             click.echo(f"{kpi['id']}  {kpi['name']}  {kpi['weight']}  {norm_param}")
         return
 
@@ -265,7 +277,7 @@ def _render_report_target_information(target: str, target_info: dict | None = No
             ]
         )
         for kpi in target_info["kpis"]:
-            norm_param = "" if kpi["value_norm_param_m"] is None else kpi["value_norm_param_m"]
+            norm_param = _format_norm_param_m(kpi)
             lines.append(f"| {kpi['id']} | {kpi['name']} | {kpi['weight']} | {norm_param} |")
 
     return "\n".join(lines)
@@ -355,6 +367,115 @@ def _create_report_figures(
         )
     except ValueError as exc:
         raise click.UsageError(str(exc)) from exc
+
+
+def _read_multirun_config(config_path: Path) -> dict:
+    if config_path.suffix.lower() not in {".yml", ".yaml"}:
+        raise click.UsageError("Multirun config must be a .yml or .yaml file.")
+    if not config_path.is_file():
+        raise click.UsageError(f"Multirun config file does not exist: {config_path}")
+    try:
+        config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise click.UsageError(f"Invalid YAML config: {exc}") from exc
+    if not isinstance(config, dict):
+        raise click.UsageError("Multirun config must contain a YAML mapping.")
+    return config
+
+
+def _resolve_config_relative_path(config_dir: Path, value: str | Path | None) -> Path | None:
+    if value is None:
+        return None
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    return config_dir / path
+
+
+def _slugify_model_name(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return slug or "model"
+
+
+def _validate_multirun_models(config: dict, config_dir: Path) -> list[dict]:
+    models = config.get("models")
+    if not isinstance(models, list) or len(models) < 2:
+        raise click.UsageError("Multirun config requires at least two models.")
+
+    resolved_models = []
+    used_slugs = set()
+    for index, model in enumerate(models, start=1):
+        if not isinstance(model, dict):
+            raise click.UsageError(f"Model entry {index} must be a YAML mapping.")
+        name = model.get("name")
+        model_output = model.get("model_output")
+        if not name:
+            raise click.UsageError(f"Model entry {index} requires a name.")
+        if not model_output:
+            raise click.UsageError(f"Model entry {index} requires model_output.")
+
+        resolved_model_output = _resolve_config_relative_path(config_dir, model_output)
+        if not resolved_model_output.is_file():
+            raise click.UsageError(f"Model output file does not exist: {resolved_model_output}")
+
+        slug = _slugify_model_name(str(name))
+        if slug in used_slugs:
+            raise click.UsageError(f"Duplicate model output slug '{slug}'. Use distinct model names.")
+        used_slugs.add(slug)
+        resolved_models.append(
+            {
+                "name": str(name),
+                "model_output": resolved_model_output,
+                "slug": slug,
+            }
+        )
+    return resolved_models
+
+
+def _resolve_multirun_config(config_path: Path) -> dict:
+    config_path = config_path.resolve()
+    config = _read_multirun_config(config_path)
+    config_dir = config_path.parent
+
+    case = config.get("case")
+    target = config.get("target")
+    if not case:
+        raise click.UsageError("Multirun config requires case.")
+    if not target:
+        raise click.UsageError("Multirun config requires target.")
+
+    selected_case_id, case_info = _get_case_info(str(case))
+    target = str(target)
+    target_normalizer = case_info.get("target_normalizer")
+    if target_normalizer is not None:
+        try:
+            target = target_normalizer(target)
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
+
+    output_dir = _resolve_config_relative_path(config_dir, config.get("output_dir")) or config_dir
+    obs_data = _resolve_config_relative_path(config_dir, config.get("obs_data")) or _get_default(
+        case_info, "obs_data"
+    )
+    comparison_report = config.get("comparison_score_card_report", "comparison_scorecard.pdf")
+    comparison_report = Path(comparison_report)
+    if not comparison_report.is_absolute():
+        comparison_report = output_dir / comparison_report
+
+    return {
+        "case_id": selected_case_id,
+        "case_info": case_info,
+        "target": target,
+        "output_dir": output_dir,
+        "overwrite": bool(config.get("overwrite", False)),
+        "verbose": config.get("verbose", _get_default(case_info, "verbose")),
+        "no_console": bool(config.get("no_console", False)),
+        "obs_data": obs_data,
+        "full_name": bool(config.get("full_name", False)),
+        "comparison_include_kpis": bool(config.get("comparison_include_kpis", False)),
+        "comparison_score_card_report": comparison_report,
+        "models": _validate_multirun_models(config, config_dir),
+    }
 
 
 @main.command()
@@ -486,7 +607,7 @@ def run(
         target_describer = case_info.get("target_describer")
         if target_describer is not None:
             try:
-                target_info = target_describer(target)
+                target_info = _describe_target(target_describer, target, obs_data)
             except ValueError as exc:
                 raise click.UsageError(str(exc)) from exc
         else:
@@ -519,6 +640,70 @@ def run(
             figures=report_figures,
         )
     return 0
+
+
+@main.command()
+@click.argument(
+    "config",
+    type=click.Path(dir_okay=False, path_type=Path),
+)
+def multirun(config: Path) -> None:
+    """
+    Run one benchmark target against multiple model outputs from a YAML config.
+    """
+    resolved_config = _resolve_multirun_config(config)
+    case_info = resolved_config["case_info"]
+    output_dir = resolved_config["output_dir"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    comparison_report = resolved_config["comparison_score_card_report"]
+    comparison_report.parent.mkdir(parents=True, exist_ok=True)
+    if comparison_report.exists() and not resolved_config["overwrite"]:
+        raise click.UsageError(
+            f"Comparison score card report already exists: {comparison_report}. "
+            "Set overwrite: true to replace it."
+        )
+
+    results = []
+    for model in resolved_config["models"]:
+        output_json = output_dir / f"{model['slug']}_rslt.json"
+        score_card_report = output_dir / f"{model['slug']}_scorecard.pdf"
+        log_file = output_dir / f"{model['slug']}.log"
+        configure_logging(
+            resolved_config["verbose"],
+            use_console=not resolved_config["no_console"],
+            log_path=log_file,
+        )
+        logger.info(
+            "[CLI] multirun benchmark case %s target %s with model output: %s",
+            resolved_config["case_id"],
+            resolved_config["target"],
+            model["model_output"],
+        )
+        result = case_info["func"](
+            model["model_output"],
+            benchmark_target=resolved_config["target"],
+            name=model["name"],
+            overwrite=resolved_config["overwrite"],
+            sign=None,
+            obs_data=resolved_config["obs_data"],
+            output_json=output_json,
+            score_card_report=score_card_report,
+            score_card_full_name=resolved_config["full_name"],
+        )
+        if not result or "score_card" not in result:
+            raise click.UsageError(
+                f"Benchmark result for model '{model['name']}' did not include a score card."
+            )
+        results.append(result)
+
+    save_comparison_as_table(
+        comparison_report,
+        results,
+        include_kpis=resolved_config["comparison_include_kpis"],
+        full_name=resolved_config["full_name"],
+    )
+    click.echo(f"Wrote {comparison_report}")
 
 
 @main.command("list")

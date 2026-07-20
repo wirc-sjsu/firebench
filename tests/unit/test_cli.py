@@ -113,15 +113,16 @@ def _fake_registry(tmp_path, call):
                         "id": "FB001_FPH097",
                         "name": "Average Jaccard Index",
                         "group": "Fire Perimeters",
-                        "weight": 1,
+                        "weight": 2,
                         "value_norm_param_m": None,
                     },
                     {
                         "id": "FB001_FPH103",
                         "name": "Final Burn Area Bias",
                         "group": "Fire Perimeters",
-                        "weight": 2,
-                        "value_norm_param_m": 10000,
+                        "weight": 1,
+                        "value_norm_param_m": None,
+                        "value_norm_param_m_definition": "20% of final observed area",
                     },
                 ],
             }
@@ -362,6 +363,7 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
         assert call["report_figure_obs_data"] == tmp_path / "default_obs.h5"
         assert call["report_figure_target"] == "H013_P"
         assert call["report_figure_target_info"]["target"] == "H013_P"
+        assert call["target_describer_obs_data"] == tmp_path / "default_obs.h5"
         assert report_path.read_text(encoding="utf-8") == (
             "# Report 2021 Caldor Fire for Demo Model\n"
             "## Benchmark target information\n"
@@ -384,8 +386,8 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
             "### KPIs\n"
             "| ID | KPI | Weight | value_norm_param_m |\n"
             "| --- | --- | --- | --- |\n"
-            "| FB001_FPH097 | Average Jaccard Index | 1 |  |\n"
-            "| FB001_FPH103 | Final Burn Area Bias | 2 | 10000 |\n"
+            "| FB001_FPH097 | Average Jaccard Index | 2 |  |\n"
+            "| FB001_FPH103 | Final Burn Area Bias | 1 | 20% of final observed area |\n"
             "\n"
             "## Submitters' comments\n"
             "This section is reserved for the model users who have submitted the model output "
@@ -435,6 +437,244 @@ def test_run_command_unknown_case_fails(monkeypatch, tmp_path):
     assert result.exit_code != 0
     assert "Unknown benchmark case '999'" in result.output
     assert "firebench list" in result.output
+
+
+def test_multirun_command_creates_four_model_comparison_scorecard(monkeypatch, tmp_path):
+    config_dir = tmp_path / "case"
+    config_dir.mkdir()
+    obs_data = config_dir / "obs.h5"
+    model_a = config_dir / "model_a.h5"
+    model_b = config_dir / "model_b.h5"
+    model_c = config_dir / "model_c.h5"
+    model_d = config_dir / "model_d.h5"
+    obs_data.write_text("obs")
+    model_a.write_text("model-a")
+    model_b.write_text("model-b")
+    model_c.write_text("model-c")
+    model_d.write_text("model-d")
+    calls = []
+
+    # Use two representative H013_P metric families to exercise the comparison's group rows.
+    model_scores = {
+        "WRF-SFIRE Baseline": {
+            "total": 75.0,
+            "overlap": 80.0,
+            "burn_area": 70.0,
+            "jaccard": 78.0,
+            "dice": 82.0,
+            "burn_bias": 68.0,
+            "burn_rmse": 72.0,
+        },
+        "WRF-SFIRE Calibrated": {
+            "total": 87.0,
+            "overlap": 92.0,
+            "burn_area": 82.0,
+            "jaccard": 91.0,
+            "dice": 93.0,
+            "burn_bias": 80.0,
+            "burn_rmse": 84.0,
+        },
+        "QUIC-Fire": {
+            "total": 76.5,
+            "overlap": 74.0,
+            "burn_area": 79.0,
+            "jaccard": 72.0,
+            "dice": 76.0,
+            "burn_bias": 78.0,
+            "burn_rmse": 80.0,
+        },
+        "FARSITE": {
+            "total": 76.25,
+            "overlap": 86.5,
+            "burn_area": 66.0,
+            "jaccard": 85.0,
+            "dice": 88.0,
+            "burn_bias": 64.0,
+            "burn_rmse": 68.0,
+        },
+    }
+
+    def fake_runner(model_output, **kwargs):
+        calls.append({"model_output": model_output, **kwargs})
+        scores = model_scores[kwargs["name"]]
+        return {
+            "case_id": "FB001",
+            "benchmark_short_name": "2021_Caldor",
+            "evaluated_model_name": kwargs["name"],
+            "firebench_version": "test",
+            "case_version": "test",
+            "benchmarks": {
+                "FB001_FPH097": {
+                    "Average Jaccard Index WH13": scores["jaccard"] / 100,
+                    "Score": scores["jaccard"],
+                },
+                "FB001_FPH100": {
+                    "Average Dice-Sorensen Index WH13": scores["dice"] / 100,
+                    "Score": scores["dice"],
+                },
+                "FB001_FPH103": {
+                    "Final Burn Area Bias WH13": 10_000 * (1 - scores["burn_bias"] / 100),
+                    "Score": scores["burn_bias"],
+                },
+                "FB001_FPH104": {
+                    "Burn Area RMSE WH13": 10_000 * (1 - scores["burn_rmse"] / 100),
+                    "Score": scores["burn_rmse"],
+                },
+            },
+            "score_card": {
+                "Scheme": {
+                    "Perimeter Overlap": {
+                        "weight": 1,
+                        "benchmarks": {
+                            "FB001_FPH097": 2,
+                            "FB001_FPH100": 0,
+                        },
+                    },
+                    "Burn Area Accuracy": {
+                        "weight": 1,
+                        "benchmarks": {
+                            "FB001_FPH103": 1,
+                            "FB001_FPH104": 1,
+                        },
+                    },
+                },
+                "Score Total": scores["total"],
+                "Score Perimeter Overlap": scores["overlap"],
+                "Score Burn Area Accuracy": scores["burn_area"],
+                "aggregation_scheme_name": "H013_P",
+                "group_display_names": {
+                    "Perimeter Overlap": "Perimeter Overlap",
+                    "Burn Area Accuracy": "Burn Area Accuracy",
+                },
+            },
+        }
+
+    monkeypatch.setattr(
+        "firebench.cli.AVAIL_BENCHMARKS",
+        {
+            "001": {
+                "name": "2021 Caldor Fire",
+                "short_name": "2021_Caldor",
+                "url": "https://example.test/caldor",
+                "func": fake_runner,
+                "default_options": {
+                    "verbose": 3,
+                    "obs_data": tmp_path / "default_obs.h5",
+                },
+            }
+        },
+    )
+
+    config_path = config_dir / "multirun.yml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "case: 2021_Caldor",
+                "target: H013_P",
+                "output_dir: out",
+                "overwrite: true",
+                "obs_data: obs.h5",
+                "comparison_include_kpis: true",
+                "models:",
+                "  - name: WRF-SFIRE Baseline",
+                "    model_output: model_a.h5",
+                "  - name: WRF-SFIRE Calibrated",
+                "    model_output: model_b.h5",
+                "  - name: QUIC-Fire",
+                "    model_output: model_c.h5",
+                "  - name: FARSITE",
+                "    model_output: model_d.h5",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(main, ["multirun", str(config_path)])
+
+    output_dir = config_dir / "out"
+    assert result.exit_code == 0, result.output
+    assert calls == [
+        {
+            "model_output": model_a,
+            "benchmark_target": "H013_P",
+            "name": "WRF-SFIRE Baseline",
+            "overwrite": True,
+            "sign": None,
+            "obs_data": obs_data,
+            "output_json": output_dir / "wrf-sfire-baseline_rslt.json",
+            "score_card_report": output_dir / "wrf-sfire-baseline_scorecard.pdf",
+            "score_card_full_name": False,
+        },
+        {
+            "model_output": model_b,
+            "benchmark_target": "H013_P",
+            "name": "WRF-SFIRE Calibrated",
+            "overwrite": True,
+            "sign": None,
+            "obs_data": obs_data,
+            "output_json": output_dir / "wrf-sfire-calibrated_rslt.json",
+            "score_card_report": output_dir / "wrf-sfire-calibrated_scorecard.pdf",
+            "score_card_full_name": False,
+        },
+        {
+            "model_output": model_c,
+            "benchmark_target": "H013_P",
+            "name": "QUIC-Fire",
+            "overwrite": True,
+            "sign": None,
+            "obs_data": obs_data,
+            "output_json": output_dir / "quic-fire_rslt.json",
+            "score_card_report": output_dir / "quic-fire_scorecard.pdf",
+            "score_card_full_name": False,
+        },
+        {
+            "model_output": model_d,
+            "benchmark_target": "H013_P",
+            "name": "FARSITE",
+            "overwrite": True,
+            "sign": None,
+            "obs_data": obs_data,
+            "output_json": output_dir / "farsite_rslt.json",
+            "score_card_report": output_dir / "farsite_scorecard.pdf",
+            "score_card_full_name": False,
+        },
+    ]
+    comparison_scorecard = output_dir / "comparison_scorecard.pdf"
+    assert comparison_scorecard.read_bytes().startswith(b"%PDF")
+    assert comparison_scorecard.stat().st_size > 1_000
+    assert f"Wrote {comparison_scorecard}" in result.output
+
+
+def test_multirun_command_rejects_duplicate_output_slugs(monkeypatch, tmp_path):
+    config_dir = tmp_path / "case"
+    config_dir.mkdir()
+    model_a = config_dir / "model_a.h5"
+    model_b = config_dir / "model_b.h5"
+    model_a.write_text("model-a")
+    model_b.write_text("model-b")
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
+    config_path = config_dir / "multirun.yml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "case: 001",
+                "target: H013_P",
+                "models:",
+                "  - name: Model A",
+                "    model_output: model_a.h5",
+                "  - name: Model-A",
+                "    model_output: model_b.h5",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(main, ["multirun", str(config_path)])
+
+    assert result.exit_code != 0
+    assert "Duplicate model output slug 'model-a'" in result.output
 
 
 def test_list_command_prints_case_ids_short_names_and_docs(monkeypatch, tmp_path):
@@ -513,8 +753,8 @@ def test_list_command_prints_target_details(monkeypatch, tmp_path):
         "\n"
         "KPIs\n"
         "ID   KPI   Weight   value_norm_param_m\n"
-        "FB001_FPH097  Average Jaccard Index  1  \n"
-        "FB001_FPH103  Final Burn Area Bias  2  10000\n"
+        "FB001_FPH097  Average Jaccard Index  2  \n"
+        "FB001_FPH103  Final Burn Area Bias  1  20% of final observed area\n"
     )
 
 

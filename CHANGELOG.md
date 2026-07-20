@@ -10,8 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
 - Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
 ### Changed
+- Weight average Jaccard at 2 and minimum Jaccard and burn-area KPIs at 1; retain maximum Jaccard
+  and Dice-Sorensen KPIs as unweighted fire-perimeter diagnostics.
+- Scale fire-area normalization parameter `m` from observed area, with a 20% relative error scoring 50.
 - Add building damage target nomenclature such as `H013_B`.
 - Add weather target nomenclature such as `H013_W` and show weather station counts in target listings.
+- Color multi-model comparison score-card cells by their absolute score using the `RdYlGn` scale.
+- Use a blue, gray, and green colorblind-safer palette for score-card PDFs.
 - Increase fire perimeter burn-area normalization from 5000 m to 10000 m.
 - Add an observed-versus-modeled perimeter contour figure with KPI and burn-area annotations to generated reports.
 - Include benchmark target details in reports generated with `firebench run --report`.

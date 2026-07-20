@@ -176,15 +176,15 @@ def test_kpi_norm_symmetric_open_exponential_raises(x, m):
 @pytest.mark.parametrize(
     "score, expected_color",
     [
-        (0.0, "#D6452A"),  # low score
-        (10.0, "#D6452A"),
-        (33.32, "#D6452A"),  # just below threshold
-        (33.33, "#E8C441"),  # threshold
-        (50.0, "#E8C441"),  # mid range
-        (66.65, "#E8C441"),  # just below upper threshold
-        (66.66, "#6BAF5F"),  # threshold
-        (90.0, "#6BAF5F"),  # high score
-        (100.0, "#6BAF5F"),
+        (0.0, "#8A8F98"),  # low score
+        (10.0, "#8A8F98"),
+        (33.32, "#8A8F98"),  # just below threshold
+        (33.33, "#4477AA"),  # threshold
+        (50.0, "#4477AA"),  # mid range
+        (66.65, "#4477AA"),  # just below upper threshold
+        (66.66, "#228833"),  # threshold
+        (90.0, "#228833"),  # high score
+        (100.0, "#228833"),
     ],
 )
 def test_score_to_color(score, expected_color):

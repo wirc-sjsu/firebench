@@ -140,7 +140,7 @@ def _build_hrrr_validation_windows() -> dict[str, dict[str, tuple[datetime, date
         name = f"WH{len(windows) + 1}"
         windows[name] = {
             "period": (_localize_in_ref_tz(start), _localize_in_ref_tz(end)),
-            "perimeters": [_perimeter_path(value) for value in contained[1:]],
+            "perimeters": [_perimeter_path(value) for value in contained[:]],
         }
     return windows
 
@@ -219,7 +219,7 @@ WX_VARIABLE_SPECS = (
     },
 )
 
-HRRR_FIRE_PERIMETER_NORM_M = 10_000
+AREA_RELATIVE_ERROR_AT_SCORE_50 = 0.20
 
 CTX_SPEC = {
     ("agg_bin", "building_damage", "obs"): "Aggregate building damage dataset to binary classes for obs",
