@@ -104,14 +104,14 @@ runnable, and document the workflows introduced by the current package and CLI.
 
 ## Priority 2: Repair and Update Existing Documentation
 
-- [ ] Update the documentation version in `docs/conf.py` so it follows the package version instead
+- [x] Update the documentation version in `docs/conf.py` so it follows the package version instead
   of remaining fixed at `0.7.0`.
-- [ ] Update `docs/content.md` for FireBench 0.10 or replace the manually maintained inventory with
+- [x] Update `docs/content.md` for FireBench 0.10 or replace the manually maintained inventory with
   generated/reference pages.
-- [ ] Synchronize `docs/dependencies.md` with `pyproject.toml`, including Click, Contextily, Numba,
+- [x] Synchronize `docs/dependencies.md` with `pyproject.toml`, including Click, Contextily, Numba,
   PyYAML, and conditional Tomli.
 - [x] Fix the broken `CONTRIBUTE.md` link in `README.md`.
-- [ ] Fix malformed email links in the Caldor benchmark documentation.
+- [x] Fix malformed email links in the Caldor benchmark documentation.
 - [ ] Correct spelling, grammar, capitalization, and naming inconsistencies across user-facing pages.
 - [ ] Repair the custom fuel-model tutorial so its JSON example is valid and can be copied directly.
 - [ ] Rewrite the custom ROS model tutorial as a complete executable example with correct imports,

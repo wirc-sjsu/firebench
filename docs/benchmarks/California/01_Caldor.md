@@ -7,8 +7,8 @@
 
 ## Contributors
 - Aurélien Costes, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [aurelien.costes@sjsu.edu](mailto:aurelien.costes@sjsu.edu), [ORCID](https://orcid.org/0000-0003-4543-5107)
-- Angel Farguell Caus, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [angel.farguellcaus@sjsu.edu](mailto:[angel.farguellcaus@sjsu.edu), [ORCID](https://orcid.org/0000-0003-2395-220X)
-- Adam Kochanski, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [adam.kochanski@sjsu.edu](mailto:[adam.kochanski@sjsu.edu), [ORCID](https://orcid.org/0000-0001-7820-2831)
+- Angel Farguell Caus, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [angel.farguellcaus@sjsu.edu](mailto:angel.farguellcaus@sjsu.edu), [ORCID](https://orcid.org/0000-0003-2395-220X)
+- Adam Kochanski, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [adam.kochanski@sjsu.edu](mailto:adam.kochanski@sjsu.edu), [ORCID](https://orcid.org/0000-0001-7820-2831)
 
 ## Description
 

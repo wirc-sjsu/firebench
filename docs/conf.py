@@ -1,13 +1,20 @@
 import os
 import sys
+from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 # Add src/ to the path so Sphinx can find the code
 sys.path.insert(0, os.path.abspath('../src/firebench'))
 
-project = 'Firebench'
+project = 'FireBench'
 author = 'WIRC SJSU'
-version = '0.7.0'
-release = '0.7.0'
+project_metadata = tomllib.loads((Path(__file__).resolve().parents[1] / 'pyproject.toml').read_text())
+release = project_metadata['project']['version']
+version = release
 copyright = '%Y, Aurélien Costes, WIRC SJSU'
 
 extensions = [
