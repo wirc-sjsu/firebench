@@ -1138,6 +1138,21 @@ Mandatory group/dataset| Mandatory attributes
 
 This section describes the weights used to aggregate KPI unit scores. More information about aggregation methods [here](../../metrics/score.md). If the aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total scores are not computed.
 
+### Compatibility with FireBench 0.9 scores
+
+FireBench 0.10 changes both the weights and normalization of the fire-perimeter KPIs. In 0.9,
+each Jaccard and Dice-Sorensen KPI had weight 1, each burn-area KPI had weight 2, and burn-area
+normalization used fixed values for each curated period. In 0.10, average Jaccard has weight 2,
+minimum Jaccard and both burn-area KPIs have weight 1, and maximum Jaccard and all
+Dice-Sorensen KPIs are unweighted diagnostics. Burn-area normalization is now derived from the
+observed areas: 20% of the final observed area for final-area bias and 20% of the root mean square
+of the observed areas for burn-area RMSE.
+
+Consequently, FireBench 0.10 Caldor group and total scores are not directly comparable with 0.9
+scores, even when the target retains a 0.9 scheme name such as `A`, `CDI`, or `short_all`. Record
+the FireBench version with every result and compare scores only when they were generated with the
+same version and target definition.
+
 ### Group definition
 
 All benchmarks have a default weight of 1 in each group. If custom weights are applied, refer to the custom weight Table. 
