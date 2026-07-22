@@ -1069,8 +1069,8 @@ def add_wx_benchmarks():
     summary_stats_func = {"min": np.nanmin, "mean": np.nanmean, "max": np.nanmax}
     bench_idx = 1
 
-    for variable_spec in cfg.WX_VARIABLE_SPECS:
-        for period_set in cfg.WX_PERIOD_SETS:
+    for period_set in cfg.WX_PERIOD_SETS:
+        for variable_spec in cfg.WX_VARIABLE_SPECS:
             for period_name, period in period_set["periods"].items():
                 group_name = f"{variable_spec['group_label']} {period_name}"
                 WX_GROUP_BENCHMARKS.setdefault(group_name, {})

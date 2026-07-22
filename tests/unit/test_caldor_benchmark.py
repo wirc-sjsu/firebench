@@ -21,6 +21,52 @@ def test_build_registries_is_fresh():
     assert first_r08_count == 1188
 
 
+@pytest.mark.parametrize(
+    ("requirement", "first_id", "last_id", "variable_label", "metric_names"),
+    [
+        ("R08", 1, 72, "Air temp", ("MAE", "RMSE", "Bias")),
+        ("R09", 73, 144, "RH", ("MAE", "RMSE", "Bias")),
+        ("R10", 145, 216, "Wind Speed", ("MAE", "RMSE", "Bias")),
+        ("R11", 217, 240, "Wind Direction", ("circular bias",)),
+        ("R12", 241, 312, "FMC 10h", ("MAE", "RMSE", "Bias")),
+    ],
+)
+def test_curated_weather_ids_and_kpi_names_are_preserved(
+    requirement, first_id, last_id, variable_label, metric_names
+):
+    c001_caldor.build_registries()
+
+    expected_ids = [f"FB001_WX{index:03d}" for index in range(first_id, last_id + 1)]
+    expected_names = [
+        f"{variable_label} {metric_name} {summary_stat} W{period_number} {trust_label}"
+        for period_number in range(1, 5)
+        for metric_name in metric_names
+        for trust_label in ("TSO", "")
+        for summary_stat in ("min", "mean", "max")
+    ]
+
+    curated_ids = c001_caldor.REQUIREMENTS[requirement]["benchmarks"][: len(expected_ids)]
+    curated_names = [
+        c001_caldor.BENCHMARK_FUNCTIONS[benchmark_id].keywords["kpi_name_custom"]
+        for benchmark_id in curated_ids
+    ]
+    assert curated_ids == expected_ids
+    assert curated_names == expected_names
+
+
+def test_hrrr_weather_ids_follow_curated_weather_ids():
+    c001_caldor.build_registries()
+
+    first_hrrr_id = c001_caldor.WX_GROUPS_BY_PERIOD["WH1"][0]
+    first_hrrr_benchmark = next(iter(c001_caldor.WX_GROUP_BENCHMARKS[first_hrrr_id]))
+
+    assert first_hrrr_benchmark == "FB001_WX313"
+    assert (
+        c001_caldor.BENCHMARK_FUNCTIONS[first_hrrr_benchmark].keywords["kpi_name_custom"]
+        == "Air temp MAE min WH1 TSO"
+    )
+
+
 def test_hrrr_weather_aggregation_schemes_are_generated():
     c001_caldor.build_registries()
 
@@ -340,7 +386,7 @@ def test_demo_aggregation_contains_wh16_weather_and_fire_perimeter():
         "FP_H16",
     ]
     assert len(c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "DEMO")) == 86
-    assert "FB001_WX343" in c001_caldor.AGGREGATION["DEMO"]["Air Temp WH16"]["benchmarks"]
+    assert "FB001_WX583" in c001_caldor.AGGREGATION["DEMO"]["Air Temp WH16"]["benchmarks"]
 
 
 def test_demo_wx0_sets_weather_group_weights_to_zero():
