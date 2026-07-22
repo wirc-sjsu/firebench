@@ -1133,6 +1133,116 @@ Mandatory group/dataset| Mandatory attributes
 `/time_series/station_<name>/time`| None
 `/time_series/station_<name>/fuel_moisture_content_10h`| None
 
+## Benchmark Targets in FireBench 0.10
+
+The CLI uses a target to select the Caldor KPI groups and, for a period target, the evaluation
+window. Inspect the available targets and the exact KPIs selected by a target with:
+
+```bash
+firebench list 2021_Caldor
+firebench list 2021_Caldor H013_P --obs-data Caldor.h5
+```
+
+The second command is the detailed source of truth for generated period targets. It reports the
+period, selected KPI groups, relevant perimeters and weather-station counts, KPI weights, and
+normalization parameters. The 62 HRRR-aligned periods generate too many KPIs for a useful static
+list in this specification.
+
+### Standalone targets
+
+- `B` selects building-damage KPIs.
+- `S` selects burn-severity KPIs.
+- `CC` selects canopy-cover-loss KPIs.
+- `FP` selects all four curated fire-perimeter groups.
+- `0` selects every KPI without aggregation, so it produces individual KPI scores but no group or
+  total score.
+
+### Retained schemes
+
+The FireBench 0.9 scheme names `A`, `CDI`, `BS3`, `WX1` through `WX4`, `short_all`, and
+`WX_short` remain valid targets. `B`, `S`, `CC`, `FP`, and `0` also retain their former names while
+having the explicit standalone meanings above. Retaining a name does not make a 0.10 score
+comparable with a 0.9 score; see [Compatibility with FireBench 0.9 scores](#compatibility-with-firebench-09-scores).
+
+### Curated period targets
+
+The four curated study periods called `W1` through `W4` in FireBench 0.9 and in the scientific
+sections of this specification are exposed by the 0.10 CLI as `P01` through `P04`:
+
+Scientific period | CLI period
+----------------- | ----------
+W1                | `P01`
+W2                | `P02`
+W3                | `P03`
+W4                | `P04`
+
+Append an underscore and one or more KPI-group flags to select work within the period. For
+example, `P02_P` selects the W2 perimeter group and `P02_PW` selects its perimeter and weather
+groups.
+
+### HRRR-aligned period targets
+
+`H001` through `H062` are 48-hour periods aligned with HRRR forecast initialization times. Append
+the same KPI-group flags used by curated period targets. For example, `H013_BPW` combines building
+damage, fire perimeters, and weather stations for period `H013`.
+
+The flags accepted by both curated and HRRR-aligned period targets are:
+
+Flag | KPI group
+---- | ---------
+`B`  | Building damage
+`P`  | Fire perimeters
+`W`  | Weather stations
+
+Flags may be entered in any order and are normalized to `B`, `P`, `W` order. Burn severity and
+canopy-cover loss deliberately have no period-qualified flags because those evaluations are not
+filtered by the selected period; use standalone `S` or `CC` instead.
+
+### FireBench 0.9 to 0.10 target mapping
+
+FireBench 0.10 changes the run syntax from:
+
+```bash
+firebench run -c CASE -a SCHEME MODEL_OUTPUT
+```
+
+to:
+
+```bash
+firebench run CASE TARGET MODEL_OUTPUT
+```
+
+Use the following mapping when updating 0.9 commands:
+
+0.9 scheme | 0.10 target | Notes
+---------- | ----------- | -----
+`B`        | `B`         | Standalone building damage
+`S`        | `S`         | Standalone burn severity
+`CC`       | `CC`        | Standalone canopy-cover loss
+`WX1`      | `WX1` or `P01_W` | Retained scheme or equivalent curated weather target
+`WX2`      | `WX2` or `P02_W` | Retained scheme or equivalent curated weather target
+`WX3`      | `WX3` or `P03_W` | Retained scheme or equivalent curated weather target
+`WX4`      | `WX4` or `P04_W` | Retained scheme or equivalent curated weather target
+`A`        | `A`         | Retained complete curated scheme
+`CDI`      | `CDI`       | Retained multi-period scheme
+`BS3`      | `BS3`       | Retained demonstration scheme
+`short_all` | `short_all` | Retained shortened complete scheme
+`WX_short` | `WX_short`  | Retained shortened weather scheme
+`FP`       | `FP`        | All four curated perimeter groups
+`0`        | `0`         | Unaggregated selection of every KPI
+
+For example, the 0.9 command:
+
+```bash
+firebench run -c 2021_Caldor -a CDI my_model_output.h5
+```
+
+becomes:
+
+```bash
+firebench run 2021_Caldor CDI my_model_output.h5
+```
+
 
 ## Aggregation Schemes
 

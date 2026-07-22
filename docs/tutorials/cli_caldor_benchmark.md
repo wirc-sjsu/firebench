@@ -37,7 +37,28 @@ unzip v2026.2.zip
 
 If you downloaded a different version, replace `v2026.2.zip` with the archive file that `firebench data get 1` created.
 
-## 3. Run the benchmark
+## 3. Inspect the case and target
+
+List the Caldor standalone targets, period syntax, available periods, and combinable KPI-group
+flags:
+
+```bash
+firebench list 2021_Caldor
+```
+
+This tutorial uses `H013_P`, which selects only the fire-perimeter KPIs in the 48-hour HRRR-aligned
+period `H013`. Inspect its period, perimeters, KPI weights, and normalization parameters before
+running it:
+
+```bash
+firebench list 2021_Caldor H013_P --obs-data Caldor.h5
+```
+
+`H013_P` is a small perimeter-only example. It is not equivalent to the former `CDI` tutorial
+command: `CDI` includes building damage, three curated perimeter periods, and passive weather
+checks. Use `firebench list 2021_Caldor CDI --obs-data Caldor.h5` to inspect that retained scheme.
+
+## 4. Run the benchmark
 
 Run benchmark case `2021_Caldor` with target `H013_P` and allow existing outputs to be overwritten:
 
@@ -53,7 +74,11 @@ This command writes the default Caldor outputs in the working directory:
 
 Use a different model output file by replacing the final `my_model_output.h5` argument with the path to your FireBench standard HDF5 output. If you don't have a model output yet, you can test using the observational dataset `Caldor.h5` as input to get a perfect scorecard. 
 
-## 4. Useful CLI commands
+The 0.10 positional syntax is `firebench run CASE TARGET MODEL_OUTPUT`. In FireBench 0.9 the same
+parts were supplied as `firebench run -c CASE -a SCHEME MODEL_OUTPUT`; the `-c` and `-a` options
+have been removed.
+
+## 5. Useful CLI commands
 
 Main helpers
 
