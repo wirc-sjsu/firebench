@@ -1,4 +1,4 @@
-# 5. Metrics and Scores information
+# Metrics and Scores
 This section describes the high-level metrics available in `FireBench`, listed as `Key Performance Indicator` (KPI). Each KPI represents one, and only one, quantitative evaluation of performance.
 KPIs are based on metrics that correspond to the generalization of quantitative comparison of multiple datasets.
 The KPI value can be normalized and multiple KPIs can be aggregated to construct a score.

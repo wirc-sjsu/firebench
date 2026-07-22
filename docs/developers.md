@@ -1,4 +1,4 @@
-# 11. Developer's Guide
+# Developer Guide
 
 ## Running Tests
 

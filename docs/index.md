@@ -63,21 +63,18 @@ Feel free to start a new discussion or join existing ones to engage with the com
 We welcome contributions to FireBench! For more information on how to contribute, please see our [contribution guidelines](contribute.md).
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
+:caption: User Documentation
 
-dataset_experiments/index.md
-fire_models_info/index.md
-benchmarks_information/index.md
-standard_format.md
-metrics/index.md
-benchmarks/index.md
+getting_started/index.md
 tutorials/index.md
-namespace.md
-content.md
-contribute.md
-developers.md
-changelog.md
-dependencies.md
-license.md
-api/index.rst
+how_to/index.md
+reference/index.md
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Contributors
+
+contributing/index.md
 ```

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
 - Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
 ### Changed
+- Reorganize the documentation navigation into Getting Started, Tutorials, How-to Guides, and
+  Reference and Concepts, with contributor material separated from end-user documentation.
 - Document the FireBench 0.9-to-0.10 Caldor target and CLI migration and require target inspection
   before the tutorial benchmark run.
 - Document that FireBench 0.10 Caldor perimeter weights and normalization make its scores

@@ -1,4 +1,4 @@
-# 9. Content of the package
+# Package Contents
 
 This page lists fire sub-models included in the package, the datasets and the tools.
 *This list is not up top date for 0.8+*.

@@ -1,4 +1,4 @@
-# 3. Benchmarks information
+# Benchmark Methodology
 
 This section gives an overvies of the FireBench Benchmarking Process.
 
@@ -68,4 +68,3 @@ This section gives an overvies of the FireBench Benchmarking Process.
    * Authenticate datasets
    * Certify benchmark executions
    * Validate published benchmarking results
-

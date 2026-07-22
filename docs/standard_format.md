@@ -1,4 +1,4 @@
-# 4. Standard FireBench file format
+# FireBench Standard File Format
 
 - **Version**: 1.0
 - **Status**: PreRelease

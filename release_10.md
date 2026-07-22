@@ -87,16 +87,16 @@ runnable, and document the workflows introduced by the current package and CLI.
 
 ## Priority 1: Restructure the Documentation
 
-- [ ] Replace the numbered, package-oriented top-level navigation with four user-oriented areas:
+- [x] Replace the numbered, package-oriented top-level navigation with four user-oriented areas:
   **Getting Started**, **Tutorials**, **How-to Guides**, and **Reference and Concepts**.
-- [ ] Move installation and the shortest successful workflow into **Getting Started**.
-- [ ] Put guided, end-to-end learning material in **Tutorials**.
-- [ ] Put focused operational instructions, such as validation, plotting, signing, and custom data
+- [x] Move installation and the shortest successful workflow into **Getting Started**.
+- [x] Put guided, end-to-end learning material in **Tutorials**.
+- [x] Put focused operational instructions, such as validation, plotting, signing, and custom data
   preparation, in **How-to Guides**.
-- [ ] Group the file standard, namespace, CLI reference, API reference, benchmark methodology,
+- [x] Group the file standard, namespace, CLI reference, API reference, benchmark methodology,
   models, metrics, and datasets under **Reference and Concepts**.
-- [ ] Separate contributor and developer documentation from end-user documentation.
-- [ ] Remove hard-coded section numbers from page titles so pages can be reorganized safely.
+- [x] Separate contributor and developer documentation from end-user documentation.
+- [x] Remove hard-coded section numbers from page titles so pages can be reorganized safely.
 - [ ] Add clear links from the landing page for the main user goals: run a benchmark, prepare model
   output, compare runs, and extend FireBench.
 - [ ] Reduce duplication between `README.md` and `docs/index.md`, keeping the README concise and
