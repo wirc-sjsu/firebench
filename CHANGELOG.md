@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
 - Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
 ### Changed
+- Make the documentation landing page a workflow-oriented hub and keep the README as a concise
+  project entry point that links to maintained documentation.
 - Reorganize the documentation navigation into Getting Started, Tutorials, How-to Guides, and
   Reference and Concepts, with contributor material separated from end-user documentation.
 - Document the FireBench 0.9-to-0.10 Caldor target and CLI migration and require target inspection
@@ -36,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
 - Keep the `code-formatting` Makefile target as a Black check and add `fix-code-formatting` to apply Black formatting locally.
 ### Fixed
+- Point the README contribution link at the maintained documentation page.
 - Canonicalize combined Caldor target flags in `B`, `P`, `W` order and provide descriptive names
   for every discoverable KPI.
 - Describe retained Caldor schemes and unaggregated target `0` consistently in `firebench list`

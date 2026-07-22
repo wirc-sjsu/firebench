@@ -97,9 +97,9 @@ runnable, and document the workflows introduced by the current package and CLI.
   models, metrics, and datasets under **Reference and Concepts**.
 - [x] Separate contributor and developer documentation from end-user documentation.
 - [x] Remove hard-coded section numbers from page titles so pages can be reorganized safely.
-- [ ] Add clear links from the landing page for the main user goals: run a benchmark, prepare model
+- [x] Add clear links from the landing page for the main user goals: run a benchmark, prepare model
   output, compare runs, and extend FireBench.
-- [ ] Reduce duplication between `README.md` and `docs/index.md`, keeping the README concise and
+- [x] Reduce duplication between `README.md` and `docs/index.md`, keeping the README concise and
   directing readers to the maintained documentation.
 
 ## Priority 2: Repair and Update Existing Documentation
@@ -110,7 +110,7 @@ runnable, and document the workflows introduced by the current package and CLI.
   generated/reference pages.
 - [ ] Synchronize `docs/dependencies.md` with `pyproject.toml`, including Click, Contextily, Numba,
   PyYAML, and conditional Tomli.
-- [ ] Fix the broken `CONTRIBUTE.md` link in `README.md`.
+- [x] Fix the broken `CONTRIBUTE.md` link in `README.md`.
 - [ ] Fix malformed email links in the Caldor benchmark documentation.
 - [ ] Correct spelling, grammar, capitalization, and naming inconsistencies across user-facing pages.
 - [ ] Repair the custom fuel-model tutorial so its JSON example is valid and can be copied directly.
