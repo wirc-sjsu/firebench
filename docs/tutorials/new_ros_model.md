@@ -1,166 +1,155 @@
-# How to customize a rate of spread model
+# Create a custom rate-of-spread model
 
-In `FireBench,` a rate-of-spread model is a class inherited from `firebench.ros_models.RateOfSpreadModel`.
-The goal of the class is to provide a wrapper to a function that computes the rate of spread. To be compatible with other parts of the library, the wrapper contains:
-- a `compute_ros` static method that takes a dictionary as input and returns the rate of spread as a float. This provides a common interface to all the rate of spread models.
-- a metadata dictionary containing information about the model’s inputs and outputs. This links the ros model internal variable names and the [Standard Variable Namespace](../namespace.md). It also provides expected units and ranges for conversion handling and range check functions.
-- a `compute_ros_with_units` method to allow computation of the rate of spread with unit handling.
+FireBench rate-of-spread models inherit from
+`firebench.ros_models.RateOfSpreadModel`. A compatible model provides:
 
-## Structure of Rothermel_SFIRE as an example
+- a `metadata` dictionary that maps the model's local variable names to the
+  [standard variable namespace](../namespace.md);
+- a `compute_ros` method for values that are already expressed as magnitudes in the metadata units;
+- a `compute_ros_with_units` method that accepts Pint quantities, converts them to the metadata
+  units, validates them, and returns a quantity.
 
+The complete example below implements a deliberately simple wind-driven model:
 
-The class `firebench.ros_models.Rothermel_SFIRE` is built around the ros model described in the static method `Rothermel`. This function computes the rate of spread with inputs (fuel_data dictionary, fuel class numbers, wind speed, slope angle, and fuel moisture content).
-The wrapper class `firebench.ros_models.Rothermel_SFIRE` contains the following metadata dictionary:
+\[
+R = \alpha U,
+\]
+
+where \(R\) is the rate of spread in metres per second, \(U\) is the wind speed in metres per
+second, and \(\alpha\) is a dimensionless wind factor. The model is useful as a compact example of
+the FireBench interface; it is not intended to represent a physical fire-spread formulation.
+
+## Define the model
+
+Copy this code into `wind_driven_ros.py`:
 
 ```python
-metadata = {
-        "fgi": {
-            "std_name": svn.FUEL_LOAD_DRY_TOTAL,
-            "units": ureg.kilogram / ureg.meter**2,
-            "range": (0, np.inf),
-            "type": ParameterType.input,
+from pint import Quantity
+
+import firebench.tools as ft
+from firebench.ros_models import RateOfSpreadModel
+
+
+class WindDrivenROS(RateOfSpreadModel):
+    """Minimal wind-driven rate-of-spread model."""
+
+    metadata = {
+        "wind_speed": {
+            "std_name": ft.StandardVariableNames.WIND_SPEED,
+            "units": ft.ureg.meter / ft.ureg.second,
+            "range": (0.0, 100.0),
+            "type": ft.ParameterType.input,
         },
-        "fueldepthm": {
-            "std_name": svn.FUEL_HEIGHT,
-            "units": ureg.meter,
-            "range": (0, np.inf),
-            "type": ParameterType.input,
-        },
-        "fueldens": {
-            "std_name": svn.FUEL_DENSITY,
-            "units": ureg.pound / ureg.foot**3,
-            "range": (0, np.inf),
-            "type": ParameterType.input,
-        },
-        "savr": {
-            "std_name": svn.FUEL_SURFACE_AREA_VOLUME_RATIO,
-            "units": 1 / ureg.foot,
-            "range": (0, np.inf),
-            "type": ParameterType.input,
-        },
-        "fuelmce": {
-            "std_name": svn.FUEL_MOISTURE_EXTINCTION,
-            "units": ureg.percent,
-            "range": (0, np.inf),
-            "type": ParameterType.input,
-        },
-        "st": {
-            "std_name": svn.FUEL_MINERAL_CONTENT_TOTAL,
-            "units": ureg.dimensionless,
-            "range": (0, 1),
-            "type": ParameterType.input,
-        },
-        "se": {
-            "std_name": svn.FUEL_MINERAL_CONTENT_EFFECTIVE,
-            "units": ureg.dimensionless,
-            "range": (0, 1),
-            "type": ParameterType.input,
-        },
-        "ichap": {
-            "std_name": svn.FUEL_CHAPARRAL_FLAG,
-            "units": ureg.dimensionless,
-            "range": (0, 1),
-            "type": ParameterType.input,
-        },
-        "wind": {
-            "std_name": svn.WIND_SPEED,
-            "units": ureg.meter / ureg.second,
-            "range": (-np.inf, np.inf),
-            "type": ParameterType.input,
-        },
-        "slope": {
-            "std_name": svn.SLOPE_ANGLE,
-            "units": ureg.degree,
-            "range": (-90, 90),
-            "type": ParameterType.input,
-        },
-        "fmc": {
-            "std_name": svn.FUEL_MOISTURE_CONTENT,
-            "units": ureg.percent,
-            "range": (0, 200),
-            "type": ParameterType.input,
+        "wind_factor": {
+            "std_name": ft.StandardVariableNames.ALPHA,
+            "units": ft.ureg.dimensionless,
+            "range": (0.0, 1.0),
+            "type": ft.ParameterType.optional,
+            "default": 0.04,
         },
         "rate_of_spread": {
-            "std_name": svn.RATE_OF_SPREAD,
-            "units": ureg.meter / ureg.second,
-            "range": (0, np.inf),
-            "type": ParameterType.output,
-        },
-    }
-```
-
-This dictionary contains each variable used in `rothermel` method:
-- the name of the variable as used in the ros model function as key
-- the corresponding standard name
-- the expected unit of the variable
-- the validity range
-- the type of the variable (input, optional input, output)
-
-In addition, the wrapper function `compute_ros` is dedicated to input redirection and data pre-processing.
-
-## How to create a custom rate of spread class
-
-We have a rate of spread function as follows:
-```python
-def custom_ros(sigma: float, wind: float):
-    return 0.25 * sigma * wind ** 2
-```
-This function uses two variables, `sigma` and `wind`.
-The metadata dictionary must contain information for each input and for the output. The wrapper function will be used to redirect inputs.
-
-The wrapper class `MyCustomROS` can be defined as:
-```python
-class MyCustomROS(RateOfSpreadModel):
-    metadata = {
-        "sigma": {
-            "std_name": svn.FUEL_LOAD_DRY_TOTAL,
-            "units": ureg.kilogram / ureg.meter**2,
-            "range": (0, np.inf),
-            "type": ParameterType.input,
-        },
-        "wind": {
-            "std_name": svn.WIND_SPEED,
-            "units": ureg.meter / ureg.second,
-            "range": (-np.inf, np.inf),
-            "type": ParameterType.input,
-        },
-        "output_rate_of_spread": {
-            "std_name": svn.RATE_OF_SPREAD,
-            "units": ureg.meter / ureg.second,
-            "range": (0, np.inf),
-            "type": ParameterType.output,
+            "std_name": ft.StandardVariableNames.RATE_OF_SPREAD,
+            "units": ft.ureg.meter / ft.ureg.second,
+            "range": (0.0, float("inf")),
+            "type": ft.ParameterType.output,
         },
     }
 
     @staticmethod
-    def custom_ros(fuel_data: dict, fuel_class: int, wind: float):
-        return 0.5 * fuel_data["fgi"][fuel_class] * wind ** 2
-    
-    @staticmethod
-    def compute_ros(
-        input_dict: dict[str, list[float]],
-        **opt,
-    ) -> float:
-        # Prepare fuel properties using the base class method
-        fuel_properties = RateOfSpreadModel.prepare_fuel_properties(
-            input_dict=input_dict, metadata=MyCustomROS.metadata, fuel_cat=fuel_cat
-        )
-
-        # Calculate the rate of spread
-        return MyCustomROS.custom_ros(**fuel_properties)
+    def wind_driven_ros(wind_speed: float, wind_factor: float) -> float:
+        """Return rate of spread in metres per second."""
+        return wind_factor * wind_speed
 
     @staticmethod
-    def compute_ros_with_units(
-        input_dict: dict[str, float | int | list[float] | list[int] | Quantity],
-        fuel_cat: int = 0,
-        **opt,
-    ) -> Quantity:
-        input_dict_no_units = extract_magnitudes(input_dict)
-
-        return ureg.Quantity(
-            MyCustomROS.compute_ros(input_dict_no_units, fuel_cat, **opt),
-            MyCustomROS.metadata["rate_of_spread"]["units"],
+    def compute_ros(input_dict: dict, fuel_cat: int = 0, **opt) -> float:
+        """Compute ROS from magnitudes expressed in the metadata units."""
+        del opt
+        model_inputs = RateOfSpreadModel.prepare_fuel_properties(
+            input_dict=input_dict,
+            metadata=WindDrivenROS.metadata,
+            fuel_cat=fuel_cat,
         )
+        return WindDrivenROS.wind_driven_ros(**model_inputs)
+
+    @staticmethod
+    def compute_ros_with_units(input_dict: dict, fuel_cat: int = 0, **opt) -> Quantity:
+        """Convert and validate quantities before computing ROS."""
+        converted_inputs = ft.check_data_quality_ros_model(input_dict, WindDrivenROS)
+        input_magnitudes = ft.extract_magnitudes(converted_inputs)
+        ros = WindDrivenROS.compute_ros(input_magnitudes, fuel_cat=fuel_cat, **opt)
+        return ft.ureg.Quantity(ros, WindDrivenROS.metadata["rate_of_spread"]["units"])
 ```
 
-The function `custom_ros` is defined within the class here, but it can also be defined elsewhere and called within `compute_ros`.
+The keys at the first level of `metadata`—such as `wind_speed`—must match the arguments of the
+model function. Each `std_name` is the key that callers use in `input_dict`. The other fields define
+the expected unit, accepted magnitude range, and whether the variable is required, optional, or an
+output. An optional variable also needs a `default` value in its metadata unit.
+
+`fuel_cat` is a one-based category number when an input contains multiple fuel-category values. It
+is ignored for scalar values. Use the default `fuel_cat=0` when all inputs are scalar.
+
+## Run the magnitude interface
+
+`compute_ros` expects magnitudes that already use the metadata units. Here, the wind speed is
+therefore in metres per second and the result is also in metres per second:
+
+```python
+import firebench.tools as ft
+
+from wind_driven_ros import WindDrivenROS
+
+
+inputs = {
+    ft.StandardVariableNames.WIND_SPEED: 5.0,
+}
+
+ros = WindDrivenROS.compute_ros(inputs)
+assert ros == 0.2
+print(f"{ros} m/s")
+```
+
+The optional wind factor is absent, so the model uses its default value of `0.04`.
+
+For category-based inputs, provide an array-like value and select a category with a one-based
+index:
+
+```python
+import firebench.tools as ft
+
+from wind_driven_ros import WindDrivenROS
+
+
+inputs = {
+    ft.StandardVariableNames.WIND_SPEED: [2.0, 4.0, 6.0],
+}
+
+ros = WindDrivenROS.compute_ros(inputs, fuel_cat=2)
+assert ros == 0.16
+```
+
+## Run the unit-aware interface
+
+Use `compute_ros_with_units` when values carry Pint units. The data-quality helper verifies required
+inputs, converts values to the metadata units, and checks their validity ranges before calculation.
+This example supplies wind speed in miles per hour and overrides the optional wind factor:
+
+```python
+import firebench.tools as ft
+
+from wind_driven_ros import WindDrivenROS
+
+
+inputs = {
+    ft.StandardVariableNames.WIND_SPEED: 10.0 * ft.ureg.mile / ft.ureg.hour,
+    ft.StandardVariableNames.ALPHA: 0.05 * ft.ureg.dimensionless,
+}
+
+ros = WindDrivenROS.compute_ros_with_units(inputs)
+assert ros.units == ft.ureg.meter / ft.ureg.second
+assert abs(ros.magnitude - 0.22352) < 1e-12
+print(ros)
+```
+
+Keep the two interfaces separate: pass plain numbers in the declared metadata units to
+`compute_ros`, and pass quantities to `compute_ros_with_units`. The latter returns a Pint quantity
+whose unit comes from the output metadata entry.
