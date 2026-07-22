@@ -309,6 +309,45 @@ def test_describe_available_standalone_building_damage_target_includes_details()
     ]
 
 
+@pytest.mark.parametrize(
+    ("target", "expected_kpi_groups"),
+    [
+        ("A", {"B", "S", "CC", "P", "W"}),
+        ("S", {"S"}),
+        ("CC", {"CC"}),
+        ("CDI", {"B", "P", "W"}),
+        ("BS3", {"B", "S"}),
+        ("WX1", {"W"}),
+        ("WX2", {"W"}),
+        ("WX3", {"W"}),
+        ("WX4", {"W"}),
+        ("short_all", {"B", "S", "CC", "P", "W"}),
+        ("WX_short", {"B", "S", "CC", "W"}),
+    ],
+)
+def test_describe_retained_target_uses_selected_groups(target, expected_kpi_groups):
+    target_info = c001_caldor.describe_available_targets(target)
+
+    assert target_info["target"] == target
+    assert target_info["period"] is None
+    assert target_info["aggregated"] is True
+    assert set(target_info["kpi_groups"]) == expected_kpi_groups
+    assert target_info["kpis"]
+
+
+def test_describe_unaggregated_target_zero_includes_every_kpi_once():
+    target_info = c001_caldor.describe_available_targets("0")
+
+    assert target_info["target"] == "0"
+    assert target_info["period"] is None
+    assert target_info["aggregated"] is False
+    assert set(target_info["kpi_groups"]) == {"B", "S", "CC", "P", "W"}
+    kpi_ids = [kpi["id"] for kpi in target_info["kpis"]]
+    assert len(kpi_ids) == len(c001_caldor.BENCHMARK_FUNCTIONS)
+    assert set(kpi_ids) == set(c001_caldor.BENCHMARK_FUNCTIONS)
+    assert {kpi["weight"] for kpi in target_info["kpis"]} == {None}
+
+
 def test_normalize_benchmark_target_accepts_building_damage_targets():
     assert c001_caldor.normalize_benchmark_target("B") == "B"
     assert c001_caldor.normalize_benchmark_target("h013_b") == "H013_B"

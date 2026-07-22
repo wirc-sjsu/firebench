@@ -132,6 +132,11 @@ def _format_norm_param_m(kpi: dict) -> str:
     return str(value)
 
 
+def _format_kpi_weight(kpi: dict) -> str:
+    weight = kpi.get("weight")
+    return "" if weight is None else str(weight)
+
+
 def _describe_target(target_describer, target: str | None, obs_data: Path | None = None) -> dict:
     if target is None:
         return target_describer()
@@ -162,6 +167,8 @@ def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | No
         raise click.UsageError(str(exc)) from exc
     if target is not None:
         click.echo(f"Benchmark target: {target_info['target']}")
+        if not target_info.get("aggregated", True):
+            click.echo("Aggregation: none (individual KPI scores only)")
         if target_info.get("period"):
             click.echo("")
             click.echo("Temporal period")
@@ -197,7 +204,8 @@ def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | No
         click.echo("ID   KPI   Weight   value_norm_param_m")
         for kpi in target_info["kpis"]:
             norm_param = _format_norm_param_m(kpi)
-            click.echo(f"{kpi['id']}  {kpi['name']}  {kpi['weight']}  {norm_param}")
+            weight = _format_kpi_weight(kpi)
+            click.echo(f"{kpi['id']}  {kpi['name']}  {weight}  {norm_param}")
         return
 
     click.echo("")
@@ -230,6 +238,9 @@ def _render_report_target_information(target: str, target_info: dict | None = No
 
     if target_info is None:
         return "\n".join(lines)
+
+    if not target_info.get("aggregated", True):
+        lines.append("Aggregation: none (individual KPI scores only)")
 
     if target_info.get("period"):
         lines.extend(
@@ -278,7 +289,8 @@ def _render_report_target_information(target: str, target_info: dict | None = No
         )
         for kpi in target_info["kpis"]:
             norm_param = _format_norm_param_m(kpi)
-            lines.append(f"| {kpi['id']} | {kpi['name']} | {kpi['weight']} | {norm_param} |")
+            weight = _format_kpi_weight(kpi)
+            lines.append(f"| {kpi['id']} | {kpi['name']} | {weight} | {norm_param} |")
 
     return "\n".join(lines)
 

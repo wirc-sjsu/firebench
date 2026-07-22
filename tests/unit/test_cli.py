@@ -2,6 +2,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 from click.testing import CliRunner
+import pytest
 
 from firebench.cli import main
 
@@ -18,6 +19,28 @@ def _fake_registry(tmp_path, call):
     def fake_target_describer(target=None, obs_data=None):
         if target is not None:
             call["target_describer_obs_data"] = obs_data
+            if target in {"A", "short_all", "0"}:
+                return {
+                    "target": target,
+                    "period": None,
+                    "aggregated": target != "0",
+                    "kpi_groups": {
+                        "B": "Building Damage",
+                        "P": "Fire Perimeters",
+                        "W": "Weather Stations",
+                    },
+                    "perimeters": [],
+                    "weather_stations": [],
+                    "kpis": [
+                        {
+                            "id": "FB001_FP01",
+                            "name": "Average Jaccard Index",
+                            "group": "Fire Perimeters",
+                            "weight": None if target == "0" else 2,
+                            "value_norm_param_m": None,
+                        },
+                    ],
+                }
             if target in {"B", "H013_B"}:
                 return {
                     "target": target,
@@ -406,6 +429,42 @@ def test_run_command_report_creates_report_skeleton(monkeypatch, tmp_path):
             'alt="Observed and modeled fire perimeter contours">\n'
             "</p>\n"
         )
+
+
+@pytest.mark.parametrize("target", ["A", "short_all"])
+def test_run_command_report_describes_retained_targets(monkeypatch, tmp_path, target):
+    model_output = tmp_path / "model.h5"
+    model_output.write_text("model")
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as cwd:
+        result = runner.invoke(main, ["run", "001", target, str(model_output), "--report"])
+
+        assert result.exit_code == 0, result.output
+        report = (Path(cwd) / "firebench_report.md").read_text(encoding="utf-8")
+        assert f"Benchmark target: {target}" in report
+        assert "### Temporal period" not in report
+        assert "- B: Building Damage" in report
+        assert call["report_figure_target_info"]["target"] == target
+
+
+def test_run_command_report_describes_unaggregated_target_zero(monkeypatch, tmp_path):
+    model_output = tmp_path / "model.h5"
+    model_output.write_text("model")
+    call = {}
+    monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, call))
+
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path) as cwd:
+        result = runner.invoke(main, ["run", "001", "0", str(model_output), "--report"])
+
+        assert result.exit_code == 0, result.output
+        report = (Path(cwd) / "firebench_report.md").read_text(encoding="utf-8")
+        assert "Benchmark target: 0" in report
+        assert "Aggregation: none (individual KPI scores only)" in report
+        assert "| FB001_FP01 | Average Jaccard Index |  |  |" in report
 
 
 def test_run_command_report_does_not_overwrite_existing_report(monkeypatch, tmp_path):
@@ -839,6 +898,17 @@ def test_list_command_prints_standalone_building_damage_target_details(monkeypat
         "FB001_BD01    1  \n"
         "FB001_BD06    1  \n"
     )
+
+
+@pytest.mark.parametrize(
+    "target",
+    ["A", "S", "CC", "CDI", "BS3", "WX1", "WX2", "WX3", "WX4", "short_all", "WX_short", "0"],
+)
+def test_list_command_describes_retained_caldor_targets(target):
+    result = CliRunner().invoke(main, ["list", "001", target])
+
+    assert result.exit_code == 0, result.output
+    assert f"Benchmark target: {target}\n" in result.output
 
 
 def test_data_list_matches_top_level_list(monkeypatch, tmp_path):

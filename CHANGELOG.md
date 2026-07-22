@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
 - Keep the `code-formatting` Makefile target as a Black check and add `fix-code-formatting` to apply Black formatting locally.
 ### Fixed
+- Describe retained Caldor schemes and unaggregated target `0` consistently in `firebench list`
+  output and generated report metadata.
 - Preserve the FireBench 0.9 Caldor weather KPI meanings for `FB001_WX001` through
   `FB001_WX312` and assign new HRRR-aligned weather KPIs starting at `FB001_WX313`.
 - Support UTC and extended ISO 8601 `date_time` values when standardizing Synoptic observations.
