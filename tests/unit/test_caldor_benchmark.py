@@ -286,7 +286,7 @@ def test_describe_available_building_damage_target_includes_details():
     assert target_info["weather_stations"] == []
     assert target_info["kpis"][0] == {
         "id": "FB001_BD01",
-        "name": "",
+        "name": "Binary Structure Loss Accuracy",
         "group": "Building Damage",
         "weight": 1,
         "value_norm_param_m": None,
@@ -346,6 +346,68 @@ def test_describe_unaggregated_target_zero_includes_every_kpi_once():
     assert len(kpi_ids) == len(c001_caldor.BENCHMARK_FUNCTIONS)
     assert set(kpi_ids) == set(c001_caldor.BENCHMARK_FUNCTIONS)
     assert {kpi["weight"] for kpi in target_info["kpis"]} == {None}
+
+
+@pytest.mark.parametrize(
+    ("target", "expected_groups"),
+    [
+        ("B", ["Building Damage"]),
+        ("S", ["Burn Severity"]),
+        ("CC", ["Canopy Cover Loss"]),
+        (
+            "FP",
+            [
+                "Fire Perimeter W1",
+                "Fire Perimeter W2",
+                "Fire Perimeter W3",
+                "Fire Perimeter W4",
+            ],
+        ),
+    ],
+)
+def test_standalone_targets_select_documented_groups(target, expected_groups):
+    target_info = c001_caldor.describe_available_targets(target)
+
+    assert list(c001_caldor.AGGREGATION[target]) == expected_groups
+    assert target_info["period"] is None
+    assert target_info["kpis"]
+
+
+@pytest.mark.parametrize("target", ["H013_WPB", "H013_PWB", "H013_BWPP", "h13_wbp"])
+def test_combined_target_flags_are_canonicalized(target):
+    assert c001_caldor.normalize_benchmark_target(target) == "H013_BPW"
+
+
+@pytest.mark.parametrize("target", ["H013_S", "H013_CC", "P02_SC"])
+def test_period_targets_reject_nonperiod_kpi_groups(target):
+    with pytest.raises(ValueError, match="Unsupported analysis flags"):
+        c001_caldor.normalize_benchmark_target(target)
+
+
+def test_target_discovery_describes_standalone_and_period_targets():
+    target_info = c001_caldor.describe_available_targets()
+
+    assert target_info["standalone_targets"] == {
+        "B": "Building Damage",
+        "S": "Burn Severity",
+        "CC": "Canopy Cover Loss",
+        "FP": "Fire Perimeters (all curated periods)",
+    }
+    assert target_info["period_target_syntax"] == "PERIOD_FLAGS"
+    assert target_info["kpi_groups"] == {
+        "B": "Building Damage",
+        "P": "Fire Perimeters",
+        "W": "Weather Stations",
+    }
+    assert len(target_info["periods"]) == len(c001_caldor.cfg.HRRR_PERIODS) + len(
+        c001_caldor.cfg.CURATED_PERIODS
+    )
+
+
+def test_every_discoverable_kpi_has_a_descriptive_name():
+    target_info = c001_caldor.describe_available_targets("0")
+
+    assert all(kpi["name"].strip() for kpi in target_info["kpis"])
 
 
 def test_normalize_benchmark_target_accepts_building_damage_targets():

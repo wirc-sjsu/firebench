@@ -43,6 +43,50 @@ KPI_GROUP_CATEGORIES = (
     ("P", "Fire Perimeters"),
     ("W", "Weather Stations"),
 )
+STANDALONE_TARGETS = (
+    ("B", "Building Damage"),
+    ("S", "Burn Severity"),
+    ("CC", "Canopy Cover Loss"),
+    ("FP", "Fire Perimeters (all curated periods)"),
+)
+BINARY_KPI_SUFFIXES = (
+    "Accuracy",
+    "Precision",
+    "Recall",
+    "Specificity",
+    "Negative Predictive Value",
+    "F1 Score",
+)
+STATIC_KPI_NAMES = {
+    **{
+        f"FB001_BD{index:02d}": f"Binary Structure Loss {suffix}"
+        for index, suffix in enumerate(BINARY_KPI_SUFFIXES, start=1)
+    },
+    **{
+        f"FB001_SV{index:02d}": f"Binary High Severity {suffix}"
+        for index, suffix in enumerate(BINARY_KPI_SUFFIXES, start=1)
+    },
+    **{
+        f"FB001_CC{index:02d}": f"Binary High Canopy Cover Loss {suffix}"
+        for index, suffix in enumerate(BINARY_KPI_SUFFIXES, start=1)
+    },
+    **{
+        f"FB001_FP{index:02d}": name
+        for index, name in enumerate(
+            (
+                *("Average Jaccard Index",) * 4,
+                *("Minimum Jaccard Index",) * 4,
+                *("Maximum Jaccard Index",) * 4,
+                *("Average Dice-Sorensen Index",) * 4,
+                *("Minimum Dice-Sorensen Index",) * 4,
+                *("Maximum Dice-Sorensen Index",) * 4,
+                *("Final Burn Area Bias",) * 4,
+                *("Burn Area RMSE",) * 4,
+            ),
+            start=1,
+        )
+    },
+}
 
 
 # ---------------------------
@@ -1279,7 +1323,7 @@ def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
         )
 
     group_names = []
-    canonical_flags = "".join(dict.fromkeys(analysis_flags))
+    canonical_flags = "".join(flag for flag in "BPW" if flag in analysis_flags)
     if period_selector.startswith("H"):
         period_number_text = period_selector.removeprefix("H")
         if not period_number_text.isdigit():
@@ -1342,6 +1386,8 @@ def _perimeter_time_from_path(perimeter_path: str) -> str:
 
 
 def _benchmark_kpi_name(bench_id: str) -> str:
+    if bench_id in STATIC_KPI_NAMES:
+        return STATIC_KPI_NAMES[bench_id]
     benchmark = BENCHMARK_FUNCTIONS[bench_id]
     keywords = getattr(benchmark, "keywords", {}) or {}
     if getattr(benchmark, "func", None) is bench_fp_generic_index:
@@ -1514,6 +1560,8 @@ def describe_available_targets(benchmark_target: str | None = None, obs_data: Pa
         )
 
     return {
+        "standalone_targets": dict(STANDALONE_TARGETS),
+        "period_target_syntax": "PERIOD_FLAGS",
         "periods": periods,
         "kpi_groups": period_kpi_groups,
     }
@@ -1596,6 +1644,7 @@ def create_aggregation_schemes():
     AGGREGATION["CC"] = {
         "Canopy Cover Loss": GROUPS["Canopy Cover Loss"].copy(),
     }
+    AGGREGATION["FP"] = _copy_groups([f"Fire Perimeter W{period_number}" for period_number in range(1, 5)])
     AGGREGATION["CDI"] = {
         "Building Damage": GROUPS["Building Damage"].copy(),
     }
@@ -2140,6 +2189,8 @@ def get_list_benchmark_with_agg(agg_dict: dict, agg_scheme: str):
 
 
 def _benchmark_debug_label(bench_id: str) -> str:
+    if bench_id in STATIC_KPI_NAMES:
+        return STATIC_KPI_NAMES[bench_id]
     benchmark = BENCHMARK_FUNCTIONS[bench_id]
     keywords = getattr(benchmark, "keywords", {}) or {}
     if "kpi_name_custom" in keywords:

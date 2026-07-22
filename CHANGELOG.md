@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] 
 ### Added
+- Add the standalone Caldor `FP` target and expose standalone targets, period syntax, available
+  periods, and combinable flags through `firebench list CASE`.
 - Integrate the `firebench-adapter-common` source code into FireBench as `firebench.adapter_common`.
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
 - Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
@@ -30,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
 - Keep the `code-formatting` Makefile target as a Black check and add `fix-code-formatting` to apply Black formatting locally.
 ### Fixed
+- Canonicalize combined Caldor target flags in `B`, `P`, `W` order and provide descriptive names
+  for every discoverable KPI.
 - Describe retained Caldor schemes and unaggregated target `0` consistently in `firebench list`
   output and generated report metadata.
 - Preserve the FireBench 0.9 Caldor weather KPI meanings for `FB001_WX001` through

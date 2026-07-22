@@ -150,6 +150,13 @@ def _fake_registry(tmp_path, call):
                 ],
             }
         return {
+            "standalone_targets": {
+                "B": "Building Damage",
+                "S": "Burn Severity",
+                "CC": "Canopy Cover Loss",
+                "FP": "Fire Perimeters (all curated periods)",
+            },
+            "period_target_syntax": "PERIOD_FLAGS",
             "periods": [
                 {
                     "target": "H000",
@@ -760,12 +767,21 @@ def test_list_command_prints_case_targets(monkeypatch, tmp_path):
         "Short name: 2021_Caldor\n"
         "Documentation: https://example.test/caldor\n"
         "\n"
-        "Temporal periods\n"
+        "Standalone targets\n"
+        "B: Building Damage\n"
+        "S: Burn Severity\n"
+        "CC: Canopy Cover Loss\n"
+        "FP: Fire Perimeters (all curated periods)\n"
+        "\n"
+        "Period targets\n"
+        "Syntax: PERIOD_FLAGS (for example, H013_BPW or P02_P)\n"
+        "\n"
+        "Available periods\n"
         "Target   Start   End\n"
         "H000  2021-08-17T12:00+00:00  2021-08-19T12:00+00:00\n"
         "P01  2021-08-17T20:20+00:00  2021-09-10T23:34+00:00\n"
         "\n"
-        "KPI groups\n"
+        "Combinable flags\n"
         "B: Building Damage\n"
         "P: Fire Perimeters\n"
         "W: Weather Stations\n"
@@ -902,7 +918,21 @@ def test_list_command_prints_standalone_building_damage_target_details(monkeypat
 
 @pytest.mark.parametrize(
     "target",
-    ["A", "S", "CC", "CDI", "BS3", "WX1", "WX2", "WX3", "WX4", "short_all", "WX_short", "0"],
+    [
+        "A",
+        "S",
+        "CC",
+        "FP",
+        "CDI",
+        "BS3",
+        "WX1",
+        "WX2",
+        "WX3",
+        "WX4",
+        "short_all",
+        "WX_short",
+        "0",
+    ],
 )
 def test_list_command_describes_retained_caldor_targets(target):
     result = CliRunner().invoke(main, ["list", "001", target])

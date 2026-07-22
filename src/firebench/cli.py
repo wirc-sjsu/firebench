@@ -209,7 +209,15 @@ def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | No
         return
 
     click.echo("")
-    click.echo("Temporal periods")
+    click.echo("Standalone targets")
+    for standalone_target, description in target_info["standalone_targets"].items():
+        click.echo(f"{standalone_target}: {description}")
+
+    click.echo("")
+    click.echo("Period targets")
+    click.echo(f"Syntax: {target_info['period_target_syntax']} (for example, H013_BPW or P02_P)")
+    click.echo("")
+    click.echo("Available periods")
     click.echo("Target   Start   End")
     for period in target_info["periods"]:
         click.echo(
@@ -219,7 +227,7 @@ def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | No
         )
 
     click.echo("")
-    click.echo("KPI groups")
+    click.echo("Combinable flags")
     for flag, description in target_info["kpi_groups"].items():
         click.echo(f"{flag}: {description}")
 
