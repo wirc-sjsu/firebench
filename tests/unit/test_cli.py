@@ -941,6 +941,24 @@ def test_list_command_describes_retained_caldor_targets(target):
     assert f"Benchmark target: {target}\n" in result.output
 
 
+@pytest.mark.parametrize(
+    ("target", "message"),
+    [
+        ("H999_P", "Unknown HRRR period selector"),
+        ("P99_P", "Unknown curated period selector"),
+        ("H013_X", "Unsupported analysis flags"),
+        ("bad", "Expected format"),
+    ],
+)
+def test_list_command_reports_invalid_targets_without_tracebacks(target, message):
+    result = CliRunner().invoke(main, ["list", "001", target])
+
+    assert result.exit_code == 2
+    assert "Error:" in result.output
+    assert message in result.output
+    assert "Traceback" not in result.output
+
+
 def test_data_list_matches_top_level_list(monkeypatch, tmp_path):
     monkeypatch.setattr("firebench.cli.AVAIL_BENCHMARKS", _fake_registry(tmp_path, {}))
 

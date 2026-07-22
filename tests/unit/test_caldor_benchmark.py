@@ -83,6 +83,19 @@ def test_hrrr_weather_aggregation_schemes_are_generated():
     assert len(c001_caldor.AGGREGATION["WX_WH_ALL"]) == 5 * len(c001_caldor.WH_PERIODS)
 
 
+@pytest.mark.parametrize("period_number", range(1, 5))
+def test_retained_weather_targets_match_curated_period_targets(period_number):
+    c001_caldor.build_registries()
+
+    retained_target = f"WX{period_number}"
+    period_target = c001_caldor.resolve_benchmark_target(f"P{period_number:02d}_W")
+
+    assert c001_caldor.AGGREGATION[retained_target] == c001_caldor.AGGREGATION[period_target]
+    assert c001_caldor.get_list_benchmark_with_agg(
+        c001_caldor.AGGREGATION, retained_target
+    ) == c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, period_target)
+
+
 def test_hrrr_fire_perimeter_aggregation_schemes_are_generated():
     c001_caldor.build_registries()
 
