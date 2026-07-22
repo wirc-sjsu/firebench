@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
 - Keep the `code-formatting` Makefile target as a Black check and add `fix-code-formatting` to apply Black formatting locally.
 ### Fixed
+- Replace the malformed custom fuel-model JSON tutorial with a complete, runnable CSV, JSON, and
+  Python example.
 - Repair malformed contributor email links in the Caldor benchmark specification.
 - Point the README contribution link at the maintained documentation page.
 - Canonicalize combined Caldor target flags in `B`, `P`, `W` order and provide descriptive names

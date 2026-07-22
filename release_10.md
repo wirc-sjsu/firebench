@@ -113,7 +113,7 @@ runnable, and document the workflows introduced by the current package and CLI.
 - [x] Fix the broken `CONTRIBUTE.md` link in `README.md`.
 - [x] Fix malformed email links in the Caldor benchmark documentation.
 - [ ] Correct spelling, grammar, capitalization, and naming inconsistencies across user-facing pages.
-- [ ] Repair the custom fuel-model tutorial so its JSON example is valid and can be copied directly.
+- [x] Repair the custom fuel-model tutorial so its JSON example is valid and can be copied directly.
 - [ ] Rewrite the custom ROS model tutorial as a complete executable example with correct imports,
   variable names, metadata keys, method signatures, and unit handling.
 - [ ] Check installation instructions for clean environments and state supported Python versions,
