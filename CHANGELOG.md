@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station decisions.
 - Make weather-station QC exports atomic and safely serialized, and apply skipped stations and
   record removals to cleaned H5 copies.
+- Replace weather-station QC pickle sessions with validated, atomic, versioned JSON sessions that
+  recompute station statistics from the referenced H5 when restored.
 
 ## [0.9.0] - 2026 / 05 / 18
 ### Added

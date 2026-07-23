@@ -151,12 +151,13 @@ class LoaderMixin:
         Stations stream in via _load_chunk() on self.after() ticks so the UI stays
         responsive. Overview and map refresh after each chunk with pending new
         stations. Global time extent and outage stats are computed only when load
-        finishes. Supports resuming with cached stats from a prior session.
+        finishes. Optional cached statistics remain an internal loading
+        optimization; persisted sessions never supply them.
 
         Args:
-            cached_stats (dict, optional): Dict mapping stid to stats dict from a
-                prior load. If provided, _stats_for_station() will reuse cached
-                stats and only compute new variables. Defaults to None.
+            cached_stats (dict, optional): Dict mapping stid to precomputed
+                statistics for an internal caller. JSON session restoration
+                always leaves this as None. Defaults to None.
             on_complete (callable, optional): Callback with no arguments, invoked
                 after all stations are loaded and UI is fully refreshed. Defaults to None.
         """

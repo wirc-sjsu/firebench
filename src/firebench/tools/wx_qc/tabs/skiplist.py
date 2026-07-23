@@ -1,11 +1,6 @@
-import copy
-import os
-import pickle
 import shutil
-import tempfile
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -15,50 +10,12 @@ import h5py
 import hdf5plugin  # noqa: F401  # pylint: disable=unused-import
 
 from ..dialogs import AddSkipDialog, ExportScriptDialog
+from ..file_io import atomic_write_text as _atomic_write_text
+from ..file_io import temporary_sibling as _temporary_sibling
+from ..session import write_session_file
 from ..state import mark_stations_skipped
 from ..theme import PAD
 from ..time_axis import TimeAxisError, parse_h5_time_axis
-
-
-def _temporary_sibling(destination) -> Path:
-    """Create and return an empty temporary sibling of ``destination``."""
-    destination = Path(destination)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    file_descriptor, temporary_name = tempfile.mkstemp(
-        dir=destination.parent,
-        prefix=f".{destination.name}.",
-        suffix=".tmp",
-    )
-    os.close(file_descriptor)
-    return Path(temporary_name)
-
-
-def _atomic_write_text(destination, text: str) -> None:
-    """Atomically replace ``destination`` with UTF-8 ``text``."""
-    destination = Path(destination)
-    temporary_path = _temporary_sibling(destination)
-    try:
-        with temporary_path.open("w", encoding="utf-8", newline="\n") as output:
-            output.write(text)
-            output.flush()
-            os.fsync(output.fileno())
-        temporary_path.replace(destination)
-    finally:
-        temporary_path.unlink(missing_ok=True)
-
-
-def _atomic_write_pickle(destination, value) -> None:
-    """Atomically replace ``destination`` with a pickle serialization."""
-    destination = Path(destination)
-    temporary_path = _temporary_sibling(destination)
-    try:
-        with temporary_path.open("wb") as output:
-            pickle.dump(value, output)
-            output.flush()
-            os.fsync(output.fileno())
-        temporary_path.replace(destination)
-    finally:
-        temporary_path.unlink(missing_ok=True)
 
 
 def _format_skip_stations_block(skip_list: dict) -> str:
@@ -624,7 +581,7 @@ class SkiplistTabMixin:
             return
         try:
             _, qc_path = self._skip_export_write(path)
-        except (OSError, pickle.PickleError, TypeError, ValueError) as exc:
+        except (OSError, UnicodeError, TypeError, ValueError) as exc:
             messagebox.showerror("Export failed", f"Could not write {path}:\n\n{exc}")
             return
         qc_msg = f"\n{qc_path.name}" if qc_path else ""
@@ -650,7 +607,7 @@ class SkiplistTabMixin:
 
         Directly callable from tests. Writes `path` (skip_stations +
         remove_records as Python source) and, if an H5 is loaded, a sibling
-        <fire>_QC.pkl with the full QC session state.
+        <fire>_QC.json with the decisions, settings, and view state.
 
         Args:
             path (str or Path): destination .py file path.
@@ -672,26 +629,13 @@ class SkiplistTabMixin:
         qc_path = None
         if self.h5_path:
             fire = self.h5_path.stem.removesuffix("_weather_data")
-            qc_path = self.h5_path.parent / f"{fire}_QC.pkl"
+            qc_path = self.h5_path.parent / f"{fire}_QC.json"
             if Path(path).resolve() == qc_path.resolve():
                 raise ValueError("Python and QC snapshot destinations must differ")
 
         _atomic_write_text(path, "\n".join(lines) + "\n")
         if qc_path is not None:
-            _atomic_write_pickle(
-                qc_path,
-                {
-                    "version": 4,
-                    "skip_list": dict(self.skip_list),
-                    "green_list": sorted(self.green_list),
-                    "removal_list": {s: [dict(e) for e in v] for s, v in self.removal_list.items()},
-                    "saved_at": datetime.now().isoformat(timespec="seconds"),
-                    "h5_path": str(self.h5_path),
-                    "cfg": copy.deepcopy(self.cfg),
-                    "all_stats": self.all_stats,
-                    "ov_col_vis": {c: v.get() for c, v in self._ov_col_vars.items()},
-                },
-            )
+            write_session_file(qc_path, self._session_state())
         return path, qc_path
 
     def _export_cleaned_h5(self):

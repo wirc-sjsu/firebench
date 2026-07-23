@@ -17,7 +17,7 @@ from datetime import datetime
 from ..state import visible_issues
 from ..theme import ACCENT, MISSING_MARKER, MUTED, SKIP_RED, GREEN_OK, UNDECIDED, FONT_MONO, FIG_DPI, PAD
 from ..widgets import TimeNavigator
-from ..constants import parse_nonnegative_finite
+from ..constants import MAP_COLOR_MODES, parse_nonnegative_finite
 
 
 class MapTabMixin:
@@ -42,15 +42,7 @@ class MapTabMixin:
             textvariable=self.var_map_color,
             state="readonly",
             width=16,
-            values=[
-                "issues",
-                "wd_nan_pct",
-                "n_variables",
-                "n_pts",
-                "qc_status",
-                "variable_value",
-                "wind_combo",
-            ],
+            values=MAP_COLOR_MODES,
         )
         cb_mode.pack(side="left", padx=PAD)
         # write-trace ensures both interactive picks and programmatic set() calls

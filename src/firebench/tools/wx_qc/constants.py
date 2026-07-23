@@ -49,6 +49,16 @@ ASSERTION_CATS = [
     ("full_outage", "Longest full-station outage exceeds threshold"),
 ]
 
+MAP_COLOR_MODES = (
+    "issues",
+    "wd_nan_pct",
+    "n_variables",
+    "n_pts",
+    "qc_status",
+    "variable_value",
+    "wind_combo",
+)
+
 
 def default_config() -> dict:
     """Return an independent copy of the default GUI configuration."""
