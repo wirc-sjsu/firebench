@@ -112,123 +112,123 @@ runnable, and document the workflows introduced by the current package and CLI.
   PyYAML, and conditional Tomli.
 - [x] Fix the broken `CONTRIBUTE.md` link in `README.md`.
 - [x] Fix malformed email links in the Caldor benchmark documentation.
-- [ ] Correct spelling, grammar, capitalization, and naming inconsistencies across user-facing pages.
+- [x] Correct spelling, grammar, capitalization, and naming inconsistencies across user-facing pages.
 - [x] Repair the custom fuel-model tutorial so its JSON example is valid and can be copied directly.
 - [x] Rewrite the custom ROS model tutorial as a complete executable example with correct imports,
   variable names, metadata keys, method signatures, and unit handling.
-- [ ] Check installation instructions for clean environments and state supported Python versions,
+- [x] Check installation instructions for clean environments and state supported Python versions,
   recommended environment setup, and development installation separately.
-- [ ] Review statements that require users to contact the FireBench team and replace them with
+- [x] Review statements that require users to contact the FireBench team and replace them with
   self-service instructions wherever the necessary tools are public.
-- [ ] Review local links, images, code references, and external URLs throughout the documentation.
+- [x] Review local links, images, code references, and external URLs throughout the documentation.
 
 ## Priority 3: Add Core Tutorials
 
 ### FireBench in Five Minutes
 
-- [ ] Install FireBench in a clean environment.
-- [ ] Run `firebench list` and explain the result.
-- [ ] Download the Caldor dataset.
-- [ ] List the available Caldor targets and explain how to select one.
-- [ ] Run one small benchmark workflow.
-- [ ] Identify and briefly interpret the generated JSON, PDF, and log files.
-- [ ] End with links to model-output preparation and the detailed Caldor tutorial.
+- [x] Install FireBench in a clean environment.
+- [x] Run `firebench list` and explain the result.
+- [x] Download the Caldor dataset.
+- [x] List the available Caldor targets and explain how to select one.
+- [x] Run one small benchmark workflow.
+- [x] Identify and briefly interpret the generated JSON, PDF, and log files.
+- [x] End with links to model-output preparation and the detailed Caldor tutorial.
 
 ### Prepare a Model-Output HDF5 File
 
-- [ ] Start from a minimal model result or small synthetic array.
-- [ ] Create a FireBench standard HDF5 file using public library functions.
-- [ ] Add required root attributes, groups, datasets, units, time information, and spatial metadata.
-- [ ] Use names from the standard namespace.
-- [ ] Validate the generated file and demonstrate how to inspect validation failures.
-- [ ] Use the completed file in a benchmark command.
-- [ ] Provide the complete runnable script and expected HDF5 tree.
+- [x] Start from a minimal model result or small synthetic array.
+- [x] Create a FireBench standard HDF5 file using public library functions.
+- [x] Add required root attributes, groups, datasets, units, time information, and spatial metadata.
+- [x] Use names from the standard namespace.
+- [x] Validate the generated file and demonstrate how to inspect validation failures.
+- [x] Use the completed file in a benchmark command.
+- [x] Provide the complete runnable script and expected HDF5 tree.
 
 ### Understand Benchmark Targets and Scores
 
-- [ ] Explain benchmark case identifiers and target identifiers such as `H013_P`.
-- [ ] Explain temporal periods and KPI group flags.
-- [ ] Explain metrics, normalization, KPI unit scores, weights, aggregation schemes, and total scores.
-- [ ] Show how `firebench list CASE` and `firebench list CASE TARGET` help users inspect targets.
-- [ ] Walk through a small JSON scorecard and relate it to the PDF scorecard.
+- [x] Explain benchmark case identifiers and target identifiers such as `H013_P`.
+- [x] Explain temporal periods and KPI group flags.
+- [x] Explain metrics, normalization, KPI unit scores, weights, aggregation schemes, and total scores.
+- [x] Show how `firebench list CASE` and `firebench list CASE TARGET` help users inspect targets.
+- [x] Walk through a small JSON scorecard and relate it to the PDF scorecard.
 
 ### Compare Multiple Model Runs
 
-- [ ] Introduce `firebench multirun` and its intended use.
-- [ ] Provide a complete YAML configuration with at least two model outputs.
-- [ ] Explain relative paths, output directories, overwrite behavior, naming, and optional fields.
-- [ ] Describe the individual results and comparison scorecard that are generated.
-- [ ] Include common configuration errors and how to resolve them.
+- [x] Introduce `firebench multirun` and its intended use.
+- [x] Provide a complete YAML configuration with at least two model outputs.
+- [x] Explain relative paths, output directories, overwrite behavior, naming, and optional fields.
+- [x] Describe the individual results and comparison scorecard that are generated.
+- [x] Include common configuration errors and how to resolve them.
 
 ### Plot and Report Benchmark Results
 
-- [ ] Document `firebench plot` with a complete TOML configuration.
-- [ ] Explain supported inputs, plot types, styling options, and generated files.
-- [ ] Document `firebench run --report` and its report skeleton and figures directory.
-- [ ] Show a simple workflow for adding user comments and preserving report artifacts.
+- [x] Document `firebench plot` with a complete TOML configuration.
+- [x] Explain supported inputs, plot types, styling options, and generated files.
+- [x] Document `firebench run --report` and its report skeleton and figures directory.
+- [x] Show a simple workflow for adding user comments and preserving report artifacts.
 
 ### Add a Custom Rate-of-Spread Model
 
-- [ ] Introduce the `RateOfSpreadModel` contract and metadata structure.
-- [ ] Implement a minimal model with and without Pint units.
-- [ ] Demonstrate input validation, unit conversion, validity ranges, and output units.
-- [ ] Include a runnable example and a small test with an expected numerical result.
-- [ ] Explain how the model can be connected to a fuel model and used in an analysis workflow.
+- [x] Introduce the `RateOfSpreadModel` contract and metadata structure.
+- [x] Implement a minimal model with and without Pint units.
+- [x] Demonstrate input validation, unit conversion, validity ranges, and output units.
+- [x] Include a runnable example and a small test with an expected numerical result.
+- [x] Explain how the model can be connected to a fuel model and used in an analysis workflow.
 
 ## Priority 4: Add Focused How-to Guides
 
-- [ ] How to validate an existing FireBench HDF5 file and diagnose common schema errors.
-- [ ] How to convert model-specific output into the FireBench standard format.
-- [ ] How to select Caldor temporal periods, KPI groups, and aggregation schemes.
-- [ ] How to use custom fuel models.
-- [ ] How to generate and customize plots from TOML.
-- [ ] How to generate a benchmark report skeleton.
-- [ ] How to sign benchmark results and verify FireBench certificates.
-- [ ] How to add a benchmark case to the registry.
-- [ ] How to add or update a standard namespace variable.
+- [x] How to validate an existing FireBench HDF5 file and diagnose common schema errors.
+- [x] How to convert model-specific output into the FireBench standard format.
+- [x] How to select Caldor temporal periods, KPI groups, and aggregation schemes.
+- [x] How to use custom fuel models.
+- [x] How to generate and customize plots from TOML.
+- [x] How to generate a benchmark report skeleton.
+- [x] How to sign benchmark results and verify FireBench certificates.
+- [x] How to add a benchmark case to the registry.
+- [x] How to add or update a standard namespace variable.
 
 ## Priority 5: Complete the Reference Material
 
-- [ ] Add a complete CLI reference for `list`, `data`, `run`, `multirun`, and `plot`, including all
+- [x] Add a complete CLI reference for `list`, `data`, `run`, `multirun`, and `plot`, including all
   options and exit/error behavior.
-- [ ] Generate CLI reference content from Click where practical to prevent drift.
-- [ ] Expand the API reference to cover `standardize`, `signing`, `benchmarks`, `sensors`, plotting,
+- [x] Generate CLI reference content from Click where practical to prevent drift.
+- [x] Expand the API reference to cover `standardize`, `signing`, `benchmarks`, `sensors`, plotting,
   CLI, and adapter utilities.
-- [ ] Review the existing API pages for missing public functions and obsolete modules.
-- [ ] Correct the Sphinx import path and ensure autodoc works in a clean documentation environment.
-- [ ] Document output filenames, overwrite behavior, logging, and default paths in one reference page.
-- [ ] Clearly label stable, experimental, and internal APIs.
+- [x] Review the existing API pages for missing public functions and obsolete modules.
+- [x] Correct the Sphinx import path and ensure autodoc works in a clean documentation environment.
+- [x] Document output filenames, overwrite behavior, logging, and default paths in one reference page.
+- [x] Clearly label stable, experimental, and internal APIs.
 
 ## Priority 6: Make Documentation Testable and Maintainable
 
-- [ ] Add a CI job that installs documentation dependencies and builds Sphinx with warnings treated
+- [x] Add a CI job that installs documentation dependencies and builds Sphinx with warnings treated
   as errors.
-- [ ] Add internal-link and external-link checking, with a documented policy for intermittent
+- [x] Add internal-link and external-link checking, with a documented policy for intermittent
   external services.
-- [ ] Test Python snippets or move substantial examples into runnable files covered by `pytest`.
-- [ ] Add CLI smoke tests for commands shown in tutorials.
-- [ ] Add validation tests for JSON, YAML, and TOML examples.
-- [ ] Add a documentation review item to the pull-request checklist for user-visible changes.
-- [ ] Define a single source of truth for the package version and dependency list.
-- [ ] Document how to build and preview the documentation locally.
+- [x] Test Python snippets or move substantial examples into runnable files covered by `pytest`.
+- [x] Add CLI smoke tests for commands shown in tutorials.
+- [x] Add validation tests for JSON, YAML, and TOML examples.
+- [x] Add a documentation review item to the pull-request checklist for user-visible changes.
+- [x] Define a single source of truth for the package version and dependency list.
+- [x] Document how to build and preview the documentation locally.
 
 ## Suggested Delivery Sequence
 
-- [ ] **Phase 1 — Reliable foundation:** repair broken links and examples, synchronize version and
+- [x] **Phase 1 — Reliable foundation:** repair broken links and examples, synchronize version and
   dependencies, and add the strict Sphinx CI build.
-- [ ] **Phase 2 — User onboarding:** restructure the navigation and publish the five-minute and
+- [x] **Phase 2 — User onboarding:** restructure the navigation and publish the five-minute and
   model-output HDF5 tutorials.
-- [ ] **Phase 3 — Current workflows:** document targets and scores, multirun, plotting, and reports.
-- [ ] **Phase 4 — Extension and reference:** replace the custom ROS tutorial, add focused how-to
+- [x] **Phase 3 — Current workflows:** document targets and scores, multirun, plotting, and reports.
+- [x] **Phase 4 — Extension and reference:** replace the custom ROS tutorial, add focused how-to
   guides, and complete API and CLI reference coverage.
 
 ## Definition of Done
 
-- [ ] A new user can install FireBench and complete a documented benchmark without undocumented
+- [x] A new user can install FireBench and complete a documented benchmark without undocumented
   steps.
-- [ ] A model developer can create and validate a compatible HDF5 model-output file from a complete
+- [x] A model developer can create and validate a compatible HDF5 model-output file from a complete
   example.
-- [ ] Every documented command and structured configuration example is checked automatically.
-- [ ] The documentation builds without warnings in CI.
-- [ ] Documentation version, dependencies, CLI options, and public API reference match FireBench
+- [x] Every documented command and structured configuration example is checked automatically.
+- [x] The documentation builds without warnings in CI.
+- [x] Documentation version, dependencies, CLI options, and public API reference match FireBench
   0.10.

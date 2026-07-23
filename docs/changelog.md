@@ -6,7 +6,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
-- Add `firebench multirun` to benchmark multiple model output files from a YAML config and generate a comparison scorecard PDF.
+- Add goal-oriented tutorials, focused how-to guides, complete CLI and API references, and strict
+  documentation CI with executable example and link checks.
+- Add the standalone Caldor `FP` target and expose standalone targets, period syntax, available
+  periods, and combinable flags through `firebench list CASE`.
+- Integrate the `firebench-adapter-common` source code into FireBench as `firebench.adapter_common`.
+- Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
+- Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
+### Changed
+- Source the Sphinx version from package project metadata and replace stale package and dependency
+  inventories with FireBench 0.10 reference content derived from maintained sources.
+- Make the documentation landing page a workflow-oriented hub and keep the README as a concise
+  project entry point that links to maintained documentation.
+- Reorganize the documentation navigation into Getting Started, Tutorials, How-to Guides, and
+  Reference and Concepts, with contributor material separated from end-user documentation.
+- Document the FireBench 0.9-to-0.10 Caldor target and CLI migration and require target inspection
+  before the tutorial benchmark run.
+- Document that FireBench 0.10 Caldor perimeter weights and normalization make its scores
+  incompatible with FireBench 0.9 scores.
+- Weight average Jaccard at 2 and minimum Jaccard and burn-area KPIs at 1; retain maximum Jaccard
+  and Dice-Sorensen KPIs as unweighted fire-perimeter diagnostics.
+- Scale fire-area normalization parameter `m` from observed area, with a 20% relative error scoring 50.
+- Add building damage target nomenclature such as `H013_B`.
+- Add weather target nomenclature such as `H013_W` and show weather station counts in target listings.
+- Color multi-model comparison score-card cells by their absolute score using the `RdYlGn` scale.
+- Use a blue, gray, and green colorblind-safer palette for score-card PDFs.
+- Increase fire perimeter burn-area normalization from 5000 m to 10000 m.
+- Add an observed-versus-modeled perimeter contour figure with KPI and burn-area annotations to generated reports.
+- Include benchmark target details in reports generated with `firebench run --report`.
+- Show period, perimeter, KPI, weight, and normalization details in `firebench list CASE TARGET`.
+- Print available benchmark targets when `firebench list` receives a case ID or short name.
+- Show benchmark IDs, short names, and documentation links in `firebench list`.
+- Use short KPI labels in score-card PDFs by default and add `--full-name` for full labels.
+- Use benchmark short names and readable perimeter group labels in score-card PDFs.
+- Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
+- Keep the `code-formatting` Makefile target as a Black check and add `fix-code-formatting` to apply Black formatting locally.
+### Fixed
+- Replace the malformed custom fuel-model JSON tutorial with a complete, runnable CSV, JSON, and
+  Python example.
+- Repair malformed contributor email links in the Caldor benchmark specification.
+- Point the README contribution link at the maintained documentation page.
+- Canonicalize combined Caldor target flags in `B`, `P`, `W` order and provide descriptive names
+  for every discoverable KPI.
+- Describe retained Caldor schemes and unaggregated target `0` consistently in `firebench list`
+  output and generated report metadata.
+- Preserve the FireBench 0.9 Caldor weather KPI meanings for `FB001_WX001` through
+  `FB001_WX312` and assign new HRRR-aligned weather KPIs starting at `FB001_WX313`.
+- Support UTC and extended ISO 8601 `date_time` values when standardizing Synoptic observations.
+### Deprecated
 
 ## [0.9.0] - 2026 / 05 / 18
 ### Added

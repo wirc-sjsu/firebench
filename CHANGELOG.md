@@ -4,8 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased] 
+## [Unreleased]
 ### Added
+- Add goal-oriented tutorials, focused how-to guides, complete CLI and API references, and strict
+  documentation CI with executable example and link checks.
 - Add the standalone Caldor `FP` target and expose standalone targets, period syntax, available
   periods, and combinable flags through `firebench list CASE`.
 - Integrate the `firebench-adapter-common` source code into FireBench as `firebench.adapter_common`.
