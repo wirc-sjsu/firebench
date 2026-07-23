@@ -826,7 +826,11 @@ def data_get(case: str, version: str, output_dir: Path) -> None:
 @main.command("wx-qc")
 def wx_qc() -> None:
     """
-    Launch the weather station QC GUI.
+    Launch the weather-station quality-control GUI.
+
+    Review a FireBench weather-station HDF5 file, record station and
+    observation decisions, restore JSON sessions, and export cleaned data.
+    A graphical desktop and Tk support are required.
     """
     from .tools.wx_qc.app import App
 

@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data.
 - Add task-oriented documentation, complete CLI and API references, executable examples, and strict
   documentation CI.
+- Document the weather-station QC GUI workflow, assertion semantics, JSON sessions, and exports,
+  and include `wx-qc` in the CLI reference.
 
 ### Changed
 

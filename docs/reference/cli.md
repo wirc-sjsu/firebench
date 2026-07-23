@@ -82,3 +82,15 @@ firebench plot CONFIG
 `CONFIG` is a TOML file. The command prints `Wrote PATH` for each image. Invalid tables, missing
 inputs, invalid numeric settings, unresolved polygon files, or no common perimeter paths fail
 nonzero. See [Generate Plots from TOML](../how_to/plot_from_toml.md).
+
+## `wx-qc`
+
+```text
+firebench wx-qc
+```
+
+Launch the Tk weather-station QC application. It accepts no command-line options beyond
+`--help`; files and sessions are selected in the application. A graphical desktop and a Python
+installation with Tk support are required. See
+[Review Weather-Station Data with the QC GUI](../how_to/review_weather_station_qc.md) for the input
+schema, assertion semantics, review workflow, sessions, and exports.
