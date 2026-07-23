@@ -43,12 +43,9 @@ def check_std_version(file: h5py.File):
     It compares the file's version with the current standard version defined in `VERSION_STD`.
     The return value indicates whether the caller should update the file's standard version.
 
-    The logic is as follows:
-    - If the attribute is missing, the file is treated as new and should be updated.
-    - If the attribute matches the current standard version, the file is already up to date and may be updated.
-    - If the attribute is in the compatibility list for the current version, the file is considered valid
-      but should not be updated; a warning is logged instead.
-    - If the attribute is not compatible with the current version, a `ValueError` is raised.
+    A missing attribute is treated as a new file that should be updated. A matching version is
+    already current and may be updated. A version in the current compatibility list is valid but
+    should not be updated, and produces a warning. Any other version raises ``ValueError``.
 
     Parameters
     ----------
@@ -241,9 +238,8 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
 
     Notes
     -----
-    - The function reads the **entire dataset** into memory; for very large datasets,
-    consider reading subsets instead.
-    - Compliant with FireBench I/O standard >= 0.1.
+    The function reads the entire dataset into memory; consider reading subsets of very large
+    datasets instead. The reader supports FireBench I/O standard version 0.1 and later.
     """  # pylint: disable=line-too-long
     ds = file_object[dataset_path]
 
@@ -482,19 +478,9 @@ def merge_trees(
     """
     Recursively fill `merged_file` with content from `file1` and `file2`.
 
-    Order:
-    ------
-    1. Copy the full tree from file1 into merged_file.
-    2. Merge the full tree from file2 into merged_file:
-       - If a path does not exist in merged_file, copy it.
-       - If a dataset already exists:
-           * If a conflict solver is provided for this path, use it to
-             combine existing and incoming data.
-           * Otherwise, keep the existing data (we assume they are compatible
-             because conflicts were checked earlier).
-       - Group attributes:
-           * Add attributes that don't exist yet in merged_file.
-           * Attributes listed in IGNORE_ATTRIBUTES are skipped.
+    The function first copies the full tree from ``file1``. It then copies paths that exist only in
+    ``file2`` and preserves compatible datasets already copied. New group attributes are added,
+    except for entries in ``IGNORE_ATTRIBUTES``. Callers must check conflicts before merging.
     """
 
     # 1) copy everything from file1 (no conflicts, merged_file is new/empty)
@@ -643,7 +629,7 @@ def import_tif(
     Parameters
     ----------
     geotiff_path : str
-        Path to the MTBS GeoTIFF (ending with *_dnbr6.tif).
+        Path to the MTBS GeoTIFF (ending with ``_dnbr6.tif``).
     h5file :  h5py.File
         target HDF5 file
     group_name : str | None
@@ -695,15 +681,9 @@ def copy_entire_object_zstd(
     """
     Recursively copy `name` from src_parent to dst_parent.
 
-    Policy:
-    - Groups:
-        * If missing in dst -> create
-        * If already exists -> copy only new attrs via _copy_attributes
-        * Recurse into children
-    - Datasets:
-        * If missing -> create with Zstd(clevel=compression_lvl), load ONE dataset at a time
-        * If exists -> raise
-    - Links/other: skipped
+    Missing groups are created; existing groups receive only new attributes before their children
+    are visited. Missing datasets are copied one at a time with Zstandard compression. An existing
+    destination dataset raises ``ValueError``. Links and other object types are skipped.
     """  # pylint: disable=line-too-long
     src_obj = src_parent.get(name, getlink=False)
     if src_obj is None:

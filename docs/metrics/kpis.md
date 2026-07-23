@@ -24,7 +24,9 @@ Accuracy = \frac{TP + TN}{TP + TN + FP + FN},
 $$
 where $TP$ = True positive (high severity in both datasets); $FP$ = False positive (high severity only in model dataset); $TN$ = True negative (not high severity in both datasets); $FN$ = False negative (high severity only in observational datasets)
 
-The implementation of this KPI is done using the `firebench.metrics.confusion_matrix.binary_cm` function and `firebench.metrics.confusion_matrix.binary_accurary` functions (see API documentation for implementation). If some data processing (e.g., for category aggregation) is required, this process is described at the case level.
+This KPI uses `firebench.metrics.confusion_matrix.binary_cm` and
+`firebench.metrics.confusion_matrix.binary_accuracy`; case-specific processing such as category
+aggregation is described in the case specification.
 
 ### Binary High Severity Precision
 
@@ -127,7 +129,9 @@ Accuracy = \frac{TP + TN}{TP + TN + FP + FN},
 $$
 where $TP$ = True positive (buildings destroyed in both datasets); $FP$ = False positive (buildings destroyed only in model dataset); $TN$ = True negative (buildings not damaged in both datasets); $FN$ = False negative (buildings destroyed only in observational datasets)
 
-The implementation of this KPI is done using the `firebench.metrics.confusion_matrix.binary_cm` function and `firebench.metrics.confusion_matrix.binary_accurary` functions (see API documentation for implementation). If some data processing (e.g., for category aggregation) is required, this process is described at the case level.
+This KPI uses `firebench.metrics.confusion_matrix.binary_cm` and
+`firebench.metrics.confusion_matrix.binary_accuracy`; case-specific processing such as category
+aggregation is described in the case specification.
 
 ### Binary Structure Loss Precision
 
@@ -217,5 +221,4 @@ The implementation of this KPI is done using the `firebench.metrics.confusion_ma
 ## Weather stations
 
 In Progress...
-
 

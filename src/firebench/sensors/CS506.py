@@ -29,7 +29,7 @@ def CS506_cl(values: float | int | np.ndarray, cl: float = 95.45, age: float = N
 
         max(RMS, d90 / 1.644853) * z
 
-    where `z` is the two-sided z-score corresponding to the specified confidence level.
+    where ``z`` is the two-sided z-score corresponding to the specified confidence level.
 
     Parameters
     ----------
@@ -37,22 +37,23 @@ def CS506_cl(values: float | int | np.ndarray, cl: float = 95.45, age: float = N
         Fuel moisture content value(s), in percent (% by dry weight).
         Must be in the range [0, 50].
     cl : float, optional
-        Desired two-sided confidence level, in the range ]0, 100[. Default is 95.45% (2 sigma).
+        Desired two-sided confidence level in the open interval (0, 100). Default is 95.45%
+        (2 sigma).
     age : float, optional
         Age of the fuel stick in years. Currently unused; reserved for future support.
 
     Returns
     -------
     float or np.ndarray
-        Half-width of the `cl`% confidence interval for measurement error, in the same
+        Half-width of the ``cl`` confidence interval for measurement error, in the same
         shape as the input. For scalar input, returns a scalar. For array input, returns
         an array. The total interval is +/- this value.
 
     Raises
     ------
     ValueError
-        If any input value is outside the supported range [0, 50], or if `cl` is not
-        in the range ]0, 100[.
+        If any input value is outside the supported range [0, 50], or if ``cl`` is not
+        in the open interval (0, 100).
 
     References
     ----------
