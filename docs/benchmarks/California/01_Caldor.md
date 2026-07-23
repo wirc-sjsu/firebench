@@ -369,9 +369,18 @@ This benchmark is performed on the binary classes `masked high binary canopy cov
 ## Infrared fire perimeters
 ### Dataset
 
-The infrared fire perimeters have been gathered from [NIROPS](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/) dataset.
-Every orginal file has been manually processed to extract only the perimeter. The time stamp of the perimeter has been defined from the imaging report (e.g. [Report for 2021/08/17](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/20210818/20210818_Caldor_IR_Topo_11x17.pdf)) using the `Imagery Date` and `Imagery Time`. The burn area obtained using the KML file and python tools has been verified against the `Interpreted Acreage` when specified in the reports. Each fire perimeter (see Fig. 6) is stored as a group within the HDF5 data file with attributes containing the path of the KML file that contains the fire perimeter dataset.
-The perimeters have been processed from August 17th (first IR perimeter available) to September 10th, when the burn area is 99% if the final burn area, as shown in Figure 7 (source: [CALFIRE](https://www.fire.ca.gov/incidents/2021/8/14/caldor-fire/)).
+The infrared fire perimeters were gathered from the NIFC NIROPS archive for incident
+`CA-ENF-024030_Caldor`. The former incident-specific archive URLs are no longer published, so the
+redistributed benchmark package is the durable source for these inputs.
+
+Each original file was processed manually to extract only the perimeter. The perimeter timestamp
+comes from `Imagery Date` and `Imagery Time` in its imaging report. KML-derived burn area was
+verified against `Interpreted Acreage` when the report supplied it. Each perimeter (Figure 6) is an
+HDF5 dataset whose attributes point to the corresponding KML file.
+
+The series runs from August 17, the first available infrared perimeter, through September 10, when
+the burn area reached 99% of the final area shown in Figure 7 (source:
+[CAL FIRE](https://www.fire.ca.gov/incidents/2021/8/14/caldor-fire/)).
 The final dataset contains 21 perimeters.
 
 The following study periods (see Fig. 7) are defined in the following Table:
@@ -575,10 +584,13 @@ The following variables have been processed (following FireBench namespace):
 - wind_speed
 
 ```{note}
-If you want to process more variables or require new benchmarks for existing variables, please reach out to the FireBench team to integrate these changes into a future version of the benchmarks.
+To propose another variable or benchmark, open a
+[feature request](https://github.com/wirc-sjsu/firebench/issues/new?template=feature_request.md) with
+the standard variable name, observation source, metric, and scientific rationale. Implementations
+can be submitted through the public contribution workflow.
 ```
 
-Some stations don't have data for the period W1 and have been excluded from the dataset. 
+Some stations do not have data for period W1 and have been excluded from the dataset.
 The list of excluded stations for missing data in the study period is:
 403_PG, 412_PG, 413_PG, F9934.
 Also, some stations did not meet the data quality criterion and have been excluded from the dataset. 
@@ -600,7 +612,9 @@ Therefore, 81 datasets are considered trusted and will be used in the benchmarks
 All 399 datasets are used in benchmarks "all sources".
 
 ```{note}
-If you have information about sensor height and want to help increase the number of trusted datasets, please get in touch with the FireBench Team.
+To contribute sensor-height evidence, open a
+[data request](https://github.com/wirc-sjsu/firebench/issues/new?template=data_request.md) and include
+the station ID, sensor, height, units, effective dates, provider, and a public source URL.
 ```
 
 Weather stations are stored in the HDF5 file using their STID.
@@ -1402,7 +1416,9 @@ Wind Speed Wi          | 1
 
 - **Benchmark identifiers** consist of a *case ID* and a *short ID*, for example `FB001-BD01`. Throughout the documentation, the *short ID* alone (e.g. `BD01`) is used when the benchmark case is unambiguous, in order to improve readability. The *full identifier* (`FB001-BD01`) is used whenever the case context must be explicit, such as when comparing benchmarks across different cases.
 - Each file hash has been performed using `firebench.standardize.calculate_sha256`.
-- Collection of forecasts or reanalysis is authorized for the benchmark period (e.g., for fire perimeters) but has to be detailed in the model report attached to the Report sent back to the FireBench team for collection and validation of results.
+- Forecast or reanalysis data may be collected for the benchmark period (for example, for fire
+  perimeters). Record the sources and processing steps in the generated model report so the result
+  remains independently reproducible.
 
 ## Acknowledgment 
 

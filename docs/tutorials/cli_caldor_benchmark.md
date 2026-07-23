@@ -1,6 +1,7 @@
 # Run the Caldor Benchmark from the CLI
 
-This tutorial shows how to download the 2021 Caldor Fire benchmark data and run benchmark from the `firebench` command line.
+This tutorial shows how to download the 2021 Caldor Fire benchmark data and run a benchmark from
+the `firebench` command line.
 
 ## 1. Install FireBench
 
@@ -16,7 +17,7 @@ Check that the CLI is available:
 firebench list
 ```
 
-The Caldor Fire benchmark is case `1`, also shown as `001` (both id can be used).
+The Caldor Fire benchmark is case `1`, also shown as `001`; either identifier can be used.
 
 ## 2. Download the Caldor Fire case
 
@@ -72,7 +73,9 @@ This command writes the default Caldor outputs in the working directory:
 - `Caldor.pdf`
 - `Caldor.log`
 
-Use a different model output file by replacing the final `my_model_output.h5` argument with the path to your FireBench standard HDF5 output. If you don't have a model output yet, you can test using the observational dataset `Caldor.h5` as input to get a perfect scorecard. 
+Use a different model output file by replacing the final `my_model_output.h5` argument with the
+path to your FireBench standard HDF5 output. If you do not have model output yet, use the
+observational dataset `Caldor.h5` as input to produce a perfect scorecard for a smoke test.
 
 The 0.10 positional syntax is `firebench run CASE TARGET MODEL_OUTPUT`. In FireBench 0.9 the same
 parts were supplied as `firebench run -c CASE -a SCHEME MODEL_OUTPUT`; the `-c` and `-a` options

@@ -1,6 +1,6 @@
 # Benchmark Methodology
 
-This section gives an overvies of the FireBench Benchmarking Process.
+This section gives an overview of the FireBench benchmarking process.
 
 1. **Collection of observational data**
    FireBench collects and curates observational datasets related to fire across multiple scales, including:
@@ -26,10 +26,12 @@ This section gives an overvies of the FireBench Benchmarking Process.
    * Centralizes heterogeneous observations under a single structure
 
 4. **Standardization of model outputs**
-   Evaluated model outputs are converted to the same standard file format using a **limited set of FireBench tools**.
+   Evaluated model outputs are converted to the same standard file format using FireBench's public
+   standardization tools.
 
-   * These tools ensure compatibility with the benchmarking framework
-   * Interested users should contact the FireBench team for access and guidance
+   * Follow [Prepare a Model-Output HDF5 File](../tutorials/prepare_model_output.md) for a runnable
+     example.
+   * Use [validation guidance](../how_to/validate_hdf5.md) to diagnose incompatible files.
 
 5. **Benchmark execution**
    Once both:
@@ -62,9 +64,11 @@ This section gives an overvies of the FireBench Benchmarking Process.
    Running the benchmarks requires the **FireBench Python library**.
 
 9. **Certification and authenticity (optional)**
-   At multiple stages of the process, the FireBench team can deliver a **certificate of authenticity** using hardware-based cryptographic methods.
+   FireBench's public signing and verification functions support certificates of authenticity.
    These certificates can be used to:
 
    * Authenticate datasets
    * Certify benchmark executions
    * Validate published benchmarking results
+
+   See [Sign and Verify Results](../how_to/sign_results.md) for the available API and trust model.

@@ -1,7 +1,7 @@
 # FireBench Standard File Format
 
 - **Version**: 1.0
-- **Status**: PreRelease
+- **Status**: Pre-release
 - **Last update**: 2026-01-02
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
@@ -53,11 +53,13 @@ No `/metadata` group is required; prefer file-level attributes. The `/metadata` 
 
 ## Compression
 
-Compression of datasets is done using Zstandard. It is included in the python library `hdf5plugin` so no external dependency is needed. Compression level can go from 1 (low compression, faster) to 22 (highest compression, slower). Zstandard has been chosen for its better I/O and better compression performance than more classic gzip compression.
-As most benchmarking processes are not time sensitive, the recommended compression level is **20**.
+Datasets use Zstandard compression through the Python package `hdf5plugin`, so no separate system
+library is required. Compression levels range from 1 (faster, less compression) to 22 (slower,
+more compression). The recommended level is **20** for workflows where file size matters more than
+write time.
 
 ## Units
-**No units is implicitly assumed.** 
+**No unit is assumed implicitly.**
 Units are described as strings that are compatible with [Pint](https://pint.readthedocs.io/en/stable/) terminology. The default unit registry (*i.e.* the list of acceptable units) can be found [here](https://github.com/hgrecco/pint/blob/master/pint/default_en.txt).
 
 Units must be specified:
@@ -153,7 +155,7 @@ They do not need to be normalized, but must be non-colinear.
 - The group containing these fields must have an attribute `crs` identifying the CRS (*e.g.*, "EPSG:4326") 
 
 
-### Cross-Section with cartesian reference point
+### Cross-Section with Cartesian Reference Point
 
 Use when data is aligned along a 2D cross-section that does not follow cardinal (x/y/z) directions.
 Vectors are unitless direction vectors in the same coordinate basis as the origin CRS.
@@ -457,4 +459,4 @@ kml/polygons_2022_07_14.kml
 
 ### Certificates
 
-- Reserved namespace for FireBench certicitates. See certification documentation.
+- Reserved namespace for FireBench certificates. See the signing and verification guide.

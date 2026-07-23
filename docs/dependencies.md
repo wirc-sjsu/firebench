@@ -36,4 +36,6 @@ Install the development dependency group with `python -m pip install -e ".[dev]"
 - pytest-mock
 - Shapely
 
-Documentation builds additionally install the packages listed in `docs/requirements.txt`.
+Install the documentation group with `python -m pip install -e ".[docs]"`. It contains MyST Parser,
+Sphinx, Sphinx Click, and the Read the Docs theme. Like the required and development groups, this
+list is declared only in `pyproject.toml`.
