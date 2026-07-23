@@ -108,7 +108,7 @@ def validate_h5_std(file: h5py.File):
 
 def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
     """
-    Check if all datasets and associated attributs are present in the file.
+    Check if all datasets and associated attributes are present in the file.
     Return False and the name of the first missing item if either the dataset or an attribute is missing
     """
     for dset_path, attrs in required.items():
@@ -123,10 +123,18 @@ def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
 
         # check that KML files exist
         if "rel_path" in attrs:
-            if not Path(dset.attrs["rel_path"]).exists():
+            referenced_path = _resolve_h5_relative_path(file, dset.attrs["rel_path"])
+            if not referenced_path.exists():
                 return False, f"file `{dset.attrs['rel_path']}` not found from `{dset_path}`"
 
     return True, None
+
+
+def _resolve_h5_relative_path(file: h5py.File, rel_path: str | bytes | Path) -> Path:
+    path = Path(rel_path.decode() if isinstance(rel_path, bytes) else rel_path)
+    if path.is_absolute():
+        return path
+    return Path(file.filename).resolve().parent / path
 
 
 def validate_h5_weather_stations_structure(
