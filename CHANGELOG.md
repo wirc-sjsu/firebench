@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   longest and cumulative outage metrics.
 - Apply weather-station QC issue filters consistently and prevent conflicting skipped and greenlit
   station decisions.
+- Make weather-station QC exports atomic and safely serialized, and apply skipped stations and
+  record removals to cleaned H5 copies.
 
 ## [0.9.0] - 2026 / 05 / 18
 ### Added

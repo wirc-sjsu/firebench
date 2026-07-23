@@ -1,6 +1,8 @@
 import copy
+import os
 import pickle
 import shutil
+import tempfile
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from datetime import datetime
@@ -18,6 +20,47 @@ from ..theme import PAD
 from ..time_axis import TimeAxisError, parse_h5_time_axis
 
 
+def _temporary_sibling(destination) -> Path:
+    """Create and return an empty temporary sibling of ``destination``."""
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    file_descriptor, temporary_name = tempfile.mkstemp(
+        dir=destination.parent,
+        prefix=f".{destination.name}.",
+        suffix=".tmp",
+    )
+    os.close(file_descriptor)
+    return Path(temporary_name)
+
+
+def _atomic_write_text(destination, text: str) -> None:
+    """Atomically replace ``destination`` with UTF-8 ``text``."""
+    destination = Path(destination)
+    temporary_path = _temporary_sibling(destination)
+    try:
+        with temporary_path.open("w", encoding="utf-8", newline="\n") as output:
+            output.write(text)
+            output.flush()
+            os.fsync(output.fileno())
+        temporary_path.replace(destination)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def _atomic_write_pickle(destination, value) -> None:
+    """Atomically replace ``destination`` with a pickle serialization."""
+    destination = Path(destination)
+    temporary_path = _temporary_sibling(destination)
+    try:
+        with temporary_path.open("wb") as output:
+            pickle.dump(value, output)
+            output.flush()
+            os.fsync(output.fileno())
+        temporary_path.replace(destination)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
 def _format_skip_stations_block(skip_list: dict) -> str:
     """Render skip_list as a Python source literal for export.
 
@@ -27,13 +70,18 @@ def _format_skip_stations_block(skip_list: dict) -> str:
         skip_list (dict[str, str]): station ID -> skip reason.
 
     Returns:
-        str: multi-line ``skip_stations = [...]`` Python source, one
-            station ID per line with its reason as a trailing comment.
+        Python source defining ``skip_stations`` and a ``skip_reasons``
+        mapping. Every station ID and reason is serialized with ``repr``.
     """
     lines = ["skip_stations = ["]
-    for stid, reason in sorted(skip_list.items()):
-        lines.append(f'    "{stid}",  # {reason.replace(chr(34), chr(39))}')
+    for station_id in sorted(skip_list):
+        lines.append(f"    {station_id!r},")
     lines.append("]")
+    lines.append("")
+    lines.append("skip_reasons = {")
+    for station_id, reason in sorted(skip_list.items()):
+        lines.append(f"    {station_id!r}: {reason!r},")
+    lines.append("}")
     return "\n".join(lines)
 
 
@@ -57,10 +105,9 @@ def _format_remove_records_block(removal_list: dict) -> str:
         entries = removal_list[stid]
         if not entries:
             continue
-        lines.append(f'    "{stid}": [')
+        lines.append(f"    {stid!r}: [")
         for e in sorted(entries, key=lambda e: (e["var"], e["t0"], e["t1"])):
-            reason = e["reason"].replace(chr(34), chr(39))
-            lines.append(f'        ("{e["var"]}", "{e["t0"]}", "{e["t1"]}", "{reason}"),')
+            lines.append(f"        ({e['var']!r}, {e['t0']!r}, {e['t1']!r}, {e['reason']!r}),")
         lines.append("    ],")
     lines.append("}")
     return "\n".join(lines)
@@ -80,6 +127,12 @@ def build_processing_script_text(skip_list: dict, removal_list: dict, fields: di
     """
     skip_block = _format_skip_stations_block(skip_list)
     remove_block = _format_remove_records_block(removal_list)
+    json_filename = repr(fields["json_filename"])
+    output_h5_filename = repr(fields["output_h5_filename"])
+    contributors = repr(fields["contributors"])
+    description = repr(fields["description"])
+    compression_lvl = int(fields["compression_lvl"])
+    logging_lvl = int(fields["logging_lvl"])
 
     script = f'''import firebench.standardize as fs
 from pathlib import Path
@@ -119,7 +172,7 @@ def preprocess_timestamps(json_path: Path) -> Path:
     """Normalise timestamps to UTC naive format expected by firebench.
     UTC avoids DST fall-back ambiguity where two distinct UTC instants
     map to the same local naive string."""
-    with open(json_path, "r") as f:
+    with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     for station in data["STATION"]:
         station["TIMEZONE"] = "UTC"  # timestamps stored as UTC; tell firebench
@@ -134,8 +187,8 @@ def preprocess_timestamps(json_path: Path) -> Path:
                     converted.append(t)
             obs["date_time"] = converted
         _dedup_obs(obs)
-    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-    json.dump(data, tmp)
+    tmp = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False)
+    json.dump(data, tmp, ensure_ascii=False)
     tmp.close()
     return Path(tmp.name)
 
@@ -184,10 +237,10 @@ def apply_record_removals(h5file, remove_records: dict) -> None:
                 ds[...] = arr
 
 
-data_source_path = Path("{fields["json_filename"]}")
-output_file = "{fields["output_h5_filename"]}"
-compression_lvl = {fields["compression_lvl"]}  # 1 = no compression, 22 = max compression
-logging_lvl = {fields["logging_lvl"]}  # 0 NOTSET, 10 DEBUG, 20 INFO, 30 WARNING, 40 ERROR, 50 CRITICAL
+data_source_path = Path({json_filename})
+output_path = Path({output_h5_filename})
+compression_lvl = {compression_lvl}  # 1 = no compression, 22 = max compression
+logging_lvl = {logging_lvl}  # 0 NOTSET, 10 DEBUG, 20 INFO, 30 WARNING, 40 ERROR, 50 CRITICAL
 {skip_block}
 
 # Per-station/variable time ranges to NaN out (not whole-station skips).
@@ -196,28 +249,133 @@ logging_lvl = {fields["logging_lvl"]}  # 0 NOTSET, 10 DEBUG, 20 INFO, 30 WARNING
 {remove_block}
 
 ft.set_logging_level(logging_lvl)
-data_source_path = preprocess_timestamps(data_source_path)
-
-h5 = fs.new_std_file(
-    output_file,
-    "{fields["contributors"]}",
-    overwrite=True,
+prepared_source_path = preprocess_timestamps(data_source_path)
+output_path.parent.mkdir(parents=True, exist_ok=True)
+temporary_output = tempfile.NamedTemporaryFile(
+    dir=output_path.parent,
+    prefix=f".{{output_path.name}}.",
+    suffix=".tmp",
+    delete=False,
 )
+temporary_output_path = Path(temporary_output.name)
+temporary_output.close()
+h5 = None
+try:
+    h5 = fs.new_std_file(
+        str(temporary_output_path),
+        {contributors},
+        overwrite=True,
+    )
+    h5.attrs["description"] = {description}
 
-h5.attrs["description"] = (
-    "{fields["description"]}"
-)
-
-# See firebench.standardize for the full list of variables this converts.
-fs.standardize_synoptic_raws_from_json(
-    data_source_path, h5, skip_stations=skip_stations, overwrite=True, compression_lvl=compression_lvl, export_trusted_history=True
-)
-
-apply_record_removals(h5, remove_records)
-
-h5.close()
+    # See firebench.standardize for the full list of variables this converts.
+    fs.standardize_synoptic_raws_from_json(
+        prepared_source_path,
+        h5,
+        skip_stations=skip_stations,
+        overwrite=True,
+        compression_lvl=compression_lvl,
+        export_trusted_history=False,
+    )
+    apply_record_removals(h5, remove_records)
+    h5.close()
+    h5 = None
+    temporary_output_path.replace(output_path)
+finally:
+    if h5 is not None:
+        h5.close()
+    temporary_output_path.unlink(missing_ok=True)
+    prepared_source_path.unlink(missing_ok=True)
 '''
     return script
+
+
+def write_cleaned_h5(source_path, destination_path, skip_list: dict, removal_list: dict):
+    """Atomically copy an H5, omit skipped stations, and apply record removals.
+
+    Args:
+        source_path: Existing source H5. It is opened read-only by ``copy2`` and
+            is never selected as the replacement destination.
+        destination_path: H5 path to replace atomically after all edits finish.
+        skip_list: Mapping of station IDs to skip reasons.
+        removal_list: Mapping of station IDs to record-removal entries.
+
+    Returns:
+        ``(n_stations_skipped, n_stations_modified, n_values_nanned, errors)``.
+        ``errors`` contains ``(station_id, variable, message)`` entries for
+        time-axis or per-dataset failures that did not abort the export.
+    """
+    source_path = Path(source_path)
+    destination_path = Path(destination_path)
+    if source_path.resolve() == destination_path.resolve():
+        raise ValueError("Cleaned H5 destination must differ from the source H5")
+
+    temporary_path = _temporary_sibling(destination_path)
+    n_skipped = 0
+    n_stations_modified = 0
+    n_values_nanned = 0
+    errors = []
+    try:
+        shutil.copy2(source_path, temporary_path)
+        with h5py.File(temporary_path, "r+") as h5_file:
+            time_series = h5_file.get("time_series")
+            if time_series is not None:
+                for station_id in skip_list:
+                    group_name = f"station_{station_id}"
+                    if group_name in time_series:
+                        del time_series[group_name]
+                        n_skipped += 1
+
+                for station_id, entries in removal_list.items():
+                    if not entries:
+                        continue
+                    station_group = time_series.get(f"station_{station_id}")
+                    if station_group is None or "time" not in station_group:
+                        continue
+                    try:
+                        times, _ = parse_h5_time_axis(station_group["time"])
+                    except TimeAxisError as exc:
+                        errors.append((station_id, "time", str(exc)))
+                        continue
+
+                    station_touched = False
+                    for entry in entries:
+                        try:
+                            start = np.datetime64(entry["t0"])
+                            end = np.datetime64(entry["t1"])
+                        except (TypeError, ValueError):
+                            continue
+                        if end < start:
+                            start, end = end, start
+                        time_mask = (times >= start) & (times <= end)
+                        if not time_mask.any():
+                            continue
+                        if entry["var"] == "*":
+                            targets = [name for name in station_group if name != "time"]
+                        else:
+                            targets = [entry["var"]] if entry["var"] in station_group else []
+                        for variable_name in targets:
+                            dataset = station_group[variable_name]
+                            if not np.issubdtype(dataset.dtype, np.floating):
+                                continue
+                            try:
+                                values = dataset[:]
+                                changed = int(np.count_nonzero(~np.isnan(values[time_mask])))
+                                if not changed:
+                                    continue
+                                values[time_mask] = np.nan
+                                dataset[...] = values
+                                n_values_nanned += changed
+                                station_touched = True
+                            except (IndexError, OSError, RuntimeError, TypeError, ValueError) as exc:
+                                errors.append((station_id, variable_name, str(exc)))
+                    if station_touched:
+                        n_stations_modified += 1
+        temporary_path.replace(destination_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+    return n_skipped, n_stations_modified, n_values_nanned, errors
 
 
 class SkiplistTabMixin:
@@ -464,7 +622,11 @@ class SkiplistTabMixin:
         )
         if not path:
             return
-        _, qc_path = self._skip_export_write(path)
+        try:
+            _, qc_path = self._skip_export_write(path)
+        except (OSError, pickle.PickleError, TypeError, ValueError) as exc:
+            messagebox.showerror("Export failed", f"Could not write {path}:\n\n{exc}")
+            return
         qc_msg = f"\n{qc_path.name}" if qc_path else ""
         messagebox.showinfo("Exported", f"Saved:\n{path}{qc_msg}")
 
@@ -477,7 +639,7 @@ class SkiplistTabMixin:
         text = build_processing_script_text(self.skip_list, self.removal_list, r)
         dest = Path(r["dest_dir"]) / r["script_filename"]
         try:
-            dest.write_text(text)
+            _atomic_write_text(dest, text)
         except (OSError, UnicodeError) as exc:
             messagebox.showerror("Export failed", f"Could not write {dest}:\n\n{exc}")
             return
@@ -506,35 +668,38 @@ class SkiplistTabMixin:
         lines.append('#   data[var][mask] = np.nan   # or drop; "*" = every variable')
         remove_block = _format_remove_records_block(self.removal_list)
         lines.append(remove_block)
-        Path(path).write_text("\n".join(lines) + "\n")
 
         qc_path = None
         if self.h5_path:
             fire = self.h5_path.stem.removesuffix("_weather_data")
             qc_path = self.h5_path.parent / f"{fire}_QC.pkl"
-            with open(qc_path, "wb") as qf:
-                pickle.dump(
-                    {
-                        "version": 4,
-                        "skip_list": dict(self.skip_list),
-                        "green_list": sorted(self.green_list),
-                        "removal_list": {s: [dict(e) for e in v] for s, v in self.removal_list.items()},
-                        "saved_at": datetime.now().isoformat(timespec="seconds"),
-                        "h5_path": str(self.h5_path),
-                        "cfg": copy.deepcopy(self.cfg),
-                        "all_stats": self.all_stats,
-                        "ov_col_vis": {c: v.get() for c, v in self._ov_col_vars.items()},
-                    },
-                    qf,
-                )
+            if Path(path).resolve() == qc_path.resolve():
+                raise ValueError("Python and QC snapshot destinations must differ")
+
+        _atomic_write_text(path, "\n".join(lines) + "\n")
+        if qc_path is not None:
+            _atomic_write_pickle(
+                qc_path,
+                {
+                    "version": 4,
+                    "skip_list": dict(self.skip_list),
+                    "green_list": sorted(self.green_list),
+                    "removal_list": {s: [dict(e) for e in v] for s, v in self.removal_list.items()},
+                    "saved_at": datetime.now().isoformat(timespec="seconds"),
+                    "h5_path": str(self.h5_path),
+                    "cfg": copy.deepcopy(self.cfg),
+                    "all_stats": self.all_stats,
+                    "ov_col_vis": {c: v.get() for c, v in self._ov_col_vars.items()},
+                },
+            )
         return path, qc_path
 
     def _export_cleaned_h5(self):
         if not self.h5_path:
             messagebox.showinfo("No H5", "Load an H5 file first")
             return
-        if not self.removal_list:
-            messagebox.showinfo("Empty", "Removal list is empty — nothing to clean")
+        if not self.skip_list and not self.removal_list:
+            messagebox.showinfo("Empty", "No skipped stations or record removals to apply")
             return
         fire = self.h5_path.stem.removesuffix("_weather_data")
         default = f"{fire}_weather_data_cleaned.h5"
@@ -548,11 +713,15 @@ class SkiplistTabMixin:
         if not path:
             return
         try:
-            n_stations, n_nanned, errors = self._export_cleaned_h5_write(path)
+            n_skipped, n_stations, n_nanned, errors = self._export_cleaned_h5_write(path)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             messagebox.showerror("Export failed", f"Could not create {path}:\n\n{exc}")
             return
-        msg = f"Wrote:\n{path}\n\n" f"{n_stations} station(s) modified, {n_nanned} value(s) set to NaN."
+        msg = (
+            f"Wrote:\n{path}\n\n"
+            f"{n_skipped} skip-listed station(s) omitted.\n"
+            f"{n_stations} retained station(s) modified; {n_nanned} value(s) set to NaN."
+        )
         if errors:
             shown = "\n".join(f"  {s}/{v}: {err}" for s, v, err in errors[:10])
             msg += f"\n\n{len(errors)} dataset write(s) failed and were skipped:\n{shown}"
@@ -561,75 +730,24 @@ class SkiplistTabMixin:
         messagebox.showinfo("Cleaned H5 exported", msg)
 
     def _export_cleaned_h5_write(self, dest_path):
-        """Write a copy of the loaded H5 with removal-manifest ranges NaN'd out.
+        """Write a cleaned copy with skipped stations omitted and removals NaN'd.
 
-        No dialogs involved, directly callable from tests. Copies
-        self.h5_path to dest_path (original untouched) then NaNs every
-        record-removal manifest range in the copy. Layout mirrors
-        data._parse_station_group: time_series/station_<stid>/, a "time"
-        dataset parsed by time_axis.parse_h5_time_axis plus one float64
-        dataset per variable.
+        No dialogs involved, directly callable from tests. The destination is
+        replaced atomically only after a temporary sibling has been copied and
+        edited successfully. The source is never modified.
 
         Args:
             dest_path (str or Path): destination .h5 file path.
 
         Returns:
-            tuple[int, int, list[tuple[str, str, str]]]: (n_stations_modified,
-                n_values_nanned, errors), where errors is a list of
-                (stid, var, exc_str) for per-dataset write failures that
-                were caught and skipped rather than aborting the whole export.
+            ``(n_stations_skipped, n_stations_modified, n_values_nanned,
+            errors)`` as returned by :func:`write_cleaned_h5`.
         """
         if not self.h5_path:
             raise ValueError("No H5 loaded")
-        dest_path = Path(dest_path)
-        shutil.copy2(self.h5_path, dest_path)
-
-        n_stations = 0
-        n_nanned = 0
-        errors = []
-        with h5py.File(dest_path, "r+") as f:
-            ts_grp = f.get("time_series")
-            if ts_grp is None:
-                return n_stations, n_nanned, errors
-            for stid, entries in self.removal_list.items():
-                if not entries:
-                    continue
-                grp = ts_grp.get(f"station_{stid}")
-                if grp is None or "time" not in grp:
-                    continue
-                try:
-                    times, _ = parse_h5_time_axis(grp["time"])
-                except TimeAxisError as exc:
-                    errors.append((stid, "time", str(exc)))
-                    continue
-
-                station_touched = False
-                for e in entries:
-                    try:
-                        t0m, t1m = np.datetime64(e["t0"]), np.datetime64(e["t1"])
-                    except (TypeError, ValueError):
-                        continue
-                    if t1m < t0m:
-                        t0m, t1m = t1m, t0m
-                    mask = (times >= t0m) & (times <= t1m)
-                    if not mask.any():
-                        continue
-                    if e["var"] == "*":
-                        targets = [ds for ds in grp if ds != "time"]
-                    else:
-                        targets = [e["var"]] if e["var"] in grp else []
-                    for vname in targets:
-                        ds = grp[vname]
-                        if not np.issubdtype(ds.dtype, np.floating):
-                            continue  # non-float dataset: NaN isn't representable, skip
-                        try:
-                            arr = ds[:]
-                            arr[mask] = np.nan
-                            ds[...] = arr
-                            n_nanned += int(mask.sum())
-                            station_touched = True
-                        except (OSError, RuntimeError, TypeError, ValueError) as exc:
-                            errors.append((stid, vname, str(exc)))
-                if station_touched:
-                    n_stations += 1
-        return n_stations, n_nanned, errors
+        return write_cleaned_h5(
+            self.h5_path,
+            dest_path,
+            self.skip_list,
+            self.removal_list,
+        )
