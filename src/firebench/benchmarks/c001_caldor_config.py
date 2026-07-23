@@ -7,7 +7,6 @@ import pytz
 
 from firebench import standardize as fs
 
-
 CASE_NAME = "Caldor 2021"
 CASE_SHORT_NAME = "Caldor"
 BENCHMARK_SHORT_NAME = "2021_Caldor"

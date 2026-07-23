@@ -26,8 +26,9 @@ class AddSkipDialog(tk.Toplevel):
         self.entry.pack(padx=14, pady=4)
         self.entry.focus_set()
         self.entry.select_range(0, "end")
-        bf = ttk.Frame(self); bf.pack(pady=(4, 12))
-        ttk.Button(bf, text="Add",    command=self._ok,     width=8).pack(side="left", padx=4)
+        bf = ttk.Frame(self)
+        bf.pack(pady=(4, 12))
+        ttk.Button(bf, text="Add", command=self._ok, width=8).pack(side="left", padx=4)
         ttk.Button(bf, text="Cancel", command=self.destroy, width=8).pack(side="left", padx=4)
         self.bind("<Return>", lambda _: self._ok())
         self.grab_set()
@@ -51,23 +52,23 @@ class AddRemovalDialog(tk.Toplevel):
         self.result = None
         plural = "s" if n_samples != 1 else ""
         summary = f"{stid}:  {t0_str} -> {t1_str}   ({n_samples} sample{plural})"
-        ttk.Label(self, text=summary, style="Section.TLabel").pack(
-            anchor="w", padx=14, pady=(10, 4))
+        ttk.Label(self, text=summary, style="Section.TLabel").pack(anchor="w", padx=14, pady=(10, 4))
         # For synthetic "wind" plot, "current variable" removes both wind_speed and wind_direction.
-        cur_label = ("wind_speed + wind_direction" if vname == "wind"
-                     else f"current variable ({vname})")
+        cur_label = "wind_speed + wind_direction" if vname == "wind" else f"current variable ({vname})"
         self.var_scope = tk.StringVar(value="var")
-        sf = ttk.Frame(self); sf.pack(anchor="w", padx=14)
-        ttk.Radiobutton(sf, text=cur_label, value="var",
-                        variable=self.var_scope).pack(anchor="w", pady=1)
-        ttk.Radiobutton(sf, text="all variables (*)", value="*",
-                        variable=self.var_scope).pack(anchor="w", pady=1)
+        sf = ttk.Frame(self)
+        sf.pack(anchor="w", padx=14)
+        ttk.Radiobutton(sf, text=cur_label, value="var", variable=self.var_scope).pack(anchor="w", pady=1)
+        ttk.Radiobutton(sf, text="all variables (*)", value="*", variable=self.var_scope).pack(
+            anchor="w", pady=1
+        )
         ttk.Label(self, text="Reason:").pack(anchor="w", padx=14, pady=(6, 0))
         self.entry = ttk.Entry(self, width=50)
         self.entry.pack(padx=14, pady=4)
         self.entry.focus_set()
-        bf = ttk.Frame(self); bf.pack(pady=(4, 12))
-        ttk.Button(bf, text="OK",     command=self._ok,     width=8).pack(side="left", padx=4)
+        bf = ttk.Frame(self)
+        bf.pack(pady=(4, 12))
+        ttk.Button(bf, text="OK", command=self._ok, width=8).pack(side="left", padx=4)
         ttk.Button(bf, text="Cancel", command=self.destroy, width=8).pack(side="left", padx=4)
         self.bind("<Return>", lambda _: self._ok())
         self.grab_set()
@@ -97,81 +98,105 @@ class SettingsDialog(tk.Toplevel):
         nb = ttk.Notebook(self)
         nb.pack(fill="both", expand=True, padx=8, pady=8)
 
-        tf = ttk.Frame(nb); nb.add(tf, text="Thresholds")
-        tk.Label(tf, text="NaN thresh %:", anchor="w").grid(row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+        tf = ttk.Frame(nb)
+        nb.add(tf, text="Thresholds")
+        tk.Label(tf, text="NaN thresh %:", anchor="w").grid(
+            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
         self.e_nan = ttk.Entry(tf, width=10)
         self.e_nan.insert(0, str(cfg["nan_pct"]))
         self.e_nan.grid(row=0, column=1, padx=PAD_LG, pady=PAD)
-        tk.Label(tf, text="Frozen run >=:", anchor="w").grid(row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+        tk.Label(tf, text="Frozen run >=:", anchor="w").grid(
+            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
         self.e_frz = ttk.Entry(tf, width=10)
         self.e_frz.insert(0, str(cfg["frozen_min_run"]))
         self.e_frz.grid(row=1, column=1, padx=PAD_LG, pady=PAD)
-        tk.Label(tf, text="Max var outage thresh (min):", anchor="w").grid(row=2, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+        tk.Label(tf, text="Max var outage thresh (min):", anchor="w").grid(
+            row=2, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
         self.e_max_var_outage = ttk.Entry(tf, width=10)
         self.e_max_var_outage.insert(0, str(cfg.get("max_var_outage_min", DEFAULT_MAX_VAR_OUTAGE_MIN)))
         self.e_max_var_outage.grid(row=2, column=1, padx=PAD_LG, pady=PAD)
-        tk.Label(tf, text="Full outage thresh (min):", anchor="w").grid(row=6, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+        tk.Label(tf, text="Full outage thresh (min):", anchor="w").grid(
+            row=6, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
         self.e_full_outage = ttk.Entry(tf, width=10)
         self.e_full_outage.insert(0, str(cfg.get("full_outage_min", DEFAULT_FULL_OUTAGE_MIN)))
         self.e_full_outage.grid(row=6, column=1, padx=PAD_LG, pady=PAD)
 
         ttk.Separator(tf, orient="horizontal").grid(
-            row=3, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD)
+            row=3, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD
+        )
         tk.Label(tf, text="Compare -> nearest neighbors N:", anchor="w").grid(
-            row=4, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+            row=4, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
         self.e_compare_n = ttk.Entry(tf, width=10)
         self.e_compare_n.insert(0, str(cfg.get("compare_n_neighbors", 4)))
         self.e_compare_n.grid(row=4, column=1, padx=PAD_LG, pady=PAD)
-        self.v_compare_pool = tk.BooleanVar(
-            value=cfg.get("compare_include_skip_greenlit", False))
-        ttk.Checkbutton(tf, text="Include skip-listed/greenlit stations as neighbor candidates",
-                        variable=self.v_compare_pool).grid(
-            row=5, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+        self.v_compare_pool = tk.BooleanVar(value=cfg.get("compare_include_skip_greenlit", False))
+        ttk.Checkbutton(
+            tf,
+            text="Include skip-listed/greenlit stations as neighbor candidates",
+            variable=self.v_compare_pool,
+        ).grid(row=5, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
 
-        af = ttk.Frame(nb); nb.add(af, text="Assertions")
+        af = ttk.Frame(nb)
+        nb.add(af, text="Assertions")
         ttk.Label(af, text="Severity to display:", style="Section.TLabel").grid(
-            row=0, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+            row=0, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
+        )
         self.v_show_errors = tk.BooleanVar(value=cfg.get("show_errors", True))
-        self.v_show_warns  = tk.BooleanVar(value=cfg.get("show_warns",  True))
+        self.v_show_warns = tk.BooleanVar(value=cfg.get("show_warns", True))
         ttk.Checkbutton(af, text="Show ERRORs", variable=self.v_show_errors).grid(
-            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD)
-        ttk.Checkbutton(af, text="Show WARNs",  variable=self.v_show_warns).grid(
-            row=1, column=1, sticky="w", padx=PAD_LG, pady=PAD)
+            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        ttk.Checkbutton(af, text="Show WARNs", variable=self.v_show_warns).grid(
+            row=1, column=1, sticky="w", padx=PAD_LG, pady=PAD
+        )
         ttk.Separator(af, orient="horizontal").grid(
-            row=2, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD)
+            row=2, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD
+        )
         ttk.Label(af, text="Assertion categories:", style="Section.TLabel").grid(
-            row=3, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+            row=3, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
+        )
         hidden = cfg.get("hidden_assertions", set())
         self._acat_vars = {}
         for i, (key, label) in enumerate(ASSERTION_CATS):
             v = tk.BooleanVar(value=(key not in hidden))
             self._acat_vars[key] = v
             ttk.Checkbutton(af, text=label, variable=v).grid(
-                row=4 + i, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+                row=4 + i, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
+            )
 
-        bt = ttk.Frame(nb); nb.add(bt, text="Bounds")
+        bt = ttk.Frame(nb)
+        nb.add(bt, text="Bounds")
         for c, txt in enumerate(("Variable", "Min", "Max", "Unit")):
-            ttk.Label(bt, text=txt, style="Section.TLabel").grid(
-                row=0, column=c, padx=PAD_LG, pady=PAD)
+            ttk.Label(bt, text=txt, style="Section.TLabel").grid(row=0, column=c, padx=PAD_LG, pady=PAD)
         self._bound_entries = {}
         for r, (vname, (lo, hi, unit)) in enumerate(bounds.items(), 1):
             tk.Label(bt, text=vname, anchor="w").grid(row=r, column=0, sticky="w", padx=PAD_LG, pady=PAD)
-            e_lo = ttk.Entry(bt, width=9); e_lo.insert(0, str(lo))
+            e_lo = ttk.Entry(bt, width=9)
+            e_lo.insert(0, str(lo))
             e_lo.grid(row=r, column=1, padx=PAD_LG, pady=PAD)
-            e_hi = ttk.Entry(bt, width=9); e_hi.insert(0, str(hi))
+            e_hi = ttk.Entry(bt, width=9)
+            e_hi.insert(0, str(hi))
             e_hi.grid(row=r, column=2, padx=PAD_LG, pady=PAD)
             tk.Label(bt, text=unit).grid(row=r, column=3, padx=PAD_LG, pady=PAD)
             self._bound_entries[vname] = (e_lo, e_hi, unit)
 
-        cf = ttk.Frame(nb); nb.add(cf, text="Columns")
+        cf = ttk.Frame(nb)
+        nb.add(cf, text="Columns")
         self._col_vars = {}
         ttk.Label(cf, text="Base columns:", style="Section.TLabel").grid(
-            row=0, column=0, columnspan=4, sticky="w", padx=PAD_LG, pady=PAD)
+            row=0, column=0, columnspan=4, sticky="w", padx=PAD_LG, pady=PAD
+        )
         for i, c in enumerate(base_cols):
             v = tk.BooleanVar(value=col_visibility.get(c, True))
             self._col_vars[c] = v
             ttk.Checkbutton(cf, text=c, variable=v).grid(
-                row=1 + i // 2, column=(i % 2) * 2, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+                row=1 + i // 2, column=(i % 2) * 2, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
+            )
 
         var_rows = {}
         for col, (vname, key) in var_col_map.items():
@@ -179,16 +204,23 @@ class SettingsDialog(tk.Toplevel):
         if var_rows:
             row0 = 1 + (len(base_cols) + 1) // 2
             ttk.Separator(cf, orient="horizontal").grid(
-                row=row0, column=0, columnspan=4, sticky="ew", padx=PAD_LG, pady=PAD)
+                row=row0, column=0, columnspan=4, sticky="ew", padx=PAD_LG, pady=PAD
+            )
             ttk.Label(cf, text="Per-variable stat columns:", style="Section.TLabel").grid(
-                row=row0 + 1, column=0, columnspan=4, sticky="w", padx=PAD_LG, pady=PAD)
+                row=row0 + 1, column=0, columnspan=4, sticky="w", padx=PAD_LG, pady=PAD
+            )
             for c, stat in enumerate(("Max", "Min", "Std", "Outage"), start=1):
-                ttk.Label(cf, text=stat, style="Section.TLabel").grid(row=row0 + 2, column=c, padx=PAD_LG, pady=PAD)
+                ttk.Label(cf, text=stat, style="Section.TLabel").grid(
+                    row=row0 + 2, column=c, padx=PAD_LG, pady=PAD
+                )
             for r, vname in enumerate(sorted(var_rows), start=row0 + 3):
                 short = var_short.get(vname, vname[:6])
-                tk.Label(cf, text=short, anchor="w").grid(row=r, column=0, sticky="w", padx=PAD_LG, pady=PAD)
-                for c, (stat, key) in enumerate((("Max", "max"), ("Min", "min"), ("Std", "std"),
-                                                  ("Outage", "outage_min")), start=1):
+                tk.Label(cf, text=short, anchor="w").grid(
+                    row=r, column=0, sticky="w", padx=PAD_LG, pady=PAD
+                )
+                for c, (stat, key) in enumerate(
+                    (("Max", "max"), ("Min", "min"), ("Std", "std"), ("Outage", "outage_min")), start=1
+                ):
                     col = var_rows[vname].get(key)
                     if col is None:
                         continue
@@ -196,21 +228,26 @@ class SettingsDialog(tk.Toplevel):
                     self._col_vars[col] = v
                     ttk.Checkbutton(cf, variable=v).grid(row=r, column=c, padx=PAD_LG, pady=PAD)
 
-        pf = ttk.Frame(nb); nb.add(pf, text="Fire Perimeter")
+        pf = ttk.Frame(nb)
+        nb.add(pf, text="Fire Perimeter")
         ttk.Label(pf, text="Perimeter H5:", style="Section.TLabel").grid(
-            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
         self.var_perim_path = tk.StringVar(value=cfg.get("perim_h5_path") or "(none)")
-        ttk.Label(pf, textvariable=self.var_perim_path, anchor="w", width=42,
-                  style="Muted.TLabel").grid(row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD)
-        ttk.Button(pf, text="Choose...", command=self._choose_perim_file
-                  ).grid(row=1, column=1, sticky="w", padx=PAD_LG, pady=PAD)
+        ttk.Label(pf, textvariable=self.var_perim_path, anchor="w", width=42, style="Muted.TLabel").grid(
+            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        ttk.Button(pf, text="Choose...", command=self._choose_perim_file).grid(
+            row=1, column=1, sticky="w", padx=PAD_LG, pady=PAD
+        )
         self.v_perim_all = tk.BooleanVar(value=cfg.get("perim_show_all", False))
-        ttk.Checkbutton(pf, text="Show all perimeters (default: final only)",
-                        variable=self.v_perim_all).grid(
-            row=2, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+        ttk.Checkbutton(
+            pf, text="Show all perimeters (default: final only)", variable=self.v_perim_all
+        ).grid(row=2, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
 
-        bf = ttk.Frame(self); bf.pack(fill="x", padx=PAD_LG, pady=PAD)
-        ttk.Button(bf, text="OK",     command=self._ok,     width=8).pack(side="right", padx=PAD)
+        bf = ttk.Frame(self)
+        bf.pack(fill="x", padx=PAD_LG, pady=PAD)
+        ttk.Button(bf, text="OK", command=self._ok, width=8).pack(side="right", padx=PAD)
         ttk.Button(bf, text="Cancel", command=self.destroy, width=8).pack(side="right", padx=PAD)
         self.bind("<Return>", lambda _: self._ok())
         self.grab_set()
@@ -218,41 +255,44 @@ class SettingsDialog(tk.Toplevel):
     def _choose_perim_file(self):
         """Open file dialog to select fire perimeter H5 file."""
         path = filedialog.askopenfilename(
-            title="Open fire perimeter H5",
-            filetypes=[("HDF5 files", "*.h5 *.hdf5"), ("All files", "*.*")])
+            title="Open fire perimeter H5", filetypes=[("HDF5 files", "*.h5 *.hdf5"), ("All files", "*.*")]
+        )
         if path:
             self.var_perim_path.set(path)
 
     def _ok(self):
         """Validate all entries and set result dict with parsed config, or show error."""
         try:
-            bounds_r = {v: (float(lo.get()), float(hi.get()), u)
-                        for v, (lo, hi, u) in self._bound_entries.items()}
+            bounds_r = {
+                v: (float(lo.get()), float(hi.get()), u) for v, (lo, hi, u) in self._bound_entries.items()
+            }
         except ValueError:
             messagebox.showerror("Bad value", "Bounds: enter valid numbers", parent=self)
             return
         try:
             perim_path = self.var_perim_path.get()
             self.result = {
-                "nan_pct":            float(self.e_nan.get()),
-                "frozen_min_run":     int(self.e_frz.get()),
+                "nan_pct": float(self.e_nan.get()),
+                "frozen_min_run": int(self.e_frz.get()),
                 "max_var_outage_min": float(self.e_max_var_outage.get()),
-                "full_outage_min":    float(self.e_full_outage.get()),
-                "show_errors":        self.v_show_errors.get(),
-                "show_warns":         self.v_show_warns.get(),
-                "hidden_assertions":  {k for k, v in self._acat_vars.items() if not v.get()},
-                "bounds":             bounds_r,
-                "col_visibility":     {c: v.get() for c, v in self._col_vars.items()},
-                "perim_h5_path":      perim_path if perim_path and perim_path != "(none)" else None,
-                "perim_show_all":     self.v_perim_all.get(),
-                "compare_n_neighbors":           int(self.e_compare_n.get()),
+                "full_outage_min": float(self.e_full_outage.get()),
+                "show_errors": self.v_show_errors.get(),
+                "show_warns": self.v_show_warns.get(),
+                "hidden_assertions": {k for k, v in self._acat_vars.items() if not v.get()},
+                "bounds": bounds_r,
+                "col_visibility": {c: v.get() for c, v in self._col_vars.items()},
+                "perim_h5_path": perim_path if perim_path and perim_path != "(none)" else None,
+                "perim_show_all": self.v_perim_all.get(),
+                "compare_n_neighbors": int(self.e_compare_n.get()),
                 "compare_include_skip_greenlit": self.v_compare_pool.get(),
             }
             self.destroy()
         except ValueError:
-            messagebox.showerror("Bad value",
+            messagebox.showerror(
+                "Bad value",
                 "NaN thresh / outage thresholds: float, Frozen run / Compare N: integer",
-                parent=self)
+                parent=self,
+            )
 
 
 class ExportScriptDialog(tk.Toplevel):
@@ -279,8 +319,7 @@ class ExportScriptDialog(tk.Toplevel):
         # Compute slug for defaults
         slug = fire_name_guess.lower().replace(" ", "_") if fire_name_guess else ""
 
-        ttk.Label(self, text="Fire name:", style="Section.TLabel").pack(
-            anchor="w", padx=14, pady=(10, 2))
+        ttk.Label(self, text="Fire name:", style="Section.TLabel").pack(anchor="w", padx=14, pady=(10, 2))
         self.e_fire_name = ttk.Entry(self, width=50)
         self.e_fire_name.insert(0, fire_name_guess)
         self.e_fire_name.pack(padx=14, pady=4)

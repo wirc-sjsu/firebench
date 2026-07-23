@@ -35,8 +35,8 @@ def _parse_station_group(grp, stid):
             time_origin), variables (dict[str, np.ndarray], one float64 array
             per sensor, NaN = missing sample), var_units (dict[str, str]).
     """
-    attrs   = dict(grp.attrs)
-    t0_str  = grp["time"].attrs.get("time_origin", "")
+    attrs = dict(grp.attrs)
+    t0_str = grp["time"].attrs.get("time_origin", "")
     rel_min = grp["time"][:]
     try:
         t0 = datetime.fromisoformat(t0_str)
@@ -60,14 +60,14 @@ def _parse_station_group(grp, stid):
     return {
         "stid": stid,
         "name": attrs.get("name", stid),
-        "lat":  float(attrs.get("position_lat", 0.0)),
-        "lon":  float(attrs.get("position_lon", 0.0)),
-        "alt":  float(attrs.get("position_alt", 0.0)),
-        "state":    attrs.get("state", ""),
+        "lat": float(attrs.get("position_lat", 0.0)),
+        "lon": float(attrs.get("position_lon", 0.0)),
+        "alt": float(attrs.get("position_alt", 0.0)),
+        "state": attrs.get("state", ""),
         "timezone": attrs.get("timezone", ""),
         "provider": attrs.get("providers", ""),
-        "times":    times,
-        "rel_min":  rel_min,
+        "times": times,
+        "rel_min": rel_min,
         "variables": variables,
         "var_units": var_units,
     }
@@ -216,23 +216,23 @@ def _var_stat_block(data, avg_freq):
             (int, samples), longest_gap_hr (float or None, hours),
             longest_frozen (int, samples), longest_frozen_val (float or None).
     """
-    nm      = np.isnan(data)
-    nan_ct  = int(nm.sum())
+    nm = np.isnan(data)
+    nan_ct = int(nm.sum())
     nan_pct = 100.0 * nan_ct / len(data) if len(data) else 0.0
-    valid   = data[~nm]
+    valid = data[~nm]
     gap = _longest_nan_run(nm)
     frozen, frozen_val_raw = _longest_frozen_run(valid)
     frozen_val = None if frozen == 0 or np.isnan(frozen_val_raw) else float(frozen_val_raw)
     return {
-        "nan_ct":             nan_ct,
-        "nan_pct":            nan_pct,
-        "min":                float(valid.min())  if len(valid) else None,
-        "max":                float(valid.max())  if len(valid) else None,
-        "mean":               float(valid.mean()) if len(valid) else None,
-        "std":                float(valid.std())  if len(valid) else None,
-        "longest_gap_pts":    int(gap),
-        "longest_gap_hr":     (gap * avg_freq / 60.0) if avg_freq else None,
-        "longest_frozen":     int(frozen),
+        "nan_ct": nan_ct,
+        "nan_pct": nan_pct,
+        "min": float(valid.min()) if len(valid) else None,
+        "max": float(valid.max()) if len(valid) else None,
+        "mean": float(valid.mean()) if len(valid) else None,
+        "std": float(valid.std()) if len(valid) else None,
+        "longest_gap_pts": int(gap),
+        "longest_gap_hr": (gap * avg_freq / 60.0) if avg_freq else None,
+        "longest_frozen": int(frozen),
         "longest_frozen_val": frozen_val,
     }
 
@@ -263,18 +263,31 @@ def compute_stats(st):
             deltas = np.diff(np.asarray(rel_min, dtype=np.float64))
         else:
             deltas = _deltas_minutes(times)
-        avg_freq  = float(np.median(deltas))
-        max_dt    = float(deltas.max())
-        n_neg     = int(np.sum(deltas < 0))
-        n_dup     = n - len(set(times))
-        monotonic = (n_neg == 0 and n_dup == 0)
-        dup_ts    = n_dup > 0
+        avg_freq = float(np.median(deltas))
+        max_dt = float(deltas.max())
+        n_neg = int(np.sum(deltas < 0))
+        n_dup = n - len(set(times))
+        monotonic = n_neg == 0 and n_dup == 0
+        dup_ts = n_dup > 0
     else:
-        avg_freq = None; max_dt = None; monotonic = True; dup_ts = False; n_neg = 0; n_dup = 0
+        avg_freq = None
+        max_dt = None
+        monotonic = True
+        dup_ts = False
+        n_neg = 0
+        n_dup = 0
 
-    result = {"_time": {"n_pts": n, "avg_freq_min": avg_freq, "max_dt_min": max_dt,
-                        "monotonic": monotonic, "dup_ts": dup_ts,
-                        "n_neg_deltas": n_neg, "n_dup_ts": n_dup}}
+    result = {
+        "_time": {
+            "n_pts": n,
+            "avg_freq_min": avg_freq,
+            "max_dt_min": max_dt,
+            "monotonic": monotonic,
+            "dup_ts": dup_ts,
+            "n_neg_deltas": n_neg,
+            "n_dup_ts": n_dup,
+        }
+    }
 
     for vname, data in st["variables"].items():
         result[vname] = _var_stat_block(data, avg_freq)
@@ -282,8 +295,10 @@ def compute_stats(st):
     vd = st["variables"]
     ws = vd.get("wind_speed")
     if ws is not None:
-        for gated_var, field in [("wind_direction", "wd_nan_ws_pos_pct"),
-                                  ("wind_gust", "gust_nan_ws_pos_pct")]:
+        for gated_var, field in [
+            ("wind_direction", "wd_nan_ws_pos_pct"),
+            ("wind_gust", "gust_nan_ws_pos_pct"),
+        ]:
             if gated_var in vd and gated_var in result:
                 result[gated_var][field] = _ws_gated_nan_pct(vd[gated_var], ws)
 
@@ -339,14 +354,21 @@ def run_assertions(st, stats, cfg):
     if n_neg > 0:
         # Single backwards jump typically DST fall-back; multiple suggests data corruption.
         sev = "WARN" if n_neg == 1 else "ERROR"
-        issues.append((sev, "time_neg",
-            f"Backwards timestamp: {n_neg} jump(s) — likely DST fall-back" if n_neg == 1
-            else f"Backwards timestamps: {n_neg} jumps"))
+        issues.append(
+            (
+                sev,
+                "time_neg",
+                (
+                    f"Backwards timestamp: {n_neg} jump(s) — likely DST fall-back"
+                    if n_neg == 1
+                    else f"Backwards timestamps: {n_neg} jumps"
+                ),
+            )
+        )
     if n_dup > 0:
         dup_pct = 100.0 * n_dup / max(ts["n_pts"] - 1, 1)
         sev = "WARN" if n_dup <= cfg.get("dup_max", 5) else "ERROR"
-        issues.append((sev, "dup_ts",
-            f"Duplicate timestamps: {n_dup} ({dup_pct:.1f}% of intervals)"))
+        issues.append((sev, "dup_ts", f"Duplicate timestamps: {n_dup} ({dup_pct:.1f}% of intervals)"))
 
     vd = st["variables"]
     if "wind_direction" in vd and "wind_speed" in vd:
@@ -354,17 +376,23 @@ def run_assertions(st, stats, cfg):
         n_drop = int((np.isnan(wd) & ~np.isnan(ws) & (ws > 0)).sum())
         # Require sustained minimum count to exclude zero-crossing noise.
         if n_drop >= DROPOUT_MIN_PTS:
-            issues.append(("WARN", "dropout",
-                f"WD NaN while WS>0: {n_drop} pts ({100*n_drop/len(wd):.1f}%)"))
+            issues.append(
+                ("WARN", "dropout", f"WD NaN while WS>0: {n_drop} pts ({100*n_drop/len(wd):.1f}%)")
+            )
 
-    frz_min   = cfg["frozen_min_run"]
-    bounds    = cfg["bounds"]
-    avg_freq  = ts.get("avg_freq_min")
-    max_dt    = ts.get("max_dt_min")
+    frz_min = cfg["frozen_min_run"]
+    bounds = cfg["bounds"]
+    avg_freq = ts.get("avg_freq_min")
+    max_dt = ts.get("max_dt_min")
     # Ratio-based check; GAP_DT_RATIO calibrated to flag only genuine outliers.
     if avg_freq and max_dt and max_dt > GAP_DT_RATIO * avg_freq:
-        issues.append(("WARN", "gap_dt",
-            f"Max obs gap={max_dt:.0f} min ({max_dt/avg_freq:.1f}× avg {avg_freq:.0f} min)"))
+        issues.append(
+            (
+                "WARN",
+                "gap_dt",
+                f"Max obs gap={max_dt:.0f} min ({max_dt/avg_freq:.1f}× avg {avg_freq:.0f} min)",
+            )
+        )
 
     for vname, vs in stats.items():
         if vname == "_time":
@@ -373,11 +401,9 @@ def run_assertions(st, stats, cfg):
         if vname in bounds and vs["max"] is not None:
             lo, hi, u = bounds[vname]
             if vs["min"] < lo:
-                issues.append(("ERROR", f"lo:{vname}",
-                    f"{vname} min={vs['min']:.2f} below {lo} {u}"))
+                issues.append(("ERROR", f"lo:{vname}", f"{vname} min={vs['min']:.2f} below {lo} {u}"))
             if vs["max"] > hi:
-                issues.append(("ERROR", f"hi:{vname}",
-                    f"{vname} max={vs['max']:.2f} above {hi} {u}"))
+                issues.append(("ERROR", f"hi:{vname}", f"{vname} max={vs['max']:.2f} above {hi} {u}"))
         # Frozen-run detection varies by variable.
         # wind_speed/wind_gust: skipped (calm at 0.0 is normal, not stuck).
         # solar_radiation: allowed only at 0.0 (nighttime).
@@ -386,15 +412,12 @@ def run_assertions(st, stats, cfg):
             pass
         elif vname == "solar_radiation":
             if vs["longest_frozen"] >= frz_min and vs.get("longest_frozen_val") != 0.0:
-                issues.append(("WARN", f"frozen:{vname}",
-                    f"{vname} frozen run={vs['longest_frozen']} pts"))
+                issues.append(("WARN", f"frozen:{vname}", f"{vname} frozen run={vs['longest_frozen']} pts"))
         elif vname == "fuel_moisture_content_10h":
             if vs["longest_frozen"] >= FUEL_MOISTURE_FROZEN_MIN_RUN:
-                issues.append(("WARN", f"frozen:{vname}",
-                    f"{vname} frozen run={vs['longest_frozen']} pts"))
+                issues.append(("WARN", f"frozen:{vname}", f"{vname} frozen run={vs['longest_frozen']} pts"))
         elif vs["longest_frozen"] >= frz_min:
-            issues.append(("WARN", f"frozen:{vname}",
-                f"{vname} frozen run={vs['longest_frozen']} pts"))
+            issues.append(("WARN", f"frozen:{vname}", f"{vname} frozen run={vs['longest_frozen']} pts"))
 
     return issues
 
@@ -420,15 +443,13 @@ def run_outage_assertions(stats, cfg):
     issues = []
     ts = stats["_time"]
     mvo = ts.get("max_var_outage_min")
-    fo  = ts.get("full_outage_min")
+    fo = ts.get("full_outage_min")
     mvo_th = cfg.get("max_var_outage_min", DEFAULT_MAX_VAR_OUTAGE_MIN)
-    fo_th  = cfg.get("full_outage_min", DEFAULT_FULL_OUTAGE_MIN)
+    fo_th = cfg.get("full_outage_min", DEFAULT_FULL_OUTAGE_MIN)
     if mvo is not None and mvo > mvo_th:
-        issues.append(("WARN", "max_var_outage",
-            f"Max variable outage={mvo/60:.1f}h > {mvo_th/60:.1f}h"))
+        issues.append(("WARN", "max_var_outage", f"Max variable outage={mvo/60:.1f}h > {mvo_th/60:.1f}h"))
     if fo is not None and fo > fo_th:
-        issues.append(("WARN", "full_outage",
-            f"Full station outage={fo/60:.1f}h > {fo_th/60:.1f}h"))
+        issues.append(("WARN", "full_outage", f"Full station outage={fo/60:.1f}h > {fo_th/60:.1f}h"))
     return issues
 
 
@@ -449,8 +470,7 @@ def _deltas_minutes(times):
     if np.issubdtype(arr.dtype, np.datetime64):
         return np.diff(arr) / np.timedelta64(1, "m")
     if arr.dtype == object:
-        return np.array([(arr[i + 1] - arr[i]).total_seconds() / 60.0
-                          for i in range(len(arr) - 1)])
+        return np.array([(arr[i + 1] - arr[i]).total_seconds() / 60.0 for i in range(len(arr) - 1)])
     return np.diff(arr.astype(np.float64))
 
 
@@ -482,8 +502,9 @@ def _segment_by_gap(times, data, avg_freq, factor=OUTAGE_RUN_FACTOR):
     deltas_min = _deltas_minutes(times)
     split = np.where(deltas_min >= thresh)[0] + 1
     bounds = np.concatenate(([0], split, [n]))
-    return [(times[bounds[k]:bounds[k + 1]], data[bounds[k]:bounds[k + 1]])
-            for k in range(len(bounds) - 1)]
+    return [
+        (times[bounds[k] : bounds[k + 1]], data[bounds[k] : bounds[k + 1]]) for k in range(len(bounds) - 1)
+    ]
 
 
 def compute_outage_stats(st, stats, edge_gap_min, factor=OUTAGE_RUN_FACTOR):

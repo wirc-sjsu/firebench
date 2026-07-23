@@ -29,18 +29,17 @@ class SessionMixin:
                 map_color (str), all_stats (dict), ov_col_vis (dict).
         """
         return {
-            "version":      4,
-            "saved_at":     datetime.now().isoformat(timespec="seconds"),
-            "h5_path":      str(self.h5_path) if self.h5_path else None,
-            "skip_list":    dict(self.skip_list),
-            "removal_list": {s: [dict(e) for e in v]
-                             for s, v in self.removal_list.items()},
-            "green_list":   sorted(self.green_list),
-            "cfg":          copy.deepcopy(self.cfg),
+            "version": 4,
+            "saved_at": datetime.now().isoformat(timespec="seconds"),
+            "h5_path": str(self.h5_path) if self.h5_path else None,
+            "skip_list": dict(self.skip_list),
+            "removal_list": {s: [dict(e) for e in v] for s, v in self.removal_list.items()},
+            "green_list": sorted(self.green_list),
+            "cfg": copy.deepcopy(self.cfg),
             "current_stid": self._current_stid,
-            "map_color":    self.var_map_color.get(),
-            "all_stats":    self.all_stats,
-            "ov_col_vis":   {c: v.get() for c, v in self._ov_col_vars.items()},
+            "map_color": self.var_map_color.get(),
+            "all_stats": self.all_stats,
+            "ov_col_vis": {c: v.get() for c, v in self._ov_col_vars.items()},
         }
 
     def _save_session(self, path=None):
@@ -103,18 +102,18 @@ class SessionMixin:
         """
         loaded_cfg = sess.get("cfg", {})
         self.cfg = {
-            "nan_pct":           DEFAULT_NAN_THRESH,
-            "frozen_min_run":    DEFAULT_FROZEN_RUN,
+            "nan_pct": DEFAULT_NAN_THRESH,
+            "frozen_min_run": DEFAULT_FROZEN_RUN,
             "max_var_outage_min": DEFAULT_MAX_VAR_OUTAGE_MIN,
-            "full_outage_min":    DEFAULT_FULL_OUTAGE_MIN,
-            "dup_max":           5,
-            "bounds":            copy.deepcopy(PHYS_BOUNDS),
+            "full_outage_min": DEFAULT_FULL_OUTAGE_MIN,
+            "dup_max": 5,
+            "bounds": copy.deepcopy(PHYS_BOUNDS),
             "hidden_assertions": set(),
-            "show_errors":       True,
-            "show_warns":        True,
-            "perim_h5_path":     None,
-            "perim_show_all":    False,
-            "compare_n_neighbors":          4,
+            "show_errors": True,
+            "show_warns": True,
+            "perim_h5_path": None,
+            "perim_show_all": False,
+            "compare_n_neighbors": 4,
             "compare_include_skip_greenlit": False,
         }
         self.cfg.update(loaded_cfg)
@@ -124,7 +123,7 @@ class SessionMixin:
         else:
             self._perim_data = []
             self._perim_loaded_path = None
-        self.skip_list  = sess.get("skip_list", {})
+        self.skip_list = sess.get("skip_list", {})
         self.green_list = set(sess.get("green_list", []))
         # v4: record-removal manifest; older sessions simply have none
         self.removal_list = sess.get("removal_list", {})
@@ -156,8 +155,9 @@ class SessionMixin:
             self._load_data(cached_stats=sess.get("all_stats"), on_complete=_on_complete)
         else:
             if h5:
-                messagebox.showwarning("H5 not found",
-                    f"Session references:\n{h5}\n\nFile not found. Open it manually.")
+                messagebox.showwarning(
+                    "H5 not found", f"Session references:\n{h5}\n\nFile not found. Open it manually."
+                )
             self._refresh_skiplist()
             self._refresh_overview()
             self._refresh_station_list()
@@ -177,13 +177,15 @@ class SessionMixin:
             with open(AUTOSAVE_PATH, "rb") as f:
                 sess = pickle.load(f)
             saved_at = sess.get("saved_at", "unknown")[:16]
-            h5_name  = Path(sess["h5_path"]).name if sess.get("h5_path") else "—"
-            n_skip  = len(sess.get("skip_list", {}))
+            h5_name = Path(sess["h5_path"]).name if sess.get("h5_path") else "—"
+            n_skip = len(sess.get("skip_list", {}))
             n_green = len(sess.get("green_list", []))
-            msg = (f"Autosave found from {saved_at}\n"
-                   f"File: {h5_name}\n"
-                   f"Skip: {n_skip}  |  Greenlit: {n_green}\n\n"
-                   f"Reload this session?")
+            msg = (
+                f"Autosave found from {saved_at}\n"
+                f"File: {h5_name}\n"
+                f"Skip: {n_skip}  |  Greenlit: {n_green}\n\n"
+                f"Reload this session?"
+            )
             if messagebox.askyesno("Restore autosave?", msg):
                 self._restore_session(sess)
         except Exception as e:

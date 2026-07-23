@@ -2,6 +2,7 @@ import time
 import tkinter as tk
 from tkinter import ttk
 import matplotlib
+
 matplotlib.use("TkAgg")
 import matplotlib.dates as mdates
 import numpy as np
@@ -27,8 +28,9 @@ from .session import SessionMixin
 from .loader import LoaderMixin
 
 
-class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
-          SessionMixin, LoaderMixin, tk.Tk):
+class App(
+    OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin, SessionMixin, LoaderMixin, tk.Tk
+):
     def __init__(self):
         """Initialize the Weather Station QC application.
 
@@ -40,107 +42,107 @@ class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
         self.geometry("1440x900")
         self.minsize(1000, 700)
 
-        self.h5_path    = None
-        self.stations   = {}
-        self.all_stats  = {}
+        self.h5_path = None
+        self.stations = {}
+        self.all_stats = {}
         self.all_issues = {}
-        self.skip_list  = {}
+        self.skip_list = {}
         self.green_list = set()
         # Record-removal QC: stid -> list of {var, t0, t1, reason}. Non-destructive;
         # original data plotted + visual overlay. t0/t1 inclusive ISO (minute); "*"=all vars.
         self.removal_list = {}
-        self.stids      = []
+        self.stids = []
         self._map_stids = []
-        self._map_cbar  = None
-        self._map_sc         = None
+        self._map_cbar = None
+        self._map_sc = None
         self._map_color_mode = None
-        self._map_offsets    = None
-        self._map_cvals_arr  = None
-        self._map_plotted    = set()
+        self._map_offsets = None
+        self._map_cvals_arr = None
+        self._map_plotted = set()
         # Reusable map artists (quiver, dots, markers, colorbar) + signature.
         # Fast in-place refresh: update artists' data instead of ax.cla() + rebuild.
-        self._map_quiver       = None
-        self._map_calm_dots    = None
+        self._map_quiver = None
+        self._map_calm_dots = None
         self._map_missing_circ = None
-        self._map_missing_x    = None
-        self._map_cbar_sm      = None
-        self._map_draw_sig     = None
-        self._map_lonlat       = None
-        self._map_value_units  = ""
+        self._map_missing_x = None
+        self._map_cbar_sm = None
+        self._map_draw_sig = None
+        self._map_lonlat = None
+        self._map_value_units = ""
         # Time-window aggregation: aggregate matrix precomputed on mode/var/dt change;
         # slider only re-indexes (no recompute-on-drag).
-        self._map_dt_var       = tk.StringVar(value="6h")
-        self._map_agg_var      = tk.StringVar(value="mean")
-        self.var_map_value     = tk.StringVar()
-        self._map_window_idx   = 0
+        self._map_dt_var = tk.StringVar(value="6h")
+        self._map_agg_var = tk.StringVar(value="mean")
+        self.var_map_value = tk.StringVar()
+        self._map_window_idx = 0
         self._map_window_bounds = []
         # Global time extent and custom window width (minutes). None = follow preset.
-        self._map_t_extent     = None
+        self._map_t_extent = None
         self._map_dt_custom_min = None
         # Last synced duration; discriminator for pan/resize in _on_map_window_nav.
         self._map_nav_synced_dur = None
-        self._map_cur_agg      = None
-        self._map_agg_sig      = None
+        self._map_cur_agg = None
+        self._map_agg_sig = None
         # Debounce window-scrub slider: defer heavy _refresh_map, keep label live.
         self._map_scrub_after_id = None
         # Hover/selection state: separate lightweight overlay artists on ax_map,
         # independent of main redraw so hover doesn't trigger full replot.
-        self._map_hover_stid    = None
+        self._map_hover_stid = None
         self._map_selected_stid = None
-        self._map_hover_artist  = None
-        self._map_sel_artist    = None
-        self._map_popup_artist  = None
+        self._map_hover_artist = None
+        self._map_sel_artist = None
+        self._map_popup_artist = None
         # Fire perimeter overlay: separate colorbar on same axes;
         # remove-before-redraw pattern to avoid conflicts.
-        self._perim_data       = []
+        self._perim_data = []
         self._perim_loaded_path = None
-        self._map_perim_cbar   = None
+        self._map_perim_cbar = None
         # Time series point selection: snapshot of plotted (times, data) for
         # click/drag snapping without re-deriving from self.stations.
-        self._ts_times  = None
-        self._ts_data   = None
-        self._ts_xnum   = None
-        self._ts_vname  = None
-        self._ts_units  = ""
-        self._ts_sel_idx    = None
+        self._ts_times = None
+        self._ts_data = None
+        self._ts_xnum = None
+        self._ts_vname = None
+        self._ts_units = ""
+        self._ts_sel_idx = None
         self._ts_sel_artist = None
-        self._ts_sel_annot  = None
-        self._ts_dragging   = False
+        self._ts_sel_annot = None
+        self._ts_dragging = False
         # Removal QC: Shift+drag range selection (idx0, idx1) on single-station plot.
         # Cleared by plain click or plot refresh (station/var change).
-        self._ts_range_sel      = None
-        self._ts_range_artist   = None
-        self._ts_range_anchor   = None
+        self._ts_range_sel = None
+        self._ts_range_artist = None
+        self._ts_range_anchor = None
         self._ts_range_dragging = False
-        self._ts_shift_press    = None
+        self._ts_shift_press = None
         # Synthetic "wind" variable: wind_direction snapshot parallel to _ts_data
         # (wind_speed) for annotation. None for non-wind vars (disambiguator).
         # Quiver artist + debounce after-id for re-sampling on zoom/pan.
-        self._ts_wd          = None
-        self._ts_quiver      = None
+        self._ts_wd = None
+        self._ts_quiver = None
         self._ts_wind_after_id = None
         # Generation counter bumped on each _plot_timeseries() call.
         # Chunked multi-station render bails if stale (selection changed mid-render).
-        self._ts_plot_gen   = 0
-        self._ov_rendered    = set()
-        self._ov_row_cache   = {}   # stid -> (tag, values) memo for Overview rows
-        self._current_stid   = None
-        self._all_ov_cols    = ()
-        self._ov_var_col_map = {}   # col_name -> (vname, stat_key)
+        self._ts_plot_gen = 0
+        self._ov_rendered = set()
+        self._ov_row_cache = {}  # stid -> (tag, values) memo for Overview rows
+        self._current_stid = None
+        self._all_ov_cols = ()
+        self._ov_var_col_map = {}  # col_name -> (vname, stat_key)
 
         self.cfg = {
-            "nan_pct":           DEFAULT_NAN_THRESH,
-            "frozen_min_run":    DEFAULT_FROZEN_RUN,
+            "nan_pct": DEFAULT_NAN_THRESH,
+            "frozen_min_run": DEFAULT_FROZEN_RUN,
             "max_var_outage_min": DEFAULT_MAX_VAR_OUTAGE_MIN,
-            "full_outage_min":    DEFAULT_FULL_OUTAGE_MIN,
-            "dup_max":           5,
-            "bounds":            copy.deepcopy(PHYS_BOUNDS),
+            "full_outage_min": DEFAULT_FULL_OUTAGE_MIN,
+            "dup_max": 5,
+            "bounds": copy.deepcopy(PHYS_BOUNDS),
             "hidden_assertions": set(),
-            "show_errors":       True,
-            "show_warns":        True,
-            "perim_h5_path":     None,
-            "perim_show_all":    False,
-            "compare_n_neighbors":          4,
+            "show_errors": True,
+            "show_warns": True,
+            "perim_h5_path": None,
+            "perim_show_all": False,
+            "compare_n_neighbors": 4,
             "compare_include_skip_greenlit": False,
         }
 
@@ -177,7 +179,9 @@ class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
         # Use ttk.Label so theme respects system dark/light mode (not hardcoded color).
         self.lbl_file = ttk.Label(bar, text="No file loaded", anchor="w")
         self.lbl_file.pack(side="left", padx=4, fill="x", expand=True)
-        ttk.Button(bar, text="Settings...", command=self._open_thresholds_dialog).pack(side="left", padx=(8, 2))
+        ttk.Button(bar, text="Settings...", command=self._open_thresholds_dialog).pack(
+            side="left", padx=(8, 2)
+        )
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6, pady=3)
         ttk.Button(bar, text="Save Session", command=self._save_session).pack(side="left", padx=2)
         ttk.Button(bar, text="Load Session", command=self._load_session_file).pack(side="left", padx=2)
@@ -186,8 +190,16 @@ class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
         self.lbl_status.pack(side="right", padx=8)
         self.pb_load = ttk.Progressbar(bar, mode="determinate", length=140)
 
-    _ZOOM_WIDTH_HOURS = {"14d": 14*24, "7d": 7*24, "3d": 3*24, "1d": 24,
-                         "12h": 12, "6h": 6, "3h": 3, "1h": 1}
+    _ZOOM_WIDTH_HOURS = {
+        "14d": 14 * 24,
+        "7d": 7 * 24,
+        "3d": 3 * 24,
+        "1d": 24,
+        "12h": 12,
+        "6h": 6,
+        "3h": 3,
+        "1h": 1,
+    }
 
     def _add_zoom_controls(self, parent, get_ax, get_canvas):
         """Build time-window zoom controls and navigator widget.
@@ -206,15 +218,21 @@ class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
         width_var = tk.StringVar(value="Full")
         # Exposed so detail.py's xlim_changed hook can blank it when toolbar zoom/pan occurs.
         self._ts_width_var = width_var
-        cb_width = ttk.Combobox(f, textvariable=width_var, state="readonly", width=6,
-                     values=["Full", "14d", "7d", "3d", "1d", "12h", "6h", "3h", "1h"])
+        cb_width = ttk.Combobox(
+            f,
+            textvariable=width_var,
+            state="readonly",
+            width=6,
+            values=["Full", "14d", "7d", "3d", "1d", "12h", "6h", "3h", "1h"],
+        )
         cb_width.pack(side="left", padx=(2, 8))
         lbl = ttk.Label(f, text="—", font=FONT_MONO, style="Muted.TLabel")
 
         def _update_lbl(start, dur):
             end = start + dur
-            lbl.config(text=f"{mdates.num2date(start):%Y-%m-%d %H:%M} -> "
-                            f"{mdates.num2date(end):%Y-%m-%d %H:%M}")
+            lbl.config(
+                text=f"{mdates.num2date(start):%Y-%m-%d %H:%M} -> " f"{mdates.num2date(end):%Y-%m-%d %H:%M}"
+            )
 
         def _on_nav(start, dur, final):
             ax, canvas = get_ax(), get_canvas()
@@ -325,7 +343,9 @@ class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
         and refreshing all tabs with new settings.
         """
         dlg = SettingsDialog(
-            self, self.cfg, self.cfg["bounds"],
+            self,
+            self.cfg,
+            self.cfg["bounds"],
             tuple(c for c in self._OV_BASE_COLS if c != "STID"),
             self._ov_var_col_map,
             {c: v.get() for c, v in self._ov_col_vars.items()},
@@ -335,11 +355,13 @@ class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
         if dlg.result is not None:
             col_visibility = dlg.result.pop("col_visibility")
             perim_path = dlg.result.pop("perim_h5_path")
-            rerun = (dlg.result["nan_pct"]            != self.cfg["nan_pct"] or
-                     dlg.result["frozen_min_run"]      != self.cfg["frozen_min_run"] or
-                     dlg.result["max_var_outage_min"]  != self.cfg.get("max_var_outage_min") or
-                     dlg.result["full_outage_min"]     != self.cfg.get("full_outage_min") or
-                     dlg.result["bounds"]              != self.cfg["bounds"])
+            rerun = (
+                dlg.result["nan_pct"] != self.cfg["nan_pct"]
+                or dlg.result["frozen_min_run"] != self.cfg["frozen_min_run"]
+                or dlg.result["max_var_outage_min"] != self.cfg.get("max_var_outage_min")
+                or dlg.result["full_outage_min"] != self.cfg.get("full_outage_min")
+                or dlg.result["bounds"] != self.cfg["bounds"]
+            )
             self.cfg.update(dlg.result)
             self.cfg["perim_h5_path"] = perim_path
             for c, val in col_visibility.items():
@@ -383,13 +405,13 @@ class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
         # Newer call bumps generation and cancels prior run. New H5 load cancels too.
         self._rerun_gen = getattr(self, "_rerun_gen", 0) + 1
         gen = self._rerun_gen
-        self._rerun_stids       = list(self.stations)
-        self._rerun_idx         = 0
-        self._rerun_new_issues  = {}
+        self._rerun_stids = list(self.stations)
+        self._rerun_idx = 0
+        self._rerun_new_issues = {}
         self._rerun_on_complete = on_complete
-        self._rerun_load_gen    = getattr(self, "_load_gen_id", 0)
+        self._rerun_load_gen = getattr(self, "_load_gen_id", 0)
         self.pb_load["maximum"] = max(len(self._rerun_stids), 1)
-        self.pb_load["value"]   = 0
+        self.pb_load["value"] = 0
         self.pb_load.pack(side="right", padx=(0, 4))
         self.after(1, lambda: self._rerun_chunk(gen))
 
@@ -415,9 +437,8 @@ class App(OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin,
             st, stats = self.stations.get(s), self.all_stats.get(s)
             if st is not None and stats is not None:
                 # Outage stats independent of cfg thresholds; re-check both families against changes.
-                self._rerun_new_issues[s] = (
-                    run_assertions(st, stats, self.cfg)
-                    + run_outage_assertions(stats, self.cfg)
+                self._rerun_new_issues[s] = run_assertions(st, stats, self.cfg) + run_outage_assertions(
+                    stats, self.cfg
                 )
         self.pb_load["value"] = self._rerun_idx
         n = len(stids)

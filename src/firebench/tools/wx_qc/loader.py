@@ -5,8 +5,13 @@ import numpy as np
 import h5py
 
 from .data import (
-    iter_h5_stations, compute_stats, run_assertions, _var_stat_block,
-    compute_outage_stats, run_outage_assertions, _ws_gated_nan_pct,
+    iter_h5_stations,
+    compute_stats,
+    run_assertions,
+    _var_stat_block,
+    compute_outage_stats,
+    run_outage_assertions,
+    _ws_gated_nan_pct,
 )
 
 
@@ -54,15 +59,17 @@ class LoaderMixin:
         if not new_vars:
             return cached, False
         avg_freq = cached["_time"]["avg_freq_min"]
-        merged   = dict(cached)
+        merged = dict(cached)
         for v in new_vars:
             merged[v] = _var_stat_block(st["variables"][v], avg_freq)
         # recompute cross-var derived stat if wind vars changed
         vd = st["variables"]
         ws = vd.get("wind_speed")
         if ws is not None:
-            for gated_var, field in (("wind_direction", "wd_nan_ws_pos_pct"),
-                                      ("wind_gust",      "gust_nan_ws_pos_pct")):
+            for gated_var, field in (
+                ("wind_direction", "wd_nan_ws_pos_pct"),
+                ("wind_gust", "gust_nan_ws_pos_pct"),
+            ):
                 if gated_var in vd and (gated_var in new_vars or "wind_speed" in new_vars):
                     merged[gated_var][field] = _ws_gated_nan_pct(vd[gated_var], ws)
         return merged, True
@@ -81,8 +88,7 @@ class LoaderMixin:
         firsts, lasts = [], []
         for st in self.stations.values():
             t = st["times"]
-            if (isinstance(t, np.ndarray) and len(t)
-                    and np.issubdtype(t.dtype, np.datetime64)):
+            if isinstance(t, np.ndarray) and len(t) and np.issubdtype(t.dtype, np.datetime64):
                 firsts.append(t[0])
                 lasts.append(t[-1])
         if not firsts:
@@ -91,7 +97,9 @@ class LoaderMixin:
                 stats = self.all_stats[stid]
                 stats["_time"]["edge_gap_min"] = 0.0
                 compute_outage_stats(st, stats, 0.0)
-                self.all_issues[stid] = self.all_issues.get(stid, []) + run_outage_assertions(stats, self.cfg)
+                self.all_issues[stid] = self.all_issues.get(stid, []) + run_outage_assertions(
+                    stats, self.cfg
+                )
             return
         gmin = min(firsts)
         gmax = max(lasts)
@@ -100,8 +108,7 @@ class LoaderMixin:
         for stid, st in self.stations.items():
             stats = self.all_stats[stid]
             t = st["times"]
-            if (isinstance(t, np.ndarray) and len(t)
-                    and np.issubdtype(t.dtype, np.datetime64)):
+            if isinstance(t, np.ndarray) and len(t) and np.issubdtype(t.dtype, np.datetime64):
                 head = float((t[0] - gmin) / one_min)
                 tail = float((gmax - t[-1]) / one_min)
                 edge_gap = max(head, tail, 0.0)
@@ -128,23 +135,23 @@ class LoaderMixin:
         """
         self._load_gen_id = getattr(self, "_load_gen_id", 0) + 1
         gen_id = self._load_gen_id
-        self.stations   = {}
-        self.all_stats  = {}
+        self.stations = {}
+        self.all_stats = {}
         self.all_issues = {}
-        self.stids      = []
+        self.stids = []
         self._time_extent_global = None  # (gmin, gmax) once the load finishes
-        self._load_iter        = iter_h5_stations(self.h5_path)
-        self._load_cached      = cached_stats
+        self._load_iter = iter_h5_stations(self.h5_path)
+        self._load_cached = cached_stats
         self._load_on_complete = on_complete
-        self._load_n_fresh     = 0
-        self._load_n_total     = 0
-        self._load_last_ui_t   = 0.0
+        self._load_n_fresh = 0
+        self._load_n_total = 0
+        self._load_last_ui_t = 0.0
         self._load_pending_new = []
-        self._map_sc         = None  # force a full (re)creation on first tick of this load
-        self._map_offsets    = None
-        self._map_cvals_arr  = None
-        self._map_plotted    = set()
-        self._ov_rendered    = set()
+        self._map_sc = None  # force a full (re)creation on first tick of this load
+        self._map_offsets = None
+        self._map_cvals_arr = None
+        self._map_plotted = set()
+        self._ov_rendered = set()
         # Upfront group-name scan (no dataset reads) so progress bar has
         # real denominator instead of undefined count.
         try:
@@ -154,7 +161,7 @@ class LoaderMixin:
         except Exception:
             self._load_total = 0
         self.pb_load["maximum"] = max(self._load_total, 1)
-        self.pb_load["value"]   = 0
+        self.pb_load["value"] = 0
         self.pb_load.pack(side="right", padx=(0, 4))
         self.after(1, lambda: self._load_chunk(gen_id))
 
@@ -188,8 +195,8 @@ class LoaderMixin:
                 done = True
                 break
             stats, fresh = self._stats_for_station(stid, st, self._load_cached)
-            self.stations[stid]   = st
-            self.all_stats[stid]  = stats
+            self.stations[stid] = st
+            self.all_stats[stid] = stats
             self.all_issues[stid] = run_assertions(st, stats, self.cfg)
             self._load_n_total += 1
             self._load_n_fresh += 1 if fresh else 0
@@ -198,8 +205,7 @@ class LoaderMixin:
         self.pb_load["value"] = self._load_n_total
         if self._load_total:
             pct = 100 * self._load_n_total // self._load_total
-            self.lbl_status.config(
-                text=f"Loaded {self._load_n_total}/{self._load_total} stations ({pct}%)")
+            self.lbl_status.config(text=f"Loaded {self._load_n_total}/{self._load_total} stations ({pct}%)")
         else:
             self.lbl_status.config(text=f"Loaded {self._load_n_total} stations")
         # Full rebuild on every chunk was 2x+ slower; instead throttle to
@@ -208,8 +214,7 @@ class LoaderMixin:
         # Always do full rebuild at end for correct sort order.
         now = time.perf_counter()
         ready = done or (
-            self._load_n_total >= min_first_refresh and
-            (now - self._load_last_ui_t) >= ui_refresh_interval
+            self._load_n_total >= min_first_refresh and (now - self._load_last_ui_t) >= ui_refresh_interval
         )
         if done:
             # Global extent and edge_gap_min must exist before final refresh
@@ -229,9 +234,12 @@ class LoaderMixin:
             self.pb_load.pack_forget()
             cached_ct = self._load_n_total - self._load_n_fresh
             self.lbl_status.config(
-                text=f"Loaded {self._load_n_total} stations "
-                     f"({cached_ct} cached, {self._load_n_fresh} new)"
-                if self._load_cached else f"Loaded {self._load_n_total} stations"
+                text=(
+                    f"Loaded {self._load_n_total} stations "
+                    f"({cached_ct} cached, {self._load_n_fresh} new)"
+                    if self._load_cached
+                    else f"Loaded {self._load_n_total} stations"
+                )
             )
             on_complete = self._load_on_complete
             self._load_iter = None

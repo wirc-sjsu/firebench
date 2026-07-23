@@ -25,16 +25,26 @@ class DetailTabMixin:
         lf = ttk.Frame(pw, width=185)
         pw.add(lf, weight=0)
         ttk.Label(lf, text="Stations", style="Section.TLabel").pack()
-        self.detail_panes = StationListPanes(lf, on_click=self._refresh_detail_view,
-                                              on_select_change=self._refresh_detail_view,
-                                              header_bg=self._pane_header_bg)
-        bsf = tk.Frame(lf); bsf.pack(fill="x")
-        ttk.Button(bsf, text="Mark Greenlit (batch)", command=self._detail_add_greenlit,
-                  style="Small.TButton").pack(side="left", padx=PAD, pady=PAD)
-        ttk.Button(bsf, text="Un-greenlit (batch)", command=self._station_list_ungreenlit,
-                  style="Small.TButton").pack(side="left", padx=PAD, pady=PAD)
-        ttk.Button(bsf, text="Add to Skip List (batch)...", command=self._detail_add_skip_batch,
-                  style="Small.TButton").pack(side="left", padx=PAD, pady=PAD)
+        self.detail_panes = StationListPanes(
+            lf,
+            on_click=self._refresh_detail_view,
+            on_select_change=self._refresh_detail_view,
+            header_bg=self._pane_header_bg,
+        )
+        bsf = tk.Frame(lf)
+        bsf.pack(fill="x")
+        ttk.Button(
+            bsf, text="Mark Greenlit (batch)", command=self._detail_add_greenlit, style="Small.TButton"
+        ).pack(side="left", padx=PAD, pady=PAD)
+        ttk.Button(
+            bsf, text="Un-greenlit (batch)", command=self._station_list_ungreenlit, style="Small.TButton"
+        ).pack(side="left", padx=PAD, pady=PAD)
+        ttk.Button(
+            bsf,
+            text="Add to Skip List (batch)...",
+            command=self._detail_add_skip_batch,
+            style="Small.TButton",
+        ).pack(side="left", padx=PAD, pady=PAD)
 
         rf = ttk.Frame(pw)
         pw.add(rf, weight=1)
@@ -54,8 +64,9 @@ class DetailTabMixin:
         varstrip_row.pack(fill="x", padx=4, pady=(4, 2))
         # btn_ts_compare sits outside frm_var_btns so it survives
         # _rebuild_var_tabs which destroys/recreates all children of frm_var_btns.
-        self.btn_ts_compare = ttk.Button(varstrip_row, text="Compare...",
-                                          command=self._ts_compare_nearest, state="disabled")
+        self.btn_ts_compare = ttk.Button(
+            varstrip_row, text="Compare...", command=self._ts_compare_nearest, state="disabled"
+        )
         self.btn_ts_compare.pack(side="right", padx=(8, 2))
         self.frm_var_btns = tk.Frame(varstrip_row)
         self.frm_var_btns.pack(side="left", fill="x", expand=True)
@@ -76,28 +87,28 @@ class DetailTabMixin:
         # Collapsible legend panel for multi-station overlay (collapsed by default).
         # Holds station names with line colors instead of cluttering plot with legend.
         self._ts_legend_open = False
-        self.btn_ts_legend = ttk.Button(tb_row, text="Legend ▸", width=10,
-                                         command=self._toggle_ts_legend)
+        self.btn_ts_legend = ttk.Button(tb_row, text="Legend ▸", width=10, command=self._toggle_ts_legend)
         self.btn_ts_legend.pack(side="right", padx=4)
         # Wind plot controls: aggregation bin width picker + Auto toggle.
         # Auto = dt adjusts with on-screen arrow density; off = user-fixed dt.
         self.frm_wind_dt = ttk.Frame(tb_row)
         self.var_wind_auto = tk.BooleanVar(value=True)
         ttk.Label(self.frm_wind_dt, text="Arrow dt:").pack(side="left")
-        self.cmb_wind_dt = ttk.Combobox(self.frm_wind_dt, width=7,
-                                        values=list(self._WIND_DT_CHOICES),
-                                        state="disabled")
+        self.cmb_wind_dt = ttk.Combobox(
+            self.frm_wind_dt, width=7, values=list(self._WIND_DT_CHOICES), state="disabled"
+        )
         self.cmb_wind_dt.pack(side="left", padx=(2, 4))
         self.cmb_wind_dt.bind("<<ComboboxSelected>>", self._on_wind_dt_pick)
-        ttk.Checkbutton(self.frm_wind_dt, text="Auto", variable=self.var_wind_auto,
-                        command=self._on_wind_auto_toggle).pack(side="left")
+        ttk.Checkbutton(
+            self.frm_wind_dt, text="Auto", variable=self.var_wind_auto, command=self._on_wind_auto_toggle
+        ).pack(side="left")
         # Below calm threshold, wind direction is noise—exclude from arrow direction.
         self.var_wind_calm = tk.BooleanVar(value=True)
         self.var_wind_calm_thresh = tk.StringVar(value="1.5")
-        ttk.Checkbutton(self.frm_wind_dt, text="Calm <", variable=self.var_wind_calm,
-                        command=self._on_wind_dt_pick).pack(side="left", padx=(6, 0))
-        ent_wind_calm = ttk.Entry(self.frm_wind_dt, width=4,
-                                   textvariable=self.var_wind_calm_thresh)
+        ttk.Checkbutton(
+            self.frm_wind_dt, text="Calm <", variable=self.var_wind_calm, command=self._on_wind_dt_pick
+        ).pack(side="left", padx=(6, 0))
+        ent_wind_calm = ttk.Entry(self.frm_wind_dt, width=4, textvariable=self.var_wind_calm_thresh)
         ent_wind_calm.pack(side="left")
         ent_wind_calm.bind("<Return>", self._on_wind_dt_pick)
         ent_wind_calm.bind("<FocusOut>", self._on_wind_dt_pick)
@@ -105,15 +116,14 @@ class DetailTabMixin:
 
         plot_row.pack(fill="both", expand=True)
         self.canvas_ts.get_tk_widget().pack(side="left", fill="both", expand=True)
-        self._add_var_cycle_arrows(self.canvas_ts.get_tk_widget(),
-                                    self._ts_prev_var, self._ts_next_var)
+        self._add_var_cycle_arrows(self.canvas_ts.get_tk_widget(), self._ts_prev_var, self._ts_next_var)
 
         self.frm_ts_legend = tk.Frame(plot_row, width=150)
-        self.tv_ts_legend = ttk.Treeview(self.frm_ts_legend, show="tree",
-                                          selectmode="none", style="Pane.Treeview")
+        self.tv_ts_legend = ttk.Treeview(
+            self.frm_ts_legend, show="tree", selectmode="none", style="Pane.Treeview"
+        )
         self.tv_ts_legend.column("#0", width=140, anchor="w")
-        legend_sb = ttk.Scrollbar(self.frm_ts_legend, orient="vertical",
-                                   command=self.tv_ts_legend.yview)
+        legend_sb = ttk.Scrollbar(self.frm_ts_legend, orient="vertical", command=self.tv_ts_legend.yview)
         self.tv_ts_legend.configure(yscrollcommand=legend_sb.set)
         legend_sb.pack(side="right", fill="y")
         self.tv_ts_legend.pack(fill="both", expand=True)
@@ -140,17 +150,25 @@ class DetailTabMixin:
         ttk.Entry(skip_row, textvariable=self.var_ts_reason, width=44).pack(side="left", padx=4)
         ttk.Button(skip_row, text="Add to Skip List", command=self._ts_add_skip).pack(side="left")
         # Remove records (marked non-destructive manifest): point or range selection.
-        self.btn_ts_remove = ttk.Button(skip_row, text="Remove records...",
-                                         command=self._ts_remove_records,
-                                         state="disabled")
+        self.btn_ts_remove = ttk.Button(
+            skip_row, text="Remove records...", command=self._ts_remove_records, state="disabled"
+        )
         self.btn_ts_remove.pack(side="left", padx=(12, 0))
 
     def _build_varstats_subtab(self):
         """Build Variable Stats subtab with statistics table for single-station mode."""
         f = ttk.Frame(self.detail_nb)
         self.detail_nb.add(f, text="Variable Stats")
-        cols = ("Variable", "NaN%", "Avg Freq (min)", "Longest Gap (hr)",
-                "Longest Frozen (pts)", "Min", "Max", "Mean")
+        cols = (
+            "Variable",
+            "NaN%",
+            "Avg Freq (min)",
+            "Longest Gap (hr)",
+            "Longest Frozen (pts)",
+            "Min",
+            "Max",
+            "Mean",
+        )
         self.tv_vs = ttk.Treeview(f, columns=cols, show="headings", selectmode="browse")
         widths = (170, 60, 110, 120, 145, 80, 80, 80)
         for c, w in zip(cols, widths):
@@ -160,39 +178,44 @@ class DetailTabMixin:
         self.tv_vs.configure(yscrollcommand=vsb.set)
         vsb.pack(side="right", fill="y")
         self.tv_vs.pack(fill="both", expand=True)
-        self.tv_vs.tag_configure("warn",  background=WARN_BG, foreground="black")
+        self.tv_vs.tag_configure("warn", background=WARN_BG, foreground="black")
         self.tv_vs.tag_configure("error", background=ERROR_BG, foreground="black")
-        bf = tk.Frame(f); bf.pack(fill="x", padx=4, pady=4)
-        ttk.Button(bf, text="Flag selected variable -> Skip List",
-                  command=self._vs_add_skip).pack(side="left")
+        bf = tk.Frame(f)
+        bf.pack(fill="x", padx=4, pady=4)
+        ttk.Button(bf, text="Flag selected variable -> Skip List", command=self._vs_add_skip).pack(
+            side="left"
+        )
 
     def _build_assert_subtab(self):
         """Build Assertions subtab with QC issue tree for single-station mode."""
         f = ttk.Frame(self.detail_nb)
         self.detail_nb.add(f, text="Assertions")
-        self.tv_assert = ttk.Treeview(f, show="tree", selectmode="browse",
-                                      style="Mono.Treeview")
+        self.tv_assert = ttk.Treeview(f, show="tree", selectmode="browse", style="Mono.Treeview")
         self.tv_assert.column("#0", anchor="w")
         self.tv_assert.tag_configure("error", foreground=ERROR_FG)
-        self.tv_assert.tag_configure("warn",  foreground=WARN_FG)
+        self.tv_assert.tag_configure("warn", foreground=WARN_FG)
         sb = ttk.Scrollbar(f, command=self.tv_assert.yview)
         self.tv_assert.configure(yscrollcommand=sb.set)
         sb.pack(side="right", fill="y")
         self.tv_assert.pack(fill="both", expand=True)
-        bf = tk.Frame(f); bf.pack(fill="x", padx=4, pady=4)
-        ttk.Button(bf, text="Add to Skip List (selected reason)",
-                  command=self._assert_add_skip).pack(side="left")
+        bf = tk.Frame(f)
+        bf.pack(fill="x", padx=4, pady=4)
+        ttk.Button(bf, text="Add to Skip List (selected reason)", command=self._assert_add_skip).pack(
+            side="left"
+        )
 
     def _refresh_station_list(self):
         """Refresh station list panel with current skip/greenlit status and QC issue icons.
 
         Updates status prefixes: [!] for ERROR, [~] for WARN, [ ] for clear.
         """
+
         def _status(stid):
             issues = self.all_issues.get(stid, [])
-            has_err  = any(s == "ERROR" for s, _, _ in issues)
-            has_warn = any(s == "WARN"  for s, _, _ in issues)
+            has_err = any(s == "ERROR" for s, _, _ in issues)
+            has_warn = any(s == "WARN" for s, _, _ in issues)
             return "[!] " if has_err else ("[~] " if has_warn else "[ ] ")
+
         self.detail_panes.refresh(self.stids, self.skip_list, self.green_list, status_fn=_status)
 
     def _detail_add_greenlit(self):
@@ -203,7 +226,8 @@ class DetailTabMixin:
         """
         sel = self.detail_panes.get_selected()
         if not sel:
-            messagebox.showinfo("Select", "Click a station first (Ctrl/Cmd-click for more)"); return
+            messagebox.showinfo("Select", "Click a station first (Ctrl/Cmd-click for more)")
+            return
         self.green_list.update(sel)
         self._refresh_station_list()
         self._refresh_overview(dirty=set(sel))
@@ -216,7 +240,8 @@ class DetailTabMixin:
         """
         sel = self.detail_panes.get_selected() & self.green_list
         if not sel:
-            messagebox.showinfo("Select", "Select greenlit station(s) first"); return
+            messagebox.showinfo("Select", "Select greenlit station(s) first")
+            return
         self.green_list -= sel
         self._refresh_station_list()
         self._refresh_overview(dirty=set(sel))
@@ -230,7 +255,8 @@ class DetailTabMixin:
         """
         sel = self.detail_panes.get_selected()
         if not sel:
-            messagebox.showinfo("Select", "Click a station first (Ctrl/Cmd-click for more)"); return
+            messagebox.showinfo("Select", "Click a station first (Ctrl/Cmd-click for more)")
+            return
         if len(sel) == 1:
             stid = next(iter(sel))
             shorts = [self._short_reason(k, m) for _, k, m in self.all_issues.get(stid, [])]
@@ -299,13 +325,16 @@ class DetailTabMixin:
         all_vars = list(all_vars)
         self._ts_var_order = all_vars
         btns = list(self.frm_var_btns.winfo_children())
-        for w in btns[len(all_vars):]:
+        for w in btns[len(all_vars) :]:
             w.destroy()
-        btns = btns[:len(all_vars)]
+        btns = btns[: len(all_vars)]
         while len(btns) < len(all_vars):
-            rb = ttk.Radiobutton(self.frm_var_btns, style="VarTab.Toolbutton",
-                                  variable=self.var_ts_var,
-                                  command=self._plot_timeseries)
+            rb = ttk.Radiobutton(
+                self.frm_var_btns,
+                style="VarTab.Toolbutton",
+                variable=self.var_ts_var,
+                command=self._plot_timeseries,
+            )
             rb.pack(side="left", padx=1, pady=1)
             btns.append(rb)
         self._ts_var_btns = {}
@@ -349,34 +378,44 @@ class DetailTabMixin:
             for vname in avail_vars:
                 vs = stats[vname]
                 tag = ""
-                if any(f"nan:{vname}" in flagged_keys or
-                       f"frozen:{vname}" in flagged_keys or
-                       f"lo:{vname}" in flagged_keys or
-                       f"hi:{vname}" in flagged_keys for _ in [1]):
+                if any(
+                    f"nan:{vname}" in flagged_keys
+                    or f"frozen:{vname}" in flagged_keys
+                    or f"lo:{vname}" in flagged_keys
+                    or f"hi:{vname}" in flagged_keys
+                    for _ in [1]
+                ):
                     tag = "warn"
                 if any(k in flagged_keys for k in (f"lo:{vname}", f"hi:{vname}")):
-                    err_sev = next((s for s, k, _ in issues
-                                    if k in (f"lo:{vname}", f"hi:{vname}") and s == "ERROR"), None)
+                    err_sev = next(
+                        (s for s, k, _ in issues if k in (f"lo:{vname}", f"hi:{vname}") and s == "ERROR"),
+                        None,
+                    )
                     if err_sev:
                         tag = "error"
                 gap_hr = f"{vs['longest_gap_hr']:.1f}" if vs["longest_gap_hr"] is not None else "--"
-                self.tv_vs.insert("", "end", iid=vname, tags=(tag,), values=(
-                    vname,
-                    f"{vs['nan_pct']:.1f}%",
-                    f"{avg_freq:.0f}" if avg_freq else "--",
-                    gap_hr,
-                    str(vs["longest_frozen"]),
-                    f"{vs['min']:.3f}"  if vs["min"]  is not None else "--",
-                    f"{vs['max']:.3f}"  if vs["max"]  is not None else "--",
-                    f"{vs['mean']:.3f}" if vs["mean"] is not None else "--",
-                ))
+                self.tv_vs.insert(
+                    "",
+                    "end",
+                    iid=vname,
+                    tags=(tag,),
+                    values=(
+                        vname,
+                        f"{vs['nan_pct']:.1f}%",
+                        f"{avg_freq:.0f}" if avg_freq else "--",
+                        gap_hr,
+                        str(vs["longest_frozen"]),
+                        f"{vs['min']:.3f}" if vs["min"] is not None else "--",
+                        f"{vs['max']:.3f}" if vs["max"] is not None else "--",
+                        f"{vs['mean']:.3f}" if vs["mean"] is not None else "--",
+                    ),
+                )
 
             # Populate assertions; iid = row index for _assert_add_skip to map back.
             self.tv_assert.delete(*self.tv_assert.get_children())
             for i, (sev, key, msg) in enumerate(issues):
                 tag = "error" if sev == "ERROR" else "warn"
-                self.tv_assert.insert("", "end", iid=str(i),
-                                      text=f"[{sev}]  {msg}", tags=(tag,))
+                self.tv_assert.insert("", "end", iid=str(i), text=f"[{sev}]  {msg}", tags=(tag,))
         else:
             self._current_stid = None
             avail_vars = sorted({v for s in sel for v in self.stations[s]["variables"]})
@@ -384,9 +423,11 @@ class DetailTabMixin:
 
         # Synthetic "wind" tab only in single-station with both wind_speed and wind_direction.
         # Appended after var-stats/assertions loops to avoid KeyError on missing sensor.
-        if (self._current_stid is not None and
-                "wind_speed" in self.stations[self._current_stid]["variables"] and
-                "wind_direction" in self.stations[self._current_stid]["variables"]):
+        if (
+            self._current_stid is not None
+            and "wind_speed" in self.stations[self._current_stid]["variables"]
+            and "wind_direction" in self.stations[self._current_stid]["variables"]
+        ):
             avail_vars = list(avail_vars) + ["wind"]
         self._ts_avail_vars = avail_vars
         self._rebuild_var_tabs(avail_vars)
@@ -432,8 +473,7 @@ class DetailTabMixin:
             candidates.append((dist, other))
         if not candidates:
             hint = "" if include_pool else " (skip-listed/greenlit excluded — see Settings)"
-            messagebox.showinfo("No neighbors",
-                f"No other stations have '{vname}' available{hint}")
+            messagebox.showinfo("No neighbors", f"No other stations have '{vname}' available{hint}")
             return
         candidates.sort(key=lambda x: x[0])
         nearest = {s for _, s in candidates[:n]}
@@ -466,15 +506,23 @@ class DetailTabMixin:
         cx = w / 2
 
         def _make(side, cmd):
-            cv = tk.Canvas(canvas_widget, width=w, height=h, bg=PLOT_BG,
-                            highlightthickness=0, bd=0)
+            cv = tk.Canvas(canvas_widget, width=w, height=h, bg=PLOT_BG, highlightthickness=0, bd=0)
             if side == "right":
                 apex_x, base_x = cx + run / 2, cx - run / 2
             else:
                 apex_x, base_x = cx - run / 2, cx + run / 2
-            line = cv.create_line(base_x, cy - arm, apex_x, cy, base_x, cy + arm,
-                                   fill=self._ARROW_FAINT, width=4,
-                                   capstyle=tk.ROUND, joinstyle=tk.ROUND)
+            line = cv.create_line(
+                base_x,
+                cy - arm,
+                apex_x,
+                cy,
+                base_x,
+                cy + arm,
+                fill=self._ARROW_FAINT,
+                width=4,
+                capstyle=tk.ROUND,
+                joinstyle=tk.ROUND,
+            )
             relx = 0.0 if side == "left" else 1.0
             anchor = "w" if side == "left" else "e"
             cv.place(relx=relx, rely=0.5, anchor=anchor)
@@ -482,6 +530,7 @@ class DetailTabMixin:
             cv.bind("<Leave>", lambda _e: cv.itemconfig(line, fill=self._ARROW_FAINT))
             cv.bind("<Button-1>", lambda _e: cmd())
             return cv
+
         _make("left", on_prev)
         _make("right", on_next)
 
@@ -491,7 +540,8 @@ class DetailTabMixin:
         Wraps around at start. Triggered by left-side chevron hover-click.
         """
         vals = [v for v in self._ts_var_order if v in getattr(self, "_ts_avail_vars", [])]
-        if not vals: return
+        if not vals:
+            return
         cur = self.var_ts_var.get()
         idx = vals.index(cur) if cur in vals else 0
         self.var_ts_var.set(vals[(idx - 1) % len(vals)])
@@ -503,7 +553,8 @@ class DetailTabMixin:
         Wraps around at end. Triggered by right-side chevron hover-click.
         """
         vals = [v for v in self._ts_var_order if v in getattr(self, "_ts_avail_vars", [])]
-        if not vals: return
+        if not vals:
+            return
         cur = self.var_ts_var.get()
         idx = vals.index(cur) if cur in vals else -1
         self.var_ts_var.set(vals[(idx + 1) % len(vals)])
@@ -557,8 +608,8 @@ class DetailTabMixin:
         ax = self.ax_ts
         ax.cla()
         self._ts_sel_artist = None
-        self._ts_sel_annot  = None
-        self._ts_sel_idx    = None
+        self._ts_sel_annot = None
+        self._ts_sel_idx = None
         self._ts_times = self._ts_data = self._ts_xnum = None
         self._ts_wd = None
         self._ts_quiver = None
@@ -572,23 +623,26 @@ class DetailTabMixin:
         candidates = [compare_src] if compare_src in stids else stids
         for stid in candidates:
             st = self.stations[stid]
-            data  = st["variables"].get(vname)
+            data = st["variables"].get(vname)
             times = st["times"]
-            if (data is not None and isinstance(times, np.ndarray)
-                    and np.issubdtype(times.dtype, np.datetime64)):
+            if (
+                data is not None
+                and isinstance(times, np.ndarray)
+                and np.issubdtype(times.dtype, np.datetime64)
+            ):
                 self._ts_nav_series = (mdates.date2num(times), data)
                 break
         ax.set_ylabel(vname)
         ax.grid(True, alpha=0.3)
-        self._ts_multi_stids   = stids
-        self._ts_multi_idx     = 0
-        self._ts_multi_units   = ""
+        self._ts_multi_stids = stids
+        self._ts_multi_idx = 0
+        self._ts_multi_units = ""
         self._ts_multi_missing = []
-        self._ts_multi_colors  = {}
+        self._ts_multi_colors = {}
         chunked = len(stids) > self._MULTI_PLOT_CHUNK_THRESHOLD
         if chunked:
             self.pb_load["maximum"] = len(stids)
-            self.pb_load["value"]   = 0
+            self.pb_load["value"] = 0
             self.pb_load.pack(side="right", padx=(0, 4))
         self._plot_timeseries_multi_chunk(gen)
 
@@ -625,20 +679,19 @@ class DetailTabMixin:
             # Batch gap-segments into one LineCollection per station (not one Line2D per segment).
             # Keeps per-station color and legend mapping. Collections bypass units framework,
             # so datetime x needs explicit date2num conversion.
-            segs = [np.column_stack([mdates.date2num(t_seg), d_seg])
-                    for t_seg, d_seg in segments if len(t_seg)]
+            segs = [
+                np.column_stack([mdates.date2num(t_seg), d_seg]) for t_seg, d_seg in segments if len(t_seg)
+            ]
             if segs:
                 if not self._ts_multi_colors:
                     ax.xaxis_date()
                 color = ax._get_lines.get_next_color()
-                ax.add_collection(LineCollection(
-                    segs, colors=color, linewidths=0.8, alpha=0.8, label=stid))
+                ax.add_collection(LineCollection(segs, colors=color, linewidths=0.8, alpha=0.8, label=stid))
                 self._ts_multi_colors[stid] = color
         done = self._ts_multi_idx >= len(stids)
         if chunked:
             self.pb_load["value"] = self._ts_multi_idx
-            self.lbl_status.config(
-                text=f"Plotting {self._ts_multi_idx}/{len(stids)} stations...")
+            self.lbl_status.config(text=f"Plotting {self._ts_multi_idx}/{len(stids)} stations...")
         # add_collection(autolim=True) grows dataLim but doesn't autoscale view.
         if self._ts_multi_colors:
             ax.autoscale_view()
@@ -687,8 +740,7 @@ class DetailTabMixin:
                 tv.insert("", "end", iid=stid, text=stid, tags=(stid,))
                 tv.tag_configure(stid, foreground=color)
             elif stid in self._ts_multi_missing:
-                tv.insert("", "end", iid=f"{stid}__nodata", text=f"x  {stid}",
-                          tags=("nodata",))
+                tv.insert("", "end", iid=f"{stid}__nodata", text=f"x  {stid}", tags=("nodata",))
         tv.tag_configure("nodata", foreground=MUTED)
 
     def _plot_timeseries_single(self):
@@ -711,8 +763,7 @@ class DetailTabMixin:
         st = self.stations[self._current_stid]
         # Synthetic "wind" var -> quiver. Degrade gracefully if missing either sensor.
         if vname == "wind":
-            if ("wind_speed" in st["variables"] and
-                    "wind_direction" in st["variables"]):
+            if "wind_speed" in st["variables"] and "wind_direction" in st["variables"]:
                 self._plot_wind_single(st)
             else:
                 self.frm_wind_dt.pack_forget()
@@ -726,20 +777,20 @@ class DetailTabMixin:
             return
         # Non-wind var: clear lingering wind-mode state.
         self.frm_wind_dt.pack_forget()
-        self._ts_wd     = None
+        self._ts_wd = None
         self._ts_quiver = None
-        data  = st["variables"].get(vname)
+        data = st["variables"].get(vname)
         times = st["times"]
         units = st["var_units"].get(vname, "")
         ax = self.ax_ts
         ax.cla()
         # ax.cla() drops selection marker/annotation; reset handles.
         self._ts_sel_artist = None
-        self._ts_sel_annot  = None
-        self._ts_sel_idx    = None
+        self._ts_sel_annot = None
+        self._ts_sel_idx = None
         if data is not None and isinstance(times, np.ndarray) and np.issubdtype(times.dtype, np.datetime64):
             self._ts_times, self._ts_data = times, data
-            self._ts_xnum  = mdates.date2num(times)
+            self._ts_xnum = mdates.date2num(times)
             self._ts_vname, self._ts_units = vname, units
         else:
             self._ts_times = self._ts_data = self._ts_xnum = None
@@ -748,8 +799,9 @@ class DetailTabMixin:
             # Outage shading: wind_direction/wind_gust NaN expected when wind_speed=0.
             # Skip shading NaN run unless WS>0 somewhere in it (real outage).
             # All other vars shade any NaN run.
-            ws_data = (st["variables"].get("wind_speed")
-                       if vname in ("wind_direction", "wind_gust") else None)
+            ws_data = (
+                st["variables"].get("wind_speed") if vname in ("wind_direction", "wind_gust") else None
+            )
             if nan_mask.any():
                 n = len(nan_mask)
                 i = 0
@@ -761,17 +813,15 @@ class DetailTabMixin:
                         if ws_data is not None and not np.any(ws_data[i:j] > 0):
                             i = j
                             continue
-                        t_left  = times[i - 1] if i > 0 else times[0]
-                        t_right = times[j]     if j < n else times[n - 1]
-                        ax.axvspan(t_left, t_right, color=OUTAGE_SHADE, alpha=0.55,
-                                   linewidth=0, zorder=0)
+                        t_left = times[i - 1] if i > 0 else times[0]
+                        t_right = times[j] if j < n else times[n - 1]
+                        ax.axvspan(t_left, t_right, color=OUTAGE_SHADE, alpha=0.55, linewidth=0, zorder=0)
                         i = j
                     else:
                         i += 1
             avg_freq = self.all_stats[self._current_stid]["_time"].get("avg_freq_min")
             for t_seg, d_seg in _segment_by_gap(times, data, avg_freq):
-                ax.plot(t_seg, d_seg, ".-", markersize=2, linewidth=0.8,
-                        color=ACCENT, zorder=2)
+                ax.plot(t_seg, d_seg, ".-", markersize=2, linewidth=0.8, color=ACCENT, zorder=2)
             ax.relim()
             ax.autoscale_view()
             ax.set_ylabel(f"{vname} [{units}]")
@@ -785,8 +835,14 @@ class DetailTabMixin:
     _TS_WIND_ARROW_CAP = 400
     # Manual aggregation-dt picks: label -> bin width in days (matplotlib date units).
     _WIND_DT_CHOICES = {
-        "10 min": 10 / 1440, "30 min": 30 / 1440, "1 h": 1 / 24,
-        "3 h": 3 / 24, "6 h": 6 / 24, "12 h": 12 / 24, "1 d": 1.0, "3 d": 3.0,
+        "10 min": 10 / 1440,
+        "30 min": 30 / 1440,
+        "1 h": 1 / 24,
+        "3 h": 3 / 24,
+        "6 h": 6 / 24,
+        "12 h": 12 / 24,
+        "1 d": 1.0,
+        "3 d": 3.0,
     }
 
     @staticmethod
@@ -850,16 +906,20 @@ class DetailTabMixin:
         ax.cla()
         # ax.cla() drops selection artists, quiver, and xlim callbacks; clear and reconnect.
         self._ts_sel_artist = None
-        self._ts_sel_annot  = None
-        self._ts_sel_idx    = None
-        self._ts_quiver     = None
+        self._ts_sel_annot = None
+        self._ts_sel_idx = None
+        self._ts_quiver = None
         self.frm_wind_dt.pack(side="right", padx=4)
         times = st["times"]
-        ws    = st["variables"].get("wind_speed")
-        wd    = st["variables"].get("wind_direction")
+        ws = st["variables"].get("wind_speed")
+        wd = st["variables"].get("wind_direction")
         units = st["var_units"].get("wind_speed", "")
-        if (ws is None or wd is None or not isinstance(times, np.ndarray)
-                or not np.issubdtype(times.dtype, np.datetime64)):
+        if (
+            ws is None
+            or wd is None
+            or not isinstance(times, np.ndarray)
+            or not np.issubdtype(times.dtype, np.datetime64)
+        ):
             self._ts_times = self._ts_data = self._ts_xnum = None
             self._ts_wd = None
             self.canvas_ts.draw_idle()
@@ -867,9 +927,9 @@ class DetailTabMixin:
             return
         # Snapshots: _ts_data = ws drives point selection; _ts_wd flags wind mode + annotation.
         self._ts_times = times
-        self._ts_data  = ws
-        self._ts_xnum  = mdates.date2num(times)
-        self._ts_wd    = wd
+        self._ts_data = ws
+        self._ts_xnum = mdates.date2num(times)
+        self._ts_wd = wd
         self._ts_vname = "wind"
         self._ts_units = units
         # Outage shading: same NaN-run logic as normal plot, on ws.
@@ -882,10 +942,9 @@ class DetailTabMixin:
                     j = i
                     while j < n and nan_mask[j]:
                         j += 1
-                    t_left  = times[i - 1] if i > 0 else times[0]
-                    t_right = times[j]     if j < n else times[n - 1]
-                    ax.axvspan(t_left, t_right, color=OUTAGE_SHADE, alpha=0.55,
-                               linewidth=0, zorder=0)
+                    t_left = times[i - 1] if i > 0 else times[0]
+                    t_right = times[j] if j < n else times[n - 1]
+                    ax.axvspan(t_left, t_right, color=OUTAGE_SHADE, alpha=0.55, linewidth=0, zorder=0)
                     i = j
                 else:
                     i += 1
@@ -977,20 +1036,17 @@ class DetailTabMixin:
             cnt_dir = np.bincount(bi, weights=dir_ok.astype(float), minlength=nbins)
             # Arrow only if bin has samples AND at least one usable direction.
             keep = (cnt > 0) & (cnt_dir > 0)
-            n  = cnt[keep]
+            n = cnt[keep]
             nd = cnt_dir[keep]
             x = np.bincount(bi, weights=xs, minlength=nbins)[keep] / n
             # y/color = nearest raw sample to bin's mean time (not bin-mean ws).
             # Snaps arrows to actual trace, avoiding flattened mean line.
             near = np.searchsorted(xs, x)
             near = np.clip(near, 1, xs.size - 1)
-            near = np.where(np.abs(xs[near - 1] - x) <= np.abs(xs[near] - x),
-                            near - 1, near)
+            near = np.where(np.abs(xs[near - 1] - x) <= np.abs(xs[near] - x), near - 1, near)
             y = ys[near]
-            su = np.bincount(bi, weights=np.where(dir_ok, np.sin(rad), 0.0),
-                              minlength=nbins)[keep] / nd
-            sv = np.bincount(bi, weights=np.where(dir_ok, np.cos(rad), 0.0),
-                              minlength=nbins)[keep] / nd
+            su = np.bincount(bi, weights=np.where(dir_ok, np.sin(rad), 0.0), minlength=nbins)[keep] / nd
+            sv = np.bincount(bi, weights=np.where(dir_ok, np.cos(rad), 0.0), minlength=nbins)[keep] / nd
             # Normalize mean vector to unit length (uniform arrow size).
             mag = np.hypot(su, sv)
             mag[mag < 1e-12] = 1.0
@@ -998,21 +1054,35 @@ class DetailTabMixin:
             u, v = -su / mag, -sv / mag
         else:
             idxs_r = idxs[dir_ok]
-            x   = xnum[idxs_r]
-            y   = ws[idxs_r]
+            x = xnum[idxs_r]
+            y = ws[idxs_r]
             rad = np.radians(wd[idxs_r])
             # Wind_direction = bearing FROM (0°=N, 90°=E). Negate for downwind arrows.
-            u   = -np.sin(rad)
-            v   = -np.cos(rad)
+            u = -np.sin(rad)
+            v = -np.cos(rad)
         vis = ws[in_view]  # color norm over the full visible range, not just the capped/binned arrows
         vmin, vmax = float(np.min(vis)), float(np.max(vis))
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
             vmax = vmin + 1.0
         # scale=10 (1/10 inch ≈ 10 px): density up, size down vs original 1/8 inch @ 10 px.
         self._ts_quiver = ax.quiver(
-            x, y, u, v, y, cmap="viridis", norm=mcolors.Normalize(vmin=vmin, vmax=vmax),
-            angles="uv", scale_units="inches", scale=10.0, pivot="mid",
-            width=0.0045, headwidth=4.0, headlength=5.0, headaxislength=4.5, zorder=3)
+            x,
+            y,
+            u,
+            v,
+            y,
+            cmap="viridis",
+            norm=mcolors.Normalize(vmin=vmin, vmax=vmax),
+            angles="uv",
+            scale_units="inches",
+            scale=10.0,
+            pivot="mid",
+            width=0.0045,
+            headwidth=4.0,
+            headlength=5.0,
+            headaxislength=4.5,
+            zorder=3,
+        )
         self.canvas_ts.draw_idle()
 
     def _on_ts_wind_xlim(self, _ax):
@@ -1155,20 +1225,25 @@ class DetailTabMixin:
             y_disp, val_str = orig_ylim[1], "NaN"
         else:
             y_disp, val_str = y, f"{y:.3f}"
-        self._ts_sel_artist = ax.scatter([x], [y_disp], s=60, facecolors="none",
-                                          edgecolors="black", linewidths=1.6, zorder=6)
+        self._ts_sel_artist = ax.scatter(
+            [x], [y_disp], s=60, facecolors="none", edgecolors="black", linewidths=1.6, zorder=6
+        )
         t = self._ts_times[idx]
         tstr = str(np.datetime_as_string(t, unit="m")).replace("T", " ")
         # Wind mode: append compass direction to label.
         label = f"{self._ts_vname}: {val_str} {self._ts_units}"
-        if (self._ts_wd is not None and idx < len(self._ts_wd)
-                and not np.isnan(self._ts_wd[idx])):
+        if self._ts_wd is not None and idx < len(self._ts_wd) and not np.isnan(self._ts_wd[idx]):
             label += f" @ {self._ts_wd[idx]:.0f}°"
         self._ts_sel_annot = ax.annotate(
             f"{label}\n{tstr}",
-            xy=(x, y_disp), xytext=(14, 14), textcoords="offset points", fontsize=8, zorder=7,
+            xy=(x, y_disp),
+            xytext=(14, 14),
+            textcoords="offset points",
+            fontsize=8,
+            zorder=7,
             bbox=dict(boxstyle="round", fc="white", ec="black", alpha=0.95),
-            arrowprops=dict(arrowstyle="->", color="black"))
+            arrowprops=dict(arrowstyle="->", color="black"),
+        )
         # Markers/annotation don't grow y-range (important for NaN case at old top).
         ax.set_ylim(orig_ylim)
         self.canvas_ts.draw_idle()
@@ -1205,8 +1280,8 @@ class DetailTabMixin:
             except (ValueError, AttributeError):
                 pass
             self._ts_range_artist = None
-        self._ts_range_sel      = None
-        self._ts_range_anchor   = None
+        self._ts_range_sel = None
+        self._ts_range_anchor = None
         self._ts_range_dragging = False
         if redraw:
             self.canvas_ts.draw_idle()
@@ -1237,7 +1312,8 @@ class DetailTabMixin:
             half = float(np.median(np.diff(self._ts_xnum))) / 2.0
             x0, x1 = x0 - half, x1 + half
         self._ts_range_artist = self.ax_ts.axvspan(
-            x0, x1, color=ACCENT, alpha=0.15, linewidth=0, zorder=0.6)
+            x0, x1, color=ACCENT, alpha=0.15, linewidth=0, zorder=0.6
+        )
 
     def _on_ts_press(self, event):
         """Handle mouse button press on time series plot: point or range-selection anchor.
@@ -1256,12 +1332,11 @@ class DetailTabMixin:
             return
         if self._ts_event_shift(event):
             # Shift+drag: range selection. Anchor snaps; motion extends live preview.
-            self._ts_shift_press = (idx, event.x, event.y,
-                                     self._ts_sel_idx, self._ts_range_sel)
+            self._ts_shift_press = (idx, event.x, event.y, self._ts_sel_idx, self._ts_range_sel)
             self._ts_clear_range_sel(redraw=False)
             self._ts_range_dragging = True
-            self._ts_range_anchor   = idx
-            self._ts_range_sel      = (idx, idx)
+            self._ts_range_anchor = idx
+            self._ts_range_sel = (idx, idx)
             self._ts_draw_range_span(idx, idx)
             self.canvas_ts.draw_idle()
             return
@@ -1359,8 +1434,7 @@ class DetailTabMixin:
             reason (str): User-provided reason for removal.
         """
         # Append removal-manifest entry (dedups exact duplicates); refresh if showing.
-        entry = {"var": var, "t0": str(t0_iso), "t1": str(t1_iso),
-                 "reason": reason}
+        entry = {"var": var, "t0": str(t0_iso), "t1": str(t1_iso), "reason": reason}
         lst = self.removal_list.setdefault(stid, [])
         if entry in lst:
             return
@@ -1402,8 +1476,7 @@ class DetailTabMixin:
                 x0, x1 = x1, x0
             if x0 == x1:
                 x0, x1 = x0 - half, x1 + half
-            ax.axvspan(x0, x1, color="0.35", alpha=0.22, hatch="///",
-                       linewidth=0, zorder=0.5)
+            ax.axvspan(x0, x1, color="0.35", alpha=0.22, hatch="///", linewidth=0, zorder=0.5)
 
     def _ts_remove_records(self):
         """Prompt user to remove selected time-series records (point or range).
@@ -1414,16 +1487,14 @@ class DetailTabMixin:
         """
         stid = self._current_stid
         if not stid or self._ts_times is None:
-            messagebox.showinfo("Select records",
-                                "Select a point or shift-drag a range first")
+            messagebox.showinfo("Select records", "Select a point or shift-drag a range first")
             return
         if self._ts_range_sel is not None:
             i0, i1 = self._ts_range_sel
         elif self._ts_sel_idx is not None:
             i0 = i1 = self._ts_sel_idx
         else:
-            messagebox.showinfo("Select records",
-                                "Select a point or shift-drag a range first")
+            messagebox.showinfo("Select records", "Select a point or shift-drag a range first")
             return
         t0 = np.datetime_as_string(self._ts_times[i0], unit="m")
         t1 = np.datetime_as_string(self._ts_times[i1], unit="m")
@@ -1442,16 +1513,15 @@ class DetailTabMixin:
         else:
             self._add_removal(stid, vname, t0, t1, reason)
         n = i1 - i0 + 1
-        self.lbl_status.config(
-            text=f"Marked {n} record{'s' if n != 1 else ''} for removal ({stid})")
+        self.lbl_status.config(text=f"Marked {n} record{'s' if n != 1 else ''} for removal ({stid})")
 
     _VAR_SHORT = {
-        "wind_direction":           "WD",
-        "wind_speed":               "WS",
-        "wind_gust":                "WG",
-        "air_temperature":          "AT",
-        "relative_humidity":        "RH",
-        "solar_radiation":          "SR",
+        "wind_direction": "WD",
+        "wind_speed": "WS",
+        "wind_gust": "WG",
+        "air_temperature": "AT",
+        "relative_humidity": "RH",
+        "solar_radiation": "SR",
         "fuel_moisture_content_10h": "FM10",
     }
 
@@ -1484,7 +1554,7 @@ class DetailTabMixin:
             return "Full outage"
         for prefix in ("frozen:", "lo:", "hi:"):
             if key.startswith(prefix):
-                vname = key[len(prefix):]
+                vname = key[len(prefix) :]
                 short = DetailTabMixin._VAR_SHORT.get(vname, vname)
                 label = {"frozen": "frozen", "lo": "range", "hi": "range"}[prefix.rstrip(":")]
                 return f"{short} {label}"
@@ -1499,7 +1569,8 @@ class DetailTabMixin:
             return
         reason = self.var_ts_reason.get().strip()
         if not reason:
-            messagebox.showinfo("Reason required", "Enter a reason before adding"); return
+            messagebox.showinfo("Reason required", "Enter a reason before adding")
+            return
         self._add_to_skip(self._current_stid, reason, switch_tab=False)
 
     def _vs_add_skip(self):
@@ -1512,7 +1583,8 @@ class DetailTabMixin:
             return
         sel = self.tv_vs.selection()
         if not sel:
-            messagebox.showinfo("Select variable", "Click a variable row first"); return
+            messagebox.showinfo("Select variable", "Click a variable row first")
+            return
         vname = sel[0]
         short = self._VAR_SHORT.get(vname, vname)
         self._prompt_add_skip(self._current_stid, f"{short} QC", switch_tab=False)
@@ -1527,6 +1599,7 @@ class DetailTabMixin:
             return
         sel = self.tv_assert.selection()
         if not sel:
-            messagebox.showinfo("Select", "Click an assertion first"); return
+            messagebox.showinfo("Select", "Click an assertion first")
+            return
         _, key, msg = self.all_issues[self._current_stid][int(sel[0])]
         self._prompt_add_skip(self._current_stid, self._short_reason(key, msg), switch_tab=False)

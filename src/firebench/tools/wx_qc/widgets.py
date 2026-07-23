@@ -14,8 +14,11 @@ class StationListPanes:
     3 panes; shift-click range-selects within a single pane only. Plain click
     always narrows to just that station and reports it via on_click."""
 
-    _CATS = (("kept", "Unclassified", ""), ("skipped", "Skipped", "[x] "),
-             ("greenlit", "Greenlit", "[ok] "))
+    _CATS = (
+        ("kept", "Unclassified", ""),
+        ("skipped", "Skipped", "[x] "),
+        ("greenlit", "Greenlit", "[ok] "),
+    )
 
     def __init__(self, parent, on_click=None, on_select_change=None, height=8, header_bg=None):
         """Initialize the station list picker widget with three collapsible panes.
@@ -47,12 +50,10 @@ class StationListPanes:
 
             hdr = tk.Frame(fr, bg=header_bg)
             hdr.pack(fill="x")
-            btn = tk.Label(hdr, text="▾", bg=header_bg, fg="white",
-                           font=("", 10), cursor="hand2", padx=6)
+            btn = tk.Label(hdr, text="▾", bg=header_bg, fg="white", font=("", 10), cursor="hand2", padx=6)
             btn.pack(side="left")
             btn.bind("<Button-1>", lambda e, c=cat: self._toggle(c))
-            lbl = tk.Label(hdr, text=label, bg=header_bg, fg="white",
-                           font=theme.FONT_SECTION, anchor="w")
+            lbl = tk.Label(hdr, text=label, bg=header_bg, fg="white", font=theme.FONT_SECTION, anchor="w")
             lbl.pack(side="left", fill="x", expand=True, pady=4)
             lbl.bind("<Button-1>", lambda e, c=cat: self._toggle(c))
             self._toggle_btns[cat] = btn
@@ -61,8 +62,7 @@ class StationListPanes:
             body = tk.Frame(fr)
             body.pack(fill="both", expand=True)
             self._bodies[cat] = body
-            tv = ttk.Treeview(body, show="tree", selectmode="none", height=height,
-                               style="Pane.Treeview")
+            tv = ttk.Treeview(body, show="tree", selectmode="none", height=height, style="Pane.Treeview")
             tv.column("#0", width=150, anchor="w")
             sb = ttk.Scrollbar(body, orient="vertical", command=tv.yview)
             tv.configure(yscrollcommand=sb.set)
@@ -98,8 +98,8 @@ class StationListPanes:
             None. Optimizes single-station moves without full redraw where possible.
         """
         buckets = {
-            "kept":     [s for s in stids if s not in skip_list and s not in green_list],
-            "skipped":  [s for s in stids if s in skip_list],
+            "kept": [s for s in stids if s not in skip_list and s not in green_list],
+            "skipped": [s for s in stids if s in skip_list],
             "greenlit": [s for s in stids if s in green_list],
         }
         self.selected &= set(stids)
@@ -150,8 +150,9 @@ class StationListPanes:
         self._order[src_cat] = buckets[src_cat]
         prefix = prefixes[dst_cat] or (status_fn(stid) if status_fn else "")
         tag = ("sel",) if stid in self.selected else ()
-        self.trees[dst_cat].insert("", buckets[dst_cat].index(stid), iid=stid,
-                                   text=f"{prefix}{stid}", tags=tag)
+        self.trees[dst_cat].insert(
+            "", buckets[dst_cat].index(stid), iid=stid, text=f"{prefix}{stid}", tags=tag
+        )
         self._order[dst_cat] = buckets[dst_cat]
         for cat in (src_cat, dst_cat):
             self._labels[cat].configure(text=f"{labels[cat]}  ({len(buckets[cat])})")
@@ -227,7 +228,7 @@ class StationListPanes:
         idx = order.index(iid)
         last = self._last_idx[cat] if self._last_idx[cat] is not None else idx
         lo, hi = sorted((last, idx))
-        self.selected.update(order[lo:hi + 1])
+        self.selected.update(order[lo : hi + 1])
         self._last_idx[cat] = idx
         self._repaint()
         if self.on_select_change:
@@ -285,13 +286,13 @@ class TimeNavigator(tk.Canvas):
         self._drag = None
         self._pan_grab = 0.0
         self._hover = False
-        self.bind("<Configure>",        lambda e: self._redraw())
-        self.bind("<Button-1>",         self._on_press)
-        self.bind("<B1-Motion>",        self._on_drag)
-        self.bind("<ButtonRelease-1>",  self._on_release)
-        self.bind("<Motion>",           self._on_motion)
-        self.bind("<Enter>",            self._on_enter)
-        self.bind("<Leave>",            self._on_leave)
+        self.bind("<Configure>", lambda e: self._redraw())
+        self.bind("<Button-1>", self._on_press)
+        self.bind("<B1-Motion>", self._on_drag)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self.bind("<Motion>", self._on_motion)
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
 
     def set_domain(self, lo, hi):
         """Set the overall domain (full extent of available data).
@@ -362,8 +363,7 @@ class TimeNavigator(tk.Canvas):
 
     def _has_domain(self):
         """Check if domain is set and valid."""
-        return (self._lo is not None and self._hi is not None
-                and self._hi > self._lo)
+        return self._lo is not None and self._hi is not None and self._hi > self._lo
 
     def _plot_w(self):
         """Get plot width in pixels, accounting for margins."""
@@ -408,7 +408,7 @@ class TimeNavigator(tk.Canvas):
     @staticmethod
     def _tint(color, frac):
         """Blend color toward white by fraction frac (0=original, 1=white)."""
-        r, g, b = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+        r, g, b = (int(color[i : i + 2], 16) for i in (1, 3, 5))
         mix = lambda c: int(round(255 - (255 - c) * frac))
         return f"#{mix(r):02x}{mix(g):02x}{mix(b):02x}"
 
@@ -429,8 +429,7 @@ class TimeNavigator(tk.Canvas):
         self.delete("all")
         w = self.winfo_width()
         tb = self._track_bottom()
-        self.create_rectangle(self._M, self._TRACK_TOP, w - self._M, tb,
-                              fill="#ffffff", outline="#c2cad1")
+        self.create_rectangle(self._M, self._TRACK_TOP, w - self._M, tb, fill="#ffffff", outline="#c2cad1")
         if not self._has_domain():
             return
         # Layering order: tint fill, sparkline, unavailable zones, ticks, frame
@@ -469,11 +468,9 @@ class TimeNavigator(tk.Canvas):
         # Draw filled area, then line on top
         poly = [(xpix[0], bot_in)] + pts + [(xpix[-1], bot_in)]
         if len(poly) >= 3:
-            self.create_polygon([c for xy in poly for c in xy],
-                                fill="#dfe6ee", outline="")
+            self.create_polygon([c for xy in poly for c in xy], fill="#dfe6ee", outline="")
         if len(pts) >= 2:
-            self.create_line([c for xy in pts for c in xy],
-                            fill="#b9c6d2", width=1)
+            self.create_line([c for xy in pts for c in xy], fill="#b9c6d2", width=1)
 
     def _draw_unavailable(self, tb):
         """Draw muted zones for regions outside the valid range."""
@@ -482,13 +479,12 @@ class TimeNavigator(tk.Canvas):
             if b - a <= 0:
                 continue
             x0, x1 = self._data_to_x(a), self._data_to_x(b)
-            self.create_rectangle(x0, self._TRACK_TOP, x1, tb,
-                                  fill="#e9e9e9", outline="")
+            self.create_rectangle(x0, self._TRACK_TOP, x1, tb, fill="#e9e9e9", outline="")
 
     def _draw_ticks(self, w, tb):
         """Draw date ticks and labels along the track."""
         span = self._hi - self._lo
-        ppd = self._plot_w() / span      # pixels per day
+        ppd = self._plot_w() / span  # pixels per day
         step = self._TICK_STEPS[-1]
         for s in self._TICK_STEPS:
             if s * ppd >= 70:
@@ -500,26 +496,22 @@ class TimeNavigator(tk.Canvas):
             x = self._data_to_x(t)
             self.create_line(x, tb, x, tb + 4, fill="#c2cad1")
             label = mdates.num2date(t).strftime("%b %d").replace(" 0", " ")
-            self.create_text(x, tb + 5, text=label, anchor="n",
-                            fill=theme.MUTED, font=theme.FONT_SMALL)
+            self.create_text(x, tb + 5, text=label, anchor="n", fill=theme.MUTED, font=theme.FONT_SMALL)
             t += step
 
     def _draw_pane_fill(self, tb):
         """Draw the tinted fill for the current window pane."""
         x0 = self._data_to_x(self._start)
         x1 = self._data_to_x(self._start + self._dur)
-        self.create_rectangle(x0, self._TRACK_TOP, x1, tb,
-                              fill=self._pane_fill, outline="")
+        self.create_rectangle(x0, self._TRACK_TOP, x1, tb, fill=self._pane_fill, outline="")
 
     def _draw_pane_frame(self, tb):
         """Draw the border and resize handle for the current window pane."""
         x0 = self._data_to_x(self._start)
         x1 = self._data_to_x(self._start + self._dur)
-        self.create_rectangle(x0, self._TRACK_TOP, x1, tb,
-                              fill="", outline=theme.ACCENT, width=2)
+        self.create_rectangle(x0, self._TRACK_TOP, x1, tb, fill="", outline=theme.ACCENT, width=2)
         cy = (self._TRACK_TOP + tb) / 2.0
-        self.create_rectangle(x1 - 2, cy - 9, x1 + 2, cy + 9,
-                              fill=theme.ACCENT, outline=theme.ACCENT)
+        self.create_rectangle(x1 - 2, cy - 9, x1 + 2, cy + 9, fill=theme.ACCENT, outline=theme.ACCENT)
 
     def _draw_popup(self, w):
         """Draw a tooltip showing window dates and duration; reposition to stay on-screen."""
@@ -530,8 +522,7 @@ class TimeNavigator(tk.Canvas):
         cx = self._data_to_x(start + dur / 2.0)
         cx = min(max(cx, self._M), w - self._M)
         py = self._TRACK_TOP - 6
-        t = self.create_text(cx, py, text=text, anchor="s", fill="white",
-                            font=theme.FONT_SMALL)
+        t = self.create_text(cx, py, text=text, anchor="s", fill="white", font=theme.FONT_SMALL)
         x0, y0, x1, y1 = self.bbox(t)
         dx = dy = 0
         if x0 < 2:
@@ -543,8 +534,7 @@ class TimeNavigator(tk.Canvas):
         if dx or dy:
             self.move(t, dx, dy)
             x0, y0, x1, y1 = self.bbox(t)
-        r = self.create_rectangle(x0 - 4, y0 - 2, x1 + 4, y1 + 2,
-                                 fill="#2b3138", outline="")
+        r = self.create_rectangle(x0 - 4, y0 - 2, x1 + 4, y1 + 2, fill="#2b3138", outline="")
         self.tag_raise(t, r)
 
     def _fire(self, final):
@@ -589,8 +579,7 @@ class TimeNavigator(tk.Canvas):
             dur = min(dur, self._valid_range()[1] - self._start)
             self._start, self._dur = self._clamp(self._start, dur)
         else:  # pan
-            self._start, self._dur = self._clamp(
-                self._x_to_data(e.x) - self._pan_grab, self._dur)
+            self._start, self._dur = self._clamp(self._x_to_data(e.x) - self._pan_grab, self._dur)
         self._redraw()
         self._fire(False)
 

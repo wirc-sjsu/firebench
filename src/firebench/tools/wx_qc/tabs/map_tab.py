@@ -22,56 +22,82 @@ class MapTabMixin:
     def _build_map_tab(self):
         f = ttk.Frame(self.nb)
         self.nb.add(f, text="Map")
-        ctrl = ttk.Frame(f); ctrl.pack(fill="x", padx=4, pady=4)
+        ctrl = ttk.Frame(f)
+        ctrl.pack(fill="x", padx=4, pady=4)
         ttk.Label(ctrl, text="Color by:").pack(side="left")
         self.var_map_color = tk.StringVar(value="issues")
-        cb_mode = ttk.Combobox(ctrl, textvariable=self.var_map_color, state="readonly", width=16,
-                     values=["issues", "wd_nan_pct", "n_variables", "n_pts", "qc_status",
-                             "variable_value", "wind_combo"])
+        cb_mode = ttk.Combobox(
+            ctrl,
+            textvariable=self.var_map_color,
+            state="readonly",
+            width=16,
+            values=[
+                "issues",
+                "wd_nan_pct",
+                "n_variables",
+                "n_pts",
+                "qc_status",
+                "variable_value",
+                "wind_combo",
+            ],
+        )
         cb_mode.pack(side="left", padx=PAD)
         # write-trace ensures both interactive picks and programmatic set() calls
         # (e.g. session restore) route through _on_map_mode_change; <<ComboboxSelected>>
         # binding alone would miss the latter, breaking contextual control gating.
         self.var_map_color.trace_add("write", self._on_map_mode_change)
-        ttk.Label(ctrl, text="Click station point to open detail",
-                  style="Muted.TLabel").pack(side="left", padx=PAD)
+        ttk.Label(ctrl, text="Click station point to open detail", style="Muted.TLabel").pack(
+            side="left", padx=PAD
+        )
 
         # ── variable_value mode: which variable ─────────────────────────────
         self._map_value_ctrl = ttk.Frame(f)
         ttk.Label(self._map_value_ctrl, text="Variable:").pack(side="left")
-        self.cb_map_value = ttk.Combobox(self._map_value_ctrl, textvariable=self.var_map_value,
-                                          state="readonly", width=24)
+        self.cb_map_value = ttk.Combobox(
+            self._map_value_ctrl, textvariable=self.var_map_value, state="readonly", width=24
+        )
         self.cb_map_value.pack(side="left", padx=4)
-        self.cb_map_value.bind("<<ComboboxSelected>>",
-                               lambda e: self._on_map_value_change())
+        self.cb_map_value.bind("<<ComboboxSelected>>", lambda e: self._on_map_value_change())
 
         # ── variable_value / wind_combo modes: agg fn + time window ─────────
         self._map_window_ctrl = ttk.Frame(f)
         ttk.Label(self._map_window_ctrl, text="Agg:").pack(side="left")
-        cb_agg = ttk.Combobox(self._map_window_ctrl, textvariable=self._map_agg_var,
-                              state="readonly", width=8,
-                              values=["mean", "median", "max", "min", "last"])
+        cb_agg = ttk.Combobox(
+            self._map_window_ctrl,
+            textvariable=self._map_agg_var,
+            state="readonly",
+            width=8,
+            values=["mean", "median", "max", "min", "last"],
+        )
         cb_agg.pack(side="left", padx=(2, 10))
         cb_agg.bind("<<ComboboxSelected>>", lambda e: self._map_windowed_recompute())
         ttk.Label(self._map_window_ctrl, text="Window:").pack(side="left")
-        cb_dt = ttk.Combobox(self._map_window_ctrl, textvariable=self._map_dt_var, state="readonly",
-                              width=6, values=["1h", "6h", "1d", "7d", "full"])
+        cb_dt = ttk.Combobox(
+            self._map_window_ctrl,
+            textvariable=self._map_dt_var,
+            state="readonly",
+            width=6,
+            values=["1h", "6h", "1d", "7d", "full"],
+        )
         cb_dt.pack(side="left", padx=(2, 10))
         cb_dt.bind("<<ComboboxSelected>>", self._on_map_dt_change)
-        self.nav_map_window = TimeNavigator(self._map_window_ctrl,
-                                            on_change=self._on_map_window_nav)
+        self.nav_map_window = TimeNavigator(self._map_window_ctrl, on_change=self._on_map_window_nav)
         self.nav_map_window.pack(side="left", padx=(2, 10), fill="x", expand=True)
-        self.lbl_map_window = ttk.Label(self._map_window_ctrl, text="—", font=FONT_MONO,
-                                         style="Muted.TLabel")
+        self.lbl_map_window = ttk.Label(
+            self._map_window_ctrl, text="—", font=FONT_MONO, style="Muted.TLabel"
+        )
         self.lbl_map_window.pack(side="left", padx=4)
         # Calm-wind filter: shared tk vars with TS wind tab for sync.
         # In wind_combo: excludes below-threshold samples from circular mean (drawn muted).
         # In variable_value on wind vars: masks calm samples before aggregation.
         self._map_calm_ctrl = ttk.Frame(self._map_window_ctrl)
-        ttk.Checkbutton(self._map_calm_ctrl, text="Calm <", variable=self.var_wind_calm,
-                        command=self._on_map_calm_change).pack(side="left")
-        ent_calm = ttk.Entry(self._map_calm_ctrl, width=4,
-                             textvariable=self.var_wind_calm_thresh)
+        ttk.Checkbutton(
+            self._map_calm_ctrl,
+            text="Calm <",
+            variable=self.var_wind_calm,
+            command=self._on_map_calm_change,
+        ).pack(side="left")
+        ent_calm = ttk.Entry(self._map_calm_ctrl, width=4, textvariable=self.var_wind_calm_thresh)
         ent_calm.pack(side="left")
         ent_calm.bind("<Return>", self._on_map_calm_change)
         ent_calm.bind("<FocusOut>", self._on_map_calm_change)
@@ -88,27 +114,27 @@ class MapTabMixin:
         self._on_map_mode_change()
 
     _MAP_CLABELS = {
-        "issues":      "# Issues",
-        "wd_nan_pct":  "WD NaN %",
+        "issues": "# Issues",
+        "wd_nan_pct": "WD NaN %",
         "n_variables": "# Variables",
     }
 
     # QC Status mode: categorical (not numeric) — uses discrete legend instead of colorbar.
     _QC_STATUS_COLORS = {
-        "skip":      (SKIP_RED, "Skip-listed"),
-        "green":     (GREEN_OK, "Greenlit"),
+        "skip": (SKIP_RED, "Skip-listed"),
+        "green": (GREEN_OK, "Greenlit"),
         "undecided": (UNDECIDED, "Undecided"),
     }
 
     # Diverging for temperature (coolwarm), sequential for most, circular for WD.
     _VAR_CMAP = {
-        "air_temperature":           "coolwarm",
-        "relative_humidity":         "YlGnBu",
-        "solar_radiation":           "inferno",
+        "air_temperature": "coolwarm",
+        "relative_humidity": "YlGnBu",
+        "solar_radiation": "inferno",
         "fuel_moisture_content_10h": "YlOrBr_r",
-        "wind_speed":                "viridis",
-        "wind_gust":                 "viridis",
-        "wind_direction":            "twilight",
+        "wind_speed": "viridis",
+        "wind_gust": "viridis",
+        "wind_direction": "twilight",
     }
 
     _MAP_DT_MINUTES = {"1h": 60, "6h": 360, "1d": 1440, "7d": 10080}  # "full" -> None
@@ -193,8 +219,8 @@ class MapTabMixin:
         """
         cb = self.var_map_color.get()
         return cb == "wind_combo" or (
-            cb == "variable_value"
-            and self.var_map_value.get() in ("wind_speed", "wind_direction"))
+            cb == "variable_value" and self.var_map_value.get() in ("wind_speed", "wind_direction")
+        )
 
     def _map_update_calm_ctrl(self):
         """Show or hide calm-wind filter control based on current mode.
@@ -335,8 +361,7 @@ class MapTabMixin:
         # Tolerance 1e-4 days (~9 s) absorbs date2num/whole-second rounding.
         expected_dur = getattr(self, "_map_nav_synced_dur", None)
         if expected_dur is None:
-            expected_dur = (self._map_t_extent[1] - gmin_num) if dt_min is None \
-                else dt_min / 1440.0
+            expected_dur = (self._map_t_extent[1] - gmin_num) if dt_min is None else dt_min / 1440.0
         if abs(dur - expected_dur) > 1e-4:
             if final:
                 self._map_apply_custom_dt(dur, start)
@@ -413,10 +438,13 @@ class MapTabMixin:
         # Global time span sliced into dt-width windows at dt/4 snap steps
         # (4x the non-overlapping count). 'full' becomes single whole-record window.
         dt_min = self._map_active_dt_min()
-        times_list = [st["times"] for st in self.stations.values()
-                      if isinstance(st["times"], np.ndarray)
-                      and np.issubdtype(st["times"].dtype, np.datetime64)
-                      and len(st["times"])]
+        times_list = [
+            st["times"]
+            for st in self.stations.values()
+            if isinstance(st["times"], np.ndarray)
+            and np.issubdtype(st["times"].dtype, np.datetime64)
+            and len(st["times"])
+        ]
         if not times_list:
             self._map_window_bounds = []
             self._map_t_extent = None
@@ -431,7 +459,7 @@ class MapTabMixin:
             return
         # timedelta64 rejects floats (custom nav-resize may be fractional minutes).
         # Build in whole seconds to preserve sub-minute precision without crashes.
-        dt_span   = np.timedelta64(int(round(dt_min * 60)), "s")
+        dt_span = np.timedelta64(int(round(dt_min * 60)), "s")
         step_span = dt_span / 4
         bounds = []
         t0 = gmin
@@ -454,11 +482,16 @@ class MapTabMixin:
         valid = vals[~np.isnan(vals)]
         if valid.size == 0:
             return np.nan
-        if agg == "mean":   return float(valid.mean())
-        if agg == "median": return float(np.median(valid))
-        if agg == "max":    return float(valid.max())
-        if agg == "min":    return float(valid.min())
-        if agg == "last":   return float(valid[-1])
+        if agg == "mean":
+            return float(valid.mean())
+        if agg == "median":
+            return float(np.median(valid))
+        if agg == "max":
+            return float(valid.max())
+        if agg == "min":
+            return float(valid.min())
+        if agg == "last":
+            return float(valid[-1])
         return float(valid.mean())
 
     @staticmethod
@@ -512,8 +545,7 @@ class MapTabMixin:
             return sig
         if cb == "wind_combo":
             # Calm params affect per-window circular mean; must be in signature.
-            return (cb, self._map_agg_var.get(), self._map_dt_var.get(),
-                    self._map_calm_params())
+            return (cb, self._map_agg_var.get(), self._map_dt_var.get(), self._map_calm_params())
         return None
 
     def _map_recompute_agg(self):
@@ -537,19 +569,22 @@ class MapTabMixin:
         n_st, n_win = len(stids), len(self._map_window_bounds)
         calm_on, calm_thresh = self._map_calm_params()
         state = {
-            "cb":     cb,
-            "sig":    self._map_agg_signature(),
-            "stids":  stids,
+            "cb": cb,
+            "sig": self._map_agg_signature(),
+            "stids": stids,
             "bounds": list(self._map_window_bounds),
-            "agg":    self._map_agg_var.get(),
-            "vname":  self.var_map_value.get(),
+            "agg": self._map_agg_var.get(),
+            "vname": self.var_map_value.get(),
             # Calm params snapshotted to prevent mid-run toggle from skewing matrix.
-            "calm_on":     calm_on,
+            "calm_on": calm_on,
             "calm_thresh": calm_thresh,
             # variable_value on wind var: pre-aggregation masking of calm samples.
-            "calm_var": (cb == "variable_value" and calm_on
-                         and self.var_map_value.get() in ("wind_speed", "wind_direction")),
-            "idx":    0,
+            "calm_var": (
+                cb == "variable_value"
+                and calm_on
+                and self.var_map_value.get() in ("wind_speed", "wind_direction")
+            ),
+            "idx": 0,
         }
         if cb == "variable_value":
             state["mat"] = np.full((n_st, n_win), np.nan)
@@ -559,10 +594,10 @@ class MapTabMixin:
         else:
             self._map_cur_agg = None
             return
-        self._map_agg_state   = state
+        self._map_agg_state = state
         self._map_agg_running = True
         self.pb_load["maximum"] = max(n_st, 1)
-        self.pb_load["value"]   = 0
+        self.pb_load["value"] = 0
         self.pb_load.pack(side="right", padx=(0, 4))
         self.after(1, lambda: self._map_agg_chunk(gen))
 
@@ -588,13 +623,17 @@ class MapTabMixin:
             mat, vname = state["mat"], state["vname"]
             calm_var, thr = state["calm_var"], state["calm_thresh"]
             while state["idx"] < len(stids) and time.perf_counter() < deadline:
-                i = state["idx"]; state["idx"] += 1
+                i = state["idx"]
+                state["idx"] += 1
                 st = self.stations.get(stids[i])
                 if st is None:
                     continue
                 data, times = st["variables"].get(vname), st["times"]
-                if data is None or not isinstance(times, np.ndarray) \
-                        or not np.issubdtype(times.dtype, np.datetime64):
+                if (
+                    data is None
+                    or not isinstance(times, np.ndarray)
+                    or not np.issubdtype(times.dtype, np.datetime64)
+                ):
                     continue
                 # Calm masking requires station's wind_speed; omitted if missing.
                 ws = st["variables"].get("wind_speed") if calm_var else None
@@ -611,14 +650,19 @@ class MapTabMixin:
             mat_ws, mat_wd = state["mat_ws"], state["mat_wd"]
             calm_on, calm_thresh = state["calm_on"], state["calm_thresh"]
             while state["idx"] < len(stids) and time.perf_counter() < deadline:
-                i = state["idx"]; state["idx"] += 1
+                i = state["idx"]
+                state["idx"] += 1
                 st = self.stations.get(stids[i])
                 if st is None:
                     continue
                 ws, wd = st["variables"].get("wind_speed"), st["variables"].get("wind_direction")
                 times = st["times"]
-                if ws is None or wd is None or not isinstance(times, np.ndarray) \
-                        or not np.issubdtype(times.dtype, np.datetime64):
+                if (
+                    ws is None
+                    or wd is None
+                    or not isinstance(times, np.ndarray)
+                    or not np.issubdtype(times.dtype, np.datetime64)
+                ):
                     continue
                 for w, (t0, t1) in enumerate(bounds):
                     lo = np.searchsorted(times, t0, side="left")
@@ -626,16 +670,17 @@ class MapTabMixin:
                     if hi > lo:
                         mat_ws[i, w] = self._map_agg_reduce(ws[lo:hi], agg)
                         mat_wd[i, w] = self._map_circular_mean_calm(
-                            ws[lo:hi], wd[lo:hi], calm_on, calm_thresh)
+                            ws[lo:hi], wd[lo:hi], calm_on, calm_thresh
+                        )
         self.pb_load["value"] = state["idx"]
         if state["idx"] < len(stids):
-            self.lbl_status.config(
-                text=f"Aggregating {state['idx']}/{len(stids)} stations...")
+            self.lbl_status.config(text=f"Aggregating {state['idx']}/{len(stids)} stations...")
             self.after(1, lambda: self._map_agg_chunk(gen))
             return
-        self._map_cur_agg = (state["mat"] if state["cb"] == "variable_value"
-                             else (state["mat_ws"], state["mat_wd"]))
-        self._map_agg_sig   = state["sig"]
+        self._map_cur_agg = (
+            state["mat"] if state["cb"] == "variable_value" else (state["mat_ws"], state["mat_wd"])
+        )
+        self._map_agg_sig = state["sig"]
         self._map_agg_stids = stids
         self._map_agg_running = False
         self.pb_load.pack_forget()
@@ -685,10 +730,11 @@ class MapTabMixin:
         # Open circle + cross for stations with no data (not colored by value).
         # Created even when empty for reuse in fast refresh path (set_offsets only).
         self._map_missing_circ = ax.scatter(
-            lons, lats, s=70, facecolors="none", edgecolors=MISSING_MARKER,
-            linewidths=1.1, zorder=3)
+            lons, lats, s=70, facecolors="none", edgecolors=MISSING_MARKER, linewidths=1.1, zorder=3
+        )
         self._map_missing_x = ax.scatter(
-            lons, lats, s=40, marker="x", color=MISSING_MARKER, linewidths=1.1, zorder=3)
+            lons, lats, s=40, marker="x", color=MISSING_MARKER, linewidths=1.1, zorder=3
+        )
 
     def _map_set_missing_marker(self, lons, lats):
         """Update missing-data marker positions (fast in-place artist update).
@@ -697,7 +743,7 @@ class MapTabMixin:
             lons (np.ndarray): longitudes of missing stations.
             lats (np.ndarray): latitudes of missing stations.
         """
-        off = (np.column_stack([lons, lats]) if len(lons) else np.empty((0, 2)))
+        off = np.column_stack([lons, lats]) if len(lons) else np.empty((0, 2))
         self._map_missing_circ.set_offsets(off)
         self._map_missing_x.set_offsets(off)
 
@@ -720,14 +766,14 @@ class MapTabMixin:
         # directions (drawn muted); filter off -> arrow / missing only.
         calm_on, thr = self._map_calm_params()
         has_ws = ~np.isnan(ws)
-        valid  = has_ws & ~np.isnan(wd)
+        valid = has_ws & ~np.isnan(wd)
         if calm_on:
-            arrow   = valid & (ws >= thr)
-            calm    = has_ws & ~arrow
+            arrow = valid & (ws >= thr)
+            calm = has_ws & ~arrow
             missing = ~has_ws
         else:
-            arrow   = valid
-            calm    = np.zeros(ws.shape, dtype=bool)
+            arrow = valid
+            calm = np.zeros(ws.shape, dtype=bool)
             missing = ~valid
         return arrow, calm, missing
 
@@ -772,13 +818,25 @@ class MapTabMixin:
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
             rad = np.deg2rad(wd[arrow])
             self._map_quiver = ax.quiver(
-                lons_a[arrow], lats_a[arrow], -np.sin(rad), -np.cos(rad), wsv,
-                cmap="viridis", norm=norm, angles="uv", scale_units="inches",
-                scale=8.0, pivot="mid", width=0.005, headwidth=4.0,
-                headlength=5.0, headaxislength=4.5, zorder=3)
+                lons_a[arrow],
+                lats_a[arrow],
+                -np.sin(rad),
+                -np.cos(rad),
+                wsv,
+                cmap="viridis",
+                norm=norm,
+                angles="uv",
+                scale_units="inches",
+                scale=8.0,
+                pivot="mid",
+                width=0.005,
+                headwidth=4.0,
+                headlength=5.0,
+                headaxislength=4.5,
+                zorder=3,
+            )
         # Calm dots created even when empty for unconditional filter-on check.
-        self._map_calm_dots = ax.scatter(
-            lons_a[calm], lats_a[calm], s=12, color=MUTED, zorder=3)
+        self._map_calm_dots = ax.scatter(lons_a[calm], lats_a[calm], s=12, color=MUTED, zorder=3)
         self._map_set_missing_marker(lons_a[missing], lats_a[missing])
         return norm
 
@@ -815,12 +873,15 @@ class MapTabMixin:
                     rel_path = attrs.get("rel_path")
                     if not rel_path:
                         continue
-                    perims.append({
-                        "name": firename, "time": dt,
-                        "kml_path": path.parent / rel_path,
-                        "burnt_area": attrs.get("burnt_area"),
-                        "burnt_area_units": attrs.get("burnt_area_units", ""),
-                    })
+                    perims.append(
+                        {
+                            "name": firename,
+                            "time": dt,
+                            "kml_path": path.parent / rel_path,
+                            "burnt_area": attrs.get("burnt_area"),
+                            "burnt_area_units": attrs.get("burnt_area_units", ""),
+                        }
+                    )
             perims.sort(key=lambda p: p["time"])
             self._perim_data = perims
             self._perim_loaded_path = path
@@ -866,8 +927,9 @@ class MapTabMixin:
             return
         sm = mcm.ScalarMappable(norm=norm, cmap=cmap_obj)
         sm.set_array([])
-        self._map_perim_cbar = ax.figure.colorbar(sm, ax=ax, label="Perimeter time",
-                                                   fraction=0.03, pad=0.02)
+        self._map_perim_cbar = ax.figure.colorbar(
+            sm, ax=ax, label="Perimeter time", fraction=0.03, pad=0.02
+        )
         self._map_perim_cbar.ax.yaxis.set_major_locator(mdates.AutoDateLocator())
         self._map_perim_cbar.ax.yaxis.set_major_formatter(mdates.DateFormatter("%b-%d %Hh"))
 
@@ -884,14 +946,19 @@ class MapTabMixin:
         if not self.stations:
             return
         self._map_stids = self.stids[:]
-        cb    = self.var_map_color.get()
+        cb = self.var_map_color.get()
         if cb in ("variable_value", "wind_combo"):
             sig = self._map_agg_signature()
-            if (sig != self._map_agg_sig or self._map_cur_agg is None
-                    or getattr(self, "_map_agg_stids", None) != self._map_stids):
-                if (getattr(self, "_map_agg_running", False)
-                        and self._map_agg_state.get("sig") == sig
-                        and self._map_agg_state.get("stids") == self._map_stids):
+            if (
+                sig != self._map_agg_sig
+                or self._map_cur_agg is None
+                or getattr(self, "_map_agg_stids", None) != self._map_stids
+            ):
+                if (
+                    getattr(self, "_map_agg_running", False)
+                    and self._map_agg_state.get("sig") == sig
+                    and self._map_agg_state.get("stids") == self._map_stids
+                ):
                     # Identical recompute in flight; let it finish (its completion
                     # refreshes) instead of gen-bumping and restarting.
                     return
@@ -903,8 +970,11 @@ class MapTabMixin:
             # Cache hit after mode round-trip: restore cached sparkline (guarded
             # so scrub-path refreshes don't unnecessarily repaint).
             stored = getattr(self, "_map_nav_series", None)
-            if (stored is not None and not self.nav_map_window.has_series()
-                    and getattr(self, "_map_nav_series_sig", None) == sig):
+            if (
+                stored is not None
+                and not self.nav_map_window.has_series()
+                and getattr(self, "_map_nav_series_sig", None) == sig
+            ):
                 self.nav_map_window.set_series(*stored)
         elif getattr(self, "_map_agg_running", False):
             # Switched away from windowed mode with precompute in flight; cancel it.
@@ -924,15 +994,23 @@ class MapTabMixin:
         # missing markers, perimeter, axes decor) and update in place. No ax.cla(),
         # no colorbar destroy/recreate (full relayout). Fast path: window scrub or calm
         # toggle is just data swap. Mode/variable/station-set/perimeter change rebuilds.
-        perim_key = (self._perim_loaded_path, len(self._perim_data),
-                     bool(self.cfg.get("perim_show_all", False)))
-        struct_sig = (cb,
-                      self.var_map_value.get() if cb == "variable_value" else None,
-                      tuple(self._map_stids), perim_key)
+        perim_key = (
+            self._perim_loaded_path,
+            len(self._perim_data),
+            bool(self.cfg.get("perim_show_all", False)),
+        )
+        struct_sig = (
+            cb,
+            self.var_map_value.get() if cb == "variable_value" else None,
+            tuple(self._map_stids),
+            perim_key,
+        )
         agg_lbl = f"{self._map_agg_var.get()}, {self._map_dt_var.get()} window"
-        if (struct_sig == getattr(self, "_map_draw_sig", None)
-                and self._map_sc is not None
-                and self._map_fast_update(cb, lons_a, lats_a, agg_lbl)):
+        if (
+            struct_sig == getattr(self, "_map_draw_sig", None)
+            and self._map_sc is not None
+            and self._map_fast_update(cb, lons_a, lats_a, agg_lbl)
+        ):
             self._map_offsets = np.column_stack([lons_a, lats_a]) if len(lons_a) else None
             self._map_plotted = set(self._map_stids)
             self._map_refresh_overlays()
@@ -949,27 +1027,35 @@ class MapTabMixin:
         # ax.cla() silently drops hover/selection/popup artists; null out handles
         # to prevent double-remove. Also clear cached mode artists (quiver, calm dots).
         self._map_hover_artist = None
-        self._map_sel_artist   = None
+        self._map_sel_artist = None
         self._map_popup_artist = None
-        self._map_quiver       = None
-        self._map_calm_dots    = None
+        self._map_quiver = None
+        self._map_calm_dots = None
         self._map_missing_circ = None
-        self._map_missing_x    = None
-        self._map_cbar_sm      = None
+        self._map_missing_x = None
+        self._map_cbar_sm = None
         if self._perim_data:
             self._map_draw_perimeters(ax)
         if cb == "qc_status":
             colors = [self._QC_STATUS_COLORS[self._map_qc_status(s)][0] for s in self._map_stids]
             self._map_sc = ax.scatter(lons_a, lats_a, c=colors, s=45, alpha=0.85)
-            handles = [Line2D([0], [0], marker="o", linestyle="", color=color, label=label)
-                       for color, label in self._QC_STATUS_COLORS.values()]
+            handles = [
+                Line2D([0], [0], marker="o", linestyle="", color=color, label=label)
+                for color, label in self._QC_STATUS_COLORS.values()
+            ]
             ax.legend(handles=handles, loc="best", fontsize=8, title="QC Status")
             self._map_cvals_arr = None
         elif cb == "variable_value":
             vname = self.var_map_value.get()
             vals, valid_mask = self._map_value_column()
-            units = next((self.stations[s]["var_units"].get(vname, "")
-                          for s in self._map_stids if vname in self.stations[s]["var_units"]), "")
+            units = next(
+                (
+                    self.stations[s]["var_units"].get(vname, "")
+                    for s in self._map_stids
+                    if vname in self.stations[s]["var_units"]
+                ),
+                "",
+            )
             cmap_obj = matplotlib.colormaps[self._VAR_CMAP.get(vname, "viridis")]
             norm, rgba = self._map_value_colors(vals, valid_mask, cmap_obj)
             # Full station-indexed scatter (incl. NaN points) keeps indices aligned
@@ -979,8 +1065,9 @@ class MapTabMixin:
                 sm = mcm.ScalarMappable(norm=norm, cmap=cmap_obj)
                 sm.set_array([])
                 self._map_cbar_sm = sm
-                self._map_cbar = ax.figure.colorbar(sm, ax=ax, label=f"{vname} [{units}]  ({agg_lbl})",
-                                                     fraction=0.03, pad=0.02)
+                self._map_cbar = ax.figure.colorbar(
+                    sm, ax=ax, label=f"{vname} [{units}]  ({agg_lbl})", fraction=0.03, pad=0.02
+                )
             self._map_value_units = units
             self._map_make_missing_marker(ax, lons_a[~valid_mask], lats_a[~valid_mask])
             self._map_cvals_arr = None
@@ -991,17 +1078,22 @@ class MapTabMixin:
             self._map_sc = ax.scatter(lons_a, lats_a, s=45, alpha=0.0)
             self._map_make_missing_marker(ax, np.array([]), np.array([]))
             norm = self._map_draw_wind_layers(ax, lons_a, lats_a, ws, wd)
-            units = next((self.stations[s]["var_units"].get("wind_speed", "")
-                          for s in self._map_stids
-                          if "wind_speed" in self.stations[s]["var_units"]), "m/s")
+            units = next(
+                (
+                    self.stations[s]["var_units"].get("wind_speed", "")
+                    for s in self._map_stids
+                    if "wind_speed" in self.stations[s]["var_units"]
+                ),
+                "m/s",
+            )
             self._map_value_units = units
             if norm is not None:
                 sm = mcm.ScalarMappable(norm=norm, cmap="viridis")
                 sm.set_array([])
                 self._map_cbar_sm = sm
                 self._map_cbar = ax.figure.colorbar(
-                    sm, ax=ax, label=f"wind_speed [{units}]  ({agg_lbl})",
-                    fraction=0.03, pad=0.02)
+                    sm, ax=ax, label=f"wind_speed [{units}]  ({agg_lbl})", fraction=0.03, pad=0.02
+                )
             ax.set_title(f"Wind (arrows)  —  {agg_lbl}  (click a point to open detail)")
             self._map_cvals_arr = None
         else:
@@ -1010,14 +1102,15 @@ class MapTabMixin:
             self._map_sc = ax.scatter(lons_a, lats_a, c=cvals, cmap="RdYlGn_r", s=45, alpha=0.85)
             self._map_cbar = ax.figure.colorbar(self._map_sc, ax=ax, label=clabel, fraction=0.03, pad=0.02)
             self._map_cvals_arr = np.array(cvals, dtype=float) if cvals else None
-        ax.set_xlabel("Longitude"); ax.set_ylabel("Latitude")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
         if cb != "wind_combo":
             ax.set_title("Station Map  (click a point to open detail)")
         ax.grid(True, alpha=0.3)
         self._map_color_mode = cb
-        self._map_draw_sig  = struct_sig
-        self._map_offsets   = np.column_stack([lons_a, lats_a]) if len(lons_a) else None
-        self._map_plotted   = set(self._map_stids)
+        self._map_draw_sig = struct_sig
+        self._map_offsets = np.column_stack([lons_a, lats_a]) if len(lons_a) else None
+        self._map_plotted = set(self._map_stids)
         self._map_refresh_overlays()
         self.canvas_map.draw_idle()
 
@@ -1109,8 +1202,7 @@ class MapTabMixin:
         # structure requires rebuild (e.g., colorbar must appear/disappear).
         try:
             if cb == "qc_status":
-                colors = [self._QC_STATUS_COLORS[self._map_qc_status(s)][0]
-                          for s in self._map_stids]
+                colors = [self._QC_STATUS_COLORS[self._map_qc_status(s)][0] for s in self._map_stids]
                 self._map_sc.set_facecolor(colors)
                 return True
             if cb == "variable_value":
@@ -1125,8 +1217,7 @@ class MapTabMixin:
                     # set_norm fires mappable's 'changed' callback (colorbar tracks);
                     # no destroy/recreate needed.
                     self._map_cbar_sm.set_norm(norm)
-                    self._map_cbar.set_label(
-                        f"{vname} [{self._map_value_units}]  ({agg_lbl})")
+                    self._map_cbar.set_label(f"{vname} [{self._map_value_units}]  ({agg_lbl})")
                 self._map_set_missing_marker(lons_a[~valid_mask], lats_a[~valid_mask])
                 return True
             if cb == "wind_combo":
@@ -1136,10 +1227,8 @@ class MapTabMixin:
                     return False
                 if self._map_cbar is not None:
                     self._map_cbar_sm.set_norm(norm)
-                    self._map_cbar.set_label(
-                        f"wind_speed [{self._map_value_units}]  ({agg_lbl})")
-                self.ax_map.set_title(
-                    f"Wind (arrows)  —  {agg_lbl}  (click a point to open detail)")
+                    self._map_cbar.set_label(f"wind_speed [{self._map_value_units}]  ({agg_lbl})")
+                self.ax_map.set_title(f"Wind (arrows)  —  {agg_lbl}  (click a point to open detail)")
                 return True
             # Numeric colorbar modes (issues / wd_nan_pct / n_variables / n_pts).
             cvals = np.array([self._map_cval(s, cb) for s in self._map_stids], dtype=float)
@@ -1166,8 +1255,11 @@ class MapTabMixin:
         # Updates offsets/colors on existing artist (avoids ax.cla() + full rebuild).
         # Falls back for modes with aggregate matrices (QC Status, variable_value, wind_combo).
         cb = self.var_map_color.get()
-        if self._map_sc is None or cb != self._map_color_mode or \
-                cb in ("qc_status", "variable_value", "wind_combo"):
+        if (
+            self._map_sc is None
+            or cb != self._map_color_mode
+            or cb in ("qc_status", "variable_value", "wind_combo")
+        ):
             self._refresh_map()
             return
         fresh = [s for s in new_stids if s not in self._map_plotted]
@@ -1176,9 +1268,13 @@ class MapTabMixin:
         self._map_plotted.update(fresh)
         self._map_stids.extend(fresh)
         new_off = np.array([[self.stations[s]["lon"], self.stations[s]["lat"]] for s in fresh])
-        new_cv  = np.array([self._map_cval(s, cb) for s in fresh], dtype=float)
-        self._map_offsets   = new_off if self._map_offsets   is None else np.vstack([self._map_offsets, new_off])
-        self._map_cvals_arr = new_cv  if self._map_cvals_arr is None else np.concatenate([self._map_cvals_arr, new_cv])
+        new_cv = np.array([self._map_cval(s, cb) for s in fresh], dtype=float)
+        self._map_offsets = (
+            new_off if self._map_offsets is None else np.vstack([self._map_offsets, new_off])
+        )
+        self._map_cvals_arr = (
+            new_cv if self._map_cvals_arr is None else np.concatenate([self._map_cvals_arr, new_cv])
+        )
         self._map_sc.set_offsets(self._map_offsets)
         self._map_sc.set_array(self._map_cvals_arr)
         self._map_sc.set_clim(self._map_cvals_arr.min(), self._map_cvals_arr.max())
@@ -1229,8 +1325,8 @@ class MapTabMixin:
             lon = self.stations[self._map_hover_stid]["lon"]
             lat = self.stations[self._map_hover_stid]["lat"]
             self._map_hover_artist = self.ax_map.scatter(
-                [lon], [lat], s=170, facecolors=ACCENT, edgecolors="none",
-                alpha=0.35, zorder=2.5)
+                [lon], [lat], s=170, facecolors=ACCENT, edgecolors="none", alpha=0.35, zorder=2.5
+            )
         self.canvas_map.draw_idle()
 
     def _on_map_motion(self, event):
@@ -1261,8 +1357,8 @@ class MapTabMixin:
             lon = self.stations[self._map_selected_stid]["lon"]
             lat = self.stations[self._map_selected_stid]["lat"]
             self._map_sel_artist = self.ax_map.scatter(
-                [lon], [lat], s=220, facecolors="none", edgecolors="black",
-                linewidths=2.2, zorder=5)
+                [lon], [lat], s=220, facecolors="none", edgecolors="black", linewidths=2.2, zorder=5
+            )
 
     def _map_popup_lines(self, stid):
         """Generate popup text lines for a station.
@@ -1326,10 +1422,15 @@ class MapTabMixin:
             self._map_popup_artist = None
         lon, lat = self.stations[stid]["lon"], self.stations[stid]["lat"]
         self._map_popup_artist = self.ax_map.annotate(
-            "\n".join(self._map_popup_lines(stid)), xy=(lon, lat),
-            xytext=(14, 14), textcoords="offset points", fontsize=8, zorder=6,
+            "\n".join(self._map_popup_lines(stid)),
+            xy=(lon, lat),
+            xytext=(14, 14),
+            textcoords="offset points",
+            fontsize=8,
+            zorder=6,
             bbox=dict(boxstyle="round", fc="white", ec="black", alpha=0.95),
-            arrowprops=dict(arrowstyle="->", color="black"))
+            arrowprops=dict(arrowstyle="->", color="black"),
+        )
         self.canvas_map.draw_idle()
 
     def _map_close_popup(self):

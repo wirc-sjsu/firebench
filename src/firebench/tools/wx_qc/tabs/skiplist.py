@@ -233,9 +233,9 @@ class SkiplistTabMixin:
         self.nb.add(f, text="Skip List")
         cols = ("STID", "Reason")
         self.tv_skip = ttk.Treeview(f, columns=cols, show="headings", selectmode="browse")
-        self.tv_skip.heading("STID",   text="STID")
+        self.tv_skip.heading("STID", text="STID")
         self.tv_skip.heading("Reason", text="Reason")
-        self.tv_skip.column("STID",   width=110, anchor="w")
+        self.tv_skip.column("STID", width=110, anchor="w")
         self.tv_skip.column("Reason", width=700, anchor="w")
         vsb = ttk.Scrollbar(f, orient="vertical", command=self.tv_skip.yview)
         self.tv_skip.configure(yscrollcommand=vsb.set)
@@ -246,13 +246,13 @@ class SkiplistTabMixin:
         bf = ttk.Frame(f)
         bf.pack(fill="x", padx=4, pady=6)
         ttk.Label(bf, text="STID:").pack(side="left")
-        self.var_skip_stid   = tk.StringVar()
+        self.var_skip_stid = tk.StringVar()
         self.var_skip_reason = tk.StringVar()
-        ttk.Entry(bf, textvariable=self.var_skip_stid,   width=10).pack(side="left", padx=2)
+        ttk.Entry(bf, textvariable=self.var_skip_stid, width=10).pack(side="left", padx=2)
         ttk.Label(bf, text="Reason:").pack(side="left", padx=(6, 1))
         ttk.Entry(bf, textvariable=self.var_skip_reason, width=44).pack(side="left", padx=2)
-        ttk.Button(bf, text="Add",         command=self._skip_manual_add).pack(side="left", padx=PAD)
-        ttk.Button(bf, text="Remove",      command=self._skip_remove).pack(side="left", padx=PAD)
+        ttk.Button(bf, text="Add", command=self._skip_manual_add).pack(side="left", padx=PAD)
+        ttk.Button(bf, text="Remove", command=self._skip_remove).pack(side="left", padx=PAD)
         ttk.Button(bf, text="Edit Reason", command=self._skip_edit_reason).pack(side="left", padx=PAD)
         ttk.Button(bf, text="Go to Detail ->", command=self._skip_goto_detail).pack(side="left", padx=PAD)
         ttk.Button(bf, text="Export Script...", command=self._export_script).pack(side="right", padx=PAD)
@@ -261,11 +261,9 @@ class SkiplistTabMixin:
         self.lbl_skip_count = ttk.Label(f, text="", anchor="w", style="Muted.TLabel")
         self.lbl_skip_count.pack(anchor="w", padx=4, pady=(0, 4))
 
-        ttk.Label(f, text="Record removals", style="Section.TLabel").pack(
-            anchor="w", padx=4, pady=(8, 2))
+        ttk.Label(f, text="Record removals", style="Section.TLabel").pack(anchor="w", padx=4, pady=(8, 2))
         rcols = ("STID", "Variable", "From", "To", "Reason")
-        self.tv_removals = ttk.Treeview(f, columns=rcols, show="headings",
-                                         selectmode="browse", height=7)
+        self.tv_removals = ttk.Treeview(f, columns=rcols, show="headings", selectmode="browse", height=7)
         widths = (90, 130, 140, 140, 400)
         for c, w in zip(rcols, widths):
             self.tv_removals.heading(c, text=c)
@@ -276,11 +274,16 @@ class SkiplistTabMixin:
         self.tv_removals.pack(fill="both", expand=True)
         self.tv_removals.bind("<Double-1>", lambda _: self._removal_goto_detail())
 
-        rbf = ttk.Frame(f); rbf.pack(fill="x", padx=4, pady=6)
-        ttk.Button(rbf, text="Remove Entry",     command=self._removal_remove_entry).pack(side="left", padx=PAD)
-        ttk.Button(rbf, text="Edit Reason",      command=self._removal_edit_reason).pack(side="left", padx=PAD)
-        ttk.Button(rbf, text="Go to Detail ->",  command=self._removal_goto_detail).pack(side="left", padx=PAD)
-        ttk.Button(rbf, text="Export cleaned H5...", command=self._export_cleaned_h5).pack(side="right", padx=PAD)
+        rbf = ttk.Frame(f)
+        rbf.pack(fill="x", padx=4, pady=6)
+        ttk.Button(rbf, text="Remove Entry", command=self._removal_remove_entry).pack(side="left", padx=PAD)
+        ttk.Button(rbf, text="Edit Reason", command=self._removal_edit_reason).pack(side="left", padx=PAD)
+        ttk.Button(rbf, text="Go to Detail ->", command=self._removal_goto_detail).pack(
+            side="left", padx=PAD
+        )
+        ttk.Button(rbf, text="Export cleaned H5...", command=self._export_cleaned_h5).pack(
+            side="right", padx=PAD
+        )
 
         self.lbl_removal_count = ttk.Label(f, text="", anchor="w", style="Muted.TLabel")
         self.lbl_removal_count.pack(anchor="w", padx=4, pady=(0, 4))
@@ -327,32 +330,44 @@ class SkiplistTabMixin:
         for stid in sorted(self.removal_list):
             entries = self.removal_list[stid]
             for i, e in enumerate(entries):
-                self.tv_removals.insert("", "end", iid=self._removal_iid(stid, i),
-                    values=(stid, e["var"], e["t0"], e["t1"], e["reason"]))
+                self.tv_removals.insert(
+                    "",
+                    "end",
+                    iid=self._removal_iid(stid, i),
+                    values=(stid, e["var"], e["t0"], e["t1"], e["reason"]),
+                )
                 n_entries += 1
         n_stations = sum(1 for v in self.removal_list.values() if v)
         self.lbl_removal_count.config(
             text=f"{n_entries} removal entr{'y' if n_entries == 1 else 'ies'} "
-                 f"across {n_stations} station{'s' if n_stations != 1 else ''}")
+            f"across {n_stations} station{'s' if n_stations != 1 else ''}"
+        )
 
     def _removal_goto_detail(self):
         sel = self.tv_removals.selection()
         if not sel:
-            messagebox.showinfo("Select", "Click a row first"); return
+            messagebox.showinfo("Select", "Click a row first")
+            return
         stid, idx = self._removal_iid_parts(sel[0])
         if stid not in self.stations:
-            messagebox.showwarning("Not loaded", f"{stid} not in current H5"); return
+            messagebox.showwarning("Not loaded", f"{stid} not in current H5")
+            return
         entries = self.removal_list.get(stid, [])
         entry = entries[idx] if idx < len(entries) else None
         self._navigate_to_station(stid)
-        if entry is not None and entry["var"] != "*" and entry["var"] in getattr(self, "_ts_avail_vars", []):
+        if (
+            entry is not None
+            and entry["var"] != "*"
+            and entry["var"] in getattr(self, "_ts_avail_vars", [])
+        ):
             self.var_ts_var.set(entry["var"])
             self._plot_timeseries()
 
     def _removal_remove_entry(self):
         sel = self.tv_removals.selection()
         if not sel:
-            messagebox.showinfo("Select", "Click a row first"); return
+            messagebox.showinfo("Select", "Click a row first")
+            return
         stid, idx = self._removal_iid_parts(sel[0])
         lst = self.removal_list.get(stid, [])
         if idx >= len(lst):
@@ -369,31 +384,36 @@ class SkiplistTabMixin:
     def _removal_edit_reason(self):
         sel = self.tv_removals.selection()
         if not sel:
-            messagebox.showinfo("Select", "Click a row first"); return
+            messagebox.showinfo("Select", "Click a row first")
+            return
         stid, idx = self._removal_iid_parts(sel[0])
         lst = self.removal_list.get(stid, [])
         if idx >= len(lst):
             return
         entry = lst[idx]
-        dlg = AddSkipDialog(self, None, entry["reason"],
-                             label=f"{stid}  {entry['var']}  {entry['t0']} -> {entry['t1']}")
+        dlg = AddSkipDialog(
+            self, None, entry["reason"], label=f"{stid}  {entry['var']}  {entry['t0']} -> {entry['t1']}"
+        )
         self.wait_window(dlg)
         if dlg.result is not None:
             entry["reason"] = dlg.result
             self._refresh_removals()
 
     def _skip_manual_add(self):
-        stid   = self.var_skip_stid.get().strip().upper()
+        stid = self.var_skip_stid.get().strip().upper()
         reason = self.var_skip_reason.get().strip()
         if not stid:
-            messagebox.showinfo("STID required", "Enter a station ID"); return
+            messagebox.showinfo("STID required", "Enter a station ID")
+            return
         self._add_to_skip(stid, reason or "manually added")
-        self.var_skip_stid.set(""); self.var_skip_reason.set("")
+        self.var_skip_stid.set("")
+        self.var_skip_reason.set("")
 
     def _skip_remove(self):
         sel = self.tv_skip.selection()
         if not sel:
-            messagebox.showinfo("Select", "Click a row first"); return
+            messagebox.showinfo("Select", "Click a row first")
+            return
         stid = sel[0]
         if messagebox.askyesno("Remove", f"Remove {stid} from skip list?"):
             del self.skip_list[stid]
@@ -404,10 +424,12 @@ class SkiplistTabMixin:
     def _skip_goto_detail(self):
         sel = self.tv_skip.selection()
         if not sel:
-            messagebox.showinfo("Select", "Click a row first"); return
+            messagebox.showinfo("Select", "Click a row first")
+            return
         stid = sel[0]
         if stid not in self.stations:
-            messagebox.showwarning("Not loaded", f"{stid} not in current H5"); return
+            messagebox.showwarning("Not loaded", f"{stid} not in current H5")
+            return
         self._navigate_to_station(stid)
 
     def _skip_edit_reason(self, event=None):
@@ -423,7 +445,8 @@ class SkiplistTabMixin:
 
     def _skip_export(self):
         if not self.skip_list and not self.removal_list:
-            messagebox.showinfo("Empty", "Skip list is empty"); return
+            messagebox.showinfo("Empty", "Skip list is empty")
+            return
         if self.h5_path:
             fire = self.h5_path.stem.removesuffix("_weather_data")
             default = f"{fire}_skiplist.py"
@@ -453,7 +476,8 @@ class SkiplistTabMixin:
         try:
             dest.write_text(text)
         except Exception as exc:
-            messagebox.showerror("Export failed", str(exc)); return
+            messagebox.showerror("Export failed", str(exc))
+            return
         messagebox.showinfo("Exported", f"Wrote:\n{dest}")
 
     def _skip_export_write(self, path):
@@ -483,29 +507,33 @@ class SkiplistTabMixin:
 
         qc_path = None
         if self.h5_path:
-            fire    = self.h5_path.stem.removesuffix("_weather_data")
+            fire = self.h5_path.stem.removesuffix("_weather_data")
             qc_path = self.h5_path.parent / f"{fire}_QC.pkl"
             with open(qc_path, "wb") as qf:
-                pickle.dump({
-                    "version":      4,
-                    "skip_list":    dict(self.skip_list),
-                    "green_list":   sorted(self.green_list),
-                    "removal_list": {s: [dict(e) for e in v]
-                                      for s, v in self.removal_list.items()},
-                    "saved_at":     datetime.now().isoformat(timespec="seconds"),
-                    "h5_path":      str(self.h5_path),
-                    "cfg":          copy.deepcopy(self.cfg),
-                    "all_stats":    self.all_stats,
-                    "ov_col_vis":   {c: v.get() for c, v in self._ov_col_vars.items()},
-                }, qf)
+                pickle.dump(
+                    {
+                        "version": 4,
+                        "skip_list": dict(self.skip_list),
+                        "green_list": sorted(self.green_list),
+                        "removal_list": {s: [dict(e) for e in v] for s, v in self.removal_list.items()},
+                        "saved_at": datetime.now().isoformat(timespec="seconds"),
+                        "h5_path": str(self.h5_path),
+                        "cfg": copy.deepcopy(self.cfg),
+                        "all_stats": self.all_stats,
+                        "ov_col_vis": {c: v.get() for c, v in self._ov_col_vars.items()},
+                    },
+                    qf,
+                )
         return path, qc_path
 
     def _export_cleaned_h5(self):
         if not self.h5_path:
-            messagebox.showinfo("No H5", "Load an H5 file first"); return
+            messagebox.showinfo("No H5", "Load an H5 file first")
+            return
         if not self.removal_list:
-            messagebox.showinfo("Empty", "Removal list is empty — nothing to clean"); return
-        fire    = self.h5_path.stem.removesuffix("_weather_data")
+            messagebox.showinfo("Empty", "Removal list is empty — nothing to clean")
+            return
+        fire = self.h5_path.stem.removesuffix("_weather_data")
         default = f"{fire}_weather_data_cleaned.h5"
         path = filedialog.asksaveasfilename(
             title="Export cleaned H5",
@@ -519,9 +547,9 @@ class SkiplistTabMixin:
         try:
             n_stations, n_nanned, errors = self._export_cleaned_h5_write(path)
         except Exception as exc:
-            messagebox.showerror("Export failed", str(exc)); return
-        msg = (f"Wrote:\n{path}\n\n"
-               f"{n_stations} station(s) modified, {n_nanned} value(s) set to NaN.")
+            messagebox.showerror("Export failed", str(exc))
+            return
+        msg = f"Wrote:\n{path}\n\n" f"{n_stations} station(s) modified, {n_nanned} value(s) set to NaN."
         if errors:
             shown = "\n".join(f"  {s}/{v}: {err}" for s, v, err in errors[:10])
             msg += f"\n\n{len(errors)} dataset write(s) failed and were skipped:\n{shown}"
@@ -554,8 +582,8 @@ class SkiplistTabMixin:
         shutil.copy2(self.h5_path, dest_path)
 
         n_stations = 0
-        n_nanned   = 0
-        errors     = []
+        n_nanned = 0
+        errors = []
         with h5py.File(dest_path, "r+") as f:
             ts_grp = f.get("time_series")
             if ts_grp is None:
@@ -566,7 +594,7 @@ class SkiplistTabMixin:
                 grp = ts_grp.get(f"station_{stid}")
                 if grp is None or "time" not in grp:
                     continue
-                t0_str  = grp["time"].attrs.get("time_origin", "")
+                t0_str = grp["time"].attrs.get("time_origin", "")
                 rel_min = grp["time"][:]
                 try:
                     t0 = datetime.fromisoformat(t0_str)
