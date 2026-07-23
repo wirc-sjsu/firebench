@@ -27,7 +27,7 @@ Run the benchmark with `--report`:
 
 ```bash
 firebench run 2021_Caldor H013_P model_output.h5 \
-  --obs-data Caldor.h5 --report
+  --obs-data v2026.2/Caldor.h5 --report
 ```
 
 In addition to JSON, PDF, and log outputs, this creates `firebench_report.md` and `figures/`. The

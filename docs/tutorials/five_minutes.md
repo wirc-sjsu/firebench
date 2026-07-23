@@ -36,7 +36,8 @@ firebench data get 1
 unzip v2026.2.zip
 ```
 
-Use the archive name printed by `data get` if `latest` points to a newer release.
+If `latest` points to a newer release, use the version printed by `data get` in both the archive
+name and the extracted directory path in the commands below.
 
 ## 4. Select a target
 

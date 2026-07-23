@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data to the trusted station resource.
 - Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
 ### Changed
+- Use the versioned `v2026.2/Caldor.h5` observation path in Caldor documentation workflows so
+  commands run from their working directory rather than the extracted data directory.
 - Source the Sphinx version from package project metadata and replace stale package and dependency
   inventories with FireBench 0.10 reference content derived from maintained sources.
 - Make the documentation landing page a workflow-oriented hub and keep the README as a concise
@@ -43,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
 - Keep the `code-formatting` Makefile target as a Black check and add `fix-code-formatting` to apply Black formatting locally.
 ### Fixed
+- Correct the target tutorial score scale to 0–100 and replace its synthetic JSON with an
+  anonymized real Caldor smoke-test result.
 - Resolve external polygon paths relative to their HDF5 file during benchmark requirement checks.
 - Replace the malformed custom fuel-model JSON tutorial with a complete, runnable CSV, JSON, and
   Python example.

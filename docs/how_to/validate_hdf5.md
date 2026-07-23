@@ -23,7 +23,7 @@ with h5py.File("model_output.h5", "r") as h5:
 For a registered case, inspect the exact target before building a requirements dictionary:
 
 ```bash
-firebench list 2021_Caldor H013_P --obs-data Caldor.h5
+firebench list 2021_Caldor H013_P --obs-data v2026.2/Caldor.h5
 ```
 
 Common failures are missing root attributes, a dataset at the wrong path, absent `units`, malformed

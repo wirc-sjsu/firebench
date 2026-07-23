@@ -13,8 +13,8 @@ perimeters, and `W` for weather. FireBench accepts any input order but canonical
 Examples:
 
 ```bash
-firebench list 2021_Caldor P02_P --obs-data Caldor.h5
-firebench list 2021_Caldor H013_BPW --obs-data Caldor.h5
+firebench list 2021_Caldor P02_P --obs-data v2026.2/Caldor.h5
+firebench list 2021_Caldor H013_BPW --obs-data v2026.2/Caldor.h5
 ```
 
 Use standalone `B`, `S`, `CC`, or `FP` for building damage, burn severity, canopy-cover loss, or

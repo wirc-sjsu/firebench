@@ -1154,7 +1154,7 @@ window. Inspect the available targets and the exact KPIs selected by a target wi
 
 ```bash
 firebench list 2021_Caldor
-firebench list 2021_Caldor H013_P --obs-data Caldor.h5
+firebench list 2021_Caldor H013_P --obs-data v2026.2/Caldor.h5
 ```
 
 The second command is the detailed source of truth for generated period targets. It reports the
