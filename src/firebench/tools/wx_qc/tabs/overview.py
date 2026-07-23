@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from ..dialogs import AddSkipDialog
+from ..state import mark_stations_greenlit, mark_stations_skipped, visible_issues
 from ..theme import ERROR_BG, WARN_BG, OK_BG, PAD
 
 
@@ -188,23 +189,9 @@ class OverviewTabMixin:
                 issues present, and values_tuple contains formatted display strings
                 (e.g., "12.3%", "45 min", "--") for all columns in _all_ov_cols.
         """
-        hidden_a = self.cfg.get("hidden_assertions", set())
-        show_errs = self.cfg.get("show_errors", True)
-        show_wrns = self.cfg.get("show_warns", True)
-
-        def _issue_visible(sev, key):
-            if sev == "ERROR" and not show_errs:
-                return False
-            if sev == "WARN" and not show_wrns:
-                return False
-            for prefix in hidden_a:
-                if key == prefix or key.startswith(prefix):
-                    return False
-            return True
-
         st = self.stations[stid]
         stats = self.all_stats[stid]
-        issues = [i for i in self.all_issues[stid] if _issue_visible(*i[:2])]
+        issues = visible_issues(self.all_issues[stid], self.cfg)
         var_stats = {k: v for k, v in stats.items() if k != "_time"}
 
         wd_pct = f"{stats['wind_direction']['nan_pct']:.1f}%" if "wind_direction" in stats else "--"
@@ -442,17 +429,20 @@ class OverviewTabMixin:
             return
         if len(sel) == 1:
             stid = sel[0]
-            shorts = [self._short_reason(k, m) for _, k, m in self.all_issues.get(stid, [])]
+            shorts = [
+                self._short_reason(k, m)
+                for _, k, m in visible_issues(self.all_issues.get(stid, []), self.cfg)
+            ]
             self._prompt_add_skip(stid, "; ".join(dict.fromkeys(shorts[:3])))
         else:
             dlg = AddSkipDialog(self, None, "", label=f"{len(sel)} stations selected")
             self.wait_window(dlg)
             if dlg.result is not None:
-                for stid in sel:
-                    self.skip_list[stid] = dlg.result
+                mark_stations_skipped(self.skip_list, self.green_list, sel, dlg.result)
                 self._refresh_skiplist()
                 self._refresh_overview(dirty=set(sel))
                 self._refresh_station_list()
+                self._refresh_map()
                 self.nb.select(3)
                 self.lbl_status.config(text=f"Added {len(sel)} stations to skip list")
 
@@ -466,10 +456,11 @@ class OverviewTabMixin:
         if not sel:
             messagebox.showinfo("Select", "Click a row first")
             return
-        for stid in sel:
-            self.green_list.add(stid)
+        mark_stations_greenlit(self.skip_list, self.green_list, sel)
+        self._refresh_skiplist()
         self._refresh_overview(dirty=set(sel))
         self._refresh_station_list()
+        self._refresh_map()
         n = len(sel)
         self.lbl_status.config(text=f"Greenlit {n} station{'s' if n != 1 else ''}")
 

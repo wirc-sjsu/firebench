@@ -6,6 +6,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox
 
 from .constants import default_config
+from .state import resolve_restored_decisions
 
 # Matches firebench's user-local data convention (see get_local_db_path
 # in tools/local_db_management.py) rather than a path relative to this
@@ -118,8 +119,9 @@ class SessionMixin:
         else:
             self._perim_data = []
             self._perim_loaded_path = None
-        self.skip_list = sess.get("skip_list", {})
-        self.green_list = set(sess.get("green_list", []))
+        self.skip_list, self.green_list = resolve_restored_decisions(
+            sess.get("skip_list", {}), sess.get("green_list", [])
+        )
         # v4: record-removal manifest; older sessions simply have none
         self.removal_list = sess.get("removal_list", {})
         h5 = sess.get("h5_path")

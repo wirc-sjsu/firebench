@@ -14,6 +14,7 @@ import h5py
 import geopandas as gpd
 from datetime import datetime
 
+from ..state import visible_issues
 from ..theme import ACCENT, MISSING_MARKER, MUTED, SKIP_RED, GREEN_OK, UNDECIDED, FONT_MONO, FIG_DPI, PAD
 from ..widgets import TimeNavigator
 from ..constants import parse_nonnegative_finite
@@ -160,7 +161,7 @@ class MapTabMixin:
             float: color value for the station in the given mode.
         """
         if cb == "issues":
-            return len(self.all_issues.get(stid, []))
+            return len(visible_issues(self.all_issues.get(stid, []), self.cfg))
         elif cb == "wd_nan_pct":
             return self.all_stats[stid].get("wind_direction", {}).get("nan_pct", 0.0)
         elif cb == "n_variables":

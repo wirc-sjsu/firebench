@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .constants import default_config
 from .data import run_assertions, run_outage_assertions
+from .state import mark_stations_skipped
 from .theme import setup_style, FONT_MONO
 from .widgets import TimeNavigator
 from .dialogs import AddSkipDialog, SettingsDialog
@@ -309,10 +310,11 @@ class App(
             reason (str): Reason for skipping this station.
             switch_tab (bool): If True, switch to skiplist tab after adding.
         """
-        self.skip_list[stid] = reason
+        mark_stations_skipped(self.skip_list, self.green_list, (stid,), reason)
         self._refresh_skiplist()
         self._refresh_overview(dirty={stid})
         self._refresh_station_list()
+        self._refresh_map()
         if switch_tab:
             self.nb.select(3)
         self.lbl_status.config(text=f"Added {stid} to skip list")
@@ -370,6 +372,7 @@ class App(
         # Coalesced refresh after Settings-OK: called directly or after chunked re-run.
         self._refresh_overview()
         self._refresh_station_list()
+        self._refresh_detail_view()
         self._refresh_map()
 
     def _rerun_assertions(self, on_complete=None):

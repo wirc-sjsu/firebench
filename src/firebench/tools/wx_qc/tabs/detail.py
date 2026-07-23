@@ -12,6 +12,7 @@ from ..widgets import StationListPanes
 from ..dialogs import AddSkipDialog, AddRemovalDialog
 from ..data import _segment_by_gap, _haversine_km
 from ..constants import DEFAULT_CALM_WIND_THRESHOLD, parse_nonnegative_finite
+from ..state import issue_is_visible, mark_stations_greenlit, mark_stations_skipped, visible_issues
 from ..theme import PLOT_BG, ERROR_FG, WARN_FG, ERROR_BG, WARN_BG, ACCENT, MUTED, OUTAGE_SHADE, FIG_DPI, PAD
 
 
@@ -223,7 +224,7 @@ class DetailTabMixin:
         """
 
         def _status(stid):
-            issues = self.all_issues.get(stid, [])
+            issues = visible_issues(self.all_issues.get(stid, []), self.cfg)
             has_err = any(s == "ERROR" for s, _, _ in issues)
             has_warn = any(s == "WARN" for s, _, _ in issues)
             return "[!] " if has_err else ("[~] " if has_warn else "[ ] ")
@@ -240,9 +241,11 @@ class DetailTabMixin:
         if not sel:
             messagebox.showinfo("Select", "Click a station first (Ctrl/Cmd-click for more)")
             return
-        self.green_list.update(sel)
+        mark_stations_greenlit(self.skip_list, self.green_list, sel)
+        self._refresh_skiplist()
         self._refresh_station_list()
         self._refresh_overview(dirty=set(sel))
+        self._refresh_map()
         self.lbl_status.config(text=f"Greenlit {len(sel)} station{'s' if len(sel) != 1 else ''}")
 
     def _station_list_ungreenlit(self):
@@ -257,6 +260,7 @@ class DetailTabMixin:
         self.green_list -= sel
         self._refresh_station_list()
         self._refresh_overview(dirty=set(sel))
+        self._refresh_map()
         self.lbl_status.config(text=f"Removed {len(sel)} from greenlit")
 
     def _detail_add_skip_batch(self):
@@ -271,17 +275,20 @@ class DetailTabMixin:
             return
         if len(sel) == 1:
             stid = next(iter(sel))
-            shorts = [self._short_reason(k, m) for _, k, m in self.all_issues.get(stid, [])]
+            shorts = [
+                self._short_reason(k, m)
+                for _, k, m in visible_issues(self.all_issues.get(stid, []), self.cfg)
+            ]
             self._prompt_add_skip(stid, "; ".join(dict.fromkeys(shorts[:3])))
         else:
             dlg = AddSkipDialog(self, None, "", label=f"{len(sel)} stations selected")
             self.wait_window(dlg)
             if dlg.result is not None:
-                for stid in sel:
-                    self.skip_list[stid] = dlg.result
+                mark_stations_skipped(self.skip_list, self.green_list, sel, dlg.result)
                 self._refresh_skiplist()
                 self._refresh_overview(dirty=set(sel))
                 self._refresh_station_list()
+                self._refresh_map()
                 self.nb.select(3)
                 self.lbl_status.config(text=f"Added {len(sel)} stations to skip list")
 
@@ -380,7 +387,9 @@ class DetailTabMixin:
         if len(sel) == 1:
             stid = sel[0]
             self._current_stid = stid
-            st, stats, issues = self.stations[stid], self.all_stats[stid], self.all_issues[stid]
+            st = self.stations[stid]
+            stats = self.all_stats[stid]
+            issues = visible_issues(self.all_issues[stid], self.cfg)
             avail_vars = sorted(st["variables"].keys())
             self._set_single_station_tabs_enabled(True)
 
@@ -420,7 +429,9 @@ class DetailTabMixin:
 
             # Populate assertions; iid = row index for _assert_add_skip to map back.
             self.tv_assert.delete(*self.tv_assert.get_children())
-            for i, (sev, key, msg) in enumerate(issues):
+            for i, (sev, key, msg) in enumerate(self.all_issues[stid]):
+                if not issue_is_visible((sev, key, msg), self.cfg):
+                    continue
                 tag = "error" if sev == "ERROR" else "warn"
                 self.tv_assert.insert("", "end", iid=str(i), text=f"[{sev}]  {msg}", tags=(tag,))
         else:

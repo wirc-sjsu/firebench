@@ -13,6 +13,7 @@ import h5py
 import hdf5plugin  # noqa: F401  # pylint: disable=unused-import
 
 from ..dialogs import AddSkipDialog, ExportScriptDialog
+from ..state import mark_stations_skipped
 from ..theme import PAD
 from ..time_axis import TimeAxisError, parse_h5_time_axis
 
@@ -421,6 +422,7 @@ class SkiplistTabMixin:
             self._refresh_skiplist()
             self._refresh_overview(dirty={stid})
             self._refresh_station_list()
+            self._refresh_map()
 
     def _skip_goto_detail(self):
         sel = self.tv_skip.selection()
@@ -441,7 +443,7 @@ class SkiplistTabMixin:
         dlg = AddSkipDialog(self, stid, self.skip_list.get(stid, ""))
         self.wait_window(dlg)
         if dlg.result is not None:
-            self.skip_list[stid] = dlg.result
+            mark_stations_skipped(self.skip_list, self.green_list, (stid,), dlg.result)
             self._refresh_skiplist()
 
     def _skip_export(self):
