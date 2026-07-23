@@ -37,5 +37,5 @@ Install the development dependency group with `python -m pip install -e ".[dev]"
 - Shapely
 
 Install the documentation group with `python -m pip install -e ".[docs]"`. It contains MyST Parser,
-Sphinx, Sphinx Click, and the Read the Docs theme. Like the required and development groups, this
-list is declared only in `pyproject.toml`.
+pytest for validating documentation examples, Sphinx, Sphinx Click, and the Read the Docs theme.
+Like the required and development groups, this list is declared only in `pyproject.toml`.

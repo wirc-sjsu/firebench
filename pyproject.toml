@@ -71,6 +71,7 @@ dev = [
 ]
 docs = [
     "myst-parser",
+    "pytest",
     "sphinx",
     "sphinx-click",
     "sphinx-rtd-theme",
