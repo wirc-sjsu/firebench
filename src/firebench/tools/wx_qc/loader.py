@@ -12,6 +12,7 @@ from .data import (
     compute_outage_stats,
     run_outage_assertions,
     _ws_gated_nan_pct,
+    _deltas_minutes,
 )
 
 
@@ -61,15 +62,20 @@ class LoaderMixin:
                 station and was_fresh (bool) is True if any new stats were computed.
         """
         cached = cached_stats.get(stid) if cached_stats else None
-        if cached is None:
+        if cached is None or "time_axis_valid" not in cached.get("_time", {}):
             return compute_stats(st), True
         new_vars = [v for v in st["variables"] if v not in cached]
         if not new_vars:
             return cached, False
         avg_freq = cached["_time"]["avg_freq_min"]
+        deltas = (
+            _deltas_minutes(st["times"])
+            if cached["_time"].get("time_axis_valid") and len(st["times"]) > 1
+            else None
+        )
         merged = dict(cached)
         for v in new_vars:
-            merged[v] = _var_stat_block(st["variables"][v], avg_freq)
+            merged[v] = _var_stat_block(st["variables"][v], avg_freq, deltas)
         # recompute cross-var derived stat if wind vars changed
         vd = st["variables"]
         ws = vd.get("wind_speed")
@@ -85,26 +91,28 @@ class LoaderMixin:
     def _compute_global_time_extent(self):
         """Compute global time extent across all stations and derive outage stats.
 
-        Finds the earliest first timestamp (gmin) and latest last timestamp (gmax)
-        across all loaded stations. For each station, computes edge_gap_min
-        (minutes from global start/end to that station's first/last timestamp) and
-        calls compute_outage_stats() and run_outage_assertions() to populate
-        self.all_stats and self.all_issues. Outage stats require complete station set
-        and edge_gap_min, so this method is called only after _load_chunk finishes
-        loading all stations.
+        Finds the earliest first timestamp (gmin) and latest last timestamp
+        (gmax) across stations with valid, ordered time axes. For each station,
+        passes separate leading/trailing gaps and the global duration to
+        compute_outage_stats(), then appends threshold warnings.
         """
         firsts, lasts = [], []
-        for st in self.stations.values():
+        for stid, st in self.stations.items():
             t = st["times"]
-            if isinstance(t, np.ndarray) and len(t) and np.issubdtype(t.dtype, np.datetime64):
+            time_valid = self.all_stats[stid]["_time"].get("time_axis_valid")
+            if (
+                time_valid
+                and isinstance(t, np.ndarray)
+                and len(t)
+                and np.issubdtype(t.dtype, np.datetime64)
+            ):
                 firsts.append(t[0])
                 lasts.append(t[-1])
         if not firsts:
             self._time_extent_global = None
             for stid, st in self.stations.items():
                 stats = self.all_stats[stid]
-                stats["_time"]["edge_gap_min"] = 0.0
-                compute_outage_stats(st, stats, 0.0)
+                compute_outage_stats(st, stats)
                 self.all_issues[stid] = self.all_issues.get(stid, []) + run_outage_assertions(
                     stats, self.cfg
                 )
@@ -113,17 +121,28 @@ class LoaderMixin:
         gmax = max(lasts)
         self._time_extent_global = (gmin, gmax)
         one_min = np.timedelta64(1, "m")
+        global_duration = float((gmax - gmin) / one_min)
         for stid, st in self.stations.items():
             stats = self.all_stats[stid]
             t = st["times"]
-            if isinstance(t, np.ndarray) and len(t) and np.issubdtype(t.dtype, np.datetime64):
+            if (
+                stats["_time"].get("time_axis_valid")
+                and isinstance(t, np.ndarray)
+                and len(t)
+                and np.issubdtype(t.dtype, np.datetime64)
+            ):
                 head = float((t[0] - gmin) / one_min)
                 tail = float((gmax - t[-1]) / one_min)
-                edge_gap = max(head, tail, 0.0)
             else:
-                edge_gap = 0.0
-            stats["_time"]["edge_gap_min"] = edge_gap
-            compute_outage_stats(st, stats, edge_gap)
+                head = 0.0
+                tail = 0.0
+            compute_outage_stats(
+                st,
+                stats,
+                leading_gap_min=head,
+                trailing_gap_min=tail,
+                global_duration_min=global_duration,
+            )
             self.all_issues[stid] = self.all_issues.get(stid, []) + run_outage_assertions(stats, self.cfg)
 
     def _load_data(self, cached_stats=None, on_complete=None):
@@ -236,7 +255,7 @@ class LoaderMixin:
             self._load_n_total >= min_first_refresh and (now - self._load_last_ui_t) >= ui_refresh_interval
         )
         if done:
-            # Global extent and edge_gap_min must exist before final refresh
+            # Global extent and separate edge gaps must exist before final refresh
             # (_refresh_all reads both from Overview and detail nav).
             self._compute_global_time_extent()
         if ready:

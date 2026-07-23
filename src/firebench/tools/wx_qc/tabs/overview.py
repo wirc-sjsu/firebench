@@ -14,10 +14,8 @@ class OverviewTabMixin:
         widgets, and navigation, skip-decision, and cross-tab refresh helpers.
     """
 
-    # eNaN% = effective max NaN% (excludes NaN the outage policy treats as
-    # benign, e.g. wind_direction/wind_gust filtered to WS>0 periods).
-    # Max Var Outage / Full Outage = outage-aware replacements for raw obs gap,
-    # computed by data.compute_outage_stats.
+    # Longest outage columns drive warnings; cumulative percentages are
+    # informational and replace the former effective-NaN summary.
     _OV_BASE_COLS = (
         "STID",
         "Name",
@@ -26,10 +24,10 @@ class OverviewTabMixin:
         "Variables",
         "WD NaN%",
         "WD NaN@WS>0",
-        "eNaN%",
+        "Max Cumulative Outage %",
         "Avg dt",
-        "Max Var Outage (min)",
-        "Full Outage (min)",
+        "Longest Var Outage (min)",
+        "Longest Full Outage (min)",
         "Max NaN Streak (hr)",
         "Issues",
     )
@@ -41,10 +39,10 @@ class OverviewTabMixin:
         "Variables": 190,
         "WD NaN%": 70,
         "WD NaN@WS>0": 80,
-        "eNaN%": 65,
+        "Max Cumulative Outage %": 150,
         "Avg dt": 55,
-        "Max Var Outage (min)": 120,
-        "Full Outage (min)": 105,
+        "Longest Var Outage (min)": 140,
+        "Longest Full Outage (min)": 145,
         "Max NaN Streak (hr)": 105,
         "Issues": 55,
     }
@@ -96,7 +94,7 @@ class OverviewTabMixin:
         self._ov_sort_rev = False
 
     def _rebuild_ov_columns(self):
-        """Add per-variable stat columns (Max/Min/Avg/Std) after data load.
+        """Add per-variable value and cumulative-outage columns after data load.
 
         Constructs new Treeview columns from all variables found across stations.
         Preserves user's prior column visibility settings across schema changes.
@@ -114,7 +112,7 @@ class OverviewTabMixin:
                 ("Min", "min"),
                 ("Avg", "mean"),
                 ("Std", "std"),
-                ("Outage", "outage_min"),
+                ("Cumulative Outage %", "outage_pct"),
             ):
                 col = f"{short} {stat}"
                 new_var_cols.append(col)
@@ -140,7 +138,7 @@ class OverviewTabMixin:
 
         for vname in all_vars:
             short = self._VAR_SHORT.get(vname, vname[:6])
-            for stat in ("Max", "Min", "Avg", "Std", "Outage"):
+            for stat in ("Max", "Min", "Avg", "Std", "Cumulative Outage %"):
                 col = f"{short} {stat}"
                 old = old_col_vars.get(col)
                 self._ov_col_vars[col] = tk.BooleanVar(
@@ -215,12 +213,8 @@ class OverviewTabMixin:
             if "wind_direction" in stats
             else "--"
         )
-        _ws_gated_field = {"wind_direction": "wd_nan_ws_pos_pct", "wind_gust": "gust_nan_ws_pos_pct"}
-        eff_nans = []
-        for vname, vs in var_stats.items():
-            field = _ws_gated_field.get(vname)
-            eff_nans.append(vs[field] if field and field in vs else vs["nan_pct"])
-        max_nan_s = f"{max(eff_nans):.0f}%" if eff_nans else "--"
+        outage_pcts = [vs["outage_pct"] for vs in var_stats.values() if vs.get("outage_pct") is not None]
+        max_outage_pct_s = f"{max(outage_pcts):.1f}%" if outage_pcts else "--"
         avg_dt = stats["_time"]["avg_freq_min"]
         avg_dt_s = f"{avg_dt:.0f}" if avg_dt is not None else "--"
         mvo = stats["_time"].get("max_var_outage_min")
@@ -242,10 +236,10 @@ class OverviewTabMixin:
             "Variables": " ".join(st["variables"].keys()),
             "WD NaN%": wd_pct,
             "WD NaN@WS>0": wd_nan_ws_pos,
-            "eNaN%": max_nan_s,
+            "Max Cumulative Outage %": max_outage_pct_s,
             "Avg dt": avg_dt_s,
-            "Max Var Outage (min)": max_var_outage_s,
-            "Full Outage (min)": full_outage_s,
+            "Longest Var Outage (min)": max_var_outage_s,
+            "Longest Full Outage (min)": full_outage_s,
             "Max NaN Streak (hr)": max_gap_s,
             "Issues": issues_s,
         }
@@ -264,6 +258,8 @@ class OverviewTabMixin:
                         vals.append("--")
                     elif key == "std":
                         vals.append(f"{val:.2f}")
+                    elif key == "outage_pct":
+                        vals.append(f"{val:.1f}%")
                     else:
                         vals.append(f"{val:.1f}")
             else:

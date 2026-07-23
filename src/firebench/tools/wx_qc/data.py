@@ -134,47 +134,40 @@ def _longest_nan_run(nan_mask):
 
 
 @numba.njit(cache=True)
-def _outage_run_minutes(down, deltas_min, thresh_min):
-    """Sum duration (minutes) of outage runs exceeding threshold.
+def _outage_run_metrics(down, eligible, deltas_min, thresh_min):
+    """Return longest and cumulative qualifying outage-run minutes.
 
-    An interval counts as down if both endpoints are down OR interval itself
-    >= thresh_min (large gap = outage even between valid values). Runs
-    accumulate until reaching thresh_min threshold, then contribute to total.
-
-    Args:
-        down (np.ndarray, dtype=bool): Mask where True indicates down/missing
-            samples.
-        deltas_min (np.ndarray, dtype=float64): Time deltas between consecutive
-            samples, in minutes. Length = len(down) - 1.
-        thresh_min (float): Minimum run duration in minutes to count as an
-            outage.
-
-    Returns:
-        float: Total minutes in down runs >= thresh_min.
+    An interval is eligible only when both endpoints are eligible. Within an
+    eligible interval, both endpoints being down or the interval itself meeting
+    the outage threshold makes it part of the current outage run.
     """
-    n = len(down)
-    total = 0.0
+    longest = 0.0
+    cumulative = 0.0
     run = 0.0
-    for i in range(n - 1):
-        interval_down = (down[i] and down[i + 1]) or deltas_min[i] >= thresh_min
+    for i in range(len(deltas_min)):
+        interval_eligible = eligible[i] and eligible[i + 1]
+        interval_down = interval_eligible and ((down[i] and down[i + 1]) or deltas_min[i] >= thresh_min)
         if interval_down:
             run += deltas_min[i]
         else:
             if run >= thresh_min:
-                total += run
+                longest = max(longest, run)
+                cumulative += run
             run = 0.0
     if run >= thresh_min:
-        total += run
-    return total
+        longest = max(longest, run)
+        cumulative += run
+    return longest, cumulative
 
 
 @numba.njit(cache=True)
-def _longest_frozen_run(valid):
-    """Find longest run of equal (repeated) values in array.
+def _longest_frozen_run(values, break_before):
+    """Find the longest contiguous repeated-value run.
 
     Args:
-        valid (np.ndarray, dtype=float64): Sensor values (typically already
-            filtered to non-NaN samples).
+        values (np.ndarray, dtype=float64): Sensor readings, including NaNs.
+        break_before (np.ndarray, dtype=bool): True where a qualifying temporal
+            gap separates a sample from its predecessor.
 
     Returns:
         tuple: (frozen (int), frozen_val (float)). frozen = length of longest
@@ -183,29 +176,60 @@ def _longest_frozen_run(valid):
     """
     frozen = 0
     frozen_val = np.nan
-    n = len(valid)
+    n = len(values)
     if n > 1:
         cur_f = 1
-        cur_val = valid[0]
+        cur_val = values[0]
         for i in range(1, n):
-            if valid[i] == valid[i - 1]:
-                cur_f += 1
-            else:
+            if (
+                break_before[i]
+                or np.isnan(values[i])
+                or np.isnan(values[i - 1])
+                or values[i] != values[i - 1]
+            ):
                 cur_f = 1
-                cur_val = valid[i]
+                cur_val = values[i]
+            else:
+                cur_f += 1
             if cur_f > frozen:
                 frozen = cur_f
                 frozen_val = cur_val
     return frozen, frozen_val
 
 
-def _var_stat_block(data, avg_freq):
+@numba.njit(cache=True)
+def _longest_true_run(mask, break_before):
+    """Return the longest contiguous True run, respecting temporal breaks."""
+    longest = 0
+    current = 0
+    for i in range(len(mask)):
+        if break_before[i]:
+            current = 0
+        if mask[i]:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def _temporal_breaks(n_pts, deltas_min, avg_freq, factor=OUTAGE_RUN_FACTOR):
+    """Return a point-aligned mask that breaks runs after qualifying gaps."""
+    breaks = np.zeros(n_pts, dtype=np.bool_)
+    if n_pts > 1 and deltas_min is not None and avg_freq and avg_freq > 0:
+        breaks[1:] = np.asarray(deltas_min) >= factor * avg_freq
+    return breaks
+
+
+def _var_stat_block(data, avg_freq, deltas_min=None):
     """Compute statistics for one sensor variable.
 
     Args:
         data (np.ndarray, dtype=float64): Sensor readings, NaN = missing sample.
-        avg_freq (float or None): Average sampling frequency in minutes (used
-            to convert longest NaN run to hours). May be None if < 2 samples.
+        avg_freq (float or None): Valid average sampling frequency in minutes,
+            used for gap qualification and display conversions.
+        deltas_min (np.ndarray or None): Valid consecutive time differences.
+            Qualifying gaps break frozen runs.
 
     Returns:
         dict: Statistics dict with keys: nan_ct (int, count of NaN), nan_pct
@@ -218,7 +242,8 @@ def _var_stat_block(data, avg_freq):
     nan_pct = 100.0 * nan_ct / len(data) if len(data) else 0.0
     valid = data[~nm]
     gap = _longest_nan_run(nm)
-    frozen, frozen_val_raw = _longest_frozen_run(valid)
+    breaks = _temporal_breaks(len(data), deltas_min, avg_freq)
+    frozen, frozen_val_raw = _longest_frozen_run(np.asarray(data, dtype=np.float64), breaks)
     frozen_val = None if frozen == 0 or np.isnan(frozen_val_raw) else float(frozen_val_raw)
     return {
         "nan_ct": nan_ct,
@@ -237,8 +262,10 @@ def _var_stat_block(data, avg_freq):
 def compute_stats(st):
     """Compute full statistics dict for a station.
 
-    Includes timing metrics (n_pts, avg_freq_min, monotonicity, duplicates)
-    and per-variable stats (NaN%, min/max/mean/std, frozen runs, gaps).
+    Includes time-axis validity and timing metrics plus per-variable raw NaN,
+    value-distribution, contiguous frozen-run, and missing-streak statistics.
+    Cadence derivatives are unavailable when timestamps are invalid, duplicate,
+    or decreasing.
     For wind_direction/gust when wind_speed exists: adds wd/gust NaN% conditional
     on wind_speed > 0.
 
@@ -253,6 +280,17 @@ def compute_stats(st):
     """
     times = st["times"]
     n = len(times)
+    time_array = np.asarray(times)
+    if np.issubdtype(time_array.dtype, np.datetime64):
+        time_samples_valid = not bool(np.isnat(time_array).any())
+    elif np.issubdtype(time_array.dtype, np.number):
+        time_samples_valid = bool(np.isfinite(time_array).all())
+    else:
+        time_samples_valid = True
+    deltas = None
+    time_axis_error = st.get("time_axis_error")
+    if time_axis_error is None and not time_samples_valid:
+        time_axis_error = "time axis contains NaT or non-finite values"
     if n > 1:
         rel_min = st.get("rel_min")
         if rel_min is not None and len(rel_min) == n:
@@ -260,16 +298,23 @@ def compute_stats(st):
             deltas = np.diff(np.asarray(rel_min, dtype=np.float64))
         else:
             deltas = _deltas_minutes(times)
-        avg_freq = float(np.median(deltas))
-        max_dt = float(deltas.max())
         n_neg = int(np.sum(deltas < 0))
         n_dup = n - len(set(times))
-        monotonic = n_neg == 0 and n_dup == 0
+        finite_deltas = bool(np.all(np.isfinite(deltas)))
+        if time_axis_error is None and not finite_deltas:
+            time_axis_error = "time axis contains non-finite intervals"
+        time_axis_valid = (
+            time_axis_error is None and time_samples_valid and finite_deltas and n_neg == 0 and n_dup == 0
+        )
+        avg_freq = float(np.median(deltas)) if time_axis_valid else None
+        max_dt = float(deltas.max()) if time_axis_valid else None
+        monotonic = time_axis_valid
         dup_ts = n_dup > 0
     else:
         avg_freq = None
         max_dt = None
-        monotonic = True
+        time_axis_valid = time_axis_error is None and time_samples_valid
+        monotonic = time_axis_valid
         dup_ts = False
         n_neg = 0
         n_dup = 0
@@ -283,11 +328,13 @@ def compute_stats(st):
             "dup_ts": dup_ts,
             "n_neg_deltas": n_neg,
             "n_dup_ts": n_dup,
+            "time_axis_valid": time_axis_valid,
+            "time_axis_error": time_axis_error,
         }
     }
 
     for vname, data in st["variables"].items():
-        result[vname] = _var_stat_block(data, avg_freq)
+        result[vname] = _var_stat_block(data, avg_freq, deltas if time_axis_valid else None)
 
     vd = st["variables"]
     ws = vd.get("wind_speed")
@@ -326,10 +373,10 @@ def _ws_gated_nan_pct(data, ws):
 def run_assertions(st, stats, cfg):
     """Check station data for quality issues (timing, bounds, frozen runs).
 
-    Detects: backwards timestamps, duplicate timestamps, wind_direction dropout
-    during wind_speed > 0, excessive gaps, physical bounds violations, and
-    frozen (stuck) sensor values. Does NOT check outage duration (use
-    run_outage_assertions after compute_outage_stats).
+    Detects invalid/backwards/duplicate timestamps, sustained wind-direction
+    dropout while wind speed is known and positive, excessive temporal gaps,
+    physical-bounds violations, and contiguous frozen sensor values. Does not
+    check outage duration; use run_outage_assertions after compute_outage_stats.
 
     Args:
         st (dict): Station dict (from load_h5).
@@ -348,6 +395,8 @@ def run_assertions(st, stats, cfg):
     n_neg = ts.get("n_neg_deltas", 0)
     n_dup = ts.get("n_dup_ts", 0)
 
+    if ts.get("time_axis_error"):
+        issues.append(("ERROR", "time_axis", f"Invalid time axis: {ts['time_axis_error']}"))
     if n_neg > 0:
         # Single backwards jump typically DST fall-back; multiple suggests data corruption.
         sev = "WARN" if n_neg == 1 else "ERROR"
@@ -370,11 +419,22 @@ def run_assertions(st, stats, cfg):
     vd = st["variables"]
     if "wind_direction" in vd and "wind_speed" in vd:
         wd, ws = vd["wind_direction"], vd["wind_speed"]
-        n_drop = int((np.isnan(wd) & ~np.isnan(ws) & (ws > 0)).sum())
-        # Require sustained minimum count to exclude zero-crossing noise.
-        if n_drop >= DROPOUT_MIN_PTS:
+        dropout = np.isnan(wd) & ~np.isnan(ws) & (ws > 0)
+        breaks = _temporal_breaks(
+            len(dropout),
+            _deltas_minutes(st["times"]) if ts.get("time_axis_valid") and len(dropout) > 1 else None,
+            ts.get("avg_freq_min"),
+        )
+        longest_dropout = int(_longest_true_run(dropout, breaks))
+        if longest_dropout >= DROPOUT_MIN_PTS:
+            n_drop = int(dropout.sum())
             issues.append(
-                ("WARN", "dropout", f"WD NaN while WS>0: {n_drop} pts ({100*n_drop/len(wd):.1f}%)")
+                (
+                    "WARN",
+                    "dropout",
+                    f"Sustained WD dropout while WS>0: longest run={longest_dropout} pts "
+                    f"({n_drop} total)",
+                )
             )
 
     frz_min = cfg["frozen_min_run"]
@@ -420,22 +480,22 @@ def run_assertions(st, stats, cfg):
 
 
 def run_outage_assertions(stats, cfg):
-    """Check station-level outage duration thresholds.
+    """Check longest-continuous station outage duration thresholds.
 
     Must be called after compute_outage_stats (which requires global time
-    extent). Checks: max_var_outage_min (longest outage in any variable) and
-    full_outage_min (when all variables down simultaneously).
+    extent). Checks the longest outage in any variable and the longest period
+    when all variables are down simultaneously. Cumulative percentages are
+    informational and never generate warnings.
 
     Args:
-        stats (dict): Stats dict (from compute_stats, after compute_outage_stats
-            added outage_min to each variable and _time).
+        stats (dict): Stats dict from compute_stats after compute_outage_stats.
         cfg (dict): Config dict with keys: max_var_outage_min (float, minutes,
             optional), full_outage_min (float, minutes, optional).
 
     Returns:
         list: List of (severity, key, message) tuples. severity is "WARN".
             key is "max_var_outage" or "full_outage". message is human-readable
-            comparison string (e.g., "Max variable outage=0.5h > 0.2h").
+            comparison string (e.g., "Longest variable outage=0.5h > 0.2h").
     """
     issues = []
     ts = stats["_time"]
@@ -444,9 +504,21 @@ def run_outage_assertions(stats, cfg):
     mvo_th = cfg.get("max_var_outage_min", DEFAULT_MAX_VAR_OUTAGE_MIN)
     fo_th = cfg.get("full_outage_min", DEFAULT_FULL_OUTAGE_MIN)
     if mvo is not None and mvo > mvo_th:
-        issues.append(("WARN", "max_var_outage", f"Max variable outage={mvo/60:.1f}h > {mvo_th/60:.1f}h"))
+        issues.append(
+            (
+                "WARN",
+                "max_var_outage",
+                f"Longest variable outage={mvo/60:.1f}h > {mvo_th/60:.1f}h",
+            )
+        )
     if fo is not None and fo > fo_th:
-        issues.append(("WARN", "full_outage", f"Full station outage={fo/60:.1f}h > {fo_th/60:.1f}h"))
+        issues.append(
+            (
+                "WARN",
+                "full_outage",
+                f"Longest full-station outage={fo/60:.1f}h > {fo_th/60:.1f}h",
+            )
+        )
     return issues
 
 
@@ -504,67 +576,117 @@ def _segment_by_gap(times, data, avg_freq, factor=OUTAGE_RUN_FACTOR):
     ]
 
 
-def compute_outage_stats(st, stats, edge_gap_min, factor=OUTAGE_RUN_FACTOR):
-    """Compute outage duration (minutes) for each variable and station-level totals.
+def compute_outage_stats(
+    st,
+    stats,
+    leading_gap_min=0.0,
+    trailing_gap_min=0.0,
+    global_duration_min=None,
+    factor=OUTAGE_RUN_FACTOR,
+):
+    """Compute longest and cumulative qualifying outage metrics.
 
-    Outage = edge gaps (time before first or after last sample) + within-record
-    NaN/gap runs >= factor*avg_dt. Wind direction/gust only count as down when
-    wind_speed is real and > 0. Stamps results into stats dicts.
-
-    Must be called after global time extent is known (for edge_gap_min calculation).
+    Regular variables use the global dataset duration as the cumulative
+    percentage denominator. Wind direction and gust use only intervals whose
+    wind-speed endpoints are both known and positive; calm or unavailable wind
+    speed breaks an eligible run. Leading and trailing station gaps are separate
+    candidates and are excluded for wind-gated variables.
 
     Args:
         st (dict): Station dict (from load_h5).
         stats (dict): Stats dict (from compute_stats, modified in-place).
-        edge_gap_min (float): Minutes between global dataset start/end and this
-            station's first/last sample. Contributes to all variables' outage totals.
+        leading_gap_min (float): Minutes from the global start to the station's
+            first timestamp.
+        trailing_gap_min (float): Minutes from the station's last timestamp to
+            the global end.
+        global_duration_min (float or None): Global start-to-end duration. If
+            omitted, derives it from the station span plus its two edge gaps.
         factor (float): Gap threshold multiplier (default OUTAGE_RUN_FACTOR) used
-            in _outage_run_minutes.
+            to decide whether a run qualifies as an outage.
 
     Returns:
-        None. Modifies stats in-place, adding: stats[vname]["outage_min"] (float)
-            for each variable, stats["_time"]["max_var_outage_min"] (float, longest
-            in any variable), stats["_time"]["full_outage_min"] (float, when all
-            variables simultaneously down).
+        None. Each variable gains ``longest_outage_min``,
+            ``cumulative_outage_min``, and ``outage_pct``. ``_time`` gains
+            ``max_var_outage_min`` and ``full_outage_min`` (both longest
+            continuous durations).
     """
     vd = st["variables"]
+    time_stats = stats["_time"]
+    leading_gap_min = max(float(leading_gap_min), 0.0)
+    trailing_gap_min = max(float(trailing_gap_min), 0.0)
+    time_stats["leading_gap_min"] = leading_gap_min
+    time_stats["trailing_gap_min"] = trailing_gap_min
+
+    def _mark_unavailable():
+        for variable in vd:
+            stats[variable]["longest_outage_min"] = None
+            stats[variable]["cumulative_outage_min"] = None
+            stats[variable]["outage_pct"] = None
+        time_stats["max_var_outage_min"] = None
+        time_stats["full_outage_min"] = None
+
     if not vd:
-        stats["_time"]["max_var_outage_min"] = None
-        stats["_time"]["full_outage_min"] = edge_gap_min
+        _mark_unavailable()
         return
 
-    avg_dt = stats["_time"].get("avg_freq_min")
-    n = stats["_time"]["n_pts"]
-    if not avg_dt or n < 2:
-        # No usable cadence to measure a "run" against — the only outage
-        # signal available is the record not covering the global period.
-        for vname in vd:
-            stats[vname]["outage_min"] = edge_gap_min
-        stats["_time"]["max_var_outage_min"] = edge_gap_min
-        stats["_time"]["full_outage_min"] = edge_gap_min
+    avg_dt = time_stats.get("avg_freq_min")
+    n = time_stats["n_pts"]
+    if not time_stats.get("time_axis_valid") or not avg_dt or avg_dt <= 0 or n < 2:
+        _mark_unavailable()
         return
 
     thresh_min = factor * avg_dt
     deltas_min = _deltas_minutes(st["times"])
-    ws = vd.get("wind_speed")
-    ws_real_pos = (~np.isnan(ws) & (ws > 0)) if ws is not None else None
+    if global_duration_min is None:
+        global_duration_min = leading_gap_min + float(deltas_min.sum()) + trailing_gap_min
+    global_duration_min = float(global_duration_min)
+    time_stats["global_duration_min"] = global_duration_min
+    if not np.isfinite(global_duration_min) or global_duration_min <= 0:
+        _mark_unavailable()
+        return
 
-    down_masks = {}
+    ws = vd.get("wind_speed")
+    ws_active = (~np.isnan(ws) & (ws > 0)) if ws is not None else None
+    all_eligible = np.ones(n, dtype=np.bool_)
+
+    longest_by_variable = []
+    raw_down_masks = []
     for vname, data in vd.items():
         nan_mask = np.isnan(data)
-        gated = vname in ("wind_direction", "wind_gust") and ws_real_pos is not None
-        down = (nan_mask & ws_real_pos) if gated else nan_mask
-        down_masks[vname] = down
-        body = _outage_run_minutes(down, deltas_min, thresh_min)
-        stats[vname]["outage_min"] = body + edge_gap_min
+        raw_down_masks.append(nan_mask)
+        gated = vname in ("wind_direction", "wind_gust")
+        if gated and ws_active is None:
+            stats[vname]["longest_outage_min"] = None
+            stats[vname]["cumulative_outage_min"] = None
+            stats[vname]["outage_pct"] = None
+            continue
 
-    stats["_time"]["max_var_outage_min"] = max(stats[v]["outage_min"] for v in vd)
+        eligible = ws_active if gated else all_eligible
+        longest, cumulative = _outage_run_metrics(nan_mask, eligible, deltas_min, thresh_min)
+        denominator = (
+            float(deltas_min[ws_active[:-1] & ws_active[1:]].sum()) if gated else global_duration_min
+        )
+        if not gated:
+            qualifying_edges = [gap for gap in (leading_gap_min, trailing_gap_min) if gap >= thresh_min]
+            if qualifying_edges:
+                longest = max(longest, max(qualifying_edges))
+                cumulative += sum(qualifying_edges)
 
-    all_down = None
-    for down in down_masks.values():
-        all_down = down.copy() if all_down is None else (all_down & down)
-    full_body = _outage_run_minutes(all_down, deltas_min, thresh_min)
-    stats["_time"]["full_outage_min"] = full_body + edge_gap_min
+        stats[vname]["longest_outage_min"] = float(longest)
+        stats[vname]["cumulative_outage_min"] = float(cumulative)
+        stats[vname]["outage_pct"] = 100.0 * cumulative / denominator if denominator > 0 else None
+        longest_by_variable.append(float(longest))
+
+    time_stats["max_var_outage_min"] = max(longest_by_variable) if longest_by_variable else None
+
+    all_down = raw_down_masks[0].copy()
+    for down in raw_down_masks[1:]:
+        all_down &= down
+    full_longest, _full_cumulative = _outage_run_metrics(all_down, all_eligible, deltas_min, thresh_min)
+    qualifying_edges = [gap for gap in (leading_gap_min, trailing_gap_min) if gap >= thresh_min]
+    if qualifying_edges:
+        full_longest = max(full_longest, max(qualifying_edges))
+    time_stats["full_outage_min"] = float(full_longest)
 
 
 try:
@@ -572,8 +694,9 @@ try:
     _dummy_f = np.zeros(2, dtype=np.float64)
     _dummy_b = np.zeros(2, dtype=np.bool_)
     _longest_nan_run(_dummy_b)
-    _longest_frozen_run(_dummy_f)
-    _outage_run_minutes(_dummy_b, _dummy_f, 1.0)
+    _longest_frozen_run(_dummy_f, _dummy_b)
+    _longest_true_run(_dummy_b, _dummy_b)
+    _outage_run_metrics(_dummy_b, _dummy_b, _dummy_f, 1.0)
 except (NumbaError, OSError, RuntimeError, TypeError, ValueError):
     pass
 

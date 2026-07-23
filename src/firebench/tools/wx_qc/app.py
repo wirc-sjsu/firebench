@@ -337,8 +337,7 @@ class App(
             col_visibility = dlg.result.pop("col_visibility")
             perim_path = dlg.result.pop("perim_h5_path")
             rerun = (
-                dlg.result["nan_pct"] != self.cfg["nan_pct"]
-                or dlg.result["frozen_min_run"] != self.cfg["frozen_min_run"]
+                dlg.result["frozen_min_run"] != self.cfg["frozen_min_run"]
                 or dlg.result["max_var_outage_min"] != self.cfg.get("max_var_outage_min")
                 or dlg.result["full_outage_min"] != self.cfg.get("full_outage_min")
                 or dlg.result["bounds"] != self.cfg["bounds"]

@@ -16,6 +16,7 @@ from datetime import datetime
 
 from ..theme import ACCENT, MISSING_MARKER, MUTED, SKIP_RED, GREEN_OK, UNDECIDED, FONT_MONO, FIG_DPI, PAD
 from ..widgets import TimeNavigator
+from ..constants import parse_nonnegative_finite
 
 
 class MapTabMixin:
@@ -267,6 +268,14 @@ class MapTabMixin:
         (wind_combo) and pre-aggregation masking (variable_value). TimeSeriesTab
         shares these variables but manages its own redraw; map does not modify TS.
         """
+        try:
+            threshold = parse_nonnegative_finite(self.var_wind_calm_thresh.get(), "Calm-wind threshold")
+        except ValueError as exc:
+            messagebox.showerror("Bad value", str(exc), parent=self)
+            self.var_wind_calm_thresh.set(f"{self._last_valid_calm_threshold:g}")
+            return
+        self._last_valid_calm_threshold = threshold
+        self.var_wind_calm_thresh.set(f"{threshold:g}")
         if self._map_calm_relevant():
             self._refresh_map()
 
@@ -274,14 +283,14 @@ class MapTabMixin:
         """Get current calm-wind filter parameters.
 
         Returns:
-            tuple: (on, threshold) — on (bool) = filter enabled, threshold (float) = m/s.
-                   If threshold entry is invalid, defaults to 1.5 m/s.
+            tuple: (on, threshold) — on (bool) = filter enabled, threshold
+                (float) = the last accepted finite, non-negative m/s value.
         """
         on = bool(self.var_wind_calm.get())
         try:
-            thr = float(self.var_wind_calm_thresh.get())
-        except (TypeError, ValueError):
-            thr = 1.5
+            thr = parse_nonnegative_finite(self.var_wind_calm_thresh.get(), "Calm-wind threshold")
+        except ValueError:
+            thr = self._last_valid_calm_threshold
         return on, thr
 
     def _on_map_dt_change(self, event=None):

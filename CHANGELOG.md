@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Resolve external polygon paths relative to their HDF5 file during benchmark requirement checks.
 - Preserve established Caldor weather KPI identifiers and canonicalize combined target flags.
 - Support UTC and extended ISO 8601 `date_time` values when standardizing Synoptic observations.
+- Correct weather-station QC handling for contiguous frozen/dropout runs, invalid time axes, and
+  longest and cumulative outage metrics.
 
 ## [0.9.0] - 2026 / 05 / 18
 ### Added

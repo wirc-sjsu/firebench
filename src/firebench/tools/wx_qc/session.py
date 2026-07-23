@@ -108,7 +108,8 @@ class SessionMixin:
             sess (dict): Session state dict as returned by _session_state() or
                 loaded from a pickle file.
         """
-        loaded_cfg = sess.get("cfg", {})
+        loaded_cfg = dict(sess.get("cfg", {}))
+        loaded_cfg.pop("nan_pct", None)
         self.cfg = default_config()
         self.cfg.update(loaded_cfg)
         perim_path = self.cfg.get("perim_h5_path")

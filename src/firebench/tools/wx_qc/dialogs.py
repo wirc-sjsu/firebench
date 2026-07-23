@@ -2,7 +2,12 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 
-from .constants import ASSERTION_CATS, DEFAULT_MAX_VAR_OUTAGE_MIN, DEFAULT_FULL_OUTAGE_MIN
+from .constants import (
+    ASSERTION_CATS,
+    DEFAULT_MAX_VAR_OUTAGE_MIN,
+    DEFAULT_FULL_OUTAGE_MIN,
+    validate_gui_config,
+)
 from .theme import PAD, PAD_LG
 
 
@@ -82,10 +87,9 @@ class AddRemovalDialog(tk.Toplevel):
 class SettingsDialog(tk.Toplevel):
     """Edit application configuration (thresholds, assertions, bounds, columns, fire perimeter).
 
-    Result holds dict with validated config fields (nan_pct, frozen_min_run, max_var_outage_min,
-    full_outage_min, show_errors, show_warns, hidden_assertions, bounds, col_visibility,
-    perim_h5_path, perim_show_all, compare_n_neighbors, compare_include_skip_greenlit) on OK,
-    or None on cancel.
+    Result holds validated thresholds, assertion visibility, physical bounds,
+    column visibility, perimeter settings, and station-comparison settings on
+    OK, or None on cancel.
     """
 
     def __init__(self, parent, cfg, bounds, base_cols, var_col_map, col_visibility, var_short):
@@ -100,30 +104,24 @@ class SettingsDialog(tk.Toplevel):
 
         tf = ttk.Frame(nb)
         nb.add(tf, text="Thresholds")
-        tk.Label(tf, text="NaN thresh %:", anchor="w").grid(
-            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        self.e_nan = ttk.Entry(tf, width=10)
-        self.e_nan.insert(0, str(cfg["nan_pct"]))
-        self.e_nan.grid(row=0, column=1, padx=PAD_LG, pady=PAD)
         tk.Label(tf, text="Frozen run >=:", anchor="w").grid(
-            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
+            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
         )
         self.e_frz = ttk.Entry(tf, width=10)
         self.e_frz.insert(0, str(cfg["frozen_min_run"]))
-        self.e_frz.grid(row=1, column=1, padx=PAD_LG, pady=PAD)
-        tk.Label(tf, text="Max var outage thresh (min):", anchor="w").grid(
-            row=2, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        self.e_frz.grid(row=0, column=1, padx=PAD_LG, pady=PAD)
+        tk.Label(tf, text="Longest variable outage warning (min):", anchor="w").grid(
+            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
         )
         self.e_max_var_outage = ttk.Entry(tf, width=10)
         self.e_max_var_outage.insert(0, str(cfg.get("max_var_outage_min", DEFAULT_MAX_VAR_OUTAGE_MIN)))
-        self.e_max_var_outage.grid(row=2, column=1, padx=PAD_LG, pady=PAD)
-        tk.Label(tf, text="Full outage thresh (min):", anchor="w").grid(
-            row=6, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        self.e_max_var_outage.grid(row=1, column=1, padx=PAD_LG, pady=PAD)
+        tk.Label(tf, text="Longest full-station outage warning (min):", anchor="w").grid(
+            row=2, column=0, sticky="w", padx=PAD_LG, pady=PAD
         )
         self.e_full_outage = ttk.Entry(tf, width=10)
         self.e_full_outage.insert(0, str(cfg.get("full_outage_min", DEFAULT_FULL_OUTAGE_MIN)))
-        self.e_full_outage.grid(row=6, column=1, padx=PAD_LG, pady=PAD)
+        self.e_full_outage.grid(row=2, column=1, padx=PAD_LG, pady=PAD)
 
         ttk.Separator(tf, orient="horizontal").grid(
             row=3, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD
@@ -209,7 +207,7 @@ class SettingsDialog(tk.Toplevel):
             ttk.Label(cf, text="Per-variable stat columns:", style="Section.TLabel").grid(
                 row=row0 + 1, column=0, columnspan=4, sticky="w", padx=PAD_LG, pady=PAD
             )
-            for c, stat in enumerate(("Max", "Min", "Std", "Outage"), start=1):
+            for c, stat in enumerate(("Max", "Min", "Std", "Cumulative Outage %"), start=1):
                 ttk.Label(cf, text=stat, style="Section.TLabel").grid(
                     row=row0 + 2, column=c, padx=PAD_LG, pady=PAD
                 )
@@ -219,7 +217,13 @@ class SettingsDialog(tk.Toplevel):
                     row=r, column=0, sticky="w", padx=PAD_LG, pady=PAD
                 )
                 for c, (stat, key) in enumerate(
-                    (("Max", "max"), ("Min", "min"), ("Std", "std"), ("Outage", "outage_min")), start=1
+                    (
+                        ("Max", "max"),
+                        ("Min", "min"),
+                        ("Std", "std"),
+                        ("Cumulative Outage %", "outage_pct"),
+                    ),
+                    start=1,
                 ):
                     col = var_rows[vname].get(key)
                     if col is None:
@@ -266,13 +270,8 @@ class SettingsDialog(tk.Toplevel):
             bounds_r = {
                 v: (float(lo.get()), float(hi.get()), u) for v, (lo, hi, u) in self._bound_entries.items()
             }
-        except ValueError:
-            messagebox.showerror("Bad value", "Bounds: enter valid numbers", parent=self)
-            return
-        try:
             perim_path = self.var_perim_path.get()
-            self.result = {
-                "nan_pct": float(self.e_nan.get()),
+            result = {
                 "frozen_min_run": int(self.e_frz.get()),
                 "max_var_outage_min": float(self.e_max_var_outage.get()),
                 "full_outage_min": float(self.e_full_outage.get()),
@@ -286,13 +285,12 @@ class SettingsDialog(tk.Toplevel):
                 "compare_n_neighbors": int(self.e_compare_n.get()),
                 "compare_include_skip_greenlit": self.v_compare_pool.get(),
             }
-            self.destroy()
-        except ValueError:
-            messagebox.showerror(
-                "Bad value",
-                "NaN thresh / outage thresholds: float, Frozen run / Compare N: integer",
-                parent=self,
-            )
+            validate_gui_config(result)
+        except ValueError as exc:
+            messagebox.showerror("Bad value", str(exc), parent=self)
+            return
+        self.result = result
+        self.destroy()
 
 
 class ExportScriptDialog(tk.Toplevel):

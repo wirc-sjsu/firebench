@@ -11,6 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from ..widgets import StationListPanes
 from ..dialogs import AddSkipDialog, AddRemovalDialog
 from ..data import _segment_by_gap, _haversine_km
+from ..constants import DEFAULT_CALM_WIND_THRESHOLD, parse_nonnegative_finite
 from ..theme import PLOT_BG, ERROR_FG, WARN_FG, ERROR_BG, WARN_BG, ACCENT, MUTED, OUTAGE_SHADE, FIG_DPI, PAD
 
 
@@ -113,7 +114,8 @@ class DetailTabMixin:
         ).pack(side="left")
         # Below calm threshold, wind direction is noise—exclude from arrow direction.
         self.var_wind_calm = tk.BooleanVar(value=True)
-        self.var_wind_calm_thresh = tk.StringVar(value="1.5")
+        self._last_valid_calm_threshold = DEFAULT_CALM_WIND_THRESHOLD
+        self.var_wind_calm_thresh = tk.StringVar(value=f"{DEFAULT_CALM_WIND_THRESHOLD:g}")
         ttk.Checkbutton(
             self.frm_wind_dt, text="Calm <", variable=self.var_wind_calm, command=self._on_wind_dt_pick
         ).pack(side="left", padx=(6, 0))
@@ -171,6 +173,7 @@ class DetailTabMixin:
         cols = (
             "Variable",
             "NaN%",
+            "Cumulative Outage %",
             "Avg Freq (min)",
             "Longest Gap (hr)",
             "Longest Frozen (pts)",
@@ -179,7 +182,7 @@ class DetailTabMixin:
             "Mean",
         )
         self.tv_vs = ttk.Treeview(f, columns=cols, show="headings", selectmode="browse")
-        widths = (170, 60, 110, 120, 145, 80, 80, 80)
+        widths = (170, 60, 145, 110, 120, 145, 80, 80, 80)
         for c, w in zip(cols, widths):
             self.tv_vs.heading(c, text=c)
             self.tv_vs.column(c, width=w, anchor="center")
@@ -387,13 +390,7 @@ class DetailTabMixin:
             for vname in avail_vars:
                 vs = stats[vname]
                 tag = ""
-                if any(
-                    f"nan:{vname}" in flagged_keys
-                    or f"frozen:{vname}" in flagged_keys
-                    or f"lo:{vname}" in flagged_keys
-                    or f"hi:{vname}" in flagged_keys
-                    for _ in [1]
-                ):
+                if any(key in flagged_keys for key in (f"frozen:{vname}", f"lo:{vname}", f"hi:{vname}")):
                     tag = "warn"
                 if any(k in flagged_keys for k in (f"lo:{vname}", f"hi:{vname}")):
                     err_sev = next(
@@ -411,6 +408,7 @@ class DetailTabMixin:
                     values=(
                         vname,
                         f"{vs['nan_pct']:.1f}%",
+                        f"{vs['outage_pct']:.1f}%" if vs.get("outage_pct") is not None else "--",
                         f"{avg_freq:.0f}" if avg_freq else "--",
                         gap_hr,
                         str(vs["longest_frozen"]),
@@ -891,6 +889,14 @@ class DetailTabMixin:
         Triggered by combobox selection, calm-threshold checkbox, or entry focus-out.
         Redraws quiver with new parameters if wind plot is active.
         """
+        try:
+            threshold = parse_nonnegative_finite(self.var_wind_calm_thresh.get(), "Calm-wind threshold")
+        except ValueError as exc:
+            messagebox.showerror("Bad value", str(exc), parent=self)
+            self.var_wind_calm_thresh.set(f"{self._last_valid_calm_threshold:g}")
+            return
+        self._last_valid_calm_threshold = threshold
+        self.var_wind_calm_thresh.set(f"{threshold:g}")
         if self._ts_wd is not None and self.var_ts_var.get() == "wind":
             self._draw_wind_quiver()
 
@@ -1031,9 +1037,11 @@ class DetailTabMixin:
         # Calm-wind filter: below threshold, direction is noise.
         if self.var_wind_calm.get():
             try:
-                calm_thresh = float(self.var_wind_calm_thresh.get())
-            except (TypeError, ValueError):
-                calm_thresh = 1.5
+                calm_thresh = parse_nonnegative_finite(
+                    self.var_wind_calm_thresh.get(), "Calm-wind threshold"
+                )
+            except ValueError:
+                calm_thresh = self._last_valid_calm_threshold
             dir_ok = ws[idxs] >= calm_thresh
         else:
             dir_ok = np.ones(idxs.size, dtype=bool)
