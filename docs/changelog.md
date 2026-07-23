@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- Add an advanced-user tutorial for building and previewing the documentation locally from WSL.
 - Add goal-oriented tutorials, focused how-to guides, complete CLI and API references, and strict
   documentation CI with executable example and link checks.
 - Add the standalone Caldor `FP` target and expose standalone targets, period syntax, available

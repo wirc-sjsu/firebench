@@ -14,3 +14,13 @@ compare_runs.md
 plot_and_report.md
 new_ros_model.md
 ```
+
+## Advanced users
+
+Use these tutorials for repository-level workflows and local project maintenance.
+
+```{toctree}
+:maxdepth: 1
+
+preview_documentation_wsl.md
+```

@@ -54,6 +54,9 @@ Preview the result at `http://localhost:8000`:
 python -m http.server --directory docs/_build/html 8000
 ```
 
+See [Preview the Documentation Locally with WSL](tutorials/preview_documentation_wsl.md) for a
+complete Windows and WSL walkthrough.
+
 ## Linting
 
 ### Get Pylint Score
