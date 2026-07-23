@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Avoid loading scientific, geospatial, plotting, and PDF dependencies when displaying CLI help.
 - Resolve external polygon paths relative to their HDF5 file during benchmark requirement checks.
 - Preserve established Caldor weather KPI identifiers and canonicalize combined target flags.
 - Support UTC and extended ISO 8601 `date_time` values when standardizing Synoptic observations.

@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -5,6 +7,34 @@ from click.testing import CliRunner
 import pytest
 
 from firebench.cli import main
+
+
+def test_cli_import_does_not_load_heavy_runtime_dependencies():
+    heavy_dependencies = {
+        "geopandas",
+        "h5py",
+        "matplotlib",
+        "numpy",
+        "pandas",
+        "rasterio",
+        "reportlab",
+        "scipy",
+    }
+    script = (
+        "import sys; import firebench.cli; "
+        f"print(','.join(sorted({heavy_dependencies!r}.intersection(sys.modules))))"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        cwd=Path(__file__).resolve().parents[2],
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
 
 
 def test_wx_qc_is_registered_with_useful_help():
