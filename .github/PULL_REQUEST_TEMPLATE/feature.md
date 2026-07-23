@@ -24,6 +24,7 @@ assignees: ''
 - [ ] Link the related issue (if applicable)
 - [ ] Includes tests for the new feature
 - [ ] Documentation updated
+- [ ] User-facing commands, examples, and links reviewed against the implementation
 - [ ] Add to changelog
 - [ ] Code review by at least one other contributor
 - [ ] Ensure backward compatibility
