@@ -63,6 +63,7 @@ linkcheck_anchors = True
 # These publisher and incident pages are valid in a browser but reject automated GET requests with
 # bot-protection responses. Their exact URLs are reviewed manually when references change.
 linkcheck_ignore = [
+    r"https://doi\.org/10\.1175/BAMS-D-(11-00019|16-0236)\.1",
     r"https://doi\.org/10\.(1071|1155|3390)/.*",
     r"https://www\.fire\.ca\.gov/incidents/.*",
     r"https://www\.publish\.csiro\.au/.*",
