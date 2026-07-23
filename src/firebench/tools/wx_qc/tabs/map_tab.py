@@ -19,6 +19,15 @@ from ..widgets import TimeNavigator
 
 
 class MapTabMixin:
+    """Render spatial QC/data views from App-owned station and map state.
+
+    App state:
+        Expects station/statistics/issues and decision collections, ``cfg``,
+        current-station/global-time state, map/perimeter caches initialized by
+        App, shared notebook/status widgets, and station navigation and refresh
+        helpers supplied by the other mixins.
+    """
+
     def _build_map_tab(self):
         f = ttk.Frame(self.nb)
         self.nb.add(f, text="Map")
@@ -887,8 +896,8 @@ class MapTabMixin:
             self._perim_loaded_path = path
             self.cfg["perim_h5_path"] = str(path)
             self.lbl_status.config(text=f"Loaded {len(perims)} perimeter(s) from {path.name}")
-        except Exception as e:
-            messagebox.showerror("Perimeter load failed", str(e))
+        except (OSError, RuntimeError, KeyError, TypeError, ValueError) as exc:
+            messagebox.showerror("Perimeter load failed", f"Could not read {path}:\n\n{exc}")
 
     def _map_draw_perimeters(self, ax):
         """Draw fire perimeter polygons as colored underlays (zorder=1).
@@ -909,8 +918,8 @@ class MapTabMixin:
             try:
                 gdf = gpd.read_file(str(perims[0]["kml_path"]), engine="pyogrio")
                 gdf.plot(ax=ax, facecolor="none", edgecolor="black", linewidth=0.8, zorder=1)
-            except Exception as e:
-                self.lbl_status.config(text=f"Perimeter load failed: {e}")
+            except (OSError, RuntimeError, TypeError, ValueError) as exc:
+                self.lbl_status.config(text=f"Perimeter load failed: {exc}")
             return
         date_nums = mdates.date2num([p["time"] for p in perims])
         norm = mcolors.Normalize(vmin=date_nums.min(), vmax=date_nums.max())
@@ -921,7 +930,7 @@ class MapTabMixin:
                 gdf = gpd.read_file(str(p["kml_path"]), engine="pyogrio")
                 gdf.plot(ax=ax, facecolor="none", edgecolor=cmap_obj(norm(dn)), linewidth=0.8, zorder=1)
                 any_ok = True
-            except Exception:
+            except (OSError, RuntimeError, TypeError, ValueError):
                 continue
         if not any_ok:
             return

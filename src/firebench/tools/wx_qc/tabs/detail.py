@@ -15,6 +15,15 @@ from ..theme import PLOT_BG, ERROR_FG, WARN_FG, ERROR_BG, WARN_BG, ACCENT, MUTED
 
 
 class DetailTabMixin:
+    """Render station detail, comparisons, and App-owned removal decisions.
+
+    App state:
+        Expects station/statistics/issues and decision collections, ``cfg``,
+        current-station and global-time state, shared notebook/status widgets,
+        plotting selection caches initialized by App, and navigation and
+        cross-tab refresh helpers.
+    """
+
     def _build_detail_tab(self):
         """Build Station Detail tab with station list, time series, and stats views."""
         f = ttk.Frame(self.nb)
@@ -1005,7 +1014,7 @@ class DetailTabMixin:
             # Auto: ~1 arrow per 7 px on-screen; density tracks window size.
             try:
                 width_px = self.ax_ts.get_window_extent().width
-            except Exception:
+            except (AttributeError, RuntimeError, ValueError):
                 width_px = 0
             nbins = int(width_px / 7) if width_px > 0 else self._TS_WIND_ARROW_CAP
             nbins = max(40, min(nbins, self._TS_WIND_ARROW_CAP))

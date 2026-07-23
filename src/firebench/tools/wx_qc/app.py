@@ -6,16 +6,9 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.dates as mdates
 import numpy as np
-import copy
 from pathlib import Path
 
-from .constants import (
-    PHYS_BOUNDS,
-    DEFAULT_NAN_THRESH,
-    DEFAULT_FROZEN_RUN,
-    DEFAULT_MAX_VAR_OUTAGE_MIN,
-    DEFAULT_FULL_OUTAGE_MIN,
-)
+from .constants import default_config
 from .data import run_assertions, run_outage_assertions
 from .theme import setup_style, FONT_MONO
 from .widgets import TimeNavigator
@@ -31,6 +24,8 @@ from .loader import LoaderMixin
 class App(
     OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin, SessionMixin, LoaderMixin, tk.Tk
 ):
+    """Tk root that owns the shared state documented by each GUI mixin."""
+
     def __init__(self):
         """Initialize the Weather Station QC application.
 
@@ -130,21 +125,7 @@ class App(
         self._all_ov_cols = ()
         self._ov_var_col_map = {}  # col_name -> (vname, stat_key)
 
-        self.cfg = {
-            "nan_pct": DEFAULT_NAN_THRESH,
-            "frozen_min_run": DEFAULT_FROZEN_RUN,
-            "max_var_outage_min": DEFAULT_MAX_VAR_OUTAGE_MIN,
-            "full_outage_min": DEFAULT_FULL_OUTAGE_MIN,
-            "dup_max": 5,
-            "bounds": copy.deepcopy(PHYS_BOUNDS),
-            "hidden_assertions": set(),
-            "show_errors": True,
-            "show_warns": True,
-            "perim_h5_path": None,
-            "perim_show_all": False,
-            "compare_n_neighbors": 4,
-            "compare_include_skip_greenlit": False,
-        }
+        self.cfg = default_config()
 
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_quit)

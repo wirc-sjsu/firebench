@@ -45,3 +45,22 @@ ASSERTION_CATS = [
     ("max_var_outage", "Max variable outage (min) exceeds threshold"),
     ("full_outage", "Full station outage (min) exceeds threshold"),
 ]
+
+
+def default_config() -> dict:
+    """Return an independent copy of the default GUI configuration."""
+    return {
+        "nan_pct": DEFAULT_NAN_THRESH,
+        "frozen_min_run": DEFAULT_FROZEN_RUN,
+        "max_var_outage_min": DEFAULT_MAX_VAR_OUTAGE_MIN,
+        "full_outage_min": DEFAULT_FULL_OUTAGE_MIN,
+        "dup_max": 5,
+        "bounds": dict(PHYS_BOUNDS),
+        "hidden_assertions": set(),
+        "show_errors": True,
+        "show_warns": True,
+        "perim_h5_path": None,
+        "perim_show_all": False,
+        "compare_n_neighbors": 4,
+        "compare_include_skip_greenlit": False,
+    }

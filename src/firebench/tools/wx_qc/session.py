@@ -1,16 +1,11 @@
 import copy
 import pickle
+import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
-from .constants import (
-    PHYS_BOUNDS,
-    DEFAULT_NAN_THRESH,
-    DEFAULT_FROZEN_RUN,
-    DEFAULT_MAX_VAR_OUTAGE_MIN,
-    DEFAULT_FULL_OUTAGE_MIN,
-)
+from .constants import default_config
 
 # Matches firebench's user-local data convention (see get_local_db_path
 # in tools/local_db_management.py) rather than a path relative to this
@@ -19,6 +14,15 @@ AUTOSAVE_PATH = Path.home() / ".firebench" / "wx_qc_autosave.pkl"
 
 
 class SessionMixin:
+    """Persist and restore App-owned QC decisions, configuration, and view state.
+
+    App state:
+        Expects ``h5_path``, ``cfg``, station decision collections, ``all_stats``,
+        current station/map/Overview view variables, status widgets, and the
+        loader, map, navigation, and tab-refresh helpers supplied by App's other
+        mixins.
+    """
+
     def _session_state(self) -> dict:
         """Return a serializable snapshot of the current session state.
 
@@ -60,8 +64,12 @@ class SessionMixin:
             )
             if not path:
                 return
-        with open(path, "wb") as f:
-            pickle.dump(self._session_state(), f)
+        try:
+            with open(path, "wb") as session_file:
+                pickle.dump(self._session_state(), session_file)
+        except (OSError, pickle.PickleError, TypeError, ValueError) as exc:
+            messagebox.showerror("Save failed", f"Could not save session to {path}:\n\n{exc}")
+            return
         self.lbl_status.config(text=f"Saved: {Path(path).name}")
 
     def _load_session_file(self, path=None):
@@ -84,8 +92,8 @@ class SessionMixin:
             with open(path, "rb") as f:
                 sess = pickle.load(f)
             self._restore_session(sess)
-        except Exception as e:
-            messagebox.showerror("Load failed", str(e))
+        except (OSError, pickle.PickleError, EOFError, AttributeError, TypeError, ValueError) as exc:
+            messagebox.showerror("Load failed", f"Could not read session {path}:\n\n{exc}")
 
     def _restore_session(self, sess):
         """Restore all session state from a saved session dict.
@@ -101,21 +109,7 @@ class SessionMixin:
                 loaded from a pickle file.
         """
         loaded_cfg = sess.get("cfg", {})
-        self.cfg = {
-            "nan_pct": DEFAULT_NAN_THRESH,
-            "frozen_min_run": DEFAULT_FROZEN_RUN,
-            "max_var_outage_min": DEFAULT_MAX_VAR_OUTAGE_MIN,
-            "full_outage_min": DEFAULT_FULL_OUTAGE_MIN,
-            "dup_max": 5,
-            "bounds": copy.deepcopy(PHYS_BOUNDS),
-            "hidden_assertions": set(),
-            "show_errors": True,
-            "show_warns": True,
-            "perim_h5_path": None,
-            "perim_show_all": False,
-            "compare_n_neighbors": 4,
-            "compare_include_skip_greenlit": False,
-        }
+        self.cfg = default_config()
         self.cfg.update(loaded_cfg)
         perim_path = self.cfg.get("perim_h5_path")
         if perim_path and Path(perim_path).exists():
@@ -188,13 +182,22 @@ class SessionMixin:
             )
             if messagebox.askyesno("Restore autosave?", msg):
                 self._restore_session(sess)
-        except Exception as e:
+        except (
+            OSError,
+            pickle.PickleError,
+            EOFError,
+            KeyError,
+            AttributeError,
+            TypeError,
+            ValueError,
+            tk.TclError,
+        ) as exc:
             # Don't re-raise via messagebox — it likely failed the same way
             # (e.g. transient Tk dialog TclError) and would crash as unhandled
             # callback exception. Report to status bar instead.
             try:
-                self.lbl_status.config(text=f"Autosave check failed: {e}")
-            except Exception:
+                self.lbl_status.config(text=f"Autosave check failed: {exc}")
+            except tk.TclError:
                 pass
 
     def _on_quit(self):
@@ -211,6 +214,6 @@ class SessionMixin:
             try:
                 with open(AUTOSAVE_PATH, "wb") as f:
                     pickle.dump(self._session_state(), f)
-            except Exception:
+            except (OSError, pickle.PickleError, TypeError, ValueError):
                 pass
         self.destroy()

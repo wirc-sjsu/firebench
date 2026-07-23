@@ -6,6 +6,14 @@ from ..theme import ERROR_BG, WARN_BG, OK_BG, PAD
 
 
 class OverviewTabMixin:
+    """Build and refresh the station summary using App-owned QC state.
+
+    App state:
+        Expects ``stations``, ``all_stats``, ``all_issues``, station decision
+        collections, ``cfg``, Overview schema/render caches, the notebook/status
+        widgets, and navigation, skip-decision, and cross-tab refresh helpers.
+    """
+
     # eNaN% = effective max NaN% (excludes NaN the outage policy treats as
     # benign, e.g. wind_direction/wind_gust filtered to WS>0 periods).
     # Max Var Outage / Full Outage = outage-aware replacements for raw obs gap,

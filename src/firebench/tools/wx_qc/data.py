@@ -1,13 +1,12 @@
 import numpy as np
 import numba
+from numba.core.errors import NumbaError
 import h5py
-import hdf5plugin  # noqa: F401  (registers HDF5 compression filters on import)
-from datetime import datetime, timedelta, timezone
+
+# Registers HDF5 compression filters on import.
+import hdf5plugin  # noqa: F401  # pylint: disable=unused-import
 
 from .constants import (
-    PHYS_BOUNDS,
-    DEFAULT_NAN_THRESH,
-    DEFAULT_FROZEN_RUN,
     DROPOUT_MIN_PTS,
     GAP_DT_RATIO,
     FUEL_MOISTURE_FROZEN_MIN_RUN,
@@ -15,6 +14,7 @@ from .constants import (
     DEFAULT_MAX_VAR_OUTAGE_MIN,
     DEFAULT_FULL_OUTAGE_MIN,
 )
+from .time_axis import TimeAxisError, parse_h5_time_axis
 
 
 def _parse_station_group(grp, stid):
@@ -32,25 +32,21 @@ def _parse_station_group(grp, stid):
             degrees), lon (float, degrees), alt (float, meters), state (str),
             timezone (str), provider (str), times (np.ndarray, dtype=datetime64[us]
             or float64), rel_min (np.ndarray, dtype=float64, minutes since H5
-            time_origin), variables (dict[str, np.ndarray], one float64 array
-            per sensor, NaN = missing sample), var_units (dict[str, str]).
+            time_origin), time_axis_error (str or None), variables
+            (dict[str, np.ndarray], one float64 array per sensor, NaN = missing
+            sample), var_units (dict[str, str]).
     """
     attrs = dict(grp.attrs)
-    t0_str = grp["time"].attrs.get("time_origin", "")
-    rel_min = grp["time"][:]
     try:
-        t0 = datetime.fromisoformat(t0_str)
-        if np.isnan(rel_min).any():
-            raise ValueError("NaN in time dataset")
-        if t0.tzinfo is not None:
-            # np.datetime64 has no timezone; normalize to UTC for cross-station
-            # time-axis comparability.
-            t0 = t0.astimezone(timezone.utc).replace(tzinfo=None)
-        # Vectorized datetime64 build (avoid Python-loop per-point cost).
-        us = np.rint(rel_min.astype(np.float64) * 60_000_000.0).astype(np.int64)
-        times = np.datetime64(t0, "us") + us.astype("timedelta64[us]")
-    except Exception:
-        times = rel_min.astype(float)
+        times, rel_min = parse_h5_time_axis(grp["time"])
+        time_axis_error = None
+    except TimeAxisError as exc:
+        # Preserve the legacy relative-minute fallback so Phase 2 remains a
+        # structural refactor. Phase 3 consumes this error to disable invalid
+        # cadence/outage derivatives and expose a QC issue.
+        rel_min = np.asarray(grp["time"][:], dtype=np.float64)
+        times = rel_min
+        time_axis_error = str(exc)
     variables, var_units = {}, {}
     for ds in grp:
         if ds == "time":
@@ -68,6 +64,7 @@ def _parse_station_group(grp, stid):
         "provider": attrs.get("providers", ""),
         "times": times,
         "rel_min": rel_min,
+        "time_axis_error": time_axis_error,
         "variables": variables,
         "var_units": var_units,
     }
@@ -577,7 +574,7 @@ try:
     _longest_nan_run(_dummy_b)
     _longest_frozen_run(_dummy_f)
     _outage_run_minutes(_dummy_b, _dummy_f, 1.0)
-except Exception:
+except (NumbaError, OSError, RuntimeError, TypeError, ValueError):
     pass
 
 

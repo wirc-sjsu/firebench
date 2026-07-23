@@ -3,15 +3,18 @@ import pickle
 import shutil
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import h5py
-import hdf5plugin  # noqa: F401  (registers HDF5 compression filters on import)
+
+# Registers HDF5 compression filters on import.
+import hdf5plugin  # noqa: F401  # pylint: disable=unused-import
 
 from ..dialogs import AddSkipDialog, ExportScriptDialog
 from ..theme import PAD
+from ..time_axis import TimeAxisError, parse_h5_time_axis
 
 
 def _format_skip_stations_block(skip_list: dict) -> str:
@@ -82,9 +85,9 @@ from pathlib import Path
 import firebench.tools as ft
 import json
 import tempfile
-import pytz
 import numpy as np
-from datetime import datetime, timezone
+from datetime import datetime
+from firebench.tools.wx_qc.time_axis import TimeAxisError, parse_h5_time_axis
 
 def _dedup_obs(obs: dict) -> None:
     """Drop rows where timestamp AND all variable values are identical to a prior row.
@@ -151,23 +154,16 @@ def apply_record_removals(h5file, remove_records: dict) -> None:
         grp = ts_grp.get(f"station_{{stid}}")
         if grp is None or "time" not in grp:
             continue
-        t0_str  = grp["time"].attrs.get("time_origin", "")
-        rel_min = grp["time"][:]
         try:
-            t0 = datetime.fromisoformat(t0_str)
-            if np.isnan(rel_min).any():
-                raise ValueError("NaN in time dataset")
-            if t0.tzinfo is not None:
-                t0 = t0.astimezone(timezone.utc).replace(tzinfo=None)
-            us = np.rint(rel_min.astype(np.float64) * 60_000_000.0).astype(np.int64)
-            times = np.datetime64(t0, "us") + us.astype("timedelta64[us]")
-        except Exception:
-            continue  # can't parse a time axis -> can't build a mask
+            times, _ = parse_h5_time_axis(grp["time"])
+        except TimeAxisError as exc:
+            print(f"Skipping removals for {{stid}}: {{exc}}")
+            continue
 
         for var, t0_iso, t1_iso, reason in entries:
             try:
                 t0m, t1m = np.datetime64(t0_iso), np.datetime64(t1_iso)
-            except Exception:
+            except (TypeError, ValueError):
                 continue
             if t1m < t0m:
                 t0m, t1m = t1m, t0m
@@ -224,9 +220,14 @@ h5.close()
 
 
 class SkiplistTabMixin:
-    """Skip List tab: manual station skip/greenlit list plus the
-    record-removal manifest, and the export actions (skip-list script,
-    processing script, cleaned H5) that consume both."""
+    """Manage App-owned station decisions, removals, and their exports.
+
+    App state:
+        Expects ``h5_path``, station/statistics collections, ``skip_list``,
+        ``green_list``, ``removal_list``, ``cfg``, Overview column variables,
+        status widgets, and the navigation/session helpers supplied by App and
+        its other mixins.
+    """
 
     def _build_skiplist_tab(self):
         f = ttk.Frame(self.nb)
@@ -475,8 +476,8 @@ class SkiplistTabMixin:
         dest = Path(r["dest_dir"]) / r["script_filename"]
         try:
             dest.write_text(text)
-        except Exception as exc:
-            messagebox.showerror("Export failed", str(exc))
+        except (OSError, UnicodeError) as exc:
+            messagebox.showerror("Export failed", f"Could not write {dest}:\n\n{exc}")
             return
         messagebox.showinfo("Exported", f"Wrote:\n{dest}")
 
@@ -546,8 +547,8 @@ class SkiplistTabMixin:
             return
         try:
             n_stations, n_nanned, errors = self._export_cleaned_h5_write(path)
-        except Exception as exc:
-            messagebox.showerror("Export failed", str(exc))
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            messagebox.showerror("Export failed", f"Could not create {path}:\n\n{exc}")
             return
         msg = f"Wrote:\n{path}\n\n" f"{n_stations} station(s) modified, {n_nanned} value(s) set to NaN."
         if errors:
@@ -564,7 +565,7 @@ class SkiplistTabMixin:
         self.h5_path to dest_path (original untouched) then NaNs every
         record-removal manifest range in the copy. Layout mirrors
         data._parse_station_group: time_series/station_<stid>/, a "time"
-        dataset (minutes since the time_origin attr) plus one float64
+        dataset parsed by time_axis.parse_h5_time_axis plus one float64
         dataset per variable.
 
         Args:
@@ -594,24 +595,17 @@ class SkiplistTabMixin:
                 grp = ts_grp.get(f"station_{stid}")
                 if grp is None or "time" not in grp:
                     continue
-                t0_str = grp["time"].attrs.get("time_origin", "")
-                rel_min = grp["time"][:]
                 try:
-                    t0 = datetime.fromisoformat(t0_str)
-                    if np.isnan(rel_min).any():
-                        raise ValueError("NaN in time dataset")
-                    if t0.tzinfo is not None:
-                        t0 = t0.astimezone(timezone.utc).replace(tzinfo=None)
-                    us = np.rint(rel_min.astype(np.float64) * 60_000_000.0).astype(np.int64)
-                    times = np.datetime64(t0, "us") + us.astype("timedelta64[us]")
-                except Exception:
-                    continue  # can't parse a time axis -> can't build a mask
+                    times, _ = parse_h5_time_axis(grp["time"])
+                except TimeAxisError as exc:
+                    errors.append((stid, "time", str(exc)))
+                    continue
 
                 station_touched = False
                 for e in entries:
                     try:
                         t0m, t1m = np.datetime64(e["t0"]), np.datetime64(e["t1"])
-                    except Exception:
+                    except (TypeError, ValueError):
                         continue
                     if t1m < t0m:
                         t0m, t1m = t1m, t0m
@@ -632,7 +626,7 @@ class SkiplistTabMixin:
                             ds[...] = arr
                             n_nanned += int(mask.sum())
                             station_touched = True
-                        except Exception as exc:
+                        except (OSError, RuntimeError, TypeError, ValueError) as exc:
                             errors.append((stid, vname, str(exc)))
                 if station_touched:
                     n_stations += 1

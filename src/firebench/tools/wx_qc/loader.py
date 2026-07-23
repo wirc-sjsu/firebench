@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import numpy as np
 import h5py
 
@@ -16,6 +16,14 @@ from .data import (
 
 
 class LoaderMixin:
+    """Load station data and populate App-owned data/QC collections incrementally.
+
+    App state:
+        Expects ``h5_path``, ``cfg``, station/statistics/issues collections,
+        Overview/map render caches, loading widgets, Tk scheduling methods, and
+        the refresh helpers supplied by the tab mixins.
+    """
+
     def _open_file(self):
         """Open a file dialog to select an H5 file and load its data.
 
@@ -147,6 +155,7 @@ class LoaderMixin:
         self._load_n_total = 0
         self._load_last_ui_t = 0.0
         self._load_pending_new = []
+        self._load_error = None
         self._map_sc = None  # force a full (re)creation on first tick of this load
         self._map_offsets = None
         self._map_cvals_arr = None
@@ -158,8 +167,14 @@ class LoaderMixin:
             with h5py.File(self.h5_path, "r") as f:
                 ts_grp = f.get("time_series")
                 self._load_total = len(ts_grp) if ts_grp is not None else 0
-        except Exception:
-            self._load_total = 0
+        except (OSError, ValueError) as exc:
+            self._load_iter = None
+            self.lbl_status.config(text=f"H5 load failed: {exc}")
+            messagebox.showerror(
+                "H5 load failed",
+                f"Could not inspect {self.h5_path} as a FireBench HDF5 file:\n\n{exc}",
+            )
+            return
         self.pb_load["maximum"] = max(self._load_total, 1)
         self.pb_load["value"] = 0
         self.pb_load.pack(side="right", padx=(0, 4))
@@ -192,6 +207,10 @@ class LoaderMixin:
             try:
                 stid, st = next(self._load_iter)
             except StopIteration:
+                done = True
+                break
+            except (OSError, KeyError, TypeError, ValueError) as exc:
+                self._load_error = exc
                 done = True
                 break
             stats, fresh = self._stats_for_station(stid, st, self._load_cached)
@@ -233,17 +252,25 @@ class LoaderMixin:
         if done:
             self.pb_load.pack_forget()
             cached_ct = self._load_n_total - self._load_n_fresh
-            self.lbl_status.config(
-                text=(
-                    f"Loaded {self._load_n_total} stations "
-                    f"({cached_ct} cached, {self._load_n_fresh} new)"
-                    if self._load_cached
-                    else f"Loaded {self._load_n_total} stations"
+            if self._load_error is not None:
+                self.lbl_status.config(text=f"H5 load stopped after {self._load_n_total} stations")
+                messagebox.showerror(
+                    "H5 load failed",
+                    f"Could not finish reading {self.h5_path} after "
+                    f"{self._load_n_total} station(s):\n\n{self._load_error}",
                 )
-            )
+            else:
+                self.lbl_status.config(
+                    text=(
+                        f"Loaded {self._load_n_total} stations "
+                        f"({cached_ct} cached, {self._load_n_fresh} new)"
+                        if self._load_cached
+                        else f"Loaded {self._load_n_total} stations"
+                    )
+                )
             on_complete = self._load_on_complete
             self._load_iter = None
-            if on_complete is not None:
+            if on_complete is not None and self._load_error is None:
                 on_complete()
         else:
             self.after(1, lambda: self._load_chunk(gen_id))
