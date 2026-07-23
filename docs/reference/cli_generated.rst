@@ -33,3 +33,9 @@ Plot
 
 .. click:: firebench.cli:plot
    :prog: firebench plot
+
+Weather-Station QC
+------------------
+
+.. click:: firebench.cli:wx_qc
+   :prog: firebench wx-qc

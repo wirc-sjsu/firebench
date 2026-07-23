@@ -7,6 +7,20 @@ import pytest
 from firebench.cli import main
 
 
+def test_wx_qc_is_registered_with_useful_help():
+    runner = CliRunner()
+
+    main_help = runner.invoke(main, ["--help"])
+    command_help = runner.invoke(main, ["wx-qc", "--help"])
+
+    assert main_help.exit_code == 0, main_help.output
+    assert "wx-qc" in main_help.output
+    assert command_help.exit_code == 0, command_help.output
+    assert "weather-station quality-control GUI" in command_help.output
+    assert "HDF5" in command_help.output
+    assert "Tk support" in command_help.output
+
+
 def _fake_registry(tmp_path, call):
     def fake_runner(model_output, **kwargs):
         call["model_output"] = model_output

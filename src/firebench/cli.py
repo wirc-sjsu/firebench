@@ -17,9 +17,7 @@ logger = logging.getLogger(__name__)
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
 
-FIREBENCH_BANNER = (
-    "\b"
-    + r"""
+FIREBENCH_BANNER = "\b" + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -29,7 +27,6 @@ FIREBENCH_BANNER = (
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
-)
 
 
 @click.group(help=FIREBENCH_BANNER)
@@ -824,6 +821,20 @@ def data_get(case: str, version: str, output_dir: Path) -> None:
     _download_with_progress(url, output_path)
     click.echo(f"Downloaded {output_path}")
     return 0
+
+
+@main.command("wx-qc")
+def wx_qc() -> None:
+    """
+    Launch the weather-station quality-control GUI.
+
+    Review a FireBench weather-station HDF5 file, record station and
+    observation decisions, restore JSON sessions, and export cleaned data.
+    A graphical desktop and Tk support are required.
+    """
+    from .tools.wx_qc.app import App
+
+    App().mainloop()
 
 
 if __name__ == "__main__":
