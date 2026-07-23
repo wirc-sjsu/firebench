@@ -24,6 +24,46 @@ your Python distribution. Common package names are `python3-tk` on Debian/Ubuntu
 FireBench also needs a graphical desktop; a terminal-only or headless session cannot display the
 application.
 
+### Install Tk on macOS with Homebrew
+
+Homebrew packages the Tk bindings separately for each Python minor version. First check the
+version used by the environment where FireBench is installed:
+
+```console
+python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+```
+
+Install the matching formula. For example, use this command for Python 3.13:
+
+```console
+brew install python-tk@3.13
+```
+
+Replace `3.13` with the reported version, such as `3.10`, `3.11`, `3.12`, or `3.14`. See the
+[Homebrew `python-tk` formula](https://formulae.brew.sh/formula/python-tk) for the currently
+available versions.
+
+The formula is built for the corresponding Homebrew Python. It does not add Tk to a Python
+installed by pyenv, Conda, or another distributor. If `python -m tkinter` still reports
+`No module named '_tkinter'`, identify the active interpreter:
+
+```console
+python -c "import sys; print(sys.executable)"
+```
+
+Either install Tk using that Python distributor's instructions or create the environment with the
+matching Homebrew Python. For Python 3.13, for example:
+
+```console
+brew install python@3.13 python-tk@3.13
+"$(brew --prefix python@3.13)/bin/python3.13" -m venv .venv
+source .venv/bin/activate
+python -m pip install firebench
+python -m tkinter
+```
+
+The last command should open the Tk test window. Close it before launching the FireBench GUI.
+
 Launch the GUI with:
 
 ```console
