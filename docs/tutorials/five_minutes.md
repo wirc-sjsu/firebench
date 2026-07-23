@@ -42,7 +42,7 @@ Use the archive name printed by `data get` if `latest` points to a newer release
 
 ```bash
 firebench list 2021_Caldor
-firebench list 2021_Caldor H013_P --obs-data Caldor.h5
+firebench list 2021_Caldor H013_P --obs-data v2026.2/Caldor.h5
 ```
 
 `H013` is a 48-hour period and `P` selects the perimeter KPI group. The second command displays the
@@ -51,7 +51,7 @@ exact dates, perimeters, KPI weights, and normalization parameters before any wo
 ## 5. Run the smoke test
 
 ```bash
-firebench run 2021_Caldor H013_P Caldor.h5 --obs-data Caldor.h5
+firebench run 2021_Caldor H013_P v2026.2/Caldor.h5 --obs-data v2026.2/Caldor.h5
 ```
 
 The working directory now contains:
@@ -60,7 +60,7 @@ The working directory now contains:
 - `Caldor.pdf`, the human-readable scorecard;
 - `Caldor.log`, the selected checks, benchmark progress, warnings, and output paths.
 
-The total should be `1.0` because the same values were compared. A real result below `1.0` is not
+The total should be `100.00` because the same values were compared. A real result below `100.00` is not
 by itself good or bad: interpret it alongside the selected KPIs, normalization, weights, and model
 purpose.
 
