@@ -7,8 +7,8 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-# Add src/ to the path so Sphinx can find the code
-sys.path.insert(0, os.path.abspath('../src/firebench'))
+# Add the src-layout package root so autodoc imports ``firebench`` correctly.
+sys.path.insert(0, os.path.abspath('../src'))
 
 project = 'FireBench'
 author = 'WIRC SJSU'
@@ -24,6 +24,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
     'sphinx.ext.autosummary',
+    'sphinx_click',
 ]
 
 templates_path = ['_templates']
@@ -42,8 +43,8 @@ myst_enable_extensions = [
     "tasklist",
     "amsmath",
     "dollarmath",
-    "colon_fence",
 ]
+myst_heading_anchors = 3
 
 autodoc_default_options = {
     "members": True,
@@ -53,6 +54,19 @@ autodoc_default_options = {
 
 autosummary_generate = True
 napoleon_numpy_docstring = True
+
+# External services occasionally throttle link checks. Retry transient failures; add a narrowly
+# scoped ignore only when an upstream URL has a tracked, persistent availability problem.
+linkcheck_retries = 2
+linkcheck_timeout = 15
+linkcheck_anchors = True
+# These publisher and incident pages are valid in a browser but reject automated GET requests with
+# bot-protection responses. Their exact URLs are reviewed manually when references change.
+linkcheck_ignore = [
+    r"https://doi\.org/10\.(1071|1155|3390)/.*",
+    r"https://www\.fire\.ca\.gov/incidents/.*",
+    r"https://www\.publish\.csiro\.au/.*",
+]
 
 html_logo = "_static/images/firebench_logo.png"
 html_static_path = ["_static"]

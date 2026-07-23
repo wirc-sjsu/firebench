@@ -37,6 +37,8 @@ dataset descriptions, package inventories, and API details.
 :maxdepth: 1
 
 cli.md
+cli_generated.rst
+outputs.md
 ../api/index.rst
 ../content.md
 ../dependencies.md
