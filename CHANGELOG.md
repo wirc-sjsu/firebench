@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- Add a supported-adapter section that records the pre-release WRF-SFIRE adapter planned for
+  FireBench 1.0.
 - Add an advanced-user tutorial for building and previewing the documentation locally from WSL.
 - Add goal-oriented tutorials, focused how-to guides, complete CLI and API references, and strict
   documentation CI with executable example and link checks.
