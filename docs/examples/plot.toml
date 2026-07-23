@@ -1,0 +1,24 @@
+output_dir = "plots"
+dpi = 150
+
+[[files]]
+path = "Caldor.h5"
+label = "Observations"
+color = "#2166ac"
+
+[[files]]
+path = "model_output.h5"
+label = "Model"
+color = "#b2182b"
+
+[perimeter]
+enabled = true
+group = "/polygons"
+paths = ["/polygons/fire_perimeter_2021_08_19T0000"]
+satellite = false
+projection = "EPSG:3857"
+basemap_source = "Esri.WorldImagery"
+alpha = 1.0
+fill_alpha = 0.25
+linewidth = 2.0
+figsize = [8.0, 8.0]

@@ -1,0 +1,16 @@
+case: 2021_Caldor
+target: H013_P
+obs_data: Caldor.h5
+output_dir: results
+overwrite: false
+verbose: 3
+no_console: false
+full_name: false
+comparison_include_kpis: true
+comparison_score_card_report: comparison_scorecard.pdf
+
+models:
+  - name: WRF-SFIRE baseline
+    model_output: model_outputs/wrf_sfire_baseline.h5
+  - name: WRF-SFIRE calibrated
+    model_output: model_outputs/wrf_sfire_calibrated.h5
