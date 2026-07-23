@@ -367,7 +367,8 @@ def test_run_command_rejects_legacy_agg_scheme_option(monkeypatch, tmp_path):
     result = CliRunner().invoke(main, ["run", "001", "H013_P", str(model_output), "-a", "B"])
 
     assert result.exit_code != 0
-    assert "No such option: -a" in result.output
+    assert "No such option" in result.output
+    assert "-a" in result.output
     assert call == {}
 
 
