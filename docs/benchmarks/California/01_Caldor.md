@@ -7,8 +7,8 @@
 
 ## Contributors
 - Aurélien Costes, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [aurelien.costes@sjsu.edu](mailto:aurelien.costes@sjsu.edu), [ORCID](https://orcid.org/0000-0003-4543-5107)
-- Angel Farguell Caus, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [angel.farguellcaus@sjsu.edu](mailto:[angel.farguellcaus@sjsu.edu), [ORCID](https://orcid.org/0000-0003-2395-220X)
-- Adam Kochanski, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [adam.kochanski@sjsu.edu](mailto:[adam.kochanski@sjsu.edu), [ORCID](https://orcid.org/0000-0001-7820-2831)
+- Angel Farguell Caus, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [angel.farguellcaus@sjsu.edu](mailto:angel.farguellcaus@sjsu.edu), [ORCID](https://orcid.org/0000-0003-2395-220X)
+- Adam Kochanski, [Wildfire Interdisciplinary Research Center](https://www.wildfirecenter.org/), San Jose State University, [adam.kochanski@sjsu.edu](mailto:adam.kochanski@sjsu.edu), [ORCID](https://orcid.org/0000-0001-7820-2831)
 
 ## Description
 
@@ -369,9 +369,18 @@ This benchmark is performed on the binary classes `masked high binary canopy cov
 ## Infrared fire perimeters
 ### Dataset
 
-The infrared fire perimeters have been gathered from [NIROPS](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/) dataset.
-Every orginal file has been manually processed to extract only the perimeter. The time stamp of the perimeter has been defined from the imaging report (e.g. [Report for 2021/08/17](https://ftp.wildfire.gov/public/incident_specific_data/calif_n/2021_FEDERAL_Incidents/CA-ENF-024030_Caldor/IR/NIROPS/20210818/20210818_Caldor_IR_Topo_11x17.pdf)) using the `Imagery Date` and `Imagery Time`. The burn area obtained using the KML file and python tools has been verified against the `Interpreted Acreage` when specified in the reports. Each fire perimeter (see Fig. 6) is stored as a group within the HDF5 data file with attributes containing the path of the KML file that contains the fire perimeter dataset.
-The perimeters have been processed from August 17th (first IR perimeter available) to September 10th, when the burn area is 99% if the final burn area, as shown in Figure 7 (source: [CALFIRE](https://www.fire.ca.gov/incidents/2021/8/14/caldor-fire/)).
+The infrared fire perimeters were gathered from the NIFC NIROPS archive for incident
+`CA-ENF-024030_Caldor`. The former incident-specific archive URLs are no longer published, so the
+redistributed benchmark package is the durable source for these inputs.
+
+Each original file was processed manually to extract only the perimeter. The perimeter timestamp
+comes from `Imagery Date` and `Imagery Time` in its imaging report. KML-derived burn area was
+verified against `Interpreted Acreage` when the report supplied it. Each perimeter (Figure 6) is an
+HDF5 dataset whose attributes point to the corresponding KML file.
+
+The series runs from August 17, the first available infrared perimeter, through September 10, when
+the burn area reached 99% of the final area shown in Figure 7 (source:
+[CAL FIRE](https://www.fire.ca.gov/incidents/2021/8/14/caldor-fire/)).
 The final dataset contains 21 perimeters.
 
 The following study periods (see Fig. 7) are defined in the following Table:
@@ -527,16 +536,16 @@ FP24 | W4           | Minimum Dice-Sorensen Index W4
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
 The bias is calculated on the last perimeter of the study period as the difference between the model and the observed burn area.
-A bias of $m$ acres, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means greater difficulty) and must be chosen by the community.
+The normalization parameter $m$ is 20% of the final observed burn area. Therefore, an absolute final-area bias equal to 20% of the observed area leads to a score of 50.00.
 
 The following Table gives the correspondence between the benchmark ID and the study period:
 
-ID   | Study period | Name in Score Card | $m$    | $B_{50}$
------|--------------|--------------------|--------|---------
-FP25 | W1           | Burn Area Bias W1  | 80,000 | 48%
-FP26 | W2           | Burn Area Bias W2  | 5,000  | 20%
-FP27 | W3           | Burn Area Bias W3  | 5,000  | 25%
-FP28 | W4           | Burn Area Bias W4  | 17,000 | 30%
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP25 | W1           | Burn Area Bias W1
+FP26 | W2           | Burn Area Bias W2
+FP27 | W3           | Burn Area Bias W3
+FP28 | W4           | Burn Area Bias W4
 
 #### Burn Area RMSE
 
@@ -545,16 +554,16 @@ FP28 | W4           | Burn Area Bias W4  | 17,000 | 30%
 **Normalization**: Symmetric Exponential Open Normalization ($m$ value in Table)<br>
 **Name in Score Card**: See Table <br>
 The first perimeter, at the start of the period, can be used as initial condition for the fire perimeter.
-A bias of $m$ acres, representing $B_{50}$% of burn area during the study period, will lead to a score of 50.00. The value of $m$ represents the benchmark difficulty (smaller $m$ means greater difficulty) and must be chosen by the community.
+The normalization parameter $m$ is 20% of the root mean square (RMS) of the observed burn areas in the study period. Therefore, a burn-area RMSE equal to 20% of the observed-area RMS leads to a score of 50.00.
 
 The following Table gives the correspondence between the benchmark ID and the study period:
 
-ID   | Study period | Name in Score Card | $m$    | $B_{50}$
------|--------------|--------------------|--------|---------
-FP29 | W1           | Burn Area RMSE W1  | 80,000 | 48%
-FP30 | W2           | Burn Area RMSE W2  | 5,000  | 20%
-FP31 | W3           | Burn Area RMSE W3  | 5,000  | 25%
-FP32 | W4           | Burn Area RMSE W4  | 17,000 | 30%
+ID   | Study period | Name in Score Card
+-----|--------------|-------------------
+FP29 | W1           | Burn Area RMSE W1
+FP30 | W2           | Burn Area RMSE W2
+FP31 | W3           | Burn Area RMSE W3
+FP32 | W4           | Burn Area RMSE W4
 
 ## Weather stations
 
@@ -575,10 +584,13 @@ The following variables have been processed (following FireBench namespace):
 - wind_speed
 
 ```{note}
-If you want to process more variables or require new benchmarks for existing variables, please reach out to the FireBench team to integrate these changes into a future version of the benchmarks.
+To propose another variable or benchmark, open a
+[feature request](https://github.com/wirc-sjsu/firebench/issues/new?template=feature_request.md) with
+the standard variable name, observation source, metric, and scientific rationale. Implementations
+can be submitted through the public contribution workflow.
 ```
 
-Some stations don't have data for the period W1 and have been excluded from the dataset. 
+Some stations do not have data for period W1 and have been excluded from the dataset.
 The list of excluded stations for missing data in the study period is:
 403_PG, 412_PG, 413_PG, F9934.
 Also, some stations did not meet the data quality criterion and have been excluded from the dataset. 
@@ -600,7 +612,9 @@ Therefore, 81 datasets are considered trusted and will be used in the benchmarks
 All 399 datasets are used in benchmarks "all sources".
 
 ```{note}
-If you have information about sensor height and want to help increase the number of trusted datasets, please get in touch with the FireBench Team.
+To contribute sensor-height evidence, open a
+[data request](https://github.com/wirc-sjsu/firebench/issues/new?template=data_request.md) and include
+the station ID, sensor, height, units, effective dates, provider, and a public source URL.
 ```
 
 Weather stations are stored in the HDF5 file using their STID.
@@ -1133,10 +1147,135 @@ Mandatory group/dataset| Mandatory attributes
 `/time_series/station_<name>/time`| None
 `/time_series/station_<name>/fuel_moisture_content_10h`| None
 
+## Benchmark Targets in FireBench 0.10
+
+The CLI uses a target to select the Caldor KPI groups and, for a period target, the evaluation
+window. Inspect the available targets and the exact KPIs selected by a target with:
+
+```bash
+firebench list 2021_Caldor
+firebench list 2021_Caldor H013_P --obs-data v2026.2/Caldor.h5
+```
+
+The second command is the detailed source of truth for generated period targets. It reports the
+period, selected KPI groups, relevant perimeters and weather-station counts, KPI weights, and
+normalization parameters. The 62 HRRR-aligned periods generate too many KPIs for a useful static
+list in this specification.
+
+### Standalone targets
+
+- `B` selects building-damage KPIs.
+- `S` selects burn-severity KPIs.
+- `CC` selects canopy-cover-loss KPIs.
+- `FP` selects all four curated fire-perimeter groups.
+- `0` selects every KPI without aggregation, so it produces individual KPI scores but no group or
+  total score.
+
+### Retained schemes
+
+The FireBench 0.9 scheme names `A`, `CDI`, `BS3`, `WX1` through `WX4`, `short_all`, and
+`WX_short` remain valid targets. `B`, `S`, `CC`, `FP`, and `0` also retain their former names while
+having the explicit standalone meanings above. Retaining a name does not make a 0.10 score
+comparable with a 0.9 score; see [Compatibility with FireBench 0.9 scores](#compatibility-with-firebench-09-scores).
+
+### Curated period targets
+
+The four curated study periods called `W1` through `W4` in FireBench 0.9 and in the scientific
+sections of this specification are exposed by the 0.10 CLI as `P01` through `P04`:
+
+Scientific period | CLI period
+----------------- | ----------
+W1                | `P01`
+W2                | `P02`
+W3                | `P03`
+W4                | `P04`
+
+Append an underscore and one or more KPI-group flags to select work within the period. For
+example, `P02_P` selects the W2 perimeter group and `P02_PW` selects its perimeter and weather
+groups.
+
+### HRRR-aligned period targets
+
+`H001` through `H062` are 48-hour periods aligned with HRRR forecast initialization times. Append
+the same KPI-group flags used by curated period targets. For example, `H013_BPW` combines building
+damage, fire perimeters, and weather stations for period `H013`.
+
+The flags accepted by both curated and HRRR-aligned period targets are:
+
+Flag | KPI group
+---- | ---------
+`B`  | Building damage
+`P`  | Fire perimeters
+`W`  | Weather stations
+
+Flags may be entered in any order and are normalized to `B`, `P`, `W` order. Burn severity and
+canopy-cover loss deliberately have no period-qualified flags because those evaluations are not
+filtered by the selected period; use standalone `S` or `CC` instead.
+
+### FireBench 0.9 to 0.10 target mapping
+
+FireBench 0.10 changes the run syntax from:
+
+```bash
+firebench run -c CASE -a SCHEME MODEL_OUTPUT
+```
+
+to:
+
+```bash
+firebench run CASE TARGET MODEL_OUTPUT
+```
+
+Use the following mapping when updating 0.9 commands:
+
+0.9 scheme | 0.10 target | Notes
+---------- | ----------- | -----
+`B`        | `B`         | Standalone building damage
+`S`        | `S`         | Standalone burn severity
+`CC`       | `CC`        | Standalone canopy-cover loss
+`WX1`      | `WX1` or `P01_W` | Retained scheme or equivalent curated weather target
+`WX2`      | `WX2` or `P02_W` | Retained scheme or equivalent curated weather target
+`WX3`      | `WX3` or `P03_W` | Retained scheme or equivalent curated weather target
+`WX4`      | `WX4` or `P04_W` | Retained scheme or equivalent curated weather target
+`A`        | `A`         | Retained complete curated scheme
+`CDI`      | `CDI`       | Retained multi-period scheme
+`BS3`      | `BS3`       | Retained demonstration scheme
+`short_all` | `short_all` | Retained shortened complete scheme
+`WX_short` | `WX_short`  | Retained shortened weather scheme
+`FP`       | `FP`        | All four curated perimeter groups
+`0`        | `0`         | Unaggregated selection of every KPI
+
+For example, the 0.9 command:
+
+```bash
+firebench run -c 2021_Caldor -a CDI my_model_output.h5
+```
+
+becomes:
+
+```bash
+firebench run 2021_Caldor CDI my_model_output.h5
+```
+
 
 ## Aggregation Schemes
 
 This section describes the weights used to aggregate KPI unit scores. More information about aggregation methods [here](../../metrics/score.md). If the aggregation scheme `0` is specified, then no aggregation is performed. Therefore, group scores and total scores are not computed.
+
+### Compatibility with FireBench 0.9 scores
+
+FireBench 0.10 changes both the weights and normalization of the fire-perimeter KPIs. In 0.9,
+each Jaccard and Dice-Sorensen KPI had weight 1, each burn-area KPI had weight 2, and burn-area
+normalization used fixed values for each curated period. In 0.10, average Jaccard has weight 2,
+minimum Jaccard and both burn-area KPIs have weight 1, and maximum Jaccard and all
+Dice-Sorensen KPIs are unweighted diagnostics. Burn-area normalization is now derived from the
+observed areas: 20% of the final observed area for final-area bias and 20% of the root mean square
+of the observed areas for burn-area RMSE.
+
+Consequently, FireBench 0.10 Caldor group and total scores are not directly comparable with 0.9
+scores, even when the target retains a 0.9 scheme name such as `A`, `CDI`, or `short_all`. Record
+the FireBench version with every result and compare scores only when they were generated with the
+same version and target definition.
 
 ### Group definition
 
@@ -1277,7 +1416,9 @@ Wind Speed Wi          | 1
 
 - **Benchmark identifiers** consist of a *case ID* and a *short ID*, for example `FB001-BD01`. Throughout the documentation, the *short ID* alone (e.g. `BD01`) is used when the benchmark case is unambiguous, in order to improve readability. The *full identifier* (`FB001-BD01`) is used whenever the case context must be explicit, such as when comparing benchmarks across different cases.
 - Each file hash has been performed using `firebench.standardize.calculate_sha256`.
-- Collection of forecasts or reanalysis is authorized for the benchmark period (e.g., for fire perimeters) but has to be detailed in the model report attached to the Report sent back to the FireBench team for collection and validation of results.
+- Forecast or reanalysis data may be collected for the benchmark period (for example, for fire
+  perimeters). Record the sources and processing steps in the generated model report so the result
+  remains independently reproducible.
 
 ## Acknowledgment 
 

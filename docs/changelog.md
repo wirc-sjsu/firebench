@@ -1,8 +1,35 @@
-# 12. Changelog
+# Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+
+- Add standalone and period-based Caldor targets, including combinable building, perimeter, and
+  weather flags discoverable through `firebench list`.
+- Integrate the `firebench-adapter-common` source code into FireBench as `firebench.adapter_common`.
+- Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
+- Add verified PG&E station wind sensor-height fallback data.
+- Add task-oriented documentation, complete CLI and API references, executable examples, and strict
+  documentation CI.
+
+### Changed
+
+- Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
+- Revise Caldor perimeter weights and normalization; FireBench 0.10 scores are not directly
+  comparable with FireBench 0.9 scores.
+- Expand benchmark discovery and target details in `firebench list` and generated reports.
+- Improve score-card labels, group names, and colorblind-safe score visualization.
+- Add observed-versus-modeled perimeter contours and KPI annotations to generated reports.
+
+### Fixed
+
+- Resolve external polygon paths relative to their HDF5 file during benchmark requirement checks.
+- Preserve established Caldor weather KPI identifiers and canonicalize combined target flags.
+- Support UTC and extended ISO 8601 `date_time` values when standardizing Synoptic observations.
 
 ## [0.9.0] - 2026 / 05 / 18
 ### Added

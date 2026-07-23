@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 import re
 import h5py
 import hdf5plugin
@@ -42,12 +43,9 @@ def check_std_version(file: h5py.File):
     It compares the file's version with the current standard version defined in `VERSION_STD`.
     The return value indicates whether the caller should update the file's standard version.
 
-    The logic is as follows:
-    - If the attribute is missing, the file is treated as new and should be updated.
-    - If the attribute matches the current standard version, the file is already up to date and may be updated.
-    - If the attribute is in the compatibility list for the current version, the file is considered valid
-      but should not be updated; a warning is logged instead.
-    - If the attribute is not compatible with the current version, a `ValueError` is raised.
+    A missing attribute is treated as a new file that should be updated. A matching version is
+    already current and may be updated. A version in the current compatibility list is valid but
+    should not be updated, and produces a warning. Any other version raises ``ValueError``.
 
     Parameters
     ----------
@@ -110,7 +108,7 @@ def validate_h5_std(file: h5py.File):
 
 def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
     """
-    Check if all datasets and associated attributs are present in the file.
+    Check if all datasets and associated attributes are present in the file.
     Return False and the name of the first missing item if either the dataset or an attribute is missing
     """
     for dset_path, attrs in required.items():
@@ -125,10 +123,18 @@ def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
 
         # check that KML files exist
         if "rel_path" in attrs:
-            if not Path(dset.attrs["rel_path"]).exists():
+            referenced_path = _resolve_h5_relative_path(file, dset.attrs["rel_path"])
+            if not referenced_path.exists():
                 return False, f"file `{dset.attrs['rel_path']}` not found from `{dset_path}`"
 
     return True, None
+
+
+def _resolve_h5_relative_path(file: h5py.File, rel_path: str | bytes | Path) -> Path:
+    path = Path(rel_path.decode() if isinstance(rel_path, bytes) else rel_path)
+    if path.is_absolute():
+        return path
+    return Path(file.filename).resolve().parent / path
 
 
 def validate_h5_weather_stations_structure(
@@ -136,26 +142,74 @@ def validate_h5_weather_stations_structure(
     file_ref: h5py.File,
     variable_checked: str,
     station_grp_name_starts_with: str = "station",
+    periods: list[tuple[datetime, datetime]] | None = None,
 ):
     """
     Check if all datasets and associated attributs are present in the file.
     Return False and the name of the first missing item if either the dataset or an attribute is missing
     """
-    ref_paths = []
+    missing = []
     for station in file_ref[f"{TIME_SERIES}"].keys():
         if not station.startswith(station_grp_name_starts_with):
             continue
         # check if station contains variable
         station_path = f"{TIME_SERIES}/{station}"
         if variable_checked in map(str, file_ref[station_path].keys()):
-            ref_paths.append(f"{TIME_SERIES}/{station}/time")
-            ref_paths.append(f"{TIME_SERIES}/{station}/{variable_checked}")
+            if periods and not _station_has_samples_in_periods(file_ref, station_path, periods):
+                continue
 
-    for path in ref_paths:
-        if path not in file_checked:
-            return False, path
+            station_missing = []
+            for dataset_name in ("time", variable_checked):
+                path = f"{station_path}/{dataset_name}"
+                if path not in file_checked:
+                    station_missing.append(path)
+
+            if station_missing:
+                missing.append(
+                    {
+                        "station": station,
+                        "variable": variable_checked,
+                        "missing": station_missing,
+                    }
+                )
+
+    if missing:
+        return False, missing
 
     return True, None
+
+
+def _decode_h5_text(value):
+    if isinstance(value, bytes):
+        return value.decode()
+    return value
+
+
+def _station_has_samples_in_periods(
+    file_ref: h5py.File,
+    station_path: str,
+    periods: list[tuple[datetime, datetime]],
+) -> bool:
+    if f"{station_path}/time" not in file_ref:
+        return True
+
+    time_ds = file_ref[f"{station_path}/time"]
+    if "time_origin" in time_ds.attrs.keys() and "time_units" in time_ds.attrs.keys():
+        time_origin = datetime.fromisoformat(_decode_h5_text(time_ds.attrs["time_origin"]))
+        time_units = _decode_h5_text(time_ds.attrs["time_units"])
+        time_values = ureg.Quantity(np.asarray(time_ds[:], dtype=np.float64), time_units).to("s").magnitude
+        for period_start, period_end in periods:
+            period_start_s = (period_start - time_origin).total_seconds()
+            period_end_s = (period_end - time_origin).total_seconds()
+            if np.any((time_values >= period_start_s) & (time_values <= period_end_s)):
+                return True
+        return False
+
+    time_values = np.array([datetime.fromisoformat(_decode_h5_text(value)) for value in time_ds[:]])
+    for period_start, period_end in periods:
+        if np.any((time_values >= period_start) & (time_values <= period_end)):
+            return True
+    return False
 
 
 def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5py.Group | h5py.Dataset):
@@ -192,9 +246,8 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
 
     Notes
     -----
-    - The function reads the **entire dataset** into memory; for very large datasets,
-    consider reading subsets instead.
-    - Compliant with FireBench I/O standard >= 0.1.
+    The function reads the entire dataset into memory; consider reading subsets of very large
+    datasets instead. The reader supports FireBench I/O standard version 0.1 and later.
     """  # pylint: disable=line-too-long
     ds = file_object[dataset_path]
 
@@ -433,19 +486,9 @@ def merge_trees(
     """
     Recursively fill `merged_file` with content from `file1` and `file2`.
 
-    Order:
-    ------
-    1. Copy the full tree from file1 into merged_file.
-    2. Merge the full tree from file2 into merged_file:
-       - If a path does not exist in merged_file, copy it.
-       - If a dataset already exists:
-           * If a conflict solver is provided for this path, use it to
-             combine existing and incoming data.
-           * Otherwise, keep the existing data (we assume they are compatible
-             because conflicts were checked earlier).
-       - Group attributes:
-           * Add attributes that don't exist yet in merged_file.
-           * Attributes listed in IGNORE_ATTRIBUTES are skipped.
+    The function first copies the full tree from ``file1``. It then copies paths that exist only in
+    ``file2`` and preserves compatible datasets already copied. New group attributes are added,
+    except for entries in ``IGNORE_ATTRIBUTES``. Callers must check conflicts before merging.
     """
 
     # 1) copy everything from file1 (no conflicts, merged_file is new/empty)
@@ -594,7 +637,7 @@ def import_tif(
     Parameters
     ----------
     geotiff_path : str
-        Path to the MTBS GeoTIFF (ending with *_dnbr6.tif).
+        Path to the MTBS GeoTIFF (ending with ``_dnbr6.tif``).
     h5file :  h5py.File
         target HDF5 file
     group_name : str | None
@@ -646,15 +689,9 @@ def copy_entire_object_zstd(
     """
     Recursively copy `name` from src_parent to dst_parent.
 
-    Policy:
-    - Groups:
-        * If missing in dst -> create
-        * If already exists -> copy only new attrs via _copy_attributes
-        * Recurse into children
-    - Datasets:
-        * If missing -> create with Zstd(clevel=compression_lvl), load ONE dataset at a time
-        * If exists -> raise
-    - Links/other: skipped
+    Missing groups are created; existing groups receive only new attributes before their children
+    are visited. Missing datasets are copied one at a time with Zstandard compression. An existing
+    destination dataset raises ``ValueError``. Links and other object types are skipped.
     """  # pylint: disable=line-too-long
     src_obj = src_parent.get(name, getlink=False)
     if src_obj is None:

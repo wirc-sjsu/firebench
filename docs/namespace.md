@@ -1,4 +1,4 @@
-# 8. Standard Namespace
+# Standard Namespace
 
 This page lists the standard variable names used in the FireBench project. These names ensure consistency and clarity across the codebase and related data files.
 The standard names are structured from left to right from the broader category to the highest details. For example, the dry fuel load variables all start with `FUEL_LOAD_DRY` even if you would say `dry fuel load`.
@@ -17,7 +17,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `BUILDING_RATIO_FIRE_RESISTANT`: Ratio of fire resistant building [-]
 - `BUILDING_RATIO_STRUCTURE_WOOD_BARE`: Ratio of buildings made with bare wood materials [-]
 - `BUILDING_RATIO_STRUCTURE_WOOD_MORTAR`: Ratio of buildings made with mortar [-]
-- `BUILDING_LENGTH_SEPARATION`: Buildings seperation length [m]
+- `BUILDING_LENGTH_SEPARATION`: Building separation length [m]
 - `BUILDING_LENGTH_SIDE`: Buildings side length [m]
 - `CANOPY_DENSITY_BULK`: Canopy bulk density [kg m-3]
 - `CANOPY_HEIGHT`: Canopy height [m]

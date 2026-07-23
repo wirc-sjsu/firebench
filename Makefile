@@ -1,5 +1,5 @@
 # Declare these targets as phony to avoid conflicts with files of the same name
-.PHONY: test test-cov lint update-lint-score code-formatting bandit update-docs-changelog check-consistency-namespace generate-api-doc docs clean clean-build install-build-tools build check-dist upload-test upload
+.PHONY: test test-cov lint update-lint-score code-formatting fix-code-formatting bandit update-docs-changelog check-consistency-namespace generate-api-doc docs docs-strict docs-linkcheck clean clean-build install-build-tools build check-dist upload-test upload
 
 PYTHON ?= python
 
@@ -19,9 +19,13 @@ lint:
 update-lint-score:
 	python .github/actions/run_pylint.py
 
-# Run black code formatting
+# Check black code formatting
 code-formatting:
 	black --check src/firebench tests .github/actions workflow
+
+# Run black code formatting
+fix-code-formatting:
+	black src/firebench tests .github/actions workflow
 
 # Run bandit analysis
 bandit:
@@ -41,7 +45,15 @@ generate-api-doc:
 
 # generate local documentation
 docs:
-	sphinx-build -b html docs docs/_build/html
+	$(PYTHON) -m sphinx -b html docs docs/_build/html
+
+# Build documentation with the same warning policy used by CI
+docs-strict:
+	$(PYTHON) -m sphinx -W --keep-going -b html docs docs/_build/html
+
+# Check local and external documentation links
+docs-linkcheck:
+	$(PYTHON) -m sphinx -W --keep-going -b linkcheck docs docs/_build/linkcheck
 
 # Remove package build artifacts
 clean-build:
