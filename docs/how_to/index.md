@@ -8,6 +8,7 @@ details.
 :maxdepth: 1
 
 validate_hdf5.md
+review_weather_station_qc.md
 convert_model_output.md
 select_caldor_target.md
 custom_fuel_model.md

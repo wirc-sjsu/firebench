@@ -160,3 +160,4 @@ cython_debug/
 docs/_site/*
 docs/Gemfile.lock
 docs_tmp/
+FUTURES.md

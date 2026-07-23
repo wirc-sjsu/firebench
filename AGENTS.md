@@ -28,6 +28,12 @@ Tests use `pytest`. Place fast behavioral checks in `tests/unit/`, workflow-leve
 
 A separate playground area may be used for manual benchmark exercises with realistic files and generated outputs. It is organized by benchmark case, with each case directory holding the model output inputs, observational data packages or links, runnable command scripts, and generated artifacts such as JSON results, logs, score-card PDFs, figures, and markdown reports. Treat playground outputs as disposable validation artifacts unless the task explicitly asks to update an example command or fixture.
 
+## Weather-Station QC GUI Work
+
+When a request specifically concerns remaining work or merge readiness for the weather-station QC
+GUI, use `FUTURES.md` as the authoritative task list and keep it updated as tasks are completed or
+new requirements are identified.
+
 ## Commit & Pull Request Guidelines
 
 Recent commits use short, imperative, lower-case summaries, for example `fix perimeter extraction` or `add firebench data list cli to reproduce firebench list cli`. Keep commits focused on one logical change. Pull requests should describe the user-visible behavior, list tests run, link related issues when applicable, and include documentation or example command updates for CLI, benchmark, or data workflow changes.

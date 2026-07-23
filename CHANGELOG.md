@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data.
 - Add task-oriented documentation, complete CLI and API references, executable examples, and strict
   documentation CI.
+- Document the weather-station QC GUI workflow, assertion semantics, JSON sessions, and exports,
+  and include `wx-qc` in the CLI reference.
+- Add an adaptive OpenStreetMap road basemap with an offline fallback to the weather-station QC map.
 
 ### Changed
 
@@ -30,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Resolve external polygon paths relative to their HDF5 file during benchmark requirement checks.
 - Preserve established Caldor weather KPI identifiers and canonicalize combined target flags.
 - Support UTC and extended ISO 8601 `date_time` values when standardizing Synoptic observations.
+- Correct weather-station QC handling for contiguous frozen/dropout runs, invalid time axes, and
+  longest and cumulative outage metrics.
+- Apply weather-station QC issue filters consistently and prevent conflicting skipped and greenlit
+  station decisions.
+- Make weather-station QC exports atomic and safely serialized, and apply skipped stations and
+  record removals to cleaned H5 copies.
+- Replace weather-station QC pickle sessions with validated, atomic, versioned JSON sessions that
+  recompute station statistics from the referenced H5 when restored.
+- Support Contextily 1.6 when loading wx-QC road tiles and show complete basemap errors in a dialog
+  and terminal log.
 
 ## [0.9.0] - 2026 / 05 / 18
 ### Added
