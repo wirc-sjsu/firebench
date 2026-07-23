@@ -100,12 +100,8 @@ CURATED_VALIDATION_WINDOWS = {
     },
 }
 
-CURATED_PERIODS = {
-    name: window["period"] for name, window in CURATED_VALIDATION_WINDOWS.items()
-}
-CURATED_PERIMETERS = {
-    name: window["perimeters"] for name, window in CURATED_VALIDATION_WINDOWS.items()
-}
+CURATED_PERIODS = {name: window["period"] for name, window in CURATED_VALIDATION_WINDOWS.items()}
+CURATED_PERIMETERS = {name: window["perimeters"] for name, window in CURATED_VALIDATION_WINDOWS.items()}
 
 
 def _hrrr_cycle_starts(first_time: datetime, last_time: datetime) -> list[datetime]:
@@ -147,9 +143,7 @@ def _build_hrrr_validation_windows() -> dict[str, dict[str, tuple[datetime, date
 
 HRRR_VALIDATION_WINDOWS = _build_hrrr_validation_windows()
 HRRR_PERIODS = {name: window["period"] for name, window in HRRR_VALIDATION_WINDOWS.items()}
-HRRR_PERIMETERS = {
-    name: window["perimeters"] for name, window in HRRR_VALIDATION_WINDOWS.items()
-}
+HRRR_PERIMETERS = {name: window["perimeters"] for name, window in HRRR_VALIDATION_WINDOWS.items()}
 
 WX_PERIOD_SETS = (
     {
@@ -223,7 +217,11 @@ AREA_RELATIVE_ERROR_AT_SCORE_50 = 0.20
 
 CTX_SPEC = {
     ("agg_bin", "building_damage", "obs"): "Aggregate building damage dataset to binary classes for obs",
-    ("agg_bin", "building_damage", "model"): "Aggregate building damage dataset to binary classes for model",
+    (
+        "agg_bin",
+        "building_damage",
+        "model",
+    ): "Aggregate building damage dataset to binary classes for model",
     ("agg_bin", "mtbs_severity", "obs"): "Aggregate mtbs severity dataset to binary classes for obs",
     ("agg_bin", "mtbs_severity", "model"): "Aggregate mtbs severity dataset to binary classes for model",
     (

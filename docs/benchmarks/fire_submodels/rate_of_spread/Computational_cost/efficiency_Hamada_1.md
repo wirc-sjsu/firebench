@@ -37,7 +37,7 @@
     </strong>
     :
     <em>
-        Execution time boxplot for Hamada 1 rate of spread model using WUDAPT_urban fuel model. Fliers points not shown on the figure. 
+        Execution-time box plot for the Hamada 1 rate-of-spread model using the WUDAPT urban fuel model. Outliers are omitted.
     </em>
 </p>
 

@@ -3,7 +3,8 @@
 ### Objectives
 
 The goal is to estimate the execution time of the rate of spread model for specific fuel models.
-It allows to estimate the overall performance of the rate of spread model implementation and assess discrepancies in performances for different fuel classes within a fuel model.
+It estimates the overall performance of a rate-of-spread implementation and differences between
+fuel classes within a fuel model.
 
 - **Performance evaluation** uses `time.perf_counter()` to measure execution time of the rate of spread function only (`firebench.ros_models.Rothermel_SFIRE.rothermel` for example).
 

@@ -2,7 +2,11 @@ import pytest
 import h5py
 from datetime import datetime, timezone
 
-from firebench.standardize import merge_authors, validate_h5_weather_stations_structure
+from firebench.standardize import (
+    merge_authors,
+    validate_h5_requirement,
+    validate_h5_weather_stations_structure,
+)
 
 
 @pytest.mark.parametrize(
@@ -116,6 +120,31 @@ from firebench.standardize import merge_authors, validate_h5_weather_stations_st
 )
 def test_merge_authors(created_by_1, created_by_2, expected):
     assert merge_authors(created_by_1, created_by_2) == expected
+
+
+def test_validate_h5_requirement_resolves_rel_path_from_h5_directory(tmp_path, monkeypatch):
+    bundle_dir = tmp_path / "bundle"
+    kml_dir = bundle_dir / "kml"
+    kml_dir.mkdir(parents=True)
+    (kml_dir / "perimeter.kml").write_text("<kml/>", encoding="utf-8")
+
+    h5_path = bundle_dir / "model.h5"
+    with h5py.File(h5_path, "w") as h5:
+        perimeter = h5.create_dataset("/polygons/perimeter", data=0)
+        perimeter.attrs["rel_path"] = "kml/perimeter.kml"
+        perimeter.attrs["time"] = "2021-08-20T20:20-07:00"
+
+    working_dir = tmp_path / "working"
+    working_dir.mkdir()
+    monkeypatch.chdir(working_dir)
+
+    with h5py.File(h5_path, "r") as h5:
+        result = validate_h5_requirement(
+            h5,
+            {"/polygons/perimeter": ["rel_path", "time"]},
+        )
+
+    assert result == (True, None)
 
 
 def test_validate_h5_weather_stations_structure_reports_missing_station_details(tmp_path):

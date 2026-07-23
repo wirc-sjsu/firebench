@@ -43,7 +43,7 @@ The Rothermel_SFIRE model is a class derived from `firebench.ros_models.RateOfSp
 ```python
 # Import rate of spread package from firebench
 import firebench.ros_models as rm
-# create the input dictionnary with the inputs listed above
+# Create the input dictionary with the inputs listed above.
 model_inputs = {...}
 # compute the rate of spread
 ros = rm.Rothermel_SFIRE.compute_ros(model_inputs)

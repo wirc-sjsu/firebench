@@ -69,6 +69,13 @@ dev = [
     "pytest-mock",
     "shapely",
 ]
+docs = [
+    "myst-parser",
+    "pytest",
+    "sphinx",
+    "sphinx-click",
+    "sphinx-rtd-theme",
+]
 [tool.hatch.envs.default]
 features = ["dev"]
 [project.scripts]

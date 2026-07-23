@@ -24,6 +24,7 @@ assignees: ''
 - [ ] Link the related issue (if applicable)
 - [ ] Ensure documentation is clear and comprehensive
 - [ ] Documentation added in the correct section
+- [ ] Commands, code, structured examples, local links, and external URLs checked
 - [ ] Add to changelog
 - [ ] Code review by at least one other contributor (if applicable)
 - [ ] Ensure adherence to documentation guidelines

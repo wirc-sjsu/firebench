@@ -16,69 +16,30 @@
 ![GitHub License](https://img.shields.io/github/license/wirc-sjsu/firebench)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15477459.svg)](https://doi.org/10.5281/zenodo.15477459)
 
+FireBench is an open-source Python library for systematic, transparent, and reproducible
+benchmarking and intercomparison of fire models. It provides standardized model-output formats,
+benchmark datasets, metrics, normalization, scorecards, and command-line workflows.
 
-**FireBench** is a Python library designed for the systematic benchmarking and inter-comparison of fire models.
-Recent advancements in fire modeling have introduced complex and varied models, but there is a lack of systematic evaluation regarding their accuracy, efficiency, sensitivity, validity domain, and inter-compatibility.
-FireBench aims to address this gap by providing a framework to assess fire models on the following criteria:
+## Quick Start
 
-- **Accuracy**: Precision in predicting fire front positions and plume dynamics.
-- **Efficiency**: Computational resources required for specific computation.
-- **Sensitivity**: Model outputs' responsiveness to input variations, crucial for calibration and data assimilation.
-- **Validity Domain**: Operational input ranges for which models are applicable.
-- **Inter-Compatibility**: Integration capabilities with other models.
-
-FireBench offers a dual approach for evaluation: intercomparison without extensive observational data and benchmarking against a validation dataset. This framework aims to enhance fire modeling for both scientific research and operational applications, with results archived in a dedicated database.
-
-## Installation
-
-### Prerequisites
-
-To install the FireBench library, follow these steps:
-
-### 1. Clone the Repository
-
-You can clone the repository using either HTTPS or SSH. Choose one of the following methods:
-
-#### Using HTTPS:
 ```bash
 git clone https://github.com/wirc-sjsu/firebench.git
-```
-
-#### Using SSH:
-```bash
-git clone git@github.com:wirc-sjsu/firebench.git
-```
-
-### 2. Install FireBench and its Dependencies
-
-Navigate to the cloned repository and install the FireBench library along with its dependencies using `pip`:
-
-```bash
 cd firebench
-pip install .
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install .
+firebench list
 ```
 
-### 3. Set up local paths
+For environment setup, benchmark data, target selection, and complete workflows, use the
+[FireBench documentation](https://firebench.readthedocs.io/en/latest/).
 
-FireBench uses `~/.firebench/local_db` as the default local database directory for files managed locally by workflows.
-Functions that write workflow records also accept an explicit `local_db_path` argument.
+## Documentation
 
-FireBench contains package data such as fuel models in the repository `data` directory.
-Data helpers use that directory by default, and `get_firebench_data_directory(data_path=...)` can be used when a custom data location is needed.
+- [Getting Started](https://firebench.readthedocs.io/en/latest/getting_started/index.html)
+- [Run the Caldor benchmark](https://firebench.readthedocs.io/en/latest/tutorials/cli_caldor_benchmark.html)
+- [Prepare standard model output](https://firebench.readthedocs.io/en/latest/standard_format.html)
+- [Reference and Concepts](https://firebench.readthedocs.io/en/latest/reference/index.html)
 
-## Community Discussions
-
-We encourage you to use the [GitHub Discussions](https://github.com/wirc-sjsu/firebench/discussions) tab for questions, help requests, and general discussions about the project. This helps keep our issue tracker focused on bugs and feature requests.
-
-### How to Use Discussions
-
-- **Q&A**: If you have a question about using FireBench, please check the Q&A category.
-- **Ideas**: Share your ideas for new features or improvements in the Ideas category.
-- **Show and Tell**: Showcase your projects and workflows using FireBench.
-- **General**: For any other discussions related to FireBench.
-
-Feel free to start a new discussion or join existing ones to engage with the community!
-
-## Contributing
-
-We welcome contributions to FireBench! For more information on how to contribute, please see our [contribution guidelines](CONTRIBUTE.md).
+Questions and ideas are welcome in [GitHub Discussions](https://github.com/wirc-sjsu/firebench/discussions).
+See the [contribution guide](docs/contribute.md) to contribute code, data, documentation, or workflows.

@@ -1,4 +1,4 @@
-# 1. Datasets and fire experiments
+# Datasets and Fire Experiments
 
 This section provides information on datasets and fire experiments used in the `FireBench`project.
 

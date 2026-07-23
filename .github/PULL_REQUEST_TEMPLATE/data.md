@@ -31,6 +31,7 @@ assignees: ''
 - [ ] Update relevant processing/post-processing scripts
 - [ ] Includes tests for the data (if applicable)
 - [ ] Documentation updated
+- [ ] User-facing commands, examples, and links reviewed against the implementation
 - [ ] Add to changelog
 - [ ] Code review by at least one other contributor (if applicable)
 - [ ] Ensure adherence to data handling standards and guidelines

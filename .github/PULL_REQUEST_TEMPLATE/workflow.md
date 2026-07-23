@@ -27,6 +27,7 @@ assignees: ''
 - [ ] Add workflow to the `workflow` directory in the repository
 - [ ] Includes tests for the workflow (if applicable)
 - [ ] Documentation updated
+- [ ] User-facing commands, examples, and links reviewed against the implementation
 - [ ] Add to changelog
 - [ ] Code review by at least one other contributor
 - [ ] Ensure adherence to workflow standards and guidelines
