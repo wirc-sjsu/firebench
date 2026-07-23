@@ -35,6 +35,19 @@ reviewing dataset-wide outage values. Use **Settings** to change assertion visib
 bounds, run lengths, or outage-warning thresholds. Settings are applied only after every value
 passes validation.
 
+## Use the station map
+
+The **Map** tab displays weather stations over the standard OpenStreetMap road map. Tile detail
+updates automatically after you zoom or pan with the Matplotlib toolbar. Fire perimeters, station
+colors, wind arrows, missing-data markers, and selection popups remain above the road layer.
+
+The road map requires network access. Clear **Road map** to use the plain longitude/latitude map
+without requesting tiles. If a request fails, the GUI keeps the plain map, turns the option off,
+and shows the complete error in a dialog and in the terminal log; select **Road map** again to
+retry. Downloaded tiles are cached under the user cache directory so revisiting an area does not
+request the same tiles again. The GUI requests only the current visible extent and does not provide
+map prefetch or offline downloads. Map data is © OpenStreetMap contributors.
+
 ## Expected HDF5 structure
 
 The input must contain a `time_series` group with one group per station. Station group names use
@@ -111,11 +124,11 @@ plots continue to show the original observations until an export applies the rem
 ## Save and restore sessions
 
 **Save Session** writes versioned UTF-8 JSON containing the HDF5 path, QC settings, station
-decisions, record removals, current station, map mode, and Overview column visibility. It contains
-no station data or cached statistics. On restore, the complete JSON shape and field types are
-validated before application state changes, then the referenced HDF5 file is reloaded and all
-statistics are recomputed. If a restored file somehow marks a station both skipped and greenlit,
-the skip decision wins.
+decisions, record removals, current station, map mode, road-map visibility, and Overview column
+visibility. It contains no station data or cached statistics. On restore, the complete JSON shape
+and field types are validated before application state changes, then the referenced HDF5 file is
+reloaded and all statistics are recomputed. If a restored file somehow marks a station both
+skipped and greenlit, the skip decision wins.
 
 Closing a session with work present writes
 `~/.firebench/wx_qc_autosave.json`; the next launch offers to restore it. Legacy pickle sessions

@@ -1,7 +1,16 @@
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+import inspect
+import logging
+import os
+from pathlib import Path
 import time
-import warnings
 import tkinter as tk
 from tkinter import ttk, messagebox
+import warnings
+
+import geopandas as gpd
+import h5py
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
@@ -9,15 +18,113 @@ from matplotlib.lines import Line2D
 import matplotlib.cm as mcm
 import matplotlib.colors as mcolors
 import matplotlib.dates as mdates
+from matplotlib.ticker import FuncFormatter
 import numpy as np
-import h5py
-import geopandas as gpd
-from datetime import datetime
+from pyproj import Transformer
 
+from firebench import __version__
 from ..state import visible_issues
 from ..theme import ACCENT, MISSING_MARKER, MUTED, SKIP_RED, GREEN_OK, UNDECIDED, FONT_MONO, FIG_DPI, PAD
 from ..widgets import TimeNavigator
 from ..constants import MAP_COLOR_MODES, parse_nonnegative_finite
+
+_WGS84_TO_WEB_MERCATOR = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
+_WEB_MERCATOR_TO_WGS84 = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
+_OSM_ATTRIBUTION = "© OpenStreetMap contributors"
+_OSM_USER_AGENT = (
+    f"FireBench/{__version__} wx-qc "
+    "(+https://github.com/wirc-sjsu/firebench; contact: aurelien.costes31@gmail.com)"
+)
+_MAP_TILE_DEBOUNCE_MS = 250
+_MAP_MIN_SPAN_M = 10_000.0
+LOGGER = logging.getLogger(__name__)
+
+
+def project_lonlat(lons, lats):
+    """Project longitude/latitude arrays to Web Mercator, preserving shape."""
+    lons_arr = np.asarray(lons, dtype=float)
+    lats_arr = np.asarray(lats, dtype=float)
+    if lons_arr.shape != lats_arr.shape:
+        raise ValueError("longitude and latitude arrays must have the same shape")
+    # Web Mercator is undefined at the poles. Clipping also prevents pyproj
+    # from returning infinities for otherwise valid geographic coordinates.
+    safe_lats = np.clip(lats_arr, -85.05112878, 85.05112878)
+    xs, ys = _WGS84_TO_WEB_MERCATOR.transform(lons_arr, safe_lats)
+    invalid = ~np.isfinite(lons_arr) | ~np.isfinite(lats_arr)
+    xs = np.asarray(xs, dtype=float)
+    ys = np.asarray(ys, dtype=float)
+    invalid |= ~np.isfinite(xs) | ~np.isfinite(ys)
+    xs[invalid] = np.nan
+    ys[invalid] = np.nan
+    return xs, ys
+
+
+def map_extent(xs, ys, minimum_span=_MAP_MIN_SPAN_M, padding=0.08):
+    """Return padded finite map limits with a useful minimum visible span."""
+    xs_arr = np.asarray(xs, dtype=float)
+    ys_arr = np.asarray(ys, dtype=float)
+    finite = np.isfinite(xs_arr) & np.isfinite(ys_arr)
+    if not finite.any():
+        half_span = float(minimum_span) * (1.0 + 2.0 * padding) / 2.0
+        return (-half_span, half_span, -half_span, half_span)
+    xmin, xmax = float(xs_arr[finite].min()), float(xs_arr[finite].max())
+    ymin, ymax = float(ys_arr[finite].min()), float(ys_arr[finite].max())
+    xspan = max(xmax - xmin, float(minimum_span))
+    yspan = max(ymax - ymin, float(minimum_span))
+    xspan *= 1.0 + 2.0 * padding
+    yspan *= 1.0 + 2.0 * padding
+    xmid = (xmin + xmax) / 2.0
+    ymid = (ymin + ymax) / 2.0
+    return (xmid - xspan / 2.0, xmid + xspan / 2.0, ymid - yspan / 2.0, ymid + yspan / 2.0)
+
+
+def map_tile_cache_dir():
+    """Return FireBench's persistent Contextily cache directory."""
+    cache_root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    return cache_root / "firebench" / "contextily"
+
+
+def fetch_osm_tiles(extent, cache_dir):
+    """Fetch standard OSM tiles for a Web Mercator extent."""
+    import contextily as cx
+
+    cx.set_cache_dir(str(cache_dir))
+    west, east, south, north = extent
+    kwargs = {
+        "zoom": "auto",
+        "source": cx.providers.OpenStreetMap.Mapnik,
+        "headers": {"User-Agent": _OSM_USER_AGENT},
+        "n_connections": 1,
+        "use_cache": True,
+        "max_retries": 0,
+        "timeout": (3.05, 10),
+    }
+    parameters = inspect.signature(cx.bounds2img).parameters
+    accepts_kwargs = any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+    )
+    if not accepts_kwargs and "headers" not in parameters:
+        raise RuntimeError(
+            f"Contextily {cx.__version__} is too old for identified OpenStreetMap requests; "
+            "install contextily>=1.6"
+        )
+    if not accepts_kwargs:
+        # Contextily 1.6 supports identified/cached requests but predates the
+        # timeout keyword added in 1.7. Pass only options its public API accepts.
+        kwargs = {name: value for name, value in kwargs.items() if name in parameters}
+    return cx.bounds2img(west, south, east, north, **kwargs)
+
+
+def _format_longitude(value, _position=None):
+    lon, _lat = _WEB_MERCATOR_TO_WGS84.transform(value, 0.0)
+    suffix = "E" if lon > 0 else "W" if lon < 0 else ""
+    return f"{abs(lon):.2f}°{suffix}"
+
+
+def _format_latitude(value, _position=None):
+    _lon, lat = _WEB_MERCATOR_TO_WGS84.transform(0.0, value)
+    suffix = "N" if lat > 0 else "S" if lat < 0 else ""
+    return f"{abs(lat):.2f}°{suffix}"
 
 
 class MapTabMixin:
@@ -52,6 +159,12 @@ class MapTabMixin:
         ttk.Label(ctrl, text="Click station point to open detail", style="Muted.TLabel").pack(
             side="left", padx=PAD
         )
+        ttk.Checkbutton(
+            ctrl,
+            text="Road map",
+            variable=self.var_map_basemap,
+            command=self._on_map_basemap_toggle,
+        ).pack(side="right", padx=PAD)
 
         # ── variable_value mode: which variable ─────────────────────────────
         self._map_value_ctrl = ttk.Frame(f)
@@ -114,7 +227,213 @@ class MapTabMixin:
         self.canvas_map.get_tk_widget().pack(fill="both", expand=True)
         self.canvas_map.mpl_connect("motion_notify_event", self._on_map_motion)
         self.canvas_map.mpl_connect("button_press_event", self._on_map_click)
+        self.canvas_map.mpl_connect("draw_event", self._on_map_draw)
         self._on_map_mode_change()
+
+    @staticmethod
+    def _map_extents_close(first, second):
+        """Return whether two Web Mercator view extents are effectively equal."""
+        if first is None or second is None:
+            return False
+        return bool(np.allclose(first, second, rtol=1e-7, atol=0.1))
+
+    def _map_current_extent(self):
+        """Return the current Web Mercator viewport as west/east/south/north."""
+        if not hasattr(self, "ax_map"):
+            return None
+        west, east = self.ax_map.get_xlim()
+        south, north = self.ax_map.get_ylim()
+        extent = (float(west), float(east), float(south), float(north))
+        if not all(np.isfinite(extent)) or east <= west or north <= south:
+            return None
+        return extent
+
+    def _on_map_draw(self, _event=None):
+        """Debounce an adaptive tile refresh after a map extent change."""
+        if getattr(self, "_map_tile_closed", False) or not self.var_map_basemap.get() or not self.stations:
+            return
+        offsets = getattr(self, "_map_offsets", None)
+        if offsets is None or not np.isfinite(offsets).all(axis=1).any():
+            return
+        extent = self._map_current_extent()
+        if extent is None or self._map_extents_close(extent, self._map_tile_view_extent):
+            return
+        self._map_tile_pending_extent = extent
+        after_id = getattr(self, "_map_tile_debounce_after_id", None)
+        if after_id is not None:
+            self.after_cancel(after_id)
+        self._map_tile_debounce_after_id = self.after(_MAP_TILE_DEBOUNCE_MS, self._map_start_tile_request)
+
+    def _on_map_basemap_toggle(self):
+        """Enable/retry or disable the OSM road basemap."""
+        if self.var_map_basemap.get():
+            self._map_tile_view_extent = None
+            self._on_map_draw()
+            return
+        after_id = getattr(self, "_map_tile_debounce_after_id", None)
+        if after_id is not None:
+            self.after_cancel(after_id)
+            self._map_tile_debounce_after_id = None
+        self._map_tile_pending_extent = None
+        self._map_tile_view_extent = None
+        self._map_remove_basemap_artists()
+        if hasattr(self, "canvas_map"):
+            self.canvas_map.draw_idle()
+
+    def _map_cancel_tile_callbacks(self):
+        """Cancel pending Tk callbacks without touching an in-flight request."""
+        for attr in ("_map_tile_debounce_after_id", "_map_tile_poll_after_id"):
+            after_id = getattr(self, attr, None)
+            if after_id is not None:
+                try:
+                    self.after_cancel(after_id)
+                except tk.TclError:
+                    pass
+                setattr(self, attr, None)
+
+    def _map_start_tile_request(self):
+        """Start the latest requested tile fetch, or leave it pending."""
+        self._map_tile_debounce_after_id = None
+        if (
+            getattr(self, "_map_tile_closed", False)
+            or not self.var_map_basemap.get()
+            or self._map_tile_pending_extent is None
+        ):
+            return
+        future = getattr(self, "_map_tile_future", None)
+        if future is not None and not future.done():
+            return
+        try:
+            cache_dir = map_tile_cache_dir()
+            cache_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self._map_tile_failed(exc)
+            return
+        if self._map_tile_executor is None:
+            self._map_tile_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wx-qc-map")
+        extent = self._map_tile_pending_extent
+        self._map_tile_request_extent = extent
+        self._map_tile_future = self._map_tile_executor.submit(fetch_osm_tiles, extent, cache_dir)
+        self._map_tile_poll_after_id = self.after(50, self._map_poll_tile_request)
+
+    def _map_poll_tile_request(self):
+        """Poll the background tile request from Tk's main thread."""
+        self._map_tile_poll_after_id = None
+        future = self._map_tile_future
+        if future is None:
+            return
+        if not future.done():
+            self._map_tile_poll_after_id = self.after(50, self._map_poll_tile_request)
+            return
+        request_extent = self._map_tile_request_extent
+        self._map_tile_future = None
+        self._map_tile_request_extent = None
+        try:
+            image, image_extent = future.result()
+        except Exception as exc:  # tile libraries expose several network exception types
+            if self.var_map_basemap.get():
+                self._map_tile_failed(exc)
+            return
+        current_extent = self._map_current_extent()
+        newest_extent = self._map_tile_pending_extent
+        if (
+            self.var_map_basemap.get()
+            and self._map_extents_close(request_extent, current_extent)
+            and self._map_extents_close(request_extent, newest_extent)
+        ):
+            self._map_tile_cached_result = (image, image_extent, request_extent)
+            self._map_render_basemap(image, image_extent, request_extent)
+        elif self.var_map_basemap.get() and newest_extent is not None:
+            # The user moved while the request was in flight. Do not queue every
+            # intermediate view; immediately fetch only the latest settled extent.
+            self._map_start_tile_request()
+
+    def _map_render_basemap(self, image, image_extent, view_extent):
+        """Render a fetched tile mosaic behind all QC map artists."""
+        current_extent = self._map_current_extent()
+        self._map_remove_basemap_artists()
+        self._map_basemap_artist = self.ax_map.imshow(
+            image,
+            extent=image_extent,
+            interpolation="bilinear",
+            zorder=0,
+        )
+        self._map_attribution_artist = self.ax_map.text(
+            0.995,
+            0.005,
+            _OSM_ATTRIBUTION,
+            transform=self.ax_map.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=7,
+            color="#333333",
+            zorder=10,
+            bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.72, "pad": 1.5},
+        )
+        if current_extent is not None:
+            self.ax_map.set_xlim(current_extent[:2])
+            self.ax_map.set_ylim(current_extent[2:])
+        self._map_tile_view_extent = view_extent
+        self.canvas_map.draw_idle()
+
+    def _map_restore_cached_basemap(self):
+        """Restore an in-memory tile mosaic after an axes rebuild."""
+        cached = self._map_tile_cached_result
+        extent = self._map_current_extent()
+        if self.var_map_basemap.get() and cached is not None and self._map_extents_close(cached[2], extent):
+            self._map_render_basemap(*cached)
+            return True
+        self._map_tile_view_extent = None
+        return False
+
+    def _map_remove_basemap_artists(self):
+        """Remove the current tile image and its attribution."""
+        for attr in ("_map_basemap_artist", "_map_attribution_artist"):
+            artist = getattr(self, attr, None)
+            if artist is not None:
+                try:
+                    artist.remove()
+                except (ValueError, AttributeError):
+                    pass
+                setattr(self, attr, None)
+
+    def _map_tile_failed(self, exc):
+        """Fall back to the plain map and expose a manual retry path."""
+        self._map_tile_future = None
+        self._map_tile_request_extent = None
+        self._map_tile_pending_extent = None
+        self._map_remove_basemap_artists()
+        self.var_map_basemap.set(False)
+        detail = f"{type(exc).__name__}: {exc}"
+        LOGGER.error(
+            "OpenStreetMap road tile request failed: %s",
+            detail,
+            exc_info=(type(exc), exc, exc.__traceback__),
+        )
+        if hasattr(self, "lbl_status"):
+            self.lbl_status.config(text="Road map unavailable; see error details")
+        if isinstance(self, tk.Misc):
+            messagebox.showerror(
+                "Road map unavailable",
+                f"Could not load OpenStreetMap road tiles.\n\n{detail}\n\n"
+                "The plain map will remain available. Enable Road map to retry.",
+                parent=self,
+            )
+        if hasattr(self, "canvas_map"):
+            self.canvas_map.draw_idle()
+
+    def _shutdown_map_tiles(self):
+        """Cancel map callbacks and stop accepting tile work during application exit."""
+        self._map_tile_closed = True
+        self._map_cancel_tile_callbacks()
+        future = getattr(self, "_map_tile_future", None)
+        if future is not None:
+            future.cancel()
+        executor = getattr(self, "_map_tile_executor", None)
+        if executor is not None:
+            executor.shutdown(wait=False, cancel_futures=True)
+        self._map_tile_future = None
+        self._map_tile_executor = None
 
     _MAP_CLABELS = {
         "issues": "# Issues",
@@ -788,7 +1107,7 @@ class MapTabMixin:
             missing = ~valid
         return arrow, calm, missing
 
-    def _map_draw_wind_layers(self, ax, lons_a, lats_a, ws, wd):
+    def _map_draw_wind_layers(self, ax, xs_a, ys_a, ws, wd):
         """Draw wind field as quiver plot + calm-dot scatter + missing markers.
 
         Removes old quiver and calm-dot artists before creating new ones.
@@ -798,8 +1117,8 @@ class MapTabMixin:
 
         Args:
             ax (matplotlib.axes.Axes): axes to draw on.
-            lons_a (np.ndarray): station longitudes (n_stations,).
-            lats_a (np.ndarray): station latitudes (n_stations,).
+            xs_a (np.ndarray): station Web Mercator eastings (n_stations,).
+            ys_a (np.ndarray): station Web Mercator northings (n_stations,).
             ws (np.ndarray, dtype=float64): wind speeds (m/s), NaN = missing.
             wd (np.ndarray, dtype=float64): wind directions (degrees, 0-360).
 
@@ -829,8 +1148,8 @@ class MapTabMixin:
             norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
             rad = np.deg2rad(wd[arrow])
             self._map_quiver = ax.quiver(
-                lons_a[arrow],
-                lats_a[arrow],
+                xs_a[arrow],
+                ys_a[arrow],
                 -np.sin(rad),
                 -np.cos(rad),
                 wsv,
@@ -847,8 +1166,8 @@ class MapTabMixin:
                 zorder=3,
             )
         # Calm dots created even when empty for unconditional filter-on check.
-        self._map_calm_dots = ax.scatter(lons_a[calm], lats_a[calm], s=12, color=MUTED, zorder=3)
-        self._map_set_missing_marker(lons_a[missing], lats_a[missing])
+        self._map_calm_dots = ax.scatter(xs_a[calm], ys_a[calm], s=12, color=MUTED, zorder=3)
+        self._map_set_missing_marker(xs_a[missing], ys_a[missing])
         return norm
 
     def _load_perim_h5(self, path):
@@ -919,6 +1238,9 @@ class MapTabMixin:
         if not show_all:
             try:
                 gdf = gpd.read_file(str(perims[0]["kml_path"]), engine="pyogrio")
+                if gdf.crs is None:
+                    gdf = gdf.set_crs("EPSG:4326")
+                gdf = gdf.to_crs("EPSG:3857")
                 gdf.plot(ax=ax, facecolor="none", edgecolor="black", linewidth=0.8, zorder=1)
             except (OSError, RuntimeError, TypeError, ValueError) as exc:
                 self.lbl_status.config(text=f"Perimeter load failed: {exc}")
@@ -930,6 +1252,9 @@ class MapTabMixin:
         for p, dn in zip(perims, date_nums):
             try:
                 gdf = gpd.read_file(str(p["kml_path"]), engine="pyogrio")
+                if gdf.crs is None:
+                    gdf = gdf.set_crs("EPSG:4326")
+                gdf = gdf.to_crs("EPSG:3857")
                 gdf.plot(ax=ax, facecolor="none", edgecolor=cmap_obj(norm(dn)), linewidth=0.8, zorder=1)
                 any_ok = True
             except (OSError, RuntimeError, TypeError, ValueError):
@@ -993,14 +1318,15 @@ class MapTabMixin:
             self._map_agg_running = False
             self.pb_load.pack_forget()
         ax = self.ax_map
-        # Cached lon/lat arrays: rebuilt only when station list changes (perf).
+        # Cached projected station arrays: rebuilt only when station list changes.
         lonlat = getattr(self, "_map_lonlat", None)
         if lonlat is None or lonlat[0] != self._map_stids:
-            lons_a = np.array([self.stations[s]["lon"] for s in self._map_stids], dtype=float)
-            lats_a = np.array([self.stations[s]["lat"] for s in self._map_stids], dtype=float)
-            self._map_lonlat = (self._map_stids[:], lons_a, lats_a)
+            lons = np.array([self.stations[s]["lon"] for s in self._map_stids], dtype=float)
+            lats = np.array([self.stations[s]["lat"] for s in self._map_stids], dtype=float)
+            xs_a, ys_a = project_lonlat(lons, lats)
+            self._map_lonlat = (self._map_stids[:], xs_a, ys_a)
         else:
-            _, lons_a, lats_a = lonlat
+            _, xs_a, ys_a = lonlat
         # Structural signature: when unchanged, reuse existing artists (scatter, colorbar,
         # missing markers, perimeter, axes decor) and update in place. No ax.cla(),
         # no colorbar destroy/recreate (full relayout). Fast path: window scrub or calm
@@ -1020,9 +1346,9 @@ class MapTabMixin:
         if (
             struct_sig == getattr(self, "_map_draw_sig", None)
             and self._map_sc is not None
-            and self._map_fast_update(cb, lons_a, lats_a, agg_lbl)
+            and self._map_fast_update(cb, xs_a, ys_a, agg_lbl)
         ):
-            self._map_offsets = np.column_stack([lons_a, lats_a]) if len(lons_a) else None
+            self._map_offsets = np.column_stack([xs_a, ys_a]) if len(xs_a) else None
             self._map_plotted = set(self._map_stids)
             self._map_refresh_overlays()
             self.canvas_map.draw_idle()
@@ -1034,6 +1360,13 @@ class MapTabMixin:
             self._map_perim_cbar.remove()
             self._map_perim_cbar = None
 
+        previous_extent = self._map_current_extent()
+        previous_sig = getattr(self, "_map_draw_sig", None)
+        preserve_extent = (
+            previous_extent
+            if previous_sig is not None and previous_sig[2] == tuple(self._map_stids)
+            else None
+        )
         ax.cla()
         # ax.cla() silently drops hover/selection/popup artists; null out handles
         # to prevent double-remove. Also clear cached mode artists (quiver, calm dots).
@@ -1045,11 +1378,13 @@ class MapTabMixin:
         self._map_missing_circ = None
         self._map_missing_x = None
         self._map_cbar_sm = None
+        self._map_basemap_artist = None
+        self._map_attribution_artist = None
         if self._perim_data:
             self._map_draw_perimeters(ax)
         if cb == "qc_status":
             colors = [self._QC_STATUS_COLORS[self._map_qc_status(s)][0] for s in self._map_stids]
-            self._map_sc = ax.scatter(lons_a, lats_a, c=colors, s=45, alpha=0.85)
+            self._map_sc = ax.scatter(xs_a, ys_a, c=colors, s=45, alpha=0.85, zorder=3)
             handles = [
                 Line2D([0], [0], marker="o", linestyle="", color=color, label=label)
                 for color, label in self._QC_STATUS_COLORS.values()
@@ -1071,7 +1406,7 @@ class MapTabMixin:
             norm, rgba = self._map_value_colors(vals, valid_mask, cmap_obj)
             # Full station-indexed scatter (incl. NaN points) keeps indices aligned
             # with _map_stids for click-to-navigate; missing marker overlay shows no-data cue.
-            self._map_sc = ax.scatter(lons_a, lats_a, c=rgba, s=45)
+            self._map_sc = ax.scatter(xs_a, ys_a, c=rgba, s=45, zorder=3)
             if valid_mask.any():
                 sm = mcm.ScalarMappable(norm=norm, cmap=cmap_obj)
                 sm.set_array([])
@@ -1080,15 +1415,15 @@ class MapTabMixin:
                     sm, ax=ax, label=f"{vname} [{units}]  ({agg_lbl})", fraction=0.03, pad=0.02
                 )
             self._map_value_units = units
-            self._map_make_missing_marker(ax, lons_a[~valid_mask], lats_a[~valid_mask])
+            self._map_make_missing_marker(ax, xs_a[~valid_mask], ys_a[~valid_mask])
             self._map_cvals_arr = None
         elif cb == "wind_combo":
             ws, wd = self._map_wind_columns()
             # Invisible scatter (arrows are visible content); keeps index alignment with
             # _map_stids for consistency; click hit-testing uses _map_offsets directly.
-            self._map_sc = ax.scatter(lons_a, lats_a, s=45, alpha=0.0)
+            self._map_sc = ax.scatter(xs_a, ys_a, s=45, alpha=0.0, zorder=3)
             self._map_make_missing_marker(ax, np.array([]), np.array([]))
-            norm = self._map_draw_wind_layers(ax, lons_a, lats_a, ws, wd)
+            norm = self._map_draw_wind_layers(ax, xs_a, ys_a, ws, wd)
             units = next(
                 (
                     self.stations[s]["var_units"].get("wind_speed", "")
@@ -1110,19 +1445,37 @@ class MapTabMixin:
         else:
             clabel = self._MAP_CLABELS.get(cb, "N points")
             cvals = [self._map_cval(s, cb) for s in self._map_stids]
-            self._map_sc = ax.scatter(lons_a, lats_a, c=cvals, cmap="RdYlGn_r", s=45, alpha=0.85)
+            self._map_sc = ax.scatter(xs_a, ys_a, c=cvals, cmap="RdYlGn_r", s=45, alpha=0.85, zorder=3)
             self._map_cbar = ax.figure.colorbar(self._map_sc, ax=ax, label=clabel, fraction=0.03, pad=0.02)
             self._map_cvals_arr = np.array(cvals, dtype=float) if cvals else None
         ax.set_xlabel("Longitude")
         ax.set_ylabel("Latitude")
         if cb != "wind_combo":
             ax.set_title("Station Map  (click a point to open detail)")
-        ax.grid(True, alpha=0.3)
+        ax.xaxis.set_major_formatter(FuncFormatter(_format_longitude))
+        ax.yaxis.set_major_formatter(FuncFormatter(_format_latitude))
+        ax.grid(True, alpha=0.2)
+        ax.set_aspect("equal", adjustable="box")
+        if preserve_extent is not None:
+            ax.set_xlim(preserve_extent[:2])
+            ax.set_ylim(preserve_extent[2:])
+        else:
+            extent_xs, extent_ys = xs_a, ys_a
+            data_bounds = np.array(
+                [ax.dataLim.x0, ax.dataLim.x1, ax.dataLim.y0, ax.dataLim.y1], dtype=float
+            )
+            if np.isfinite(data_bounds).all():
+                extent_xs = np.concatenate([xs_a, data_bounds[:2]])
+                extent_ys = np.concatenate([ys_a, data_bounds[2:]])
+            west, east, south, north = map_extent(extent_xs, extent_ys)
+            ax.set_xlim(west, east)
+            ax.set_ylim(south, north)
         self._map_color_mode = cb
         self._map_draw_sig = struct_sig
-        self._map_offsets = np.column_stack([lons_a, lats_a]) if len(lons_a) else None
+        self._map_offsets = np.column_stack([xs_a, ys_a]) if len(xs_a) else None
         self._map_plotted = set(self._map_stids)
         self._map_refresh_overlays()
+        self._map_restore_cached_basemap()
         self.canvas_map.draw_idle()
 
     def _map_refresh_overlays(self):
@@ -1192,7 +1545,7 @@ class MapTabMixin:
         rgba[~valid_mask] = (0.6, 0.6, 0.6, 0.0)
         return norm, rgba
 
-    def _map_fast_update(self, cb, lons_a, lats_a, agg_lbl):
+    def _map_fast_update(self, cb, xs_a, ys_a, agg_lbl):
         """Update scatter/quiver data in-place without rebuilding artists.
 
         Fast path for window scrub or calm toggle: updates colors/positions
@@ -1202,8 +1555,8 @@ class MapTabMixin:
 
         Args:
             cb (str): current color mode.
-            lons_a (np.ndarray): station longitudes.
-            lats_a (np.ndarray): station latitudes.
+            xs_a (np.ndarray): station Web Mercator eastings.
+            ys_a (np.ndarray): station Web Mercator northings.
             agg_lbl (str): aggregation description for colorbar label.
 
         Returns:
@@ -1229,11 +1582,11 @@ class MapTabMixin:
                     # no destroy/recreate needed.
                     self._map_cbar_sm.set_norm(norm)
                     self._map_cbar.set_label(f"{vname} [{self._map_value_units}]  ({agg_lbl})")
-                self._map_set_missing_marker(lons_a[~valid_mask], lats_a[~valid_mask])
+                self._map_set_missing_marker(xs_a[~valid_mask], ys_a[~valid_mask])
                 return True
             if cb == "wind_combo":
                 ws, wd = self._map_wind_columns()
-                norm = self._map_draw_wind_layers(self.ax_map, lons_a, lats_a, ws, wd)
+                norm = self._map_draw_wind_layers(self.ax_map, xs_a, ys_a, ws, wd)
                 if (norm is not None) != (self._map_cbar is not None):
                     return False
                 if self._map_cbar is not None:
@@ -1278,7 +1631,10 @@ class MapTabMixin:
             return
         self._map_plotted.update(fresh)
         self._map_stids.extend(fresh)
-        new_off = np.array([[self.stations[s]["lon"], self.stations[s]["lat"]] for s in fresh])
+        new_lons = np.array([self.stations[s]["lon"] for s in fresh], dtype=float)
+        new_lats = np.array([self.stations[s]["lat"] for s in fresh], dtype=float)
+        new_xs, new_ys = project_lonlat(new_lons, new_lats)
+        new_off = np.column_stack([new_xs, new_ys])
         new_cv = np.array([self._map_cval(s, cb) for s in fresh], dtype=float)
         self._map_offsets = (
             new_off if self._map_offsets is None else np.vstack([self._map_offsets, new_off])
@@ -1289,8 +1645,9 @@ class MapTabMixin:
         self._map_sc.set_offsets(self._map_offsets)
         self._map_sc.set_array(self._map_cvals_arr)
         self._map_sc.set_clim(self._map_cvals_arr.min(), self._map_cvals_arr.max())
-        self.ax_map.update_datalim(self._map_offsets)
-        self.ax_map.autoscale_view()
+        west, east, south, north = map_extent(self._map_offsets[:, 0], self._map_offsets[:, 1])
+        self.ax_map.set_xlim(west, east)
+        self.ax_map.set_ylim(south, north)
         self.canvas_map.draw_idle()
 
     def _map_nearest_station(self, event, threshold_px=15):
@@ -1310,10 +1667,15 @@ class MapTabMixin:
         # distorted by axes aspect ratio). Used for hover and click hit-testing.
         if event.inaxes != self.ax_map or self._map_offsets is None or not len(self._map_stids):
             return None
-        disp = self.ax_map.transData.transform(self._map_offsets)
+        finite = np.isfinite(self._map_offsets).all(axis=1)
+        if not finite.any():
+            return None
+        indices = np.flatnonzero(finite)
+        disp = self.ax_map.transData.transform(self._map_offsets[finite])
         d = np.hypot(disp[:, 0] - event.x, disp[:, 1] - event.y)
-        idx = int(np.argmin(d))
-        return self._map_stids[idx] if d[idx] <= threshold_px else None
+        local_idx = int(np.argmin(d))
+        idx = int(indices[local_idx])
+        return self._map_stids[idx] if d[local_idx] <= threshold_px else None
 
     def _map_clear_hover(self):
         """Remove hover halo artist and clear hover state."""
@@ -1335,8 +1697,9 @@ class MapTabMixin:
         if self._map_hover_stid is not None:
             lon = self.stations[self._map_hover_stid]["lon"]
             lat = self.stations[self._map_hover_stid]["lat"]
+            x, y = project_lonlat(np.array([lon]), np.array([lat]))
             self._map_hover_artist = self.ax_map.scatter(
-                [lon], [lat], s=170, facecolors=ACCENT, edgecolors="none", alpha=0.35, zorder=2.5
+                x, y, s=170, facecolors=ACCENT, edgecolors="none", alpha=0.35, zorder=2.5
             )
         self.canvas_map.draw_idle()
 
@@ -1367,8 +1730,9 @@ class MapTabMixin:
         if self._map_selected_stid is not None:
             lon = self.stations[self._map_selected_stid]["lon"]
             lat = self.stations[self._map_selected_stid]["lat"]
+            x, y = project_lonlat(np.array([lon]), np.array([lat]))
             self._map_sel_artist = self.ax_map.scatter(
-                [lon], [lat], s=220, facecolors="none", edgecolors="black", linewidths=2.2, zorder=5
+                x, y, s=220, facecolors="none", edgecolors="black", linewidths=2.2, zorder=5
             )
 
     def _map_popup_lines(self, stid):
@@ -1432,9 +1796,10 @@ class MapTabMixin:
             self._map_popup_artist.remove()
             self._map_popup_artist = None
         lon, lat = self.stations[stid]["lon"], self.stations[stid]["lat"]
+        x, y = project_lonlat(np.array([lon]), np.array([lat]))
         self._map_popup_artist = self.ax_map.annotate(
             "\n".join(self._map_popup_lines(stid)),
-            xy=(lon, lat),
+            xy=(x[0], y[0]),
             xytext=(14, 14),
             textcoords="offset points",
             fontsize=8,

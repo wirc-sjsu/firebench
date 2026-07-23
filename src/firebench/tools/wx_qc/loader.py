@@ -180,6 +180,10 @@ class LoaderMixin:
         self._map_offsets = None
         self._map_cvals_arr = None
         self._map_plotted = set()
+        self._map_lonlat = None
+        self._map_tile_pending_extent = None
+        self._map_tile_view_extent = None
+        self._map_tile_cached_result = None
         self._ov_rendered = set()
         # Upfront group-name scan (no dataset reads) so progress bar has
         # real denominator instead of undefined count.

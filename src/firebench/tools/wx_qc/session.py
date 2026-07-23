@@ -14,7 +14,7 @@ from .state import resolve_restored_decisions
 
 # Matches firebench's user-local data convention (see get_local_db_path
 # in tools/local_db_management.py) rather than the installed package tree.
-SESSION_VERSION = 1
+SESSION_VERSION = 2
 AUTOSAVE_PATH = Path.home() / ".firebench" / "wx_qc_autosave.json"
 
 _SESSION_FIELDS = {
@@ -27,8 +27,10 @@ _SESSION_FIELDS = {
     "cfg",
     "current_stid",
     "map_color",
+    "map_basemap",
     "ov_col_vis",
 }
+_SESSION_FIELDS_V1 = _SESSION_FIELDS - {"map_basemap"}
 _CONFIG_FIELDS = set(default_config())
 _ASSERTION_KEYS = {key for key, _label in ASSERTION_CATS}
 
@@ -175,15 +177,15 @@ def validate_session_state(value):
     """
     if not isinstance(value, dict):
         raise SessionValidationError("session must be a JSON object")
-    _field_difference(set(value), _SESSION_FIELDS, "session")
 
     version = value["version"]
     if isinstance(version, bool) or not isinstance(version, int):
         raise SessionValidationError("session version must be an integer")
-    if version != SESSION_VERSION:
+    if version not in (1, SESSION_VERSION):
         raise SessionValidationError(
-            f"unsupported session version {version}; expected version {SESSION_VERSION}"
+            f"unsupported session version {version}; expected version 1 or {SESSION_VERSION}"
         )
+    _field_difference(set(value), _SESSION_FIELDS_V1 if version == 1 else _SESSION_FIELDS, "session")
 
     saved_at = value["saved_at"]
     if not isinstance(saved_at, str):
@@ -213,6 +215,9 @@ def validate_session_state(value):
     map_color = value["map_color"]
     if map_color not in MAP_COLOR_MODES:
         raise SessionValidationError(f"map_color must be one of: {', '.join(MAP_COLOR_MODES)}")
+    map_basemap = value.get("map_basemap", True)
+    if not isinstance(map_basemap, bool):
+        raise SessionValidationError("map_basemap must be true or false")
     ov_col_vis = value["ov_col_vis"]
     if not isinstance(ov_col_vis, dict) or not all(
         isinstance(column, str) and isinstance(visible, bool) for column, visible in ov_col_vis.items()
@@ -229,6 +234,7 @@ def validate_session_state(value):
         "cfg": _validate_config(value["cfg"]),
         "current_stid": current_stid,
         "map_color": map_color,
+        "map_basemap": map_basemap,
         "ov_col_vis": dict(ov_col_vis),
     }
 
@@ -296,6 +302,7 @@ class SessionMixin:
             "cfg": config,
             "current_stid": self._current_stid,
             "map_color": self.var_map_color.get(),
+            "map_basemap": self.var_map_basemap.get(),
             "ov_col_vis": {column: variable.get() for column, variable in self._ov_col_vars.items()},
         }
 
@@ -347,7 +354,9 @@ class SessionMixin:
         station_id = session["current_stid"]
         if station_id and station_id in self.stations:
             self._navigate_to_station(station_id)
+        self.var_map_basemap.set(session["map_basemap"])
         self.var_map_color.set(session["map_color"])
+        self._on_map_basemap_toggle()
 
     def _restore_session(self, value):
         """Validate state, reload its H5, and recompute every station statistic."""
@@ -438,4 +447,5 @@ class SessionMixin:
                     messagebox.showerror("Autosave failed", message)
                 except tk.TclError:
                     print(f"Weather QC autosave failed: {exc}", file=sys.stderr)
+        self._shutdown_map_tiles()
         self.destroy()

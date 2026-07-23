@@ -62,6 +62,7 @@ class SessionApp(SessionMixin):
         }
         self._current_stid = "GREEN"
         self.var_map_color = FakeVariable("qc_status")
+        self.var_map_basemap = FakeVariable(False)
         self._ov_col_vars = {
             "Name": FakeVariable(False),
             "AirT Max": FakeVariable(True),
@@ -76,6 +77,7 @@ class SessionApp(SessionMixin):
         self.refreshes = []
         self.navigated_to = None
         self.col_visibility_applied = False
+        self.basemap_toggles = 0
 
     def _load_data(self, **kwargs):
         self.load_kwargs = kwargs
@@ -100,6 +102,9 @@ class SessionApp(SessionMixin):
 
     def _load_perim_h5(self, _path):
         raise AssertionError("default session should not load perimeter data")
+
+    def _on_map_basemap_toggle(self):
+        self.basemap_toggles += 1
 
 
 def test_json_session_round_trip_restores_state_and_recomputes_statistics(tmp_path):
@@ -132,6 +137,8 @@ def test_json_session_round_trip_restores_state_and_recomputes_statistics(tmp_pa
     assert target.cfg["bounds"] == source.cfg["bounds"]
     assert target._ov_col_vars["Name"].get() is False
     assert target.var_map_color.get() == "qc_status"
+    assert target.var_map_basemap.get() is False
+    assert target.basemap_toggles == 1
     assert target.navigated_to == "GREEN"
     assert target.col_visibility_applied
     assert target.refreshes == ["skiplist", "overview", "stations"]
@@ -171,12 +178,28 @@ def test_session_validation_rejects_invalid_versions_types_and_cached_stats(tmp_
     invalid_sessions.append((invalid, "ov_col_vis must map"))
 
     invalid = copy.deepcopy(valid)
+    invalid["map_basemap"] = "yes"
+    invalid_sessions.append((invalid, "map_basemap must be true or false"))
+
+    invalid = copy.deepcopy(valid)
     invalid["all_stats"] = {"untrusted": True}
     invalid_sessions.append((invalid, "unexpected all_stats"))
 
     for session, message in invalid_sessions:
         with pytest.raises(SessionValidationError, match=message):
             validate_session_state(session)
+
+
+def test_version_one_session_defaults_to_enabled_road_map(tmp_path):
+    h5_path = tmp_path / "source.h5"
+    h5_path.touch()
+    legacy = SessionApp(h5_path)._session_state()
+    legacy["version"] = 1
+    del legacy["map_basemap"]
+
+    validated = validate_session_state(legacy)
+
+    assert validated["map_basemap"] is True
 
 
 def test_invalid_session_does_not_change_application_state(tmp_path):

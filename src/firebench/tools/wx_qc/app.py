@@ -65,6 +65,20 @@ class App(
         self._map_draw_sig = None
         self._map_lonlat = None
         self._map_value_units = ""
+        # Online road basemap: tile work happens off the Tk thread and only the
+        # newest viewport is applied. The checkbox is persisted in session JSON.
+        self.var_map_basemap = tk.BooleanVar(value=True)
+        self._map_basemap_artist = None
+        self._map_attribution_artist = None
+        self._map_tile_executor = None
+        self._map_tile_future = None
+        self._map_tile_poll_after_id = None
+        self._map_tile_debounce_after_id = None
+        self._map_tile_pending_extent = None
+        self._map_tile_request_extent = None
+        self._map_tile_view_extent = None
+        self._map_tile_cached_result = None
+        self._map_tile_closed = False
         # Time-window aggregation: aggregate matrix precomputed on mode/var/dt change;
         # slider only re-indexes (no recompute-on-drag).
         self._map_dt_var = tk.StringVar(value="6h")

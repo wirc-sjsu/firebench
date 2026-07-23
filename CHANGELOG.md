@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   documentation CI.
 - Document the weather-station QC GUI workflow, assertion semantics, JSON sessions, and exports,
   and include `wx-qc` in the CLI reference.
+- Add an adaptive OpenStreetMap road basemap with an offline fallback to the weather-station QC map.
 
 ### Changed
 
@@ -40,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   record removals to cleaned H5 copies.
 - Replace weather-station QC pickle sessions with validated, atomic, versioned JSON sessions that
   recompute station statistics from the referenced H5 when restored.
+- Support Contextily 1.6 when loading wx-QC road tiles and show complete basemap errors in a dialog
+  and terminal log.
 
 ## [0.9.0] - 2026 / 05 / 18
 ### Added
