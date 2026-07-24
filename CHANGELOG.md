@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
 - Use explicit TSO and all-sources station selection, canonical numeric sensor-height confidence,
   and shared selection logic for Caldor weather execution and CLI station counts.
+- Require prepared TSO model weather variables to record a sensor height matching the trusted
+  observation within 0.01 m after unit conversion.
 - Revise Caldor perimeter weights and normalization; FireBench 0.10 scores are not directly
   comparable with FireBench 0.9 scores.
 - Expand benchmark discovery and target details in `firebench list` and generated reports.
@@ -36,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Treat missing or malformed sensor-height confidence as level 0 with one contextual warning, and
   ignore empty weather station sets without adding a KPI value or aggregation contribution.
+- Exclude and report only the affected TSO station when model sensor-height metadata is missing,
+  dimensionally incompatible, or mismatched.
 - Reject unsupported HDF5 standard versions and verify referenced polygon files by path, size, and
   SHA-256 before benchmarks run.
 - Record verified observational and model referenced-file metadata in benchmark result provenance.

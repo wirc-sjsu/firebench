@@ -1152,6 +1152,14 @@ Mandatory group/dataset| Mandatory attributes
 `/time_series/station_<name>/time`| None
 `/time_series/station_<name>/fuel_moisture_content_10h`| None
 
+For requirements R08 through R12, FireBench first limits structural validation to the stations and
+periods selected by the target. Every observational variable selected for TSO must have canonical
+level-2 confidence plus numeric `sensor_height` and compatible `sensor_height_units`. The matching
+model variable must record the height at which it was prepared. Heights are converted to meters
+and must agree within 0.01 m; otherwise only that station is excluded from the TSO KPI and its
+reason is logged. See
+[Weather Sensor Height and Trust](../../reference/weather_sensor_height.md).
+
 ## Benchmark Targets in FireBench 0.10
 
 The CLI uses a target to select the Caldor KPI groups and, for a period target, the evaluation

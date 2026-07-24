@@ -255,14 +255,20 @@ def validate_h5_weather_stations_structure(
     variable_checked: str,
     station_grp_name_starts_with: str = "station",
     periods: list[tuple[datetime, datetime]] | None = None,
+    selected_stations: set[str] | None = None,
 ):
     """
-    Check if all datasets and associated attributs are present in the file.
-    Return False and the name of the first missing item if either the dataset or an attribute is missing
+    Check whether selected reference weather stations exist in a model file.
+
+    ``periods`` limits the check to stations with samples in a selected period, and
+    ``selected_stations`` applies the observational TSO/all-sources selection. Return detailed
+    missing paths for every selected station.
     """
     missing = []
     for station in file_ref[f"{TIME_SERIES}"].keys():
         if not station.startswith(station_grp_name_starts_with):
+            continue
+        if selected_stations is not None and station not in selected_stations:
             continue
         # check if station contains variable
         station_path = f"{TIME_SERIES}/{station}"

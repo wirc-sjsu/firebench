@@ -141,17 +141,29 @@ def req_wx_station(
 
     # Check requirement
     periods = _wx_requirement_periods(list_benchmarks)
+    selected_stations = _weather_requirement_selected_stations(
+        obs_dataset,
+        list_benchmarks,
+        ctx,
+    )
     req_ok, miss = fs.validate_h5_weather_stations_structure(
         model_dataset,
         obs_dataset,
         required_datasets["variable"],
         required_datasets["station_pattern"],
         periods=periods,
+        selected_stations=selected_stations,
     )
 
     # run benchmarks
     if req_ok:
         ft.logger.info("Requirement %s valid", req_name)
+        _validate_selected_tso_model_heights(
+            model_dataset,
+            obs_dataset,
+            list_benchmarks,
+            ctx,
+        )
         for bench_id in list_benchmarks:
             ft.logger.info(f"Run Benchmark {bench_id}")
             benchmark_result = BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
@@ -305,6 +317,21 @@ def _validate_selected_weather_confidence(
     selected_benchmarks: list[str],
     ctx: dict,
 ) -> None:
+    selections = _selected_weather_specs(selected_benchmarks)
+
+    for variable, period, station_set in selections:
+        _select_weather_stations(obs_dataset, variable, period, station_set, ctx)
+
+    if selections:
+        ft.logger.info(
+            "Validated observational sensor-height confidence for %d weather selection(s).",
+            len(selections),
+        )
+
+
+def _selected_weather_specs(
+    selected_benchmarks: list[str],
+) -> set[tuple[str, tuple[datetime, datetime], fs.WeatherStationSet]]:
     selections = set()
     for bench_id in selected_benchmarks:
         benchmark = BENCHMARK_FUNCTIONS.get(bench_id)
@@ -318,15 +345,126 @@ def _validate_selected_weather_confidence(
                 keywords["station_set"],
             )
         )
+    return selections
 
+
+def _weather_requirement_selected_stations(
+    obs_dataset: File,
+    selected_benchmarks: list[str],
+    ctx: dict,
+) -> set[str] | None:
+    selections = _selected_weather_specs(selected_benchmarks)
+    if not selections:
+        return None
+
+    selected_stations = set()
     for variable, period, station_set in selections:
-        _select_weather_stations(obs_dataset, variable, period, station_set, ctx)
-
-    if selections:
-        ft.logger.info(
-            "Validated observational sensor-height confidence for %d weather selection(s).",
-            len(selections),
+        selection = _select_weather_stations(
+            obs_dataset,
+            variable,
+            period,
+            station_set,
+            ctx,
         )
+        selected_stations.update(item["station"] for item in selection["included"])
+    return selected_stations
+
+
+def _validate_selected_tso_model_heights(
+    model_dataset: File,
+    obs_dataset: File,
+    selected_benchmarks: list[str],
+    ctx: dict,
+) -> None:
+    for variable, period, station_set in _selected_weather_specs(selected_benchmarks):
+        if station_set is fs.WeatherStationSet.TSO:
+            _model_height_compatible_selection(
+                model_dataset,
+                obs_dataset,
+                variable,
+                period,
+                station_set,
+                ctx,
+            )
+
+
+def _model_height_compatible_selection(
+    model_dataset: File,
+    obs_dataset: File,
+    variable: str,
+    period: tuple[datetime, datetime],
+    station_set: fs.WeatherStationSet,
+    ctx: dict,
+) -> dict[str, list[dict]]:
+    observation_selection = _select_weather_stations(
+        obs_dataset,
+        variable,
+        period,
+        station_set,
+        ctx,
+    )
+    if station_set is not fs.WeatherStationSet.TSO:
+        return observation_selection
+
+    validation_cache = ctx.setdefault("weather_model_height_selections", {})
+    cache_key = (variable, period, station_set)
+    if cache_key in validation_cache:
+        return validation_cache[cache_key]
+
+    selection = {
+        "included": [],
+        "excluded": list(observation_selection["excluded"]),
+    }
+    warning_cache = ctx.setdefault("weather_confidence_warnings", set())
+    for station_info in observation_selection["included"]:
+        validation = fs.validate_weather_sensor_heights(
+            obs_dataset,
+            model_dataset,
+            station=station_info["station"],
+            variable=variable,
+            warning_cache=warning_cache,
+        )
+        if validation.valid:
+            selection["included"].append(
+                {
+                    **station_info,
+                    "observation_height_m": validation.observation_height_m,
+                    "model_height_m": validation.model_height_m,
+                }
+            )
+            continue
+
+        excluded = {
+            **station_info,
+            "reason": validation.reason,
+        }
+        selection["excluded"].append(excluded)
+        ft.logger.warning(
+            "TSO station excluded: station=%s variable=%s period=%s/%s reason=%s",
+            station_info["station"],
+            variable,
+            period[0].isoformat(),
+            period[1].isoformat(),
+            validation.reason,
+        )
+
+    validation_cache[cache_key] = selection
+    validation_log_message = " ".join(
+        (
+            "TSO model-height validation: variable=%s period=%s/%s included=%d excluded=%d",
+            "tolerance=%g m",
+        )
+    )
+    ft.logger.info(
+        validation_log_message,
+        variable,
+        period[0].isoformat(),
+        period[1].isoformat(),
+        len(selection["included"]),
+        len(selection["excluded"]),
+        fs.SENSOR_HEIGHT_MATCH_TOLERANCE_METERS,
+    )
+    return selection
 
 
 # ---------------------------
@@ -546,7 +684,8 @@ def bench_wx_generic_index(
 ):
     PENALTY_VALUE = -1e6
     metric_rslt = []
-    selection = _select_weather_stations(
+    selection = _model_height_compatible_selection(
+        model_dataset,
         obs_dataset,
         wx_variable_name,
         period,

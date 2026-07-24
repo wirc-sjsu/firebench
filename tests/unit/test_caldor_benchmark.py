@@ -574,6 +574,54 @@ def test_weather_benchmark_ignores_empty_tso_station_set(tmp_path, stat_func):
     assert result is None
 
 
+def test_weather_benchmark_excludes_tso_model_height_mismatch(caplog, tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    period = c001_caldor._target_period("H013")
+
+    for h5_path, observational in ((obs_path, True), (model_path, False)):
+        with h5py.File(h5_path, "w") as h5:
+            for station_name, height, values in (
+                ("station_MATCH", 10, [290, 291]),
+                ("station_MISMATCH", 2 if not observational else 10, [300, 301]),
+            ):
+                station = h5.create_group(f"time_series/{station_name}")
+                time = station.create_dataset("time", data=[0, 1])
+                time.attrs["time_origin"] = period[0].isoformat()
+                time.attrs["time_units"] = "hour"
+                variable = station.create_dataset("air_temperature", data=values)
+                if not observational and station_name == "station_MISMATCH":
+                    variable[...] = [310, 311]
+                variable.attrs["units"] = "degK"
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_ATTRIBUTE] = height
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_UNITS_ATTRIBUTE] = "m"
+                if observational:
+                    variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = 2
+
+    with (
+        h5py.File(model_path, "r") as model_h5,
+        h5py.File(obs_path, "r") as obs_h5,
+        caplog.at_level("WARNING"),
+    ):
+        result = c001_caldor.bench_wx_generic_index(
+            model_h5,
+            obs_h5,
+            {},
+            kpi_name_custom="Air temp matching height",
+            period=period,
+            wx_variable_name="air_temperature",
+            common_unit="degK",
+            metric_func=lambda model, obs: float(np.mean(model - obs)),
+            stat_func=lambda values: float(np.mean(values)),
+            value_norm_param_m=5,
+            station_set=c001_caldor.fs.WeatherStationSet.TSO,
+        )
+
+    assert result["Air temp matching height"] == 0
+    assert "station_MISMATCH" in caplog.text
+    assert "does not match" in caplog.text
+
+
 def test_weather_requirement_records_ignored_empty_station_set(monkeypatch):
     monkeypatch.setattr(
         c001_caldor.fs,

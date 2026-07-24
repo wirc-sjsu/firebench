@@ -317,6 +317,34 @@ def test_validate_h5_weather_stations_structure_reports_missing_station_details(
     ]
 
 
+def test_validate_h5_weather_stations_structure_is_scoped_to_selected_stations(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+
+    with h5py.File(obs_path, "w") as obs_h5:
+        for station_name in ("station_SELECTED", "station_EXCLUDED"):
+            station = obs_h5.create_group(f"time_series/{station_name}")
+            station.create_dataset("time", data=[0, 1])
+            station.create_dataset("air_temperature", data=[290, 291])
+
+    with h5py.File(model_path, "w") as model_h5:
+        station = model_h5.create_group("time_series/station_SELECTED")
+        station.create_dataset("time", data=[0, 1])
+        station.create_dataset("air_temperature", data=[290, 291])
+
+    with h5py.File(model_path, "r") as model_h5, h5py.File(obs_path, "r") as obs_h5:
+        ok, missing = validate_h5_weather_stations_structure(
+            model_h5,
+            obs_h5,
+            "air_temperature",
+            "station_",
+            selected_stations={"station_SELECTED"},
+        )
+
+    assert ok is True
+    assert missing is None
+
+
 def test_validate_h5_weather_stations_structure_ignores_stations_outside_period(tmp_path):
     obs_path = tmp_path / "obs.h5"
     model_path = tmp_path / "model.h5"

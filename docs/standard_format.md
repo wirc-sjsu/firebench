@@ -248,6 +248,12 @@ Units attributes must be set for each field.
   always write a valid numeric value. See
   [Weather Sensor Height and Trust](reference/weather_sensor_height.md) for source precedence,
   station-set definitions, and model-preparation requirements.
+- A model weather-variable dataset used by a Trusted Sources Only (TSO) KPI must record numeric
+  `sensor_height` and Pint-compatible `sensor_height_units`. The model value must have been
+  prepared at the corresponding trusted observational height. FireBench converts compatible units
+  and requires the model and observation heights to agree within an absolute tolerance of 0.01 m.
+  A missing, dimensionally incompatible, or mismatched model height excludes that station from the
+  TSO KPI.
 - Location of the dataset must be defined as attributes following a spatial description convention.
 - If geographic coordinates are used, a CRS must be included.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.

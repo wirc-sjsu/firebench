@@ -97,9 +97,38 @@ corresponding observational dataset. Height-aware interpolation, including verti
 interpolation, must use that observational height rather than a provider-wide or FireBench
 fallback. Record the resulting model height in `sensor_height` and `sensor_height_units`.
 
+Use `firebench.adapter_common.trusted_observation_sensor_height` to obtain the interpolation target
+from the observational HDF5 file. Pass that value directly to height-aware preparation; for wind,
+it is the target height of the vertical wind interpolation. After preparing the station series,
+use `firebench.adapter_common.write_model_sensor_height_metadata` to record the height actually
+used.
+
+```python
+from firebench import adapter_common
+
+target_height = adapter_common.trusted_observation_sensor_height(
+    observations,
+    "station_TEST",
+    "wind_speed",
+)
+prepared_wind = interpolate_wind(
+    model_wind_profile,
+    target_height=target_height,
+)
+model_wind_speed[...] = prepared_wind
+adapter_common.write_model_sensor_height_metadata(model_wind_speed, target_height)
+```
+
+The example `interpolate_wind` name represents the adapter's height-aware interpolation routine;
+FireBench does not assume one atmospheric model or vertical interpolation method.
+
 Do not interpret a matching station ID alone as evidence that model and observation heights match.
-FireBench validates the model height contract separately from the observational confidence used to
-select TSO stations.
+For TSO, FireBench requires both the observational and model variable datasets to contain numeric
+`sensor_height` and Pint-compatible `sensor_height_units`. It converts both heights to meters and
+accepts an absolute difference of at most 0.01 m. A station with missing attributes, incompatible
+units, or a larger mismatch is excluded from that TSO KPI with the reason in the log. Other
+eligible stations continue to run, and validation is limited to the variables, periods, and
+stations selected by the target.
 
 ## Scientific limitations of all-sources comparisons
 
