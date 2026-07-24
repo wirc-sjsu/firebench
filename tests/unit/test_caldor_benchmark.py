@@ -46,7 +46,7 @@ def test_build_registries_is_fresh():
         ("R12", 241, 312, "FMC 10h", ("MAE", "RMSE", "Bias")),
     ],
 )
-def test_curated_weather_ids_and_kpi_names_are_preserved(
+def test_curated_weather_ids_and_kpi_names_are_explicit(
     requirement, first_id, last_id, variable_label, metric_names
 ):
     c001_caldor.build_registries()
@@ -56,7 +56,7 @@ def test_curated_weather_ids_and_kpi_names_are_preserved(
         f"{variable_label} {metric_name} {summary_stat} W{period_number} {trust_label}"
         for period_number in range(1, 5)
         for metric_name in metric_names
-        for trust_label in ("TSO", "")
+        for trust_label in ("TSO", "All sources")
         for summary_stat in ("min", "mean", "max")
     ]
 
@@ -67,6 +67,23 @@ def test_curated_weather_ids_and_kpi_names_are_preserved(
     ]
     assert curated_ids == expected_ids
     assert curated_names == expected_names
+
+
+def test_weather_station_sets_have_decided_names_and_weights():
+    c001_caldor.build_registries()
+
+    for group in c001_caldor.WX_GROUP_BENCHMARKS.values():
+        for benchmark_id, weight in group.items():
+            benchmark = c001_caldor.BENCHMARK_FUNCTIONS[benchmark_id]
+            station_set = benchmark.keywords["station_set"]
+            kpi_name = benchmark.keywords["kpi_name_custom"]
+            if station_set is c001_caldor.fs.WeatherStationSet.TSO:
+                assert kpi_name.endswith(" TSO")
+                assert weight == 1
+            else:
+                assert station_set is c001_caldor.fs.WeatherStationSet.ALL_SOURCES
+                assert kpi_name.endswith(" All sources")
+                assert weight == 0
 
 
 def test_hrrr_weather_ids_follow_curated_weather_ids():
@@ -716,6 +733,46 @@ def test_ignored_weather_kpi_does_not_affect_aggregation(monkeypatch):
     )
 
 
+def test_zero_weight_weather_diagnostic_does_not_affect_total_denominator(monkeypatch):
+    monkeypatch.setattr(
+        c001_caldor,
+        "AGGREGATION",
+        {
+            "mixed": {
+                "Air Temp": {
+                    "weight": 1,
+                    "benchmarks": {
+                        "FB001_WX001": 1,
+                        "FB001_WX002": 0,
+                    },
+                },
+                "Fire Perimeter": {
+                    "weight": 1,
+                    "benchmarks": {"FB001_FP01": 1},
+                },
+            }
+        },
+    )
+    results = {
+        "benchmarks": {
+            "FB001_WX002": {
+                "Air temp MAE min W1 All sources": 1.5,
+                "Score": 80.0,
+            },
+            "FB001_FP01": {
+                "Jaccard W1": 0.6,
+                "Score": 60.0,
+            },
+        }
+    }
+
+    aggregated = c001_caldor.aggregate_scores(results, "mixed", {"FB001_WX001"})
+
+    assert "Score Air Temp" not in aggregated["score_card"]
+    assert aggregated["score_card"]["Score Fire Perimeter"] == 60.0
+    assert aggregated["score_card"]["Score Total"] == 60.0
+
+
 def test_curated_benchmark_target_selects_matching_fire_perimeter_group():
     c001_caldor.build_registries()
 
@@ -767,7 +824,7 @@ def test_demo_wx0_sets_weather_group_weights_to_zero():
             assert group["weight"] == 1
         else:
             assert group["weight"] == 0
-            assert set(group["benchmarks"].values()) == {1}
+            assert set(group["benchmarks"].values()) == {0, 1}
 
 
 def test_describe_benchmark_registry_prints_selected_groups():

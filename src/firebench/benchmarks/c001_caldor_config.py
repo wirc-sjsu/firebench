@@ -161,8 +161,8 @@ WX_PERIOD_SETS = (
 
 WX_SUMMARY_STATS = ("min", "mean", "max")
 WX_STATION_SET_OPTIONS = (
-    ("TSO", fs.WeatherStationSet.TSO),
-    ("", fs.WeatherStationSet.ALL_SOURCES),
+    ("TSO", fs.WeatherStationSet.TSO, 1),
+    ("All sources", fs.WeatherStationSet.ALL_SOURCES, 0),
 )
 WX_VARIABLE_SPECS = (
     {

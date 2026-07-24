@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   temporary trusted-history side effect with reviewed proposal exports.
 - Require prepared TSO model weather variables to record a sensor height matching the trusted
   observation within 0.01 m after unit conversion.
+- Give TSO and all-sources weather KPIs explicit names, weight TSO at 1, and retain all sources as
+  zero-weight diagnostics. This changes weather aggregation, so FireBench 0.10 weather and total
+  scores are not directly comparable with FireBench 0.9 or earlier 0.10 development builds.
 - Revise Caldor perimeter weights and normalization; FireBench 0.10 scores are not directly
   comparable with FireBench 0.9 scores.
 - Expand benchmark discovery and target details in `firebench list` and generated reports.

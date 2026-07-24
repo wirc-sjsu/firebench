@@ -38,6 +38,11 @@ All sources
 : An informational station set containing confidence levels 0, 1, and 2. It therefore overlaps
   with and includes TSO. Its KPIs have weight 0 and do not contribute to the aggregate score.
 
+The KPI weights express confidence that model values were prepared and verified at the trusted
+observational sensor height. They do not rate the general quality of a station's observed weather
+values. TSO KPIs therefore have weight 1, while all-sources KPIs retain a value and score for
+diagnosis but have weight 0.
+
 ## Confidence levels
 
 Newly standardized observational weather data must store the confidence as a scalar integer.

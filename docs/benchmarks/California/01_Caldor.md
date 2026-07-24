@@ -612,7 +612,10 @@ The current version of knowledge about sensor heights for the case weather stati
 Therefore, 81 datasets are considered trusted and will be used in the Trusted Sources Only (TSO)
 station set. All 399 datasets are used in the all-sources station set. All sources includes the TSO
 population; FireBench does not define an untrusted-only station set. TSO is the authoritative
-scored mode, while all-sources KPIs are zero-weight diagnostics. See
+scored mode and every TSO KPI has weight 1, while all-sources KPIs are zero-weight diagnostics.
+These weights express confidence that model values were prepared and verified at the trusted
+observational sensor height; they are not a rating of the observed station-data quality. An empty
+TSO KPI is ignored and does not enter its group or the total-score denominator. See
 [Weather Sensor Height and Trust](../../reference/weather_sensor_height.md) for the confidence
 levels, model-height contract, and scientific limitations.
 
@@ -623,6 +626,12 @@ the station ID, sensor, height, units, effective dates, provider, and a public s
 ```
 
 Weather stations are stored in the HDF5 file using their STID.
+
+```{warning}
+FireBench 0.10 gives the TSO and all-sources variants explicit names and changes all-sources KPI
+weights from 1 to 0. Weather group and total scores are therefore not directly comparable with
+scores produced by FireBench 0.9 or earlier 0.10 development builds.
+```
 
 ### Benchmarks
 
@@ -646,75 +655,75 @@ ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | 
 WX001 | W1           | MAE                | Air temp MAE min W1 TSO        |   5.0 degC            | TSO
 WX002 | W1           | MAE                | Air temp MAE mean W1 TSO       |   5.0 degC            | TSO
 WX003 | W1           | MAE                | Air temp MAE max W1 TSO        |   5.0 degC            | TSO
-WX004 | W1           | MAE                | Air temp MAE min W1            |   5.0 degC            | all sources
-WX005 | W1           | MAE                | Air temp MAE mean W1           |   5.0 degC            | all sources
-WX006 | W1           | MAE                | Air temp MAE max W1            |   5.0 degC            | all sources
+WX004 | W1           | MAE                | Air temp MAE min W1 All sources |   5.0 degC            | all sources
+WX005 | W1           | MAE                | Air temp MAE mean W1 All sources |   5.0 degC            | all sources
+WX006 | W1           | MAE                | Air temp MAE max W1 All sources |   5.0 degC            | all sources
 WX007 | W1           | RMSE               | Air temp RMSE min W1 TSO       |   5.0 degC            | TSO
 WX008 | W1           | RMSE               | Air temp RMSE mean W1 TSO      |   5.0 degC            | TSO
 WX009 | W1           | RMSE               | Air temp RMSE max W1 TSO       |   5.0 degC            | TSO
-WX010 | W1           | RMSE               | Air temp RMSE min W1           |   5.0 degC            | all sources
-WX011 | W1           | RMSE               | Air temp RMSE mean W1          |   5.0 degC            | all sources
-WX012 | W1           | RMSE               | Air temp RMSE max W1           |   5.0 degC            | all sources
+WX010 | W1           | RMSE               | Air temp RMSE min W1 All sources |   5.0 degC            | all sources
+WX011 | W1           | RMSE               | Air temp RMSE mean W1 All sources |   5.0 degC            | all sources
+WX012 | W1           | RMSE               | Air temp RMSE max W1 All sources |   5.0 degC            | all sources
 WX013 | W1           | Bias               | Air temp Bias min W1 TSO       |   5.0 degC            | TSO
 WX014 | W1           | Bias               | Air temp Bias mean W1 TSO      |   5.0 degC            | TSO
 WX015 | W1           | Bias               | Air temp Bias max W1 TSO       |   5.0 degC            | TSO
-WX016 | W1           | Bias               | Air temp Bias min W1           |   5.0 degC            | all sources
-WX017 | W1           | Bias               | Air temp Bias mean W1          |   5.0 degC            | all sources
-WX018 | W1           | Bias               | Air temp Bias max W1           |   5.0 degC            | all sources
+WX016 | W1           | Bias               | Air temp Bias min W1 All sources |   5.0 degC            | all sources
+WX017 | W1           | Bias               | Air temp Bias mean W1 All sources |   5.0 degC            | all sources
+WX018 | W1           | Bias               | Air temp Bias max W1 All sources |   5.0 degC            | all sources
 WX019 | W2           | MAE                | Air temp MAE min W2 TSO        |   5.0 degC            | TSO
 WX020 | W2           | MAE                | Air temp MAE mean W2 TSO       |   5.0 degC            | TSO
 WX021 | W2           | MAE                | Air temp MAE max W2 TSO        |   5.0 degC            | TSO
-WX022 | W2           | MAE                | Air temp MAE min W2            |   5.0 degC            | all sources
-WX023 | W2           | MAE                | Air temp MAE mean W2           |   5.0 degC            | all sources
-WX024 | W2           | MAE                | Air temp MAE max W2            |   5.0 degC            | all sources
+WX022 | W2           | MAE                | Air temp MAE min W2 All sources |   5.0 degC            | all sources
+WX023 | W2           | MAE                | Air temp MAE mean W2 All sources |   5.0 degC            | all sources
+WX024 | W2           | MAE                | Air temp MAE max W2 All sources |   5.0 degC            | all sources
 WX025 | W2           | RMSE               | Air temp RMSE min W2 TSO       |   5.0 degC            | TSO
 WX026 | W2           | RMSE               | Air temp RMSE mean W2 TSO      |   5.0 degC            | TSO
 WX027 | W2           | RMSE               | Air temp RMSE max W2 TSO       |   5.0 degC            | TSO
-WX028 | W2           | RMSE               | Air temp RMSE min W2           |   5.0 degC            | all sources
-WX029 | W2           | RMSE               | Air temp RMSE mean W2          |   5.0 degC            | all sources
-WX030 | W2           | RMSE               | Air temp RMSE max W2           |   5.0 degC            | all sources
+WX028 | W2           | RMSE               | Air temp RMSE min W2 All sources |   5.0 degC            | all sources
+WX029 | W2           | RMSE               | Air temp RMSE mean W2 All sources |   5.0 degC            | all sources
+WX030 | W2           | RMSE               | Air temp RMSE max W2 All sources |   5.0 degC            | all sources
 WX031 | W2           | Bias               | Air temp Bias min W2 TSO       |   5.0 degC            | TSO
 WX032 | W2           | Bias               | Air temp Bias mean W2 TSO      |   5.0 degC            | TSO
 WX033 | W2           | Bias               | Air temp Bias max W2 TSO       |   5.0 degC            | TSO
-WX034 | W2           | Bias               | Air temp Bias min W2           |   5.0 degC            | all sources
-WX035 | W2           | Bias               | Air temp Bias mean W2          |   5.0 degC            | all sources
-WX036 | W2           | Bias               | Air temp Bias max W2           |   5.0 degC            | all sources
+WX034 | W2           | Bias               | Air temp Bias min W2 All sources |   5.0 degC            | all sources
+WX035 | W2           | Bias               | Air temp Bias mean W2 All sources |   5.0 degC            | all sources
+WX036 | W2           | Bias               | Air temp Bias max W2 All sources |   5.0 degC            | all sources
 WX037 | W3           | MAE                | Air temp MAE min W3 TSO        |   5.0 degC            | TSO
 WX038 | W3           | MAE                | Air temp MAE mean W3 TSO       |   5.0 degC            | TSO
 WX039 | W3           | MAE                | Air temp MAE max W3 TSO        |   5.0 degC            | TSO
-WX040 | W3           | MAE                | Air temp MAE min W3            |   5.0 degC            | all sources
-WX041 | W3           | MAE                | Air temp MAE mean W3           |   5.0 degC            | all sources
-WX042 | W3           | MAE                | Air temp MAE max W3            |   5.0 degC            | all sources
+WX040 | W3           | MAE                | Air temp MAE min W3 All sources |   5.0 degC            | all sources
+WX041 | W3           | MAE                | Air temp MAE mean W3 All sources |   5.0 degC            | all sources
+WX042 | W3           | MAE                | Air temp MAE max W3 All sources |   5.0 degC            | all sources
 WX043 | W3           | RMSE               | Air temp RMSE min W3 TSO       |   5.0 degC            | TSO
 WX044 | W3           | RMSE               | Air temp RMSE mean W3 TSO      |   5.0 degC            | TSO
 WX045 | W3           | RMSE               | Air temp RMSE max W3 TSO       |   5.0 degC            | TSO
-WX046 | W3           | RMSE               | Air temp RMSE min W3           |   5.0 degC            | all sources
-WX047 | W3           | RMSE               | Air temp RMSE mean W3          |   5.0 degC            | all sources
-WX048 | W3           | RMSE               | Air temp RMSE max W3           |   5.0 degC            | all sources
+WX046 | W3           | RMSE               | Air temp RMSE min W3 All sources |   5.0 degC            | all sources
+WX047 | W3           | RMSE               | Air temp RMSE mean W3 All sources |   5.0 degC            | all sources
+WX048 | W3           | RMSE               | Air temp RMSE max W3 All sources |   5.0 degC            | all sources
 WX049 | W3           | Bias               | Air temp Bias min W3 TSO       |   5.0 degC            | TSO
 WX050 | W3           | Bias               | Air temp Bias mean W3 TSO      |   5.0 degC            | TSO
 WX051 | W3           | Bias               | Air temp Bias max W3 TSO       |   5.0 degC            | TSO
-WX052 | W3           | Bias               | Air temp Bias min W3           |   5.0 degC            | all sources
-WX053 | W3           | Bias               | Air temp Bias mean W3          |   5.0 degC            | all sources
-WX054 | W3           | Bias               | Air temp Bias max W3           |   5.0 degC            | all sources
+WX052 | W3           | Bias               | Air temp Bias min W3 All sources |   5.0 degC            | all sources
+WX053 | W3           | Bias               | Air temp Bias mean W3 All sources |   5.0 degC            | all sources
+WX054 | W3           | Bias               | Air temp Bias max W3 All sources |   5.0 degC            | all sources
 WX055 | W4           | MAE                | Air temp MAE min W4 TSO        |   5.0 degC            | TSO
 WX056 | W4           | MAE                | Air temp MAE mean W4 TSO       |   5.0 degC            | TSO
 WX057 | W4           | MAE                | Air temp MAE max W4 TSO        |   5.0 degC            | TSO
-WX058 | W4           | MAE                | Air temp MAE min W4            |   5.0 degC            | all sources
-WX059 | W4           | MAE                | Air temp MAE mean W4           |   5.0 degC            | all sources
-WX060 | W4           | MAE                | Air temp MAE max W4            |   5.0 degC            | all sources
+WX058 | W4           | MAE                | Air temp MAE min W4 All sources |   5.0 degC            | all sources
+WX059 | W4           | MAE                | Air temp MAE mean W4 All sources |   5.0 degC            | all sources
+WX060 | W4           | MAE                | Air temp MAE max W4 All sources |   5.0 degC            | all sources
 WX061 | W4           | RMSE               | Air temp RMSE min W4 TSO       |   5.0 degC            | TSO
 WX062 | W4           | RMSE               | Air temp RMSE mean W4 TSO      |   5.0 degC            | TSO
 WX063 | W4           | RMSE               | Air temp RMSE max W4 TSO       |   5.0 degC            | TSO
-WX064 | W4           | RMSE               | Air temp RMSE min W4           |   5.0 degC            | all sources
-WX065 | W4           | RMSE               | Air temp RMSE mean W4          |   5.0 degC            | all sources
-WX066 | W4           | RMSE               | Air temp RMSE max W4           |   5.0 degC            | all sources
+WX064 | W4           | RMSE               | Air temp RMSE min W4 All sources |   5.0 degC            | all sources
+WX065 | W4           | RMSE               | Air temp RMSE mean W4 All sources |   5.0 degC            | all sources
+WX066 | W4           | RMSE               | Air temp RMSE max W4 All sources |   5.0 degC            | all sources
 WX067 | W4           | Bias               | Air temp Bias min W4 TSO       |   5.0 degC            | TSO
 WX068 | W4           | Bias               | Air temp Bias mean W4 TSO      |   5.0 degC            | TSO
 WX069 | W4           | Bias               | Air temp Bias max W4 TSO       |   5.0 degC            | TSO
-WX070 | W4           | Bias               | Air temp Bias min W4           |   5.0 degC            | all sources
-WX071 | W4           | Bias               | Air temp Bias mean W4          |   5.0 degC            | all sources
-WX072 | W4           | Bias               | Air temp Bias max W4           |   5.0 degC            | all sources
+WX070 | W4           | Bias               | Air temp Bias min W4 All sources |   5.0 degC            | all sources
+WX071 | W4           | Bias               | Air temp Bias mean W4 All sources |   5.0 degC            | all sources
+WX072 | W4           | Bias               | Air temp Bias max W4 All sources |   5.0 degC            | all sources
 
 #### Relative Humidity
 
@@ -734,75 +743,75 @@ ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | 
 WX073 | W1           | MAE                | RH MAE min W1 TSO              |  15.0 percent         | TSO
 WX074 | W1           | MAE                | RH MAE mean W1 TSO             |  15.0 percent         | TSO
 WX075 | W1           | MAE                | RH MAE max W1 TSO              |  15.0 percent         | TSO
-WX076 | W1           | MAE                | RH MAE min W1                  |  15.0 percent         | all sources
-WX077 | W1           | MAE                | RH MAE mean W1                 |  15.0 percent         | all sources
-WX078 | W1           | MAE                | RH MAE max W1                  |  15.0 percent         | all sources
+WX076 | W1           | MAE                | RH MAE min W1 All sources |  15.0 percent         | all sources
+WX077 | W1           | MAE                | RH MAE mean W1 All sources |  15.0 percent         | all sources
+WX078 | W1           | MAE                | RH MAE max W1 All sources |  15.0 percent         | all sources
 WX079 | W1           | RMSE               | RH RMSE min W1 TSO             |  15.0 percent         | TSO
 WX080 | W1           | RMSE               | RH RMSE mean W1 TSO            |  15.0 percent         | TSO
 WX081 | W1           | RMSE               | RH RMSE max W1 TSO             |  15.0 percent         | TSO
-WX082 | W1           | RMSE               | RH RMSE min W1                 |  15.0 percent         | all sources
-WX083 | W1           | RMSE               | RH RMSE mean W1                |  15.0 percent         | all sources
-WX084 | W1           | RMSE               | RH RMSE max W1                 |  15.0 percent         | all sources
+WX082 | W1           | RMSE               | RH RMSE min W1 All sources |  15.0 percent         | all sources
+WX083 | W1           | RMSE               | RH RMSE mean W1 All sources |  15.0 percent         | all sources
+WX084 | W1           | RMSE               | RH RMSE max W1 All sources |  15.0 percent         | all sources
 WX085 | W1           | Bias               | RH Bias min W1 TSO             |  15.0 percent         | TSO
 WX086 | W1           | Bias               | RH Bias mean W1 TSO            |  15.0 percent         | TSO
 WX087 | W1           | Bias               | RH Bias max W1 TSO             |  15.0 percent         | TSO
-WX088 | W1           | Bias               | RH Bias min W1                 |  15.0 percent         | all sources
-WX089 | W1           | Bias               | RH Bias mean W1                |  15.0 percent         | all sources
-WX090 | W1           | Bias               | RH Bias max W1                 |  15.0 percent         | all sources
+WX088 | W1           | Bias               | RH Bias min W1 All sources |  15.0 percent         | all sources
+WX089 | W1           | Bias               | RH Bias mean W1 All sources |  15.0 percent         | all sources
+WX090 | W1           | Bias               | RH Bias max W1 All sources |  15.0 percent         | all sources
 WX091 | W2           | MAE                | RH MAE min W2 TSO              |  15.0 percent         | TSO
 WX092 | W2           | MAE                | RH MAE mean W2 TSO             |  15.0 percent         | TSO
 WX093 | W2           | MAE                | RH MAE max W2 TSO              |  15.0 percent         | TSO
-WX094 | W2           | MAE                | RH MAE min W2                  |  15.0 percent         | all sources
-WX095 | W2           | MAE                | RH MAE mean W2                 |  15.0 percent         | all sources
-WX096 | W2           | MAE                | RH MAE max W2                  |  15.0 percent         | all sources
+WX094 | W2           | MAE                | RH MAE min W2 All sources |  15.0 percent         | all sources
+WX095 | W2           | MAE                | RH MAE mean W2 All sources |  15.0 percent         | all sources
+WX096 | W2           | MAE                | RH MAE max W2 All sources |  15.0 percent         | all sources
 WX097 | W2           | RMSE               | RH RMSE min W2 TSO             |  15.0 percent         | TSO
 WX098 | W2           | RMSE               | RH RMSE mean W2 TSO            |  15.0 percent         | TSO
 WX099 | W2           | RMSE               | RH RMSE max W2 TSO             |  15.0 percent         | TSO
-WX100 | W2           | RMSE               | RH RMSE min W2                 |  15.0 percent         | all sources
-WX101 | W2           | RMSE               | RH RMSE mean W2                |  15.0 percent         | all sources
-WX102 | W2           | RMSE               | RH RMSE max W2                 |  15.0 percent         | all sources
+WX100 | W2           | RMSE               | RH RMSE min W2 All sources |  15.0 percent         | all sources
+WX101 | W2           | RMSE               | RH RMSE mean W2 All sources |  15.0 percent         | all sources
+WX102 | W2           | RMSE               | RH RMSE max W2 All sources |  15.0 percent         | all sources
 WX103 | W2           | Bias               | RH Bias min W2 TSO             |  15.0 percent         | TSO
 WX104 | W2           | Bias               | RH Bias mean W2 TSO            |  15.0 percent         | TSO
 WX105 | W2           | Bias               | RH Bias max W2 TSO             |  15.0 percent         | TSO
-WX106 | W2           | Bias               | RH Bias min W2                 |  15.0 percent         | all sources
-WX107 | W2           | Bias               | RH Bias mean W2                |  15.0 percent         | all sources
-WX108 | W2           | Bias               | RH Bias max W2                 |  15.0 percent         | all sources
+WX106 | W2           | Bias               | RH Bias min W2 All sources |  15.0 percent         | all sources
+WX107 | W2           | Bias               | RH Bias mean W2 All sources |  15.0 percent         | all sources
+WX108 | W2           | Bias               | RH Bias max W2 All sources |  15.0 percent         | all sources
 WX109 | W3           | MAE                | RH MAE min W3 TSO              |  15.0 percent         | TSO
 WX110 | W3           | MAE                | RH MAE mean W3 TSO             |  15.0 percent         | TSO
 WX111 | W3           | MAE                | RH MAE max W3 TSO              |  15.0 percent         | TSO
-WX112 | W3           | MAE                | RH MAE min W3                  |  15.0 percent         | all sources
-WX113 | W3           | MAE                | RH MAE mean W3                 |  15.0 percent         | all sources
-WX114 | W3           | MAE                | RH MAE max W3                  |  15.0 percent         | all sources
+WX112 | W3           | MAE                | RH MAE min W3 All sources |  15.0 percent         | all sources
+WX113 | W3           | MAE                | RH MAE mean W3 All sources |  15.0 percent         | all sources
+WX114 | W3           | MAE                | RH MAE max W3 All sources |  15.0 percent         | all sources
 WX115 | W3           | RMSE               | RH RMSE min W3 TSO             |  15.0 percent         | TSO
 WX116 | W3           | RMSE               | RH RMSE mean W3 TSO            |  15.0 percent         | TSO
 WX117 | W3           | RMSE               | RH RMSE max W3 TSO             |  15.0 percent         | TSO
-WX118 | W3           | RMSE               | RH RMSE min W3                 |  15.0 percent         | all sources
-WX119 | W3           | RMSE               | RH RMSE mean W3                |  15.0 percent         | all sources
-WX120 | W3           | RMSE               | RH RMSE max W3                 |  15.0 percent         | all sources
+WX118 | W3           | RMSE               | RH RMSE min W3 All sources |  15.0 percent         | all sources
+WX119 | W3           | RMSE               | RH RMSE mean W3 All sources |  15.0 percent         | all sources
+WX120 | W3           | RMSE               | RH RMSE max W3 All sources |  15.0 percent         | all sources
 WX121 | W3           | Bias               | RH Bias min W3 TSO             |  15.0 percent         | TSO
 WX122 | W3           | Bias               | RH Bias mean W3 TSO            |  15.0 percent         | TSO
 WX123 | W3           | Bias               | RH Bias max W3 TSO             |  15.0 percent         | TSO
-WX124 | W3           | Bias               | RH Bias min W3                 |  15.0 percent         | all sources
-WX125 | W3           | Bias               | RH Bias mean W3                |  15.0 percent         | all sources
-WX126 | W3           | Bias               | RH Bias max W3                 |  15.0 percent         | all sources
+WX124 | W3           | Bias               | RH Bias min W3 All sources |  15.0 percent         | all sources
+WX125 | W3           | Bias               | RH Bias mean W3 All sources |  15.0 percent         | all sources
+WX126 | W3           | Bias               | RH Bias max W3 All sources |  15.0 percent         | all sources
 WX127 | W4           | MAE                | RH MAE min W4 TSO              |  15.0 percent         | TSO
 WX128 | W4           | MAE                | RH MAE mean W4 TSO             |  15.0 percent         | TSO
 WX129 | W4           | MAE                | RH MAE max W4 TSO              |  15.0 percent         | TSO
-WX130 | W4           | MAE                | RH MAE min W4                  |  15.0 percent         | all sources
-WX131 | W4           | MAE                | RH MAE mean W4                 |  15.0 percent         | all sources
-WX132 | W4           | MAE                | RH MAE max W4                  |  15.0 percent         | all sources
+WX130 | W4           | MAE                | RH MAE min W4 All sources |  15.0 percent         | all sources
+WX131 | W4           | MAE                | RH MAE mean W4 All sources |  15.0 percent         | all sources
+WX132 | W4           | MAE                | RH MAE max W4 All sources |  15.0 percent         | all sources
 WX133 | W4           | RMSE               | RH RMSE min W4 TSO             |  15.0 percent         | TSO
 WX134 | W4           | RMSE               | RH RMSE mean W4 TSO            |  15.0 percent         | TSO
 WX135 | W4           | RMSE               | RH RMSE max W4 TSO             |  15.0 percent         | TSO
-WX136 | W4           | RMSE               | RH RMSE min W4                 |  15.0 percent         | all sources
-WX137 | W4           | RMSE               | RH RMSE mean W4                |  15.0 percent         | all sources
-WX138 | W4           | RMSE               | RH RMSE max W4                 |  15.0 percent         | all sources
+WX136 | W4           | RMSE               | RH RMSE min W4 All sources |  15.0 percent         | all sources
+WX137 | W4           | RMSE               | RH RMSE mean W4 All sources |  15.0 percent         | all sources
+WX138 | W4           | RMSE               | RH RMSE max W4 All sources |  15.0 percent         | all sources
 WX139 | W4           | Bias               | RH Bias min W4 TSO             |  15.0 percent         | TSO
 WX140 | W4           | Bias               | RH Bias mean W4 TSO            |  15.0 percent         | TSO
 WX141 | W4           | Bias               | RH Bias max W4 TSO             |  15.0 percent         | TSO
-WX142 | W4           | Bias               | RH Bias min W4                 |  15.0 percent         | all sources
-WX143 | W4           | Bias               | RH Bias mean W4                |  15.0 percent         | all sources
-WX144 | W4           | Bias               | RH Bias max W4                 |  15.0 percent         | all sources
+WX142 | W4           | Bias               | RH Bias min W4 All sources |  15.0 percent         | all sources
+WX143 | W4           | Bias               | RH Bias mean W4 All sources |  15.0 percent         | all sources
+WX144 | W4           | Bias               | RH Bias max W4 All sources |  15.0 percent         | all sources
 
 #### Wind Speed
 
@@ -822,75 +831,75 @@ ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | 
 WX145 | W1           | MAE                | Wind Speed MAE min W1 TSO      |   5.0 m/s             | TSO
 WX146 | W1           | MAE                | Wind Speed MAE mean W1 TSO     |   5.0 m/s             | TSO
 WX147 | W1           | MAE                | Wind Speed MAE max W1 TSO      |   5.0 m/s             | TSO
-WX148 | W1           | MAE                | Wind Speed MAE min W1          |   5.0 m/s             | all sources
-WX149 | W1           | MAE                | Wind Speed MAE mean W1         |   5.0 m/s             | all sources
-WX150 | W1           | MAE                | Wind Speed MAE max W1          |   5.0 m/s             | all sources
+WX148 | W1           | MAE                | Wind Speed MAE min W1 All sources |   5.0 m/s             | all sources
+WX149 | W1           | MAE                | Wind Speed MAE mean W1 All sources |   5.0 m/s             | all sources
+WX150 | W1           | MAE                | Wind Speed MAE max W1 All sources |   5.0 m/s             | all sources
 WX151 | W1           | RMSE               | Wind Speed RMSE min W1 TSO     |   5.0 m/s             | TSO
 WX152 | W1           | RMSE               | Wind Speed RMSE mean W1 TSO    |   5.0 m/s             | TSO
 WX153 | W1           | RMSE               | Wind Speed RMSE max W1 TSO     |   5.0 m/s             | TSO
-WX154 | W1           | RMSE               | Wind Speed RMSE min W1         |   5.0 m/s             | all sources
-WX155 | W1           | RMSE               | Wind Speed RMSE mean W1        |   5.0 m/s             | all sources
-WX156 | W1           | RMSE               | Wind Speed RMSE max W1         |   5.0 m/s             | all sources
+WX154 | W1           | RMSE               | Wind Speed RMSE min W1 All sources |   5.0 m/s             | all sources
+WX155 | W1           | RMSE               | Wind Speed RMSE mean W1 All sources |   5.0 m/s             | all sources
+WX156 | W1           | RMSE               | Wind Speed RMSE max W1 All sources |   5.0 m/s             | all sources
 WX157 | W1           | Bias               | Wind Speed Bias min W1 TSO     |   5.0 m/s             | TSO
 WX158 | W1           | Bias               | Wind Speed Bias mean W1 TSO    |   5.0 m/s             | TSO
 WX159 | W1           | Bias               | Wind Speed Bias max W1 TSO     |   5.0 m/s             | TSO
-WX160 | W1           | Bias               | Wind Speed Bias min W1         |   5.0 m/s             | all sources
-WX161 | W1           | Bias               | Wind Speed Bias mean W1        |   5.0 m/s             | all sources
-WX162 | W1           | Bias               | Wind Speed Bias max W1         |   5.0 m/s             | all sources
+WX160 | W1           | Bias               | Wind Speed Bias min W1 All sources |   5.0 m/s             | all sources
+WX161 | W1           | Bias               | Wind Speed Bias mean W1 All sources |   5.0 m/s             | all sources
+WX162 | W1           | Bias               | Wind Speed Bias max W1 All sources |   5.0 m/s             | all sources
 WX163 | W2           | MAE                | Wind Speed MAE min W2 TSO      |   5.0 m/s             | TSO
 WX164 | W2           | MAE                | Wind Speed MAE mean W2 TSO     |   5.0 m/s             | TSO
 WX165 | W2           | MAE                | Wind Speed MAE max W2 TSO      |   5.0 m/s             | TSO
-WX166 | W2           | MAE                | Wind Speed MAE min W2          |   5.0 m/s             | all sources
-WX167 | W2           | MAE                | Wind Speed MAE mean W2         |   5.0 m/s             | all sources
-WX168 | W2           | MAE                | Wind Speed MAE max W2          |   5.0 m/s             | all sources
+WX166 | W2           | MAE                | Wind Speed MAE min W2 All sources |   5.0 m/s             | all sources
+WX167 | W2           | MAE                | Wind Speed MAE mean W2 All sources |   5.0 m/s             | all sources
+WX168 | W2           | MAE                | Wind Speed MAE max W2 All sources |   5.0 m/s             | all sources
 WX169 | W2           | RMSE               | Wind Speed RMSE min W2 TSO     |   5.0 m/s             | TSO
 WX170 | W2           | RMSE               | Wind Speed RMSE mean W2 TSO    |   5.0 m/s             | TSO
 WX171 | W2           | RMSE               | Wind Speed RMSE max W2 TSO     |   5.0 m/s             | TSO
-WX172 | W2           | RMSE               | Wind Speed RMSE min W2         |   5.0 m/s             | all sources
-WX173 | W2           | RMSE               | Wind Speed RMSE mean W2        |   5.0 m/s             | all sources
-WX174 | W2           | RMSE               | Wind Speed RMSE max W2         |   5.0 m/s             | all sources
+WX172 | W2           | RMSE               | Wind Speed RMSE min W2 All sources |   5.0 m/s             | all sources
+WX173 | W2           | RMSE               | Wind Speed RMSE mean W2 All sources |   5.0 m/s             | all sources
+WX174 | W2           | RMSE               | Wind Speed RMSE max W2 All sources |   5.0 m/s             | all sources
 WX175 | W2           | Bias               | Wind Speed Bias min W2 TSO     |   5.0 m/s             | TSO
 WX176 | W2           | Bias               | Wind Speed Bias mean W2 TSO    |   5.0 m/s             | TSO
 WX177 | W2           | Bias               | Wind Speed Bias max W2 TSO     |   5.0 m/s             | TSO
-WX178 | W2           | Bias               | Wind Speed Bias min W2         |   5.0 m/s             | all sources
-WX179 | W2           | Bias               | Wind Speed Bias mean W2        |   5.0 m/s             | all sources
-WX180 | W2           | Bias               | Wind Speed Bias max W2         |   5.0 m/s             | all sources
+WX178 | W2           | Bias               | Wind Speed Bias min W2 All sources |   5.0 m/s             | all sources
+WX179 | W2           | Bias               | Wind Speed Bias mean W2 All sources |   5.0 m/s             | all sources
+WX180 | W2           | Bias               | Wind Speed Bias max W2 All sources |   5.0 m/s             | all sources
 WX181 | W3           | MAE                | Wind Speed MAE min W3 TSO      |   5.0 m/s             | TSO
 WX182 | W3           | MAE                | Wind Speed MAE mean W3 TSO     |   5.0 m/s             | TSO
 WX183 | W3           | MAE                | Wind Speed MAE max W3 TSO      |   5.0 m/s             | TSO
-WX184 | W3           | MAE                | Wind Speed MAE min W3          |   5.0 m/s             | all sources
-WX185 | W3           | MAE                | Wind Speed MAE mean W3         |   5.0 m/s             | all sources
-WX186 | W3           | MAE                | Wind Speed MAE max W3          |   5.0 m/s             | all sources
+WX184 | W3           | MAE                | Wind Speed MAE min W3 All sources |   5.0 m/s             | all sources
+WX185 | W3           | MAE                | Wind Speed MAE mean W3 All sources |   5.0 m/s             | all sources
+WX186 | W3           | MAE                | Wind Speed MAE max W3 All sources |   5.0 m/s             | all sources
 WX187 | W3           | RMSE               | Wind Speed RMSE min W3 TSO     |   5.0 m/s             | TSO
 WX188 | W3           | RMSE               | Wind Speed RMSE mean W3 TSO    |   5.0 m/s             | TSO
 WX189 | W3           | RMSE               | Wind Speed RMSE max W3 TSO     |   5.0 m/s             | TSO
-WX190 | W3           | RMSE               | Wind Speed RMSE min W3         |   5.0 m/s             | all sources
-WX191 | W3           | RMSE               | Wind Speed RMSE mean W3        |   5.0 m/s             | all sources
-WX192 | W3           | RMSE               | Wind Speed RMSE max W3         |   5.0 m/s             | all sources
+WX190 | W3           | RMSE               | Wind Speed RMSE min W3 All sources |   5.0 m/s             | all sources
+WX191 | W3           | RMSE               | Wind Speed RMSE mean W3 All sources |   5.0 m/s             | all sources
+WX192 | W3           | RMSE               | Wind Speed RMSE max W3 All sources |   5.0 m/s             | all sources
 WX193 | W3           | Bias               | Wind Speed Bias min W3 TSO     |   5.0 m/s             | TSO
 WX194 | W3           | Bias               | Wind Speed Bias mean W3 TSO    |   5.0 m/s             | TSO
 WX195 | W3           | Bias               | Wind Speed Bias max W3 TSO     |   5.0 m/s             | TSO
-WX196 | W3           | Bias               | Wind Speed Bias min W3         |   5.0 m/s             | all sources
-WX197 | W3           | Bias               | Wind Speed Bias mean W3        |   5.0 m/s             | all sources
-WX198 | W3           | Bias               | Wind Speed Bias max W3         |   5.0 m/s             | all sources
+WX196 | W3           | Bias               | Wind Speed Bias min W3 All sources |   5.0 m/s             | all sources
+WX197 | W3           | Bias               | Wind Speed Bias mean W3 All sources |   5.0 m/s             | all sources
+WX198 | W3           | Bias               | Wind Speed Bias max W3 All sources |   5.0 m/s             | all sources
 WX199 | W4           | MAE                | Wind Speed MAE min W4 TSO      |   5.0 m/s             | TSO
 WX200 | W4           | MAE                | Wind Speed MAE mean W4 TSO     |   5.0 m/s             | TSO
 WX201 | W4           | MAE                | Wind Speed MAE max W4 TSO      |   5.0 m/s             | TSO
-WX202 | W4           | MAE                | Wind Speed MAE min W4          |   5.0 m/s             | all sources
-WX203 | W4           | MAE                | Wind Speed MAE mean W4         |   5.0 m/s             | all sources
-WX204 | W4           | MAE                | Wind Speed MAE max W4          |   5.0 m/s             | all sources
+WX202 | W4           | MAE                | Wind Speed MAE min W4 All sources |   5.0 m/s             | all sources
+WX203 | W4           | MAE                | Wind Speed MAE mean W4 All sources |   5.0 m/s             | all sources
+WX204 | W4           | MAE                | Wind Speed MAE max W4 All sources |   5.0 m/s             | all sources
 WX205 | W4           | RMSE               | Wind Speed RMSE min W4 TSO     |   5.0 m/s             | TSO
 WX206 | W4           | RMSE               | Wind Speed RMSE mean W4 TSO    |   5.0 m/s             | TSO
 WX207 | W4           | RMSE               | Wind Speed RMSE max W4 TSO     |   5.0 m/s             | TSO
-WX208 | W4           | RMSE               | Wind Speed RMSE min W4         |   5.0 m/s             | all sources
-WX209 | W4           | RMSE               | Wind Speed RMSE mean W4        |   5.0 m/s             | all sources
-WX210 | W4           | RMSE               | Wind Speed RMSE max W4         |   5.0 m/s             | all sources
+WX208 | W4           | RMSE               | Wind Speed RMSE min W4 All sources |   5.0 m/s             | all sources
+WX209 | W4           | RMSE               | Wind Speed RMSE mean W4 All sources |   5.0 m/s             | all sources
+WX210 | W4           | RMSE               | Wind Speed RMSE max W4 All sources |   5.0 m/s             | all sources
 WX211 | W4           | Bias               | Wind Speed Bias min W4 TSO     |   5.0 m/s             | TSO
 WX212 | W4           | Bias               | Wind Speed Bias mean W4 TSO    |   5.0 m/s             | TSO
 WX213 | W4           | Bias               | Wind Speed Bias max W4 TSO     |   5.0 m/s             | TSO
-WX214 | W4           | Bias               | Wind Speed Bias min W4         |   5.0 m/s             | all sources
-WX215 | W4           | Bias               | Wind Speed Bias mean W4        |   5.0 m/s             | all sources
-WX216 | W4           | Bias               | Wind Speed Bias max W4         |   5.0 m/s             | all sources
+WX214 | W4           | Bias               | Wind Speed Bias min W4 All sources |   5.0 m/s             | all sources
+WX215 | W4           | Bias               | Wind Speed Bias mean W4 All sources |   5.0 m/s             | all sources
+WX216 | W4           | Bias               | Wind Speed Bias max W4 All sources |   5.0 m/s             | all sources
 
 #### Wind Direction
 
@@ -910,27 +919,27 @@ ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | 
 WX217 | W1           | circular bias      | Wind Direction circular bias min W1 TSO |  45.0 degree          | TSO
 WX218 | W1           | circular bias      | Wind Direction circular bias mean W1 TSO |  45.0 degree          | TSO
 WX219 | W1           | circular bias      | Wind Direction circular bias max W1 TSO |  45.0 degree          | TSO
-WX220 | W1           | circular bias      | Wind Direction circular bias min W1  |  45.0 degree          | all sources
-WX221 | W1           | circular bias      | Wind Direction circular bias mean W1  |  45.0 degree          | all sources
-WX222 | W1           | circular bias      | Wind Direction circular bias max W1  |  45.0 degree          | all sources
+WX220 | W1           | circular bias      | Wind Direction circular bias min W1 All sources |  45.0 degree          | all sources
+WX221 | W1           | circular bias      | Wind Direction circular bias mean W1 All sources |  45.0 degree          | all sources
+WX222 | W1           | circular bias      | Wind Direction circular bias max W1 All sources |  45.0 degree          | all sources
 WX223 | W2           | circular bias      | Wind Direction circular bias min W2 TSO |  45.0 degree          | TSO
 WX224 | W2           | circular bias      | Wind Direction circular bias mean W2 TSO |  45.0 degree          | TSO
 WX225 | W2           | circular bias      | Wind Direction circular bias max W2 TSO |  45.0 degree          | TSO
-WX226 | W2           | circular bias      | Wind Direction circular bias min W2  |  45.0 degree          | all sources
-WX227 | W2           | circular bias      | Wind Direction circular bias mean W2  |  45.0 degree          | all sources
-WX228 | W2           | circular bias      | Wind Direction circular bias max W2  |  45.0 degree          | all sources
+WX226 | W2           | circular bias      | Wind Direction circular bias min W2 All sources |  45.0 degree          | all sources
+WX227 | W2           | circular bias      | Wind Direction circular bias mean W2 All sources |  45.0 degree          | all sources
+WX228 | W2           | circular bias      | Wind Direction circular bias max W2 All sources |  45.0 degree          | all sources
 WX229 | W3           | circular bias      | Wind Direction circular bias min W3 TSO |  45.0 degree          | TSO
 WX230 | W3           | circular bias      | Wind Direction circular bias mean W3 TSO |  45.0 degree          | TSO
 WX231 | W3           | circular bias      | Wind Direction circular bias max W3 TSO |  45.0 degree          | TSO
-WX232 | W3           | circular bias      | Wind Direction circular bias min W3  |  45.0 degree          | all sources
-WX233 | W3           | circular bias      | Wind Direction circular bias mean W3  |  45.0 degree          | all sources
-WX234 | W3           | circular bias      | Wind Direction circular bias max W3  |  45.0 degree          | all sources
+WX232 | W3           | circular bias      | Wind Direction circular bias min W3 All sources |  45.0 degree          | all sources
+WX233 | W3           | circular bias      | Wind Direction circular bias mean W3 All sources |  45.0 degree          | all sources
+WX234 | W3           | circular bias      | Wind Direction circular bias max W3 All sources |  45.0 degree          | all sources
 WX235 | W4           | circular bias      | Wind Direction circular bias min W4 TSO |  45.0 degree          | TSO
 WX236 | W4           | circular bias      | Wind Direction circular bias mean W4 TSO |  45.0 degree          | TSO
 WX237 | W4           | circular bias      | Wind Direction circular bias max W4 TSO |  45.0 degree          | TSO
-WX238 | W4           | circular bias      | Wind Direction circular bias min W4  |  45.0 degree          | all sources
-WX239 | W4           | circular bias      | Wind Direction circular bias mean W4  |  45.0 degree          | all sources
-WX240 | W4           | circular bias      | Wind Direction circular bias max W4  |  45.0 degree          | all sources
+WX238 | W4           | circular bias      | Wind Direction circular bias min W4 All sources |  45.0 degree          | all sources
+WX239 | W4           | circular bias      | Wind Direction circular bias mean W4 All sources |  45.0 degree          | all sources
+WX240 | W4           | circular bias      | Wind Direction circular bias max W4 All sources |  45.0 degree          | all sources
 
 #### Fuel Moisture Content 10h
 
@@ -950,75 +959,75 @@ ID    | Study period | Summary stats func |  Name in Score Card     | $m$     | 
 WX241 | W1           | MAE                | FMC 10h MAE min W1 TSO         |   5.0 percent         | TSO
 WX242 | W1           | MAE                | FMC 10h MAE mean W1 TSO        |   5.0 percent         | TSO
 WX243 | W1           | MAE                | FMC 10h MAE max W1 TSO         |   5.0 percent         | TSO
-WX244 | W1           | MAE                | FMC 10h MAE min W1             |   5.0 percent         | all sources
-WX245 | W1           | MAE                | FMC 10h MAE mean W1            |   5.0 percent         | all sources
-WX246 | W1           | MAE                | FMC 10h MAE max W1             |   5.0 percent         | all sources
+WX244 | W1           | MAE                | FMC 10h MAE min W1 All sources |   5.0 percent         | all sources
+WX245 | W1           | MAE                | FMC 10h MAE mean W1 All sources |   5.0 percent         | all sources
+WX246 | W1           | MAE                | FMC 10h MAE max W1 All sources |   5.0 percent         | all sources
 WX247 | W1           | RMSE               | FMC 10h RMSE min W1 TSO        |   5.0 percent         | TSO
 WX248 | W1           | RMSE               | FMC 10h RMSE mean W1 TSO       |   5.0 percent         | TSO
 WX249 | W1           | RMSE               | FMC 10h RMSE max W1 TSO        |   5.0 percent         | TSO
-WX250 | W1           | RMSE               | FMC 10h RMSE min W1            |   5.0 percent         | all sources
-WX251 | W1           | RMSE               | FMC 10h RMSE mean W1           |   5.0 percent         | all sources
-WX252 | W1           | RMSE               | FMC 10h RMSE max W1            |   5.0 percent         | all sources
+WX250 | W1           | RMSE               | FMC 10h RMSE min W1 All sources |   5.0 percent         | all sources
+WX251 | W1           | RMSE               | FMC 10h RMSE mean W1 All sources |   5.0 percent         | all sources
+WX252 | W1           | RMSE               | FMC 10h RMSE max W1 All sources |   5.0 percent         | all sources
 WX253 | W1           | Bias               | FMC 10h Bias min W1 TSO        |   5.0 percent         | TSO
 WX254 | W1           | Bias               | FMC 10h Bias mean W1 TSO       |   5.0 percent         | TSO
 WX255 | W1           | Bias               | FMC 10h Bias max W1 TSO        |   5.0 percent         | TSO
-WX256 | W1           | Bias               | FMC 10h Bias min W1            |   5.0 percent         | all sources
-WX257 | W1           | Bias               | FMC 10h Bias mean W1           |   5.0 percent         | all sources
-WX258 | W1           | Bias               | FMC 10h Bias max W1            |   5.0 percent         | all sources
+WX256 | W1           | Bias               | FMC 10h Bias min W1 All sources |   5.0 percent         | all sources
+WX257 | W1           | Bias               | FMC 10h Bias mean W1 All sources |   5.0 percent         | all sources
+WX258 | W1           | Bias               | FMC 10h Bias max W1 All sources |   5.0 percent         | all sources
 WX259 | W2           | MAE                | FMC 10h MAE min W2 TSO         |   5.0 percent         | TSO
 WX260 | W2           | MAE                | FMC 10h MAE mean W2 TSO        |   5.0 percent         | TSO
 WX261 | W2           | MAE                | FMC 10h MAE max W2 TSO         |   5.0 percent         | TSO
-WX262 | W2           | MAE                | FMC 10h MAE min W2             |   5.0 percent         | all sources
-WX263 | W2           | MAE                | FMC 10h MAE mean W2            |   5.0 percent         | all sources
-WX264 | W2           | MAE                | FMC 10h MAE max W2             |   5.0 percent         | all sources
+WX262 | W2           | MAE                | FMC 10h MAE min W2 All sources |   5.0 percent         | all sources
+WX263 | W2           | MAE                | FMC 10h MAE mean W2 All sources |   5.0 percent         | all sources
+WX264 | W2           | MAE                | FMC 10h MAE max W2 All sources |   5.0 percent         | all sources
 WX265 | W2           | RMSE               | FMC 10h RMSE min W2 TSO        |   5.0 percent         | TSO
 WX266 | W2           | RMSE               | FMC 10h RMSE mean W2 TSO       |   5.0 percent         | TSO
 WX267 | W2           | RMSE               | FMC 10h RMSE max W2 TSO        |   5.0 percent         | TSO
-WX268 | W2           | RMSE               | FMC 10h RMSE min W2            |   5.0 percent         | all sources
-WX269 | W2           | RMSE               | FMC 10h RMSE mean W2           |   5.0 percent         | all sources
-WX270 | W2           | RMSE               | FMC 10h RMSE max W2            |   5.0 percent         | all sources
+WX268 | W2           | RMSE               | FMC 10h RMSE min W2 All sources |   5.0 percent         | all sources
+WX269 | W2           | RMSE               | FMC 10h RMSE mean W2 All sources |   5.0 percent         | all sources
+WX270 | W2           | RMSE               | FMC 10h RMSE max W2 All sources |   5.0 percent         | all sources
 WX271 | W2           | Bias               | FMC 10h Bias min W2 TSO        |   5.0 percent         | TSO
 WX272 | W2           | Bias               | FMC 10h Bias mean W2 TSO       |   5.0 percent         | TSO
 WX273 | W2           | Bias               | FMC 10h Bias max W2 TSO        |   5.0 percent         | TSO
-WX274 | W2           | Bias               | FMC 10h Bias min W2            |   5.0 percent         | all sources
-WX275 | W2           | Bias               | FMC 10h Bias mean W2           |   5.0 percent         | all sources
-WX276 | W2           | Bias               | FMC 10h Bias max W2            |   5.0 percent         | all sources
+WX274 | W2           | Bias               | FMC 10h Bias min W2 All sources |   5.0 percent         | all sources
+WX275 | W2           | Bias               | FMC 10h Bias mean W2 All sources |   5.0 percent         | all sources
+WX276 | W2           | Bias               | FMC 10h Bias max W2 All sources |   5.0 percent         | all sources
 WX277 | W3           | MAE                | FMC 10h MAE min W3 TSO         |   5.0 percent         | TSO
 WX278 | W3           | MAE                | FMC 10h MAE mean W3 TSO        |   5.0 percent         | TSO
 WX279 | W3           | MAE                | FMC 10h MAE max W3 TSO         |   5.0 percent         | TSO
-WX280 | W3           | MAE                | FMC 10h MAE min W3             |   5.0 percent         | all sources
-WX281 | W3           | MAE                | FMC 10h MAE mean W3            |   5.0 percent         | all sources
-WX282 | W3           | MAE                | FMC 10h MAE max W3             |   5.0 percent         | all sources
+WX280 | W3           | MAE                | FMC 10h MAE min W3 All sources |   5.0 percent         | all sources
+WX281 | W3           | MAE                | FMC 10h MAE mean W3 All sources |   5.0 percent         | all sources
+WX282 | W3           | MAE                | FMC 10h MAE max W3 All sources |   5.0 percent         | all sources
 WX283 | W3           | RMSE               | FMC 10h RMSE min W3 TSO        |   5.0 percent         | TSO
 WX284 | W3           | RMSE               | FMC 10h RMSE mean W3 TSO       |   5.0 percent         | TSO
 WX285 | W3           | RMSE               | FMC 10h RMSE max W3 TSO        |   5.0 percent         | TSO
-WX286 | W3           | RMSE               | FMC 10h RMSE min W3            |   5.0 percent         | all sources
-WX287 | W3           | RMSE               | FMC 10h RMSE mean W3           |   5.0 percent         | all sources
-WX288 | W3           | RMSE               | FMC 10h RMSE max W3            |   5.0 percent         | all sources
+WX286 | W3           | RMSE               | FMC 10h RMSE min W3 All sources |   5.0 percent         | all sources
+WX287 | W3           | RMSE               | FMC 10h RMSE mean W3 All sources |   5.0 percent         | all sources
+WX288 | W3           | RMSE               | FMC 10h RMSE max W3 All sources |   5.0 percent         | all sources
 WX289 | W3           | Bias               | FMC 10h Bias min W3 TSO        |   5.0 percent         | TSO
 WX290 | W3           | Bias               | FMC 10h Bias mean W3 TSO       |   5.0 percent         | TSO
 WX291 | W3           | Bias               | FMC 10h Bias max W3 TSO        |   5.0 percent         | TSO
-WX292 | W3           | Bias               | FMC 10h Bias min W3            |   5.0 percent         | all sources
-WX293 | W3           | Bias               | FMC 10h Bias mean W3           |   5.0 percent         | all sources
-WX294 | W3           | Bias               | FMC 10h Bias max W3            |   5.0 percent         | all sources
+WX292 | W3           | Bias               | FMC 10h Bias min W3 All sources |   5.0 percent         | all sources
+WX293 | W3           | Bias               | FMC 10h Bias mean W3 All sources |   5.0 percent         | all sources
+WX294 | W3           | Bias               | FMC 10h Bias max W3 All sources |   5.0 percent         | all sources
 WX295 | W4           | MAE                | FMC 10h MAE min W4 TSO         |   5.0 percent         | TSO
 WX296 | W4           | MAE                | FMC 10h MAE mean W4 TSO        |   5.0 percent         | TSO
 WX297 | W4           | MAE                | FMC 10h MAE max W4 TSO         |   5.0 percent         | TSO
-WX298 | W4           | MAE                | FMC 10h MAE min W4             |   5.0 percent         | all sources
-WX299 | W4           | MAE                | FMC 10h MAE mean W4            |   5.0 percent         | all sources
-WX300 | W4           | MAE                | FMC 10h MAE max W4             |   5.0 percent         | all sources
+WX298 | W4           | MAE                | FMC 10h MAE min W4 All sources |   5.0 percent         | all sources
+WX299 | W4           | MAE                | FMC 10h MAE mean W4 All sources |   5.0 percent         | all sources
+WX300 | W4           | MAE                | FMC 10h MAE max W4 All sources |   5.0 percent         | all sources
 WX301 | W4           | RMSE               | FMC 10h RMSE min W4 TSO        |   5.0 percent         | TSO
 WX302 | W4           | RMSE               | FMC 10h RMSE mean W4 TSO       |   5.0 percent         | TSO
 WX303 | W4           | RMSE               | FMC 10h RMSE max W4 TSO        |   5.0 percent         | TSO
-WX304 | W4           | RMSE               | FMC 10h RMSE min W4            |   5.0 percent         | all sources
-WX305 | W4           | RMSE               | FMC 10h RMSE mean W4           |   5.0 percent         | all sources
-WX306 | W4           | RMSE               | FMC 10h RMSE max W4            |   5.0 percent         | all sources
+WX304 | W4           | RMSE               | FMC 10h RMSE min W4 All sources |   5.0 percent         | all sources
+WX305 | W4           | RMSE               | FMC 10h RMSE mean W4 All sources |   5.0 percent         | all sources
+WX306 | W4           | RMSE               | FMC 10h RMSE max W4 All sources |   5.0 percent         | all sources
 WX307 | W4           | Bias               | FMC 10h Bias min W4 TSO        |   5.0 percent         | TSO
 WX308 | W4           | Bias               | FMC 10h Bias mean W4 TSO       |   5.0 percent         | TSO
 WX309 | W4           | Bias               | FMC 10h Bias max W4 TSO        |   5.0 percent         | TSO
-WX310 | W4           | Bias               | FMC 10h Bias min W4            |   5.0 percent         | all sources
-WX311 | W4           | Bias               | FMC 10h Bias mean W4           |   5.0 percent         | all sources
-WX312 | W4           | Bias               | FMC 10h Bias max W4            |   5.0 percent         | all sources
+WX310 | W4           | Bias               | FMC 10h Bias min W4 All sources |   5.0 percent         | all sources
+WX311 | W4           | Bias               | FMC 10h Bias mean W4 All sources |   5.0 percent         | all sources
+WX312 | W4           | Bias               | FMC 10h Bias max W4 All sources |   5.0 percent         | all sources
 
 ## Requirements
 

@@ -1390,7 +1390,7 @@ def add_wx_benchmarks():
                 WX_GROUP_BENCHMARKS.setdefault(group_name, {})
                 WX_GROUPS_BY_PERIOD.setdefault(period_name, []).append(group_name)
                 for metric_name, metric_func in metric_funcs[variable_spec["metric_set"]].items():
-                    for station_set_text, station_set in cfg.WX_STATION_SET_OPTIONS:
+                    for station_set_text, station_set, weight in cfg.WX_STATION_SET_OPTIONS:
                         for func_name, stat_func in summary_stats_func.items():
                             bench_id = f"FB001_WX{bench_idx:03d}"
                             bench_name = (
@@ -1409,7 +1409,7 @@ def add_wx_benchmarks():
                                 value_norm_param_m=variable_spec["norm_m"],
                                 station_set=station_set,
                             )
-                            WX_GROUP_BENCHMARKS[group_name][bench_id] = 1
+                            WX_GROUP_BENCHMARKS[group_name][bench_id] = weight
                             ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
                             REQUIREMENTS[variable_spec["requirement"]]["benchmarks"].append(bench_id)
                             bench_idx += 1
