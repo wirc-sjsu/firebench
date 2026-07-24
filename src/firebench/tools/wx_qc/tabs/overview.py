@@ -377,7 +377,6 @@ class OverviewTabMixin:
             self.tv_ov.tag_configure("error", background=ERROR_BG, foreground="black")
             self.tv_ov.tag_configure("warn", background=WARN_BG, foreground="black")
             self.tv_ov.tag_configure("ok", background=OK_BG, foreground="black")
-            self.tv_ov.focus_force()
             self.tv_ov.update()
 
         self.after_idle(_do_nudge)

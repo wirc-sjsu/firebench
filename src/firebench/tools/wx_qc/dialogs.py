@@ -4,11 +4,24 @@ from pathlib import Path
 
 from .constants import (
     ASSERTION_CATS,
+    ASSERTION_DEFAULT_SEVERITY,
     DEFAULT_MAX_VAR_OUTAGE_MIN,
     DEFAULT_FULL_OUTAGE_MIN,
     validate_gui_config,
 )
 from .theme import PAD, PAD_LG
+
+# Map variables with a colorbar-driven marker/heatmap style on the map tab
+# (mirrors map_tab.py's _VAR_CMAP keys).
+CBAR_VARS = (
+    "air_temperature",
+    "relative_humidity",
+    "solar_radiation",
+    "fuel_moisture_content_10h",
+    "wind_speed",
+    "wind_gust",
+    "wind_direction",
+)
 
 
 class AddSkipDialog(tk.Toplevel):
@@ -85,15 +98,15 @@ class AddRemovalDialog(tk.Toplevel):
 
 
 class SettingsDialog(tk.Toplevel):
-    """Edit application configuration (thresholds, assertions, bounds, columns, fire perimeter).
+    """Edit application configuration (bounds, thresholds, assertions, columns, fire perimeter, colorbars).
 
-    Result holds validated thresholds, assertion visibility, physical bounds,
-    column visibility, perimeter settings, and station-comparison settings on
-    OK, or None on cancel.
+    Result holds validated physical bounds, thresholds, assertion visibility
+    and severities, column visibility, perimeter settings, station-comparison
+    settings, and map marker/colorbar overrides on OK, or None on cancel.
     """
 
     def __init__(self, parent, cfg, bounds, base_cols, var_col_map, col_visibility, var_short):
-        """Build settings notebook dialog with Thresholds, Assertions, Bounds, Columns, Fire Perimeter tabs."""
+        """Build settings notebook dialog with Bounds, Thresholds, Assertions, Columns, Fire Perimeter, Colorbars tabs."""
         super().__init__(parent)
         self.title("Settings")
         self.resizable(False, False)
@@ -101,71 +114,6 @@ class SettingsDialog(tk.Toplevel):
 
         nb = ttk.Notebook(self)
         nb.pack(fill="both", expand=True, padx=8, pady=8)
-
-        tf = ttk.Frame(nb)
-        nb.add(tf, text="Thresholds")
-        tk.Label(tf, text="Frozen run >=:", anchor="w").grid(
-            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        self.e_frz = ttk.Entry(tf, width=10)
-        self.e_frz.insert(0, str(cfg["frozen_min_run"]))
-        self.e_frz.grid(row=0, column=1, padx=PAD_LG, pady=PAD)
-        tk.Label(tf, text="Longest variable outage warning (min):", anchor="w").grid(
-            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        self.e_max_var_outage = ttk.Entry(tf, width=10)
-        self.e_max_var_outage.insert(0, str(cfg.get("max_var_outage_min", DEFAULT_MAX_VAR_OUTAGE_MIN)))
-        self.e_max_var_outage.grid(row=1, column=1, padx=PAD_LG, pady=PAD)
-        tk.Label(tf, text="Longest full-station outage warning (min):", anchor="w").grid(
-            row=2, column=0, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        self.e_full_outage = ttk.Entry(tf, width=10)
-        self.e_full_outage.insert(0, str(cfg.get("full_outage_min", DEFAULT_FULL_OUTAGE_MIN)))
-        self.e_full_outage.grid(row=2, column=1, padx=PAD_LG, pady=PAD)
-
-        ttk.Separator(tf, orient="horizontal").grid(
-            row=3, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD
-        )
-        tk.Label(tf, text="Compare -> nearest neighbors N:", anchor="w").grid(
-            row=4, column=0, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        self.e_compare_n = ttk.Entry(tf, width=10)
-        self.e_compare_n.insert(0, str(cfg.get("compare_n_neighbors", 4)))
-        self.e_compare_n.grid(row=4, column=1, padx=PAD_LG, pady=PAD)
-        self.v_compare_pool = tk.BooleanVar(value=cfg.get("compare_include_skip_greenlit", False))
-        ttk.Checkbutton(
-            tf,
-            text="Include skip-listed/greenlit stations as neighbor candidates",
-            variable=self.v_compare_pool,
-        ).grid(row=5, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
-
-        af = ttk.Frame(nb)
-        nb.add(af, text="Assertions")
-        ttk.Label(af, text="Severity to display:", style="Section.TLabel").grid(
-            row=0, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        self.v_show_errors = tk.BooleanVar(value=cfg.get("show_errors", True))
-        self.v_show_warns = tk.BooleanVar(value=cfg.get("show_warns", True))
-        ttk.Checkbutton(af, text="Show ERRORs", variable=self.v_show_errors).grid(
-            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        ttk.Checkbutton(af, text="Show WARNs", variable=self.v_show_warns).grid(
-            row=1, column=1, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        ttk.Separator(af, orient="horizontal").grid(
-            row=2, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD
-        )
-        ttk.Label(af, text="Assertion categories:", style="Section.TLabel").grid(
-            row=3, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        hidden = cfg.get("hidden_assertions", set())
-        self._acat_vars = {}
-        for i, (key, label) in enumerate(ASSERTION_CATS):
-            v = tk.BooleanVar(value=(key not in hidden))
-            self._acat_vars[key] = v
-            ttk.Checkbutton(af, text=label, variable=v).grid(
-                row=4 + i, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
-            )
 
         bt = ttk.Frame(nb)
         nb.add(bt, text="Bounds")
@@ -182,6 +130,86 @@ class SettingsDialog(tk.Toplevel):
             e_hi.grid(row=r, column=2, padx=PAD_LG, pady=PAD)
             tk.Label(bt, text=unit).grid(row=r, column=3, padx=PAD_LG, pady=PAD)
             self._bound_entries[vname] = (e_lo, e_hi, unit)
+
+        tf = ttk.Frame(nb)
+        nb.add(tf, text="Thresholds")
+        tk.Label(tf, text="Frozen run >=:", anchor="w").grid(
+            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        self.e_frz = ttk.Entry(tf, width=10)
+        self.e_frz.insert(0, str(cfg["frozen_min_run"]))
+        self.e_frz.grid(row=0, column=1, padx=PAD_LG, pady=PAD)
+        self.v_frz_exempt_calm = tk.BooleanVar(value=cfg.get("frozen_exempt_calm_wind", False))
+        ttk.Checkbutton(
+            tf,
+            text="Exempt wind direction (calm-wind repetition)",
+            variable=self.v_frz_exempt_calm,
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+        self.v_frz_exempt_rh = tk.BooleanVar(value=cfg.get("frozen_exempt_rh", False))
+        ttk.Checkbutton(tf, text="Exempt relative humidity", variable=self.v_frz_exempt_rh).grid(
+            row=2, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        tk.Label(tf, text="Duplicate-timestamp threshold:", anchor="w").grid(
+            row=3, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        self.e_dup_max = ttk.Entry(tf, width=10)
+        self.e_dup_max.insert(0, str(cfg.get("dup_max", 2)))
+        self.e_dup_max.grid(row=3, column=1, padx=PAD_LG, pady=PAD)
+        tk.Label(tf, text="Longest variable outage warning (min):", anchor="w").grid(
+            row=4, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        self.e_max_var_outage = ttk.Entry(tf, width=10)
+        self.e_max_var_outage.insert(0, str(cfg.get("max_var_outage_min", DEFAULT_MAX_VAR_OUTAGE_MIN)))
+        self.e_max_var_outage.grid(row=4, column=1, padx=PAD_LG, pady=PAD)
+        tk.Label(tf, text="Longest full-station outage warning (min):", anchor="w").grid(
+            row=5, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        self.e_full_outage = ttk.Entry(tf, width=10)
+        self.e_full_outage.insert(0, str(cfg.get("full_outage_min", DEFAULT_FULL_OUTAGE_MIN)))
+        self.e_full_outage.grid(row=5, column=1, padx=PAD_LG, pady=PAD)
+
+        ttk.Separator(tf, orient="horizontal").grid(
+            row=6, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD
+        )
+        tk.Label(tf, text="Compare -> nearest neighbors N:", anchor="w").grid(
+            row=7, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        self.e_compare_n = ttk.Entry(tf, width=10)
+        self.e_compare_n.insert(0, str(cfg.get("compare_n_neighbors", 4)))
+        self.e_compare_n.grid(row=7, column=1, padx=PAD_LG, pady=PAD)
+        self.v_compare_pool = tk.BooleanVar(value=cfg.get("compare_include_skip_greenlit", False))
+        ttk.Checkbutton(
+            tf,
+            text="Include skip-listed/greenlit stations as neighbor candidates",
+            variable=self.v_compare_pool,
+        ).grid(row=8, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+
+        af = ttk.Frame(nb)
+        nb.add(af, text="Assertions")
+        ttk.Label(af, text="Assertion categories:", style="Section.TLabel").grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        ttk.Label(af, text="Severity", style="Section.TLabel").grid(
+            row=1, column=1, sticky="w", padx=PAD_LG, pady=(0, PAD)
+        )
+        hidden = cfg.get("hidden_assertions", set())
+        severity_overrides = cfg.get("assertion_severity_override", {})
+        self._acat_vars = {}
+        self._acat_severity_vars = {}
+        for i, (key, label) in enumerate(ASSERTION_CATS):
+            row = 2 + i
+            v = tk.BooleanVar(value=(key not in hidden))
+            self._acat_vars[key] = v
+            ttk.Checkbutton(af, text=label, variable=v).grid(
+                row=row, column=0, sticky="w", padx=PAD_LG, pady=PAD
+            )
+            sv = tk.StringVar(
+                value=severity_overrides.get(key, ASSERTION_DEFAULT_SEVERITY.get(key, "WARN"))
+            )
+            self._acat_severity_vars[key] = sv
+            ttk.Combobox(af, textvariable=sv, values=["WARN", "ERROR"], state="readonly", width=6).grid(
+                row=row, column=1, sticky="w", padx=PAD_LG, pady=PAD
+            )
 
         cf = ttk.Frame(nb)
         nb.add(cf, text="Columns")
@@ -241,13 +269,65 @@ class SettingsDialog(tk.Toplevel):
         ttk.Label(pf, textvariable=self.var_perim_path, anchor="w", width=42, style="Muted.TLabel").grid(
             row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
         )
-        ttk.Button(pf, text="Choose...", command=self._choose_perim_file).grid(
+        ttk.Button(pf, text="Choose", command=self._choose_perim_file).grid(
             row=1, column=1, sticky="w", padx=PAD_LG, pady=PAD
         )
-        self.v_perim_all = tk.BooleanVar(value=cfg.get("perim_show_all", False))
+        self.v_perim_all = tk.BooleanVar(value=cfg.get("perim_show_all", True))
+        ttk.Checkbutton(pf, text="Show all perimeters", variable=self.v_perim_all).grid(
+            row=2, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        self.v_map_fire_deriv = tk.BooleanVar(value=cfg.get("map_nav_fire_area_deriv", False))
         ttk.Checkbutton(
-            pf, text="Show all perimeters (default: final only)", variable=self.v_perim_all
-        ).grid(row=2, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+            pf, text="Map sparkline: show growth rate instead of area", variable=self.v_map_fire_deriv
+        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+        self.v_ts_nav_fire_area = tk.BooleanVar(value=cfg.get("ts_nav_fire_area", False))
+        ttk.Checkbutton(
+            pf,
+            text="Station detail sparkline: show fire area when perimeter overlaps",
+            variable=self.v_ts_nav_fire_area,
+        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+
+        cbf = ttk.Frame(nb)
+        nb.add(cbf, text="Colorbars")
+        tk.Label(cbf, text="Map marker/arrow size (x):", anchor="w").grid(
+            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        self.e_marker_size = ttk.Entry(cbf, width=10)
+        self.e_marker_size.insert(0, str(cfg.get("map_marker_size", 1.0)))
+        self.e_marker_size.grid(row=0, column=1, padx=PAD_LG, pady=PAD)
+
+        ttk.Separator(cbf, orient="horizontal").grid(
+            row=1, column=0, columnspan=6, sticky="ew", padx=PAD_LG, pady=PAD
+        )
+        ttk.Label(cbf, text="Per-variable colorbar overrides:", style="Section.TLabel").grid(
+            row=2, column=0, columnspan=6, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        for c, txt in enumerate(("Variable", "Colormap", "Reversed", "Min", "Max"), start=0):
+            ttk.Label(cbf, text=txt, style="Section.TLabel").grid(
+                row=3, column=c, padx=PAD_LG, pady=(0, PAD)
+            )
+        cbar_overrides = cfg.get("cbar_overrides", {})
+        self._cbar_vars = {}
+        for r, vname in enumerate(CBAR_VARS, start=4):
+            override = cbar_overrides.get(vname, {})
+            tk.Label(cbf, text=vname, anchor="w").grid(row=r, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+            e_cmap = ttk.Entry(cbf, width=12)
+            e_cmap.insert(0, override.get("cmap") or "")
+            e_cmap.grid(row=r, column=1, padx=PAD_LG, pady=PAD)
+            v_rev = tk.BooleanVar(value=override.get("reversed", False))
+            ttk.Checkbutton(cbf, variable=v_rev).grid(row=r, column=2, padx=PAD_LG, pady=PAD)
+            e_vmin = ttk.Entry(cbf, width=8)
+            e_vmin.insert(0, "" if override.get("vmin") is None else str(override.get("vmin")))
+            e_vmin.grid(row=r, column=3, padx=PAD_LG, pady=PAD)
+            e_vmax = ttk.Entry(cbf, width=8)
+            e_vmax.insert(0, "" if override.get("vmax") is None else str(override.get("vmax")))
+            e_vmax.grid(row=r, column=4, padx=PAD_LG, pady=PAD)
+            self._cbar_vars[vname] = {
+                "cmap": e_cmap,
+                "reversed": v_rev,
+                "vmin": e_vmin,
+                "vmax": e_vmax,
+            }
 
         bf = ttk.Frame(self)
         bf.pack(fill="x", padx=PAD_LG, pady=PAD)
@@ -271,19 +351,39 @@ class SettingsDialog(tk.Toplevel):
                 v: (float(lo.get()), float(hi.get()), u) for v, (lo, hi, u) in self._bound_entries.items()
             }
             perim_path = self.var_perim_path.get()
+            cbar_overrides = {}
+            for vname, entries in self._cbar_vars.items():
+                cmap_str = entries["cmap"].get().strip()
+                reversed_flag = entries["reversed"].get()
+                vmin_str = entries["vmin"].get().strip()
+                vmax_str = entries["vmax"].get().strip()
+                if not cmap_str and not reversed_flag and not vmin_str and not vmax_str:
+                    continue
+                cbar_overrides[vname] = {
+                    "cmap": cmap_str or None,
+                    "reversed": reversed_flag,
+                    "vmin": float(vmin_str) if vmin_str else None,
+                    "vmax": float(vmax_str) if vmax_str else None,
+                }
             result = {
                 "frozen_min_run": int(self.e_frz.get()),
+                "frozen_exempt_calm_wind": self.v_frz_exempt_calm.get(),
+                "frozen_exempt_rh": self.v_frz_exempt_rh.get(),
+                "dup_max": int(self.e_dup_max.get()),
                 "max_var_outage_min": float(self.e_max_var_outage.get()),
                 "full_outage_min": float(self.e_full_outage.get()),
-                "show_errors": self.v_show_errors.get(),
-                "show_warns": self.v_show_warns.get(),
                 "hidden_assertions": {k for k, v in self._acat_vars.items() if not v.get()},
+                "assertion_severity_override": {k: v.get() for k, v in self._acat_severity_vars.items()},
                 "bounds": bounds_r,
                 "col_visibility": {c: v.get() for c, v in self._col_vars.items()},
                 "perim_h5_path": perim_path if perim_path and perim_path != "(none)" else None,
                 "perim_show_all": self.v_perim_all.get(),
+                "map_nav_fire_area_deriv": self.v_map_fire_deriv.get(),
+                "ts_nav_fire_area": self.v_ts_nav_fire_area.get(),
                 "compare_n_neighbors": int(self.e_compare_n.get()),
                 "compare_include_skip_greenlit": self.v_compare_pool.get(),
+                "map_marker_size": float(self.e_marker_size.get()),
+                "cbar_overrides": cbar_overrides,
             }
             validate_gui_config(result)
         except ValueError as exc:
@@ -373,7 +473,7 @@ class ExportScriptDialog(tk.Toplevel):
         ttk.Label(df, textvariable=self.var_dest_dir, anchor="w", style="Muted.TLabel").pack(
             side="left", fill="x", expand=True
         )
-        ttk.Button(df, text="Browse...", command=self._choose_dest_dir).pack(side="right", padx=(4, 0))
+        ttk.Button(df, text="Browse", command=self._choose_dest_dir).pack(side="right", padx=(4, 0))
 
         ttk.Label(self, text="Output script filename:").pack(anchor="w", padx=14, pady=(10, 0))
         self.e_script_filename = ttk.Entry(self, width=40)
