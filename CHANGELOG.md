@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   contract.
 - Add versioned, provenance-bearing weather sensor-height resources, semantic validation, a
   source-precedence resolver, and an explicit Synoptic proposal workflow.
+- Add a deterministic Caldor weather release inventory bound to the observation-file hash,
+  FireBench and benchmark-data versions, and trusted-height resource hashes.
 
 ### Changed
 

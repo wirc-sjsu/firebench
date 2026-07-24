@@ -513,6 +513,7 @@ def test_weather_station_selector_handles_missing_confidence_once(caplog, tmp_pa
         for station_name, confidence in (
             ("station_TRUSTED", 2),
             ("station_PROVIDER", 1),
+            ("station_MALFORMED", "2 - verified measurement"),
             ("station_MISSING", None),
         ):
             station = time_series.create_group(station_name)
@@ -544,6 +545,7 @@ def test_weather_station_selector_handles_missing_confidence_once(caplog, tmp_pa
     assert {item["station"] for item in all_sources["included"]} == {
         "station_TRUSTED",
         "station_PROVIDER",
+        "station_MALFORMED",
         "station_MISSING",
     }
     confidence_warnings = [
@@ -551,9 +553,12 @@ def test_weather_station_selector_handles_missing_confidence_once(caplog, tmp_pa
         for record in caplog.records
         if "Missing or malformed sensor-height confidence" in record.message
     ]
-    assert len(confidence_warnings) == 1
-    assert "station_MISSING" in confidence_warnings[0].message
-    assert "air_temperature" in confidence_warnings[0].message
+    assert len(confidence_warnings) == 2
+    assert {record.args[0] for record in confidence_warnings} == {
+        "station_MALFORMED",
+        "station_MISSING",
+    }
+    assert all("air_temperature" in record.message for record in confidence_warnings)
 
 
 @pytest.mark.parametrize("stat_func", [np.nanmin, np.nanmean, np.nanmax])

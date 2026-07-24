@@ -73,6 +73,19 @@ def test_installed_sensor_height_resources_are_versioned_and_valid():
     }
 
 
+def test_every_installed_trusted_record_has_traceable_provenance():
+    resources = fs.load_sensor_height_resources()
+    trusted_records = (*resources.station_specific, *resources.historical)
+
+    assert trusted_records
+    for record in trusted_records:
+        assert record.confidence is fs.SensorHeightConfidence.VERIFIED
+        assert record.source_reference
+        assert record.verification_date
+        assert record.reviewer_or_authority
+        assert record.record_id
+
+
 @pytest.mark.parametrize(
     ("station", "variable", "provider", "height", "source"),
     (
@@ -120,6 +133,7 @@ def test_migrated_resources_preserve_known_resolutions(
 @pytest.mark.parametrize(
     ("mutation", "message"),
     (
+        (lambda document: document.update({"schema_version": 2}), "schema_version"),
         (lambda document: document["records"].append(deepcopy(document["records"][0])), "record_id"),
         (
             lambda document: document["records"][0].update(

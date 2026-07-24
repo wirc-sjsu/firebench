@@ -2,6 +2,7 @@ import logging
 
 import h5py
 import numpy as np
+import pytest
 
 from firebench import standardize as fs
 from firebench.standardize import synoptic
@@ -180,3 +181,46 @@ def test_validate_weather_sensor_heights_reports_missing_and_mismatch(tmp_path):
     assert "missing a numeric `sensor_height`" in missing.reason
     assert mismatch.valid is False
     assert "does not match" in mismatch.reason
+
+
+@pytest.mark.parametrize(
+    ("model_height_cm", "expected_valid"),
+    (
+        (999.0, True),
+        (998.9, False),
+    ),
+)
+def test_validate_weather_sensor_heights_applies_matching_tolerance(
+    tmp_path,
+    model_height_cm,
+    expected_valid,
+):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+
+    with h5py.File(obs_path, "w") as obs_h5:
+        _add_weather_variable(
+            obs_h5,
+            "station_TEST",
+            height=10,
+            height_units="m",
+            confidence=2,
+        )
+    with h5py.File(model_path, "w") as model_h5:
+        _add_weather_variable(
+            model_h5,
+            "station_TEST",
+            height=model_height_cm,
+            height_units="cm",
+        )
+
+    with h5py.File(obs_path, "r") as obs_h5, h5py.File(model_path, "r") as model_h5:
+        validation = fs.validate_weather_sensor_heights(
+            obs_h5,
+            model_h5,
+            station="station_TEST",
+            variable="wind_speed",
+        )
+
+    assert validation.valid is expected_valid
+    assert (validation.reason is None) is expected_valid
