@@ -51,9 +51,7 @@ def plot_from_config(*args, **kwargs):
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
 
-FIREBENCH_BANNER = (
-    "\b"
-    + r"""
+FIREBENCH_BANNER = "\b" + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -63,7 +61,6 @@ FIREBENCH_BANNER = (
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
-)
 
 
 @click.group(help=FIREBENCH_BANNER)

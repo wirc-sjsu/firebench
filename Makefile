@@ -13,7 +13,7 @@ test-cov:
 
 # Run pylint analysis
 lint:
-	pylint src/firebench --rcfile=.pylintrc
+	python .github/actions/run_pylint.py --check
 
 # Update pylint score in README.md
 update-lint-score:

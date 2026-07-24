@@ -2,8 +2,9 @@ name: Documentation
 
 on:
   pull_request:
+    branches: [main, develop]
   push:
-    branches: [master, develop, dev-metrics]
+    branches: [main, develop]
 
 jobs:
   build:
