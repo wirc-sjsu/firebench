@@ -2,19 +2,20 @@
 
 
 def issue_is_visible(issue: tuple, config: dict) -> bool:
-    """Return whether an issue passes the configured severity and category filters."""
-    severity, key, _message = issue
-    if severity == "ERROR" and not config.get("show_errors", True):
-        return False
-    if severity == "WARN" and not config.get("show_warns", True):
-        return False
+    """Return whether an issue passes the configured category filter.
+
+    Severity (WARN vs ERROR) is resolved per-category at emission time (see
+    data.py's assertion_severity_override handling), so visibility here is
+    purely about whether the issue's category is enabled at all.
+    """
+    _severity, key, _message = issue
     return not any(
         key == category or key.startswith(category) for category in config.get("hidden_assertions", set())
     )
 
 
 def visible_issues(issues, config: dict) -> list:
-    """Return issues that pass the configured severity and category filters."""
+    """Return issues that pass the configured category filter."""
     return [issue for issue in issues if issue_is_visible(issue, config)]
 
 

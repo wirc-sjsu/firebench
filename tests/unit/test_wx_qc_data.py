@@ -85,6 +85,37 @@ def test_wind_direction_dropout_requires_one_sustained_run():
     assert any(key == "dropout" and "longest run=3" in message for _, key, message in issues)
 
 
+def test_assertion_severity_override_replaces_default_severity():
+    cfg = default_config()
+    station = _station([0, 10, 20, 30, 40], air_temperature=[500.0] * 5)
+    stats = compute_stats(station)
+    default_issues = run_assertions(station, stats, cfg)
+    assert any(sev == "ERROR" and key == "hi:air_temperature" for sev, key, _ in default_issues)
+
+    cfg["assertion_severity_override"] = {"hi:": "WARN"}
+    overridden_issues = run_assertions(station, stats, cfg)
+    assert any(sev == "WARN" and key == "hi:air_temperature" for sev, key, _ in overridden_issues)
+
+
+def test_frozen_run_exemptions_skip_wind_direction_and_humidity():
+    cfg = default_config()
+    station = _station(
+        [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+        wind_direction=[10.0] * 11,
+        relative_humidity=[50.0] * 11,
+    )
+    stats = compute_stats(station)
+    default_issues = run_assertions(station, stats, cfg)
+    assert any(key == "frozen:wind_direction" for _, key, _ in default_issues)
+    assert any(key == "frozen:relative_humidity" for _, key, _ in default_issues)
+
+    cfg["frozen_exempt_calm_wind"] = True
+    cfg["frozen_exempt_rh"] = True
+    exempt_issues = run_assertions(station, stats, cfg)
+    assert not any(key == "frozen:wind_direction" for _, key, _ in exempt_issues)
+    assert not any(key == "frozen:relative_humidity" for _, key, _ in exempt_issues)
+
+
 def test_calm_wind_breaks_dropout_and_wind_outage_runs():
     station = _station(
         np.arange(0, 90, 10),

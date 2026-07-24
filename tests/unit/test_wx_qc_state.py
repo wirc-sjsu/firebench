@@ -16,17 +16,12 @@ ISSUES = [
 ]
 
 
-def test_issue_visibility_applies_severity_and_category_filters():
+def test_issue_visibility_applies_category_filter():
     config = default_config()
     assert visible_issues(ISSUES, config) == ISSUES
 
-    config["show_errors"] = False
-    assert visible_issues(ISSUES, config) == [ISSUES[2]]
-
-    config["show_errors"] = True
-    config["show_warns"] = False
     config["hidden_assertions"] = {"hi:"}
-    assert visible_issues(ISSUES, config) == [ISSUES[0]]
+    assert visible_issues(ISSUES, config) == [ISSUES[0], ISSUES[2]]
     assert not issue_is_visible(ISSUES[1], config)
 
 

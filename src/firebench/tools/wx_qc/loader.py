@@ -40,7 +40,7 @@ class LoaderMixin:
             return
         self.h5_path = Path(path)
         self.lbl_file.config(text=str(self.h5_path))
-        self.lbl_status.config(text="Loading...")
+        self.lbl_status.config(text="Loading")
         self.update()
         self._load_data()
 

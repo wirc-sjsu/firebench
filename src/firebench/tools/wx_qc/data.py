@@ -370,6 +370,21 @@ def _ws_gated_nan_pct(data, ws):
     return 100.0 * int((np.isnan(data) & ws_pos).sum()) / n_ws_pos if n_ws_pos else 0.0
 
 
+def _apply_severity_overrides(issues, cfg):
+    """Replace each issue's severity with its configured per-category override, if any."""
+    overrides = cfg.get("assertion_severity_override")
+    if not overrides:
+        return issues
+    result = []
+    for sev, key, msg in issues:
+        for category, override_sev in overrides.items():
+            if key == category or key.startswith(category):
+                sev = override_sev
+                break
+        result.append((sev, key, msg))
+    return result
+
+
 def run_assertions(st, stats, cfg):
     """Check station data for quality issues (timing, bounds, frozen runs).
 
@@ -405,7 +420,7 @@ def run_assertions(st, stats, cfg):
                 sev,
                 "time_neg",
                 (
-                    f"Backwards timestamp: {n_neg} jump(s) — likely DST fall-back"
+                    f"Backwards timestamp: {n_neg} jump(s), likely DST fall-back"
                     if n_neg == 1
                     else f"Backwards timestamps: {n_neg} jumps"
                 ),
@@ -417,6 +432,9 @@ def run_assertions(st, stats, cfg):
         issues.append((sev, "dup_ts", f"Duplicate timestamps: {n_dup} ({dup_pct:.1f}% of intervals)"))
 
     vd = st["variables"]
+    if not vd:
+        issues.append(("ERROR", "no_data", f"No sensor variables recorded ({ts['n_pts']} timestamps only)"))
+
     if "wind_direction" in vd and "wind_speed" in vd:
         wd, ws = vd["wind_direction"], vd["wind_speed"]
         dropout = np.isnan(wd) & ~np.isnan(ws) & (ws > 0)
@@ -454,7 +472,6 @@ def run_assertions(st, stats, cfg):
     for vname, vs in stats.items():
         if vname == "_time":
             continue
-        # Outage metrics now replace per-variable NaN% assertions.
         if vname in bounds and vs["max"] is not None:
             lo, hi, u = bounds[vname]
             if vs["min"] < lo:
@@ -463,9 +480,17 @@ def run_assertions(st, stats, cfg):
                 issues.append(("ERROR", f"hi:{vname}", f"{vname} max={vs['max']:.2f} above {hi} {u}"))
         # Frozen-run detection varies by variable.
         # wind_speed/wind_gust: skipped (calm at 0.0 is normal, not stuck).
+        # wind_direction: optionally exempted (frozen_exempt_calm_wind) since it
+        # naturally holds steady during calm periods, not a sensor fault.
+        # relative_humidity: optionally exempted (frozen_exempt_rh) since it can
+        # legitimately hold steady for long stretches.
         # solar_radiation: allowed only at 0.0 (nighttime).
         # fuel_moisture_content_10h: uses higher threshold (slow changes normal).
         if vname in ("wind_speed", "wind_gust"):
+            pass
+        elif vname == "wind_direction" and cfg.get("frozen_exempt_calm_wind", False):
+            pass
+        elif vname == "relative_humidity" and cfg.get("frozen_exempt_rh", False):
             pass
         elif vname == "solar_radiation":
             if vs["longest_frozen"] >= frz_min and vs.get("longest_frozen_val") != 0.0:
@@ -476,7 +501,7 @@ def run_assertions(st, stats, cfg):
         elif vs["longest_frozen"] >= frz_min:
             issues.append(("WARN", f"frozen:{vname}", f"{vname} frozen run={vs['longest_frozen']} pts"))
 
-    return issues
+    return _apply_severity_overrides(issues, cfg)
 
 
 def run_outage_assertions(stats, cfg):
@@ -519,7 +544,7 @@ def run_outage_assertions(stats, cfg):
                 f"Longest full-station outage={fo/60:.1f}h > {fo_th/60:.1f}h",
             )
         )
-    return issues
+    return _apply_severity_overrides(issues, cfg)
 
 
 def _deltas_minutes(times):
@@ -682,10 +707,11 @@ def compute_outage_stats(
     all_down = raw_down_masks[0].copy()
     for down in raw_down_masks[1:]:
         all_down &= down
-    full_longest, _full_cumulative = _outage_run_metrics(all_down, all_eligible, deltas_min, thresh_min)
+    full_longest, full_cumulative = _outage_run_metrics(all_down, all_eligible, deltas_min, thresh_min)
     qualifying_edges = [gap for gap in (leading_gap_min, trailing_gap_min) if gap >= thresh_min]
     if qualifying_edges:
         full_longest = max(full_longest, max(qualifying_edges))
+        full_cumulative += sum(qualifying_edges)
     time_stats["full_outage_min"] = float(full_longest)
 
 

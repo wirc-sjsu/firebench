@@ -36,6 +36,20 @@ class DetailTabMixin:
         lf = ttk.Frame(pw, width=185)
         pw.add(lf, weight=0)
         ttk.Label(lf, text="Stations", style="Section.TLabel").pack()
+        sort_row = tk.Frame(lf)
+        sort_row.pack(fill="x")
+        ttk.Label(sort_row, text="Sort:").pack(side="left", padx=(PAD, 2))
+        self._detail_sort_col = tk.StringVar(value="(none)")
+        self._detail_sort_combo = ttk.Combobox(
+            sort_row, textvariable=self._detail_sort_col, state="readonly", width=14
+        )
+        self._detail_sort_combo.pack(side="left", padx=(0, 2), pady=PAD)
+        self._detail_sort_combo.bind("<<ComboboxSelected>>", lambda e: self._refresh_station_list())
+        self._detail_sort_desc = False
+        self.btn_detail_sort_dir = ttk.Button(
+            sort_row, text="▲", width=2, command=self._toggle_detail_sort_dir
+        )
+        self.btn_detail_sort_dir.pack(side="left", padx=(0, PAD), pady=PAD)
         self.detail_panes = StationListPanes(
             lf,
             on_click=self._refresh_detail_view,
@@ -52,7 +66,7 @@ class DetailTabMixin:
         ).pack(side="left", padx=PAD, pady=PAD)
         ttk.Button(
             bsf,
-            text="Add to Skip List (batch)...",
+            text="Add to Skip List (batch)",
             command=self._detail_add_skip_batch,
             style="Small.TButton",
         ).pack(side="left", padx=PAD, pady=PAD)
@@ -73,12 +87,6 @@ class DetailTabMixin:
 
         varstrip_row = tk.Frame(f)
         varstrip_row.pack(fill="x", padx=4, pady=(4, 2))
-        # btn_ts_compare sits outside frm_var_btns so it survives
-        # _rebuild_var_tabs which destroys/recreates all children of frm_var_btns.
-        self.btn_ts_compare = ttk.Button(
-            varstrip_row, text="Compare...", command=self._ts_compare_nearest, state="disabled"
-        )
-        self.btn_ts_compare.pack(side="right", padx=(8, 2))
         self.frm_var_btns = tk.Frame(varstrip_row)
         self.frm_var_btns.pack(side="left", fill="x", expand=True)
         self._ts_var_btns: dict = {}
@@ -95,6 +103,27 @@ class DetailTabMixin:
         tb_row = tk.Frame(f)
         tb_row.pack(fill="x")
         NavigationToolbar2Tk(self.canvas_ts, tb_row).pack(side="left", fill="x", expand=True)
+        self.btn_ts_locate = ttk.Button(
+            tb_row, text="Locate on Map", command=self._detail_locate_on_map, state="disabled"
+        )
+        self.btn_ts_locate.pack(side="right", padx=(8, 2))
+        self.btn_ts_compare = ttk.Button(
+            tb_row, text="Compare", command=self._ts_compare_nearest, state="disabled"
+        )
+        self.btn_ts_compare.pack(side="right", padx=(8, 2))
+        self.var_compare_n = tk.IntVar(value=int(self.cfg.get("compare_n_neighbors", 4)))
+        self.spn_compare_n = ttk.Spinbox(
+            tb_row,
+            from_=1,
+            to=50,
+            width=3,
+            textvariable=self.var_compare_n,
+            command=self._on_compare_n_change,
+        )
+        self.spn_compare_n.pack(side="right", padx=(0, 2))
+        self.spn_compare_n.bind("<Return>", self._on_compare_n_change)
+        self.spn_compare_n.bind("<FocusOut>", self._on_compare_n_change)
+        ttk.Label(tb_row, text="Compare N:").pack(side="right", padx=(8, 2))
         # Collapsible legend panel for multi-station overlay (collapsed by default).
         # Holds station names with line colors instead of cluttering plot with legend.
         self._ts_legend_open = False
@@ -113,7 +142,7 @@ class DetailTabMixin:
         ttk.Checkbutton(
             self.frm_wind_dt, text="Auto", variable=self.var_wind_auto, command=self._on_wind_auto_toggle
         ).pack(side="left")
-        # Below calm threshold, wind direction is noise—exclude from arrow direction.
+        # Below calm threshold, wind direction is noise; exclude from arrow direction.
         self.var_wind_calm = tk.BooleanVar(value=True)
         self._last_valid_calm_threshold = DEFAULT_CALM_WIND_THRESHOLD
         self.var_wind_calm_thresh = tk.StringVar(value=f"{DEFAULT_CALM_WIND_THRESHOLD:g}")
@@ -163,7 +192,7 @@ class DetailTabMixin:
         ttk.Button(skip_row, text="Add to Skip List", command=self._ts_add_skip).pack(side="left")
         # Remove records (marked non-destructive manifest): point or range selection.
         self.btn_ts_remove = ttk.Button(
-            skip_row, text="Remove records...", command=self._ts_remove_records, state="disabled"
+            skip_row, text="Remove records", command=self._ts_remove_records, state="disabled"
         )
         self.btn_ts_remove.pack(side="left", padx=(12, 0))
 
@@ -217,10 +246,70 @@ class DetailTabMixin:
             side="left"
         )
 
+    def _toggle_detail_sort_dir(self):
+        """Flip station-list sort direction between ascending and descending."""
+        self._detail_sort_desc = not self._detail_sort_desc
+        self.btn_detail_sort_dir.config(text="▼" if self._detail_sort_desc else "▲")
+        self._refresh_station_list()
+
+    def _detail_sort_maps(self):
+        """Build (sort_key_fn, display_fn) for the currently selected Overview column.
+
+        Returns (None, None) when no column is selected. Precomputes a value per
+        station up front so the whole column is typed consistently (all-numeric vs
+        all-string) rather than deciding per station, which would risk mixing types.
+        """
+        col = self._detail_sort_col.get()
+        all_cols = getattr(self, "_all_ov_cols", ())
+        if col == "(none)" or col not in all_cols:
+            return None, None
+        idx = all_cols.index(col)
+        raw = {}
+        for stid in self.stids:
+            try:
+                raw[stid] = str(self._ov_row_values(stid)[1][idx])
+            except (IndexError, KeyError, TypeError, ValueError):
+                raw[stid] = "--"
+
+        def _parse(s):
+            return float(s.replace("%", "").strip())
+
+        numeric = True
+        for s in raw.values():
+            if s == "--":
+                continue
+            try:
+                _parse(s)
+            except ValueError:
+                numeric = False
+                break
+
+        if numeric:
+            keys = {stid: (float("inf") if s == "--" else _parse(s)) for stid, s in raw.items()}
+        else:
+            keys = {stid: ("" if s == "--" else s) for stid, s in raw.items()}
+        disp = {stid: (None if s == "--" else s) for stid, s in raw.items()}
+        if self._detail_sort_desc:
+
+            class _Rev:
+                __slots__ = ("v",)
+
+                def __init__(self, v):
+                    self.v = v
+
+                def __lt__(self, other):
+                    return other.v < self.v
+
+            rev_keys = {stid: _Rev(v) for stid, v in keys.items()}
+            return rev_keys.get, disp.get
+        return keys.get, disp.get
+
     def _refresh_station_list(self):
         """Refresh station list panel with current skip/greenlit status and QC issue icons.
 
-        Updates status prefixes: [!] for ERROR, [~] for WARN, [ ] for clear.
+        Updates status prefixes: [!] for ERROR, [~] for WARN, [ ] for clear. The Sort
+        picker above the station panes optionally reorders and relabels rows by any
+        Overview column (see _detail_sort_maps).
         """
 
         def _status(stid):
@@ -229,7 +318,17 @@ class DetailTabMixin:
             has_warn = any(s == "WARN" for s, _, _ in issues)
             return "[!] " if has_err else ("[~] " if has_warn else "[ ] ")
 
-        self.detail_panes.refresh(self.stids, self.skip_list, self.green_list, status_fn=_status)
+        all_cols = getattr(self, "_all_ov_cols", ())
+        self._detail_sort_combo["values"] = ("(none)",) + tuple(c for c in all_cols if c != "STID")
+        sort_key_fn, display_fn = self._detail_sort_maps()
+        self.detail_panes.refresh(
+            self.stids,
+            self.skip_list,
+            self.green_list,
+            status_fn=_status,
+            sort_key_fn=sort_key_fn,
+            display_fn=display_fn,
+        )
 
     def _detail_add_greenlit(self):
         """Mark selected stations as greenlit (auto-approval, excluded from QC review).
@@ -305,6 +404,19 @@ class DetailTabMixin:
         self.detail_panes.select_only(stid)
         self._refresh_detail_view()
 
+    def _detail_locate_on_map(self):
+        """Switch to Map tab and select/highlight the currently-displayed station.
+
+        Mirrors _navigate_to_station (Map -> Detail) in reverse: reuses
+        MapTabMixin._map_open_popup, the same selection/popup mechanism used
+        when clicking a station directly on the map. Single-station mode only.
+        """
+        stid = self._current_stid
+        if not stid:
+            return
+        self.nb.select(2)
+        self._map_open_popup(stid)
+
     def _set_single_station_tabs_enabled(self, enabled):
         """Enable/disable Variable Stats and Assertions tabs (single-station only).
 
@@ -324,6 +436,7 @@ class DetailTabMixin:
             self.detail_nb.select(0)
         self.btn_ts_compare.config(state=("normal" if enabled else "disabled"))
         self.btn_ts_remove.config(state=("normal" if enabled else "disabled"))
+        self.btn_ts_locate.config(state=("normal" if enabled else "disabled"))
 
     def _rebuild_var_tabs(self, avail_vars):
         """Build or update variable tab-strip with available variables for current selection.
@@ -373,6 +486,16 @@ class DetailTabMixin:
         Args:
             _stid: Unused; provided by station list callback protocol.
         """
+        # Keep Compare-N spinbox in sync (e.g. after Settings dialog changes cfg
+        # externally); avoid clobbering an in-progress edit while it has focus.
+        try:
+            has_focus = self.focus_get() is self.spn_compare_n
+        except (KeyError, tk.TclError):
+            has_focus = False
+        if not has_focus:
+            n_cfg = int(self.cfg.get("compare_n_neighbors", 4))
+            if self.var_compare_n.get() != n_cfg:
+                self.var_compare_n.set(n_cfg)
         # Single-station (rich view) vs multi-station (overlay) based on selection.
         sel = sorted(self.detail_panes.get_selected())
         if not sel:
@@ -456,18 +579,33 @@ class DetailTabMixin:
         self.var_ts_reason.set("")
         self._plot_timeseries()
 
+    def _on_compare_n_change(self, _evt=None):
+        """Persist Compare-N spinbox value to self.cfg["compare_n_neighbors"].
+
+        Bound to Spinbox arrow clicks, <Return>, and <FocusOut>. Clamps to a
+        minimum of 1 and falls back to the current cfg value on unparseable input.
+        """
+        try:
+            n = int(self.var_compare_n.get())
+        except (ValueError, tk.TclError):
+            n = int(self.cfg.get("compare_n_neighbors", 4))
+        n = max(1, n)
+        self.var_compare_n.set(n)
+        self.cfg["compare_n_neighbors"] = n
+
     def _ts_compare_nearest(self):
         """Select source station and N nearest geographic neighbors with current variable.
 
-        Finds up to N stations (from config "compare_n_neighbors", default 4) with
-        lowest haversine distance that also have the selected variable available.
-        Optionally includes skip-listed/greenlit stations (from config
-        "compare_include_skip_greenlit"). Overlays all stations and pins
-        sparkline to source station. Enables "Compare..." button only in
-        single-station mode.
+        Finds up to N stations (from config "compare_n_neighbors", default 4,
+        adjustable via the Compare N spinbox) with lowest haversine distance
+        that also have the selected variable available. Skip-listed stations are
+        excluded unless config "compare_include_skip_greenlit" is set; greenlit
+        stations are always eligible (they're fine to compare against). Overlays
+        all stations and pins sparkline to source station. Enables "Compare"
+        button only in single-station mode.
         """
         # Source station + N nearest geographic neighbors with current variable.
-        # N and pool eligibility configurable via Settings.
+        # N and skip-list pool eligibility configurable via Settings / the N spinbox.
         stid = self._current_stid
         if not stid:
             return
@@ -482,7 +620,9 @@ class DetailTabMixin:
         for other in self.stids:
             if other == stid:
                 continue
-            if not include_pool and (other in self.skip_list or other in self.green_list):
+            # Greenlit stations are fine to compare against and are never excluded;
+            # only skip-listed stations are gated by include_pool.
+            if not include_pool and other in self.skip_list:
                 continue
             st = self.stations[other]
             if vname not in st["variables"]:
@@ -490,7 +630,7 @@ class DetailTabMixin:
             dist = _haversine_km(src["lat"], src["lon"], st["lat"], st["lon"])
             candidates.append((dist, other))
         if not candidates:
-            hint = "" if include_pool else " (skip-listed/greenlit excluded — see Settings)"
+            hint = "" if include_pool else " (skip-listed excluded, see Settings)"
             messagebox.showinfo("No neighbors", f"No other stations have '{vname}' available{hint}")
             return
         candidates.sort(key=lambda x: x[0])
@@ -709,7 +849,7 @@ class DetailTabMixin:
         done = self._ts_multi_idx >= len(stids)
         if chunked:
             self.pb_load["value"] = self._ts_multi_idx
-            self.lbl_status.config(text=f"Plotting {self._ts_multi_idx}/{len(stids)} stations...")
+            self.lbl_status.config(text=f"Plotting {self._ts_multi_idx}/{len(stids)} stations")
         # add_collection(autolim=True) grows dataLim but doesn't autoscale view.
         if self._ts_multi_colors:
             ax.autoscale_view()
@@ -843,7 +983,7 @@ class DetailTabMixin:
             ax.relim()
             ax.autoscale_view()
             ax.set_ylabel(f"{vname} [{units}]")
-            ax.set_title(f"{self._current_stid}  —  {st['name']}")
+            ax.set_title(f"{self._current_stid}  -  {st['name']}")
             ax.grid(True, alpha=0.3)
             ax.figure.autofmt_xdate()
         self._draw_removal_overlays(ax, (vname,))
@@ -977,7 +1117,7 @@ class DetailTabMixin:
         # Faint ws trend beneath arrows for readability where arrows thin.
         ax.plot(times, ws, "-", linewidth=0.8, alpha=0.3, color=MUTED, zorder=1)
         ax.set_ylabel(f"wind_speed [{units}]" if units else "wind_speed")
-        ax.set_title(f"{self._current_stid}  —  {st['name']}  (wind)")
+        ax.set_title(f"{self._current_stid}  -  {st['name']}  (wind)")
         ax.grid(True, alpha=0.3)
         ax.relim()
         ax.autoscale_view()
@@ -1142,8 +1282,10 @@ class DetailTabMixin:
         """Synchronize time-series plot extent and sparkline to TimeNavigator widget.
 
         Sets Navigator domain to global data extent (or falls back to current station
-        extent). Pushes current station's time series as sparkline preview. Wires
-        xlim_changed callback to keep Navigator window in sync with toolbar zoom/pan.
+        extent). Pushes a sparkline preview: fire-perimeter burnt area, when
+        cfg["ts_nav_fire_area"] is on and a loaded perimeter overlaps the navigator's
+        domain; otherwise the current station's own time series. Wires xlim_changed
+        callback to keep Navigator window in sync with toolbar zoom/pan.
 
         Navigator is optional; skips silently if not initialized.
         """
@@ -1169,10 +1311,24 @@ class DetailTabMixin:
                 nav.set_valid_range(xmin, xmax)
             else:
                 nav.set_valid_range(None, None)
+            dom_lo, dom_hi = glo, ghi
         elif station_ok:
             nav.set_domain(xmin, xmax)
             nav.set_valid_range(None, None)
-        if self._ts_xnum is not None and self._ts_data is not None:
+            dom_lo, dom_hi = xmin, xmax
+        else:
+            dom_lo = dom_hi = None
+        # Fire-area sparkline: opt-in (Settings) substitute for the station's own
+        # series, sourced from the loaded fire-perimeter burnt-area time series
+        # (MapTabMixin._fire_area_series_for_range), clipped to the navigator domain.
+        fire_series = (
+            self._fire_area_series_for_range(dom_lo, dom_hi)
+            if self.cfg.get("ts_nav_fire_area", False)
+            else None
+        )
+        if fire_series is not None:
+            nav.set_series(*fire_series)
+        elif self._ts_xnum is not None and self._ts_data is not None:
             nav.set_series(self._ts_xnum, self._ts_data)
         elif getattr(self, "_ts_nav_series", None) is not None:
             # Overlay mode: first selected station's series.
@@ -1203,7 +1359,7 @@ class DetailTabMixin:
         if x1 > x0:
             nav.set_window(x0, x1 - x0)
             # Toolbar zoom/pan drives xlim directly, never through the width
-            # combobox — keep it in sync (blank = custom) so a later var
+            # combobox; keep it in sync (blank = custom) so a later var
             # switch on this same selection doesn't read stale "Full" text
             # and re-snap to the global range.
             self._sync_width_var(self._ts_width_var, x1 - x0)
