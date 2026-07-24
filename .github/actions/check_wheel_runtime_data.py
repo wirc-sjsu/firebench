@@ -22,6 +22,9 @@ RUNTIME_DATA_FILES = {
     "firebench/resources/data/ros_model_validation/Anderson_2015/Table_A1.json",
     "firebench/resources/data/ros_model_validation/Anderson_2015/data_Table_8.csv",
     "firebench/resources/data/ros_model_validation/Anderson_2015/data_Table_A1.csv",
+    "firebench/resources/wx_sensor_height_providers.json",
+    "firebench/resources/wx_sensor_height_stations.json",
+    "firebench/resources/wx_sensor_height_trusted_history.json",
 }
 
 
@@ -70,6 +73,7 @@ def _check_isolated_import(wheel: Path, expected_version: str) -> None:
             from pathlib import Path
 
             import firebench
+            from firebench.standardize import validate_installed_sensor_height_resources
             from firebench.tools import (
                 get_firebench_data_directory,
                 read_data_file,
@@ -108,6 +112,12 @@ def _check_isolated_import(wheel: Path, expected_version: str) -> None:
             )
             if anderson["nb_fuel_classes"] == 0:
                 raise RuntimeError("The packaged Anderson validation table is empty.")
+
+            sensor_height_counts = validate_installed_sensor_height_resources()
+            if any(count == 0 for count in sensor_height_counts.values()):
+                raise RuntimeError(
+                    f"An installed sensor-height resource is empty: {{sensor_height_counts}}."
+                )
 
             print(f"Verified runtime data from {{data_path}}")
             """)

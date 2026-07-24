@@ -73,7 +73,33 @@ Priority | Source | Stored `sensor_height_source` | Confidence
 5 | FireBench variable default | `firebench_default` | 0
 
 Sensor-height metadata supplied by Synoptic is accepted as a verified source. Later sources are
-fallbacks only; they do not override an earlier source.
+fallbacks only; they do not override an earlier source. The standardizer records the Synoptic
+source JSON filename and SHA-256, provider, acceptance date, and accepting authority on the
+resulting HDF5 variable so that this decision remains auditable. Synoptic Data PBC is identified
+as the metadata authority.
+
+## Trusted-height resource schema
+
+The installed station-specific, historical, and provider-default resources use sensor-height
+schema version 1. Each document identifies its `record_type`, shared provenance, and records.
+Every record has a stable ID, provider, supported variables, numeric height, explicit length
+units, numeric confidence, and lifecycle status. Station-specific and historical records also
+identify the station.
+
+Required provenance consists of a source reference or URL, verification date, and reviewer or
+issuing authority. A source date is included when one is available, and optional notes preserve
+limitations or review context. Records can override shared provenance for evidence that applies
+only to that record.
+
+Only `active` records participate in resolution. `proposed`, `superseded`, and `revoked` records
+remain visible for review or audit but are not selected. Installed resources are validated for
+schema and semantic errors before use, including duplicate selectors, unsupported variables,
+invalid heights or units, missing provenance, and unknown confidence values.
+
+The original resource dictionaries were migrated without inventing unavailable evidence dates.
+Their provenance notes identify this limitation so that better-supported records can supersede
+them. See [Curate Weather Sensor Heights](../how_to/manage_weather_sensor_heights.md) for the
+submission, review, activation, supersession, and revocation workflow.
 
 ## Variable fallback heights
 

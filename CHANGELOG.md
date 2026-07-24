@@ -20,12 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add an adaptive OpenStreetMap road basemap with an offline fallback to the weather-station QC map.
 - Define the Caldor weather sensor-height, confidence-level, TSO, all-sources, and model-height
   contract.
+- Add versioned, provenance-bearing weather sensor-height resources, semantic validation, a
+  source-precedence resolver, and an explicit Synoptic proposal workflow.
 
 ### Changed
 
 - Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
 - Use explicit TSO and all-sources station selection, canonical numeric sensor-height confidence,
   and shared selection logic for Caldor weather execution and CLI station counts.
+- Preserve selected sensor-height provenance in standardized Synoptic variables and replace the
+  temporary trusted-history side effect with reviewed proposal exports.
 - Require prepared TSO model weather variables to record a sensor height matching the trusted
   observation within 0.01 m after unit conversion.
 - Revise Caldor perimeter weights and normalization; FireBench 0.10 scores are not directly

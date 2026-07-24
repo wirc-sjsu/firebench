@@ -232,7 +232,6 @@ try:
         skip_stations=skip_stations,
         overwrite=True,
         compression_lvl=compression_lvl,
-        export_trusted_history=False,
     )
     apply_record_removals(h5, remove_records)
     h5.close()

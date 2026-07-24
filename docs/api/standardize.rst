@@ -16,3 +16,6 @@ Public standard-file creation and validation API.
 
 .. automodule:: firebench.standardize.time
    :members:
+
+.. automodule:: firebench.standardize.sensor_height_resources
+   :members:

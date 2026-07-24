@@ -241,13 +241,22 @@ Units attributes must be set for each field.
   --------- | ---- | -----------
   `sensor_height_source_confidence_lvl` | scalar integer | `0` unknown, guessed, or missing metadata; `1` provider default not verified for the station; `2` verified measurement or accepted trusted record
   `sensor_height_source_confidence_description` | str | Human-readable meaning of the numeric confidence; informational only
+  `sensor_height_provider` | str | Provider associated with the selected height
+  `sensor_height_source_reference` | str | Source URL, resource reference, or source filename plus SHA-256
+  `sensor_height_source_date` | `YYYY-MM-DD` str | Source date, when available
+  `sensor_height_verification_date` | `YYYY-MM-DD` str | Date the evidence or metadata was accepted
+  `sensor_height_reviewer_or_authority` | str | Reviewer or authority responsible for the source
+  `sensor_height_notes` | str | Optional provenance or limitation notes
+  `sensor_height_record_id` | str | Installed resource record ID, when a resource supplied the height
 
   The numeric attribute is the canonical value used for selection. The description must never be
   parsed to determine behavior. A missing, malformed, or unknown confidence is treated as level 0
   and produces a warning identifying the station and variable. Newly standardized files must
   always write a valid numeric value. See
   [Weather Sensor Height and Trust](reference/weather_sensor_height.md) for source precedence,
-  station-set definitions, and model-preparation requirements.
+  the versioned trusted-height resources, station-set definitions, and model-preparation
+  requirements. New Synoptic standardization records the available provenance attributes;
+  `sensor_height_source_date` and resource-specific optional fields can be absent when unavailable.
 - A model weather-variable dataset used by a Trusted Sources Only (TSO) KPI must record numeric
   `sensor_height` and Pint-compatible `sensor_height_units`. The model value must have been
   prepared at the corresponding trusted observational height. FireBench converts compatible units

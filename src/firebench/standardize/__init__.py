@@ -41,7 +41,10 @@ from .std_file_info import (
     MISCELLANEOUS,
     CERTIFICATES,
 )
-from .synoptic import standardize_synoptic_raws_from_json
+from .synoptic import (
+    export_synoptic_sensor_height_proposal,
+    standardize_synoptic_raws_from_json,
+)
 from .sensor_height import (
     SENSOR_HEIGHT_ATTRIBUTE,
     SENSOR_HEIGHT_UNITS_ATTRIBUTE,
@@ -58,3 +61,13 @@ from .sensor_height import (
     validate_weather_sensor_heights,
 )
 from .synoptic_data import SH_TRUST_HIGHEST
+from .sensor_height_resources import (
+    SENSOR_HEIGHT_RESOURCE_SCHEMA_VERSION,
+    SensorHeightRecord,
+    SensorHeightResolution,
+    SensorHeightResources,
+    load_sensor_height_resources,
+    resolve_sensor_height,
+    validate_installed_sensor_height_resources,
+    validate_sensor_height_resource,
+)
