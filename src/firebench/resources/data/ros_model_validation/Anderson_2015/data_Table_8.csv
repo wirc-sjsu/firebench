@@ -1,0 +1,33 @@
+firename,country,location,date,starttime,endtime,fuelname,ros,whgt,wspd,windrf,temperature,rh,fmoistdf,fheight,flf,fbd,relwthr,relfuel,relros
+Awarua,New Zealand,Southland,Oct-86,1322,1522,Wetland,62.5,10,46.4,0.67,12,76,18,1,0.4,0.4,1,2,2
+Birch's Inlet,Australia,Tasmania,Nov-86,1000,1800,Buttongrass Moorland,55,10,54.2,0.67,21,46,10,0.5,1.1,3.1,5,1,2
+Phh1,Australia,Tasmania,Jan-91,1400,1430,Buttongrass Moorland,8.3,10,17.9,0.67,28,43,14,0.5,1.6,4.1,1,1,1
+Phh2,Australia,Tasmania,Jan-91,1430,1500,Buttongrass Moorland,8,10,16.4,0.67,28,43,14,0.5,1.6,4.1,1,1,1
+Heywood,Australia,Victoria,Feb-91,822,1300,Central Lowland,31.3,10,26.2,0.67,17,62,15,1.5,1.5,1,2,2,3
+Interview River,Australia,Tasmania,Nov-92,1300,1330,Coastal,6.5,10,14.9,0.67,26,40,31,1,0.4,0.4,1,2,1
+Royal NP,Australia,Sydney (NSW),Jan-94,-9999,-9999,Coastal,40.2,10,20,0.67,35,10,5,1.5,2,1.3,1,1,3
+Bell Range,Australia,Blue Mountains,Jan-94,1410,1610,Hawkesbury sandstone,29.2,10,28.8,0.35,35,10,5,2,2,1,1,1,3
+Ryland (a),Australia,Sydney (NSW),Jan-94,-9999,-9999,Hawkesbury sandstone,12.6,10,5,0.35,18,63,15,2,-9999,-9999,1,1,3
+Ryland (b),Australia,Sydney (NSW),Jan-94,-9999,-9999,Hawkesbury sandstone,4.8,10,6.9,0.35,18,72,17,2,-9999,-9999,1,1,3
+Wildflower,Australia,Sydney (NSW),Jan-94,-9999,-9999,Hawkesbury sandstone,8.4,10,18,0.35,22,81,18,2,-9999,-9999,1,1,3
+Calanden,Australia,Sydney (NSW),Jan-94,-9999,-9999,Hawkesbury sandstone,36.6,10,33,0.35,32,32,8,2,-9999,-9999,1,1,3
+Central Track,Australia,Sydney (NSW),Jan-94,-9999,-9999,Hawkesbury sandstone,33.6,10,15.8,0.35,32,25,7,2,-9999,-9999,1,1,3
+Westhdrd,Australia,Sydney (NSW),Jan-94,-9999,-9999,Hawkesbury sandstone,9,10,11.9,0.35,31,28,8,2,-9999,-9999,1,1,3
+Lousä,Portugal,Lousä,Aug-98,-9999,-9999,Dry Heathland,17.3,10,11.9,0.67,28,37,8,0.5,1.4,2.9,1,1,1
+Friumes,Portugal,Penacova,Aug-08,-9999,-9999,Dry Heathland,23.3,10,25.4,0.67,26,42,10,1.5,3.6,2.4,1,2,2
+Paipenela,Portugal,Meda,Aug-08,-9999,-9999,Cytisus Striatus,16.1,10,18,0.67,27,40,10,1,1.2,1.2,1,2,2
+Sicö,Portugal,Sicö,Sep-07,-9999,-9999,Quercus Coccifera,24.3,10,14.9,0.67,35,30,7,1.5,2,1.4,1,2,2
+Contos,Australia,WA,6-Apr-06,1900,2400,Coastal,10,10,12,0.67,15,70,17,2,-9999,-9999,2,2,4
+Ellen Brook,Australia,WA,23-Nov-11,1145,1445,Coastal,50,10,40,0.67,30,25,7,2,-9999,-9999,2,3,3
+Boorabin,Australia,WA,28-Dec-07,1500,1640,sandplain kwongan with Allocasuarina and Acacia,34,10,11,0.67,36,20,4.5,1.5,-9999,-9999,3,2,3
+Boorabin,Australia,WA,29-Dec-07,1030,1900,sandplain kwongan with Proteaceous shrubs,17,10,11,0.67,30,24,5.5,1,-9999,-9999,3,2,4
+Boorabin,Australia,WA,30-Dec-07,1100,1140,sandplain kwongan with Allocasuarina and Acacia,75,10,23,0.67,37,13,4,1.5,-9999,-9999,3,2,3
+Boorabin,Australia,WA,30-Dec-07,1155,1430,sandplain kwongan with Proteaceous shrubs,100,10,20,0.67,42,6,3,1,-9999,-9999,3,2,3
+Boorabin,Australia,WA,30-Dec-07,1950,2045,sandplain kwongan with Allocasuarina and Acacia,73,10,20,0.67,39,9,3,1.5,-9999,-9999,3,2,3
+Boorabin,Australia,WA,31-Dec-07,1100,1900,sandplain kwongan with Proteaceous shrubs,19,10,15,0.67,30,24,5.5,1,-9999,-9999,3,2,4
+Boorabin,Australia,WA,4-Jan-08,1100,1420,sandplain kwongan with Proteaceous shrubs,38,10,15,0.67,35,24,5.5,1,-9999,-9999,3,2,4
+Snake Island,Australia,Vic.,3-Mar-08,1242,1414,wet heathland - sand heathland,14.3,10,18.5,0.67,28,38,9,0.9,1.4,1.6,2,1,3
+Cathedral,Australia,Vic.,10-Feb-09,1430,1649,wet heathland ,19.1,10,20,0.67,15.5,58,13,1.2,1.4,1.2,2,1,3
+Cathedral,Australia,Vic.,14-Feb-09,900,1328,wet heathland ,12,10,22,0.67,20,52,12,1.2,1.5,1.2,1,1,2
+Cathedral,Australia,Vic.,14-Feb-09,1328,1610,wet heathland ,20,10,23,0.67,21,58,12.5,1.2,1.5,1.2,1,1,2
+Cathedral,Australia,Vic.,14-Feb-09,1610,1710,wet heathland / sand heathland,15.7,10,21,0.67,20,65,15,1.2,1.5,1.2,1,1,2
