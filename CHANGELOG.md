@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Document the weather-station QC GUI workflow, assertion semantics, JSON sessions, and exports,
   and include `wx-qc` in the CLI reference.
 - Add an adaptive OpenStreetMap road basemap with an offline fallback to the weather-station QC map.
+- Define the Caldor weather sensor-height, confidence-level, TSO, all-sources, and model-height
+  contract.
 
 ### Changed
 

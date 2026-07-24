@@ -2,7 +2,7 @@
 
 - **Version**: 1.0
 - **Status**: Pre-release
-- **Last update**: 2026-01-02
+- **Last update**: 2026-07-24
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
 
@@ -230,7 +230,24 @@ Units attributes must be set for each field.
 - Each dataset (temperature, wind_speed, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint](https://pint.readthedocs.io/en/stable/) terminology.
 - The time coordinate dataset must be a dataset named `time`, and must use only one time encoding (absolute or relative); do not mix string and numeric (see Time format).
 - Identification information for weather stations (ID, MNET ID, provider, name) should be included as attributes if the information is accessible.
-- Sensor height must be included at dataset level (*e.g.* temperature, wind_speed) as an attribute `sensor_height`, along with `sensor_height_units` specifying the unit of the sensor height. The source of the sensor height information must be included in an attribute `sensor_height_source`.
+- Sensor height must be included at dataset level (*e.g.* temperature, wind_speed) as an attribute
+  `sensor_height`, along with `sensor_height_units` specifying the unit of the sensor height. The
+  source of the sensor height information must be included in an attribute
+  `sensor_height_source`.
+- Observational weather datasets used for trust-based station selection must include the following
+  sensor-height confidence attributes:
+
+  Attribute | Type | Description
+  --------- | ---- | -----------
+  `sensor_height_source_confidence_lvl` | scalar integer | `0` unknown, guessed, or missing metadata; `1` provider default not verified for the station; `2` verified measurement or accepted trusted record
+  `sensor_height_source_confidence_description` | str | Human-readable meaning of the numeric confidence; informational only
+
+  The numeric attribute is the canonical value used for selection. The description must never be
+  parsed to determine behavior. A missing, malformed, or unknown confidence is treated as level 0
+  and produces a warning identifying the station and variable. Newly standardized files must
+  always write a valid numeric value. See
+  [Weather Sensor Height and Trust](reference/weather_sensor_height.md) for source precedence,
+  station-set definitions, and model-preparation requirements.
 - Location of the dataset must be defined as attributes following a spatial description convention.
 - If geographic coordinates are used, a CRS must be included.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.

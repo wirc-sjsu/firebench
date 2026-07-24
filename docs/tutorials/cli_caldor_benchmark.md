@@ -62,6 +62,20 @@ command: `CDI` includes building damage, three curated perimeter periods, and pa
 checks. Use `firebench list 2021_Caldor CDI --obs-data v2026.2/Caldor.h5` to inspect that retained
 scheme.
 
+To inspect weather KPIs, use a curated or HRRR-aligned target with the `W` flag:
+
+```bash
+firebench list 2021_Caldor P02_W --obs-data v2026.2/Caldor.h5
+firebench list 2021_Caldor H013_W --obs-data v2026.2/Caldor.h5
+```
+
+Each weather target includes a Trusted Sources Only (TSO) variant and an all-sources variant. TSO
+uses only confidence-level-2 sensor heights and is the scored mode. All sources includes TSO plus
+confidence levels 0 and 1; it is a zero-weight diagnostic, not an untrusted-only comparison. The
+detailed listing shows the generated KPI IDs, station counts, weights, and normalization
+parameters. See [Weather Sensor Height and Trust](../reference/weather_sensor_height.md) before
+preparing weather model output.
+
 ## 4. Run the benchmark
 
 Run benchmark case `2021_Caldor` with target `H013_P` and allow existing outputs to be overwritten:
@@ -80,6 +94,15 @@ Use a different model output file by replacing `my_model_output.h5` with the pat
 standard HDF5 output. If you do not have model output yet, use the
 observational dataset `v2026.2/Caldor.h5` as both model output and observations to produce a perfect
 scorecard for a smoke test.
+
+For a weather-only run, replace the target with `P02_W` or `H013_W`:
+
+```bash
+firebench run 2021_Caldor H013_W my_model_output.h5 --obs-data v2026.2/Caldor.h5 -o
+```
+
+Model values processed by TSO must be prepared at the trusted sensor height stored on the matching
+observational variable, including when using height-aware wind interpolation.
 
 The 0.10 positional syntax is `firebench run CASE TARGET MODEL_OUTPUT`. In FireBench 0.9 the same
 parts were supplied as `firebench run -c CASE -a SCHEME MODEL_OUTPUT`; the `-c` and `-a` options
