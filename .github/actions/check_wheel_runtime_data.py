@@ -6,6 +6,11 @@ from tempfile import TemporaryDirectory
 from textwrap import dedent
 from zipfile import ZipFile
 
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
 RUNTIME_DATA_FILES = {
     "firebench/resources/data/fuel_models/Anderson13.json",
     "firebench/resources/data/fuel_models/ScottandBurgan40.json",
@@ -38,7 +43,7 @@ def _check_wheel_contents(wheel: Path) -> None:
         raise RuntimeError(f"Wheel is missing runtime data files:\n{formatted}")
 
 
-def _check_isolated_import(wheel: Path) -> None:
+def _check_isolated_import(wheel: Path, expected_version: str) -> None:
     with TemporaryDirectory(prefix="firebench-wheel-check-") as temp_dir:
         temp_path = Path(temp_dir)
         site_dir = temp_path / "site"
@@ -75,6 +80,11 @@ def _check_isolated_import(wheel: Path) -> None:
             expected_site = Path({str(site_dir)!r}).resolve()
             if expected_site not in package_path.parents:
                 raise RuntimeError(f"Imported FireBench from {{package_path}}, not {{expected_site}}.")
+            if firebench.__version__ != {expected_version!r}:
+                raise RuntimeError(
+                    f"Installed FireBench version is {{firebench.__version__}}, "
+                    f"expected {expected_version}."
+                )
 
             data_path = Path(get_firebench_data_directory()).resolve()
             if expected_site not in data_path.parents:
@@ -117,8 +127,10 @@ def main() -> None:
         raise SystemExit("Usage: check_wheel_runtime_data.py WHEEL_OR_DIST_DIRECTORY")
 
     wheel = _find_wheel(Path(sys.argv[1]).resolve())
+    project_config = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    expected_version = project_config["project"]["version"]
     _check_wheel_contents(wheel)
-    _check_isolated_import(wheel)
+    _check_isolated_import(wheel, expected_version)
     print(f"Verified wheel runtime resources: {wheel}")
 
 
