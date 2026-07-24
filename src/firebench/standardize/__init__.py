@@ -1,6 +1,7 @@
 from .mtbs import standardize_mtbs_from_geotiff
 from .tools import (
     VERSION_STD,
+    get_h5_referenced_file_integrity,
     import_tif_with_rect_box,
     is_iso8601,
     merge_authors,
@@ -9,6 +10,7 @@ from .tools import (
     read_quantity_from_fb_dataset,
     read_string_attribute,
     validate_h5_requirement,
+    validate_h5_referenced_files,
     validate_h5_std,
     validate_h5_weather_stations_structure,
 )

@@ -37,6 +37,10 @@ Attributes | Type | Description
 `created_on` | str | ISO 8601 date-time of file creation
 `created_by` | str | Creator identifier (name, affiliation). `created_by` is a `;`-separated list; whitespace around entries should be ignored; entries must not contain `;`.
 
+FireBench validators accept the current standard version and versions explicitly listed as
+compatible with it. Files with missing, malformed, unknown, or unsupported
+`FireBench_io_version` values are rejected.
+
 
 Suggested additional attributes:
 Attributes | Type | Description
@@ -361,6 +365,8 @@ Units attributes must be set for each field.
     - `rel_path` (str): relative path to the KML file (relative to the HDF5 file directory)
     - `file_size_bytes` (int): KML file size in bytes (*e.g.*, using `os.path.getsize`)
     - `sha256` (str): hash of the KML file using `firebench.tools.calculate_sha256`
+- Validation resolves `rel_path` relative to the HDF5 file and rejects missing files or files whose
+  current size or SHA-256 digest differs from these attributes.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
 
 In the following example, we have a standard file `dataset.h5`, containing one polygons dataset. We also have a directory `kml` containing one KML file `polygons_2022_07_14.kml`.

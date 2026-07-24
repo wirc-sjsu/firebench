@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Reject unsupported HDF5 standard versions and verify referenced polygon files by path, size, and
+  SHA-256 before benchmarks run.
+- Record verified observational and model referenced-file metadata in benchmark result provenance.
 - Bundle runtime datasets in installed distributions and resolve default data through package
   resources instead of repository-relative paths.
 - Avoid loading scientific, geospatial, plotting, and PDF dependencies when displaying CLI help.

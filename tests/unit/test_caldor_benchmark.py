@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 from datetime import datetime
 
@@ -7,6 +8,20 @@ import pytest
 import pytz
 
 from firebench.benchmarks import c001_caldor
+
+
+def _set_standard_metadata(h5, version="1.0"):
+    h5.attrs["FireBench_io_version"] = version
+    h5.attrs["created_on"] = "2026-07-24T12:00:00+00:00"
+    h5.attrs["created_by"] = "FireBench tests"
+
+
+def _add_referenced_perimeter(h5, kml_path):
+    perimeter = h5.create_dataset("/polygons/perimeter", data=0)
+    perimeter.attrs["rel_path"] = kml_path.name
+    perimeter.attrs["file_size_bytes"] = kml_path.stat().st_size
+    perimeter.attrs["sha256"] = hashlib.sha256(kml_path.read_bytes()).hexdigest()
+    perimeter.attrs["time"] = "2021-08-20T20:20-07:00"
 
 
 def test_build_registries_is_fresh():
@@ -565,6 +580,64 @@ def test_overwrite_previous_run(monkeypatch, tmp_path):
 
     monkeypatch.setattr("builtins.input", lambda _: "yes")
     assert c001_caldor.overwrite_previous_run(False, output_path) is True
+
+
+@pytest.mark.parametrize("invalid_input", ["observational", "model"])
+def test_run_all_benchmarks_validates_both_standard_inputs(monkeypatch, tmp_path, invalid_input):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    with h5py.File(obs_path, "w") as obs_h5:
+        _set_standard_metadata(obs_h5, "9.9" if invalid_input == "observational" else "1.0")
+    with h5py.File(model_path, "w") as model_h5:
+        _set_standard_metadata(model_h5, "9.9" if invalid_input == "model" else "1.0")
+
+    monkeypatch.setattr(c001_caldor, "REQUIREMENTS", {})
+    monkeypatch.setattr(c001_caldor, "aggregate_scores", lambda results, _scheme: results)
+
+    with pytest.raises(ValueError, match="not compatible"):
+        c001_caldor.run_all_benchmarks(model_path, "test", [], obs_path)
+
+
+@pytest.mark.parametrize("invalid_input", ["observational", "model"])
+def test_run_all_benchmarks_rejects_invalid_referenced_assets(monkeypatch, tmp_path, invalid_input):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    for input_name, h5_path in (("observational", obs_path), ("model", model_path)):
+        with h5py.File(h5_path, "w") as h5:
+            _set_standard_metadata(h5)
+            if input_name == invalid_input:
+                perimeter = h5.create_dataset("/polygons/perimeter", data=0)
+                perimeter.attrs["rel_path"] = "missing.kml"
+
+    monkeypatch.setattr(c001_caldor, "REQUIREMENTS", {})
+    monkeypatch.setattr(c001_caldor, "aggregate_scores", lambda results, _scheme: results)
+
+    with pytest.raises(ValueError, match=f"Invalid {invalid_input} referenced asset"):
+        c001_caldor.run_all_benchmarks(model_path, "test", [], obs_path)
+
+
+def test_get_files_hash_records_referenced_asset_changes(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    kml_path = tmp_path / "perimeter.kml"
+    kml_path.write_text("<kml>a</kml>", encoding="utf-8")
+
+    with h5py.File(obs_path, "w") as obs_h5:
+        _set_standard_metadata(obs_h5)
+        _add_referenced_perimeter(obs_h5, kml_path)
+    with h5py.File(model_path, "w") as model_h5:
+        _set_standard_metadata(model_h5)
+
+    first = c001_caldor.get_files_hash(model_path, obs_path)
+    kml_path.write_text("<kml>b</kml>", encoding="utf-8")
+    with h5py.File(obs_path, "r+") as obs_h5:
+        obs_h5["/polygons/perimeter"].attrs["sha256"] = hashlib.sha256(kml_path.read_bytes()).hexdigest()
+    second = c001_caldor.get_files_hash(model_path, obs_path)
+
+    first_asset = first["obs_referenced_assets"]["/polygons/perimeter"]
+    second_asset = second["obs_referenced_assets"]["/polygons/perimeter"]
+    assert first_asset["sha256"] != second_asset["sha256"]
+    assert first_asset["rel_path"] == second_asset["rel_path"] == "perimeter.kml"
 
 
 def test_resolve_h5_relative_path(tmp_path):

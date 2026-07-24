@@ -1758,7 +1758,15 @@ def run_all_benchmarks(
     rslt = {"benchmarks": {}}
     ctx = {}
     with File(obs_dataset_path, "r") as obs_dataset, File(model_dataset_path, "r") as model_dataset:
+        fs.validate_h5_std(obs_dataset)
         fs.validate_h5_std(model_dataset)
+        for input_name, dataset in (
+            ("observational", obs_dataset),
+            ("model", model_dataset),
+        ):
+            valid, issue = fs.validate_h5_referenced_files(dataset)
+            if not valid:
+                raise ValueError(f"Invalid {input_name} referenced asset: {issue}")
 
         for req_name, req_dict in REQUIREMENTS.items():
             # filter list benchmarks
@@ -2150,11 +2158,19 @@ def get_files_hash(model_output: Path, obs_data_path: Path = DEFAULT_OBS_DATA_PA
         ft.logger.error("Observational file: %s not found", obs_data_path)
         raise FileExistsError()
     file_integrity["obs_dataset_hash"] = ft.calculate_sha256(obs_data_path)
+    with File(obs_data_path, "r") as obs_dataset:
+        obs_referenced_assets = fs.get_h5_referenced_file_integrity(obs_dataset)
+    if obs_referenced_assets:
+        file_integrity["obs_referenced_assets"] = obs_referenced_assets
 
     if not model_output.exists():
         ft.logger.error("Model file: %s not found", model_output)
         raise FileExistsError()
     file_integrity["model_output"] = ft.calculate_sha256(model_output)
+    with File(model_output, "r") as model_dataset:
+        model_referenced_assets = fs.get_h5_referenced_file_integrity(model_dataset)
+    if model_referenced_assets:
+        file_integrity["model_referenced_assets"] = model_referenced_assets
 
     file_integrity["benchmark_script"] = ft.calculate_sha256(Path(__file__))
 
