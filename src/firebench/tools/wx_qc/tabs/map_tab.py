@@ -1972,12 +1972,19 @@ class MapTabMixin:
             self._map_hover_artist = self.ax_map.scatter(
                 x, y, s=170 * mult**2, facecolors=ACCENT, edgecolors="none", alpha=0.35, zorder=2.5
             )
-            # Best-effort match to the station's current-mode color; qc_status
-            # can be determined cheaply, other modes fall back to a neutral dot.
-            if self.var_map_color.get() == "qc_status":
-                dot_color = self._QC_STATUS_COLORS[self._map_qc_status(self._map_hover_stid)][0]
-            else:
-                dot_color = "black"
+            # Match the station's current on-screen color by reading it straight
+            # off the main scatter artist, rather than recomputing it per mode.
+            # wind_combo's scatter is deliberately invisible (arrows carry the
+            # color there instead), so it keeps a neutral dot.
+            dot_color = "black"
+            cb = self.var_map_color.get()
+            if cb != "wind_combo" and self._map_sc is not None and self._map_hover_stid in self._map_stids:
+                idx = self._map_stids.index(self._map_hover_stid)
+                try:
+                    face = self._map_sc.get_facecolors()
+                    dot_color = face[idx] if len(face) > 1 else face[0]
+                except IndexError:
+                    dot_color = "black"
             self._map_hover_dot_artist = self.ax_map.scatter(
                 x, y, s=45 * mult**2, facecolors=dot_color, edgecolors="none", alpha=0.85, zorder=3.5
             )
