@@ -42,4 +42,13 @@ from .std_file_info import (
     CERTIFICATES,
 )
 from .synoptic import standardize_synoptic_raws_from_json
+from .sensor_height import (
+    SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE,
+    SENSOR_HEIGHT_CONFIDENCE_DESCRIPTION_ATTRIBUTE,
+    SensorHeightConfidence,
+    WeatherStationSet,
+    parse_sensor_height_confidence,
+    sensor_height_confidence_description,
+    station_set_includes,
+)
 from .synoptic_data import SH_TRUST_HIGHEST

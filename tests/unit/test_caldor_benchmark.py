@@ -454,21 +454,25 @@ def test_describe_available_weather_target_includes_station_counts(tmp_path):
         station_trusted["time"].attrs["time_origin"] = period_start.isoformat()
         station_trusted["time"].attrs["time_units"] = "hour"
         trusted_var = station_trusted.create_dataset("air_temperature", data=[290, 291])
-        trusted_var.attrs["sensor_height_source_confidence_lvl"] = [c001_caldor.fs.SH_TRUST_HIGHEST]
+        trusted_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [
+            c001_caldor.fs.SH_TRUST_HIGHEST
+        ]
 
         station_untrusted = time_series.create_group("station_UNTRUSTED")
         station_untrusted.create_dataset("time", data=[0, 1])
         station_untrusted["time"].attrs["time_origin"] = period_start.isoformat()
         station_untrusted["time"].attrs["time_units"] = "hour"
         untrusted_var = station_untrusted.create_dataset("air_temperature", data=[292, 293])
-        untrusted_var.attrs["sensor_height_source_confidence_lvl"] = [0]
+        untrusted_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [0]
 
         station_outside = time_series.create_group("station_OUTSIDE")
         station_outside.create_dataset("time", data=[1, 2])
         station_outside["time"].attrs["time_origin"] = period_end.isoformat()
         station_outside["time"].attrs["time_units"] = "hour"
         outside_var = station_outside.create_dataset("air_temperature", data=[294, 295])
-        outside_var.attrs["sensor_height_source_confidence_lvl"] = [c001_caldor.fs.SH_TRUST_HIGHEST]
+        outside_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [
+            c001_caldor.fs.SH_TRUST_HIGHEST
+        ]
 
     target_info = c001_caldor.describe_available_targets("H013_W", obs_data=obs_path)
 
@@ -481,6 +485,187 @@ def test_describe_available_weather_target_includes_station_counts(tmp_path):
         "stations": 2,
         "trusted_stations": 1,
     }
+
+
+def test_weather_station_selector_handles_missing_confidence_once(caplog, tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    period = c001_caldor._target_period("H013")
+
+    with h5py.File(obs_path, "w") as h5:
+        time_series = h5.create_group("time_series")
+        for station_name, confidence in (
+            ("station_TRUSTED", 2),
+            ("station_PROVIDER", 1),
+            ("station_MISSING", None),
+        ):
+            station = time_series.create_group(station_name)
+            time = station.create_dataset("time", data=[0, 1])
+            time.attrs["time_origin"] = period[0].isoformat()
+            time.attrs["time_units"] = "hour"
+            variable = station.create_dataset("air_temperature", data=[290, 291])
+            if confidence is not None:
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = confidence
+
+    context = {}
+    with h5py.File(obs_path, "r") as obs_h5, caplog.at_level("WARNING"):
+        tso = c001_caldor._select_weather_stations(
+            obs_h5,
+            "air_temperature",
+            period,
+            c001_caldor.fs.WeatherStationSet.TSO,
+            context,
+        )
+        all_sources = c001_caldor._select_weather_stations(
+            obs_h5,
+            "air_temperature",
+            period,
+            c001_caldor.fs.WeatherStationSet.ALL_SOURCES,
+            context,
+        )
+
+    assert [item["station"] for item in tso["included"]] == ["station_TRUSTED"]
+    assert {item["station"] for item in all_sources["included"]} == {
+        "station_TRUSTED",
+        "station_PROVIDER",
+        "station_MISSING",
+    }
+    confidence_warnings = [
+        record
+        for record in caplog.records
+        if "Missing or malformed sensor-height confidence" in record.message
+    ]
+    assert len(confidence_warnings) == 1
+    assert "station_MISSING" in confidence_warnings[0].message
+    assert "air_temperature" in confidence_warnings[0].message
+
+
+@pytest.mark.parametrize("stat_func", [np.nanmin, np.nanmean, np.nanmax])
+def test_weather_benchmark_ignores_empty_tso_station_set(tmp_path, stat_func):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    period = c001_caldor._target_period("H013")
+
+    for h5_path, observational in ((obs_path, True), (model_path, False)):
+        with h5py.File(h5_path, "w") as h5:
+            station = h5.create_group("time_series/station_UNTRUSTED")
+            time = station.create_dataset("time", data=[0, 1])
+            time.attrs["time_origin"] = period[0].isoformat()
+            time.attrs["time_units"] = "hour"
+            variable = station.create_dataset("air_temperature", data=[290, 291])
+            variable.attrs["units"] = "degK"
+            if observational:
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = 0
+
+    with h5py.File(model_path, "r") as model_h5, h5py.File(obs_path, "r") as obs_h5:
+        result = c001_caldor.bench_wx_generic_index(
+            model_h5,
+            obs_h5,
+            {},
+            kpi_name_custom="Air temp empty TSO",
+            period=period,
+            wx_variable_name="air_temperature",
+            common_unit="degK",
+            metric_func=lambda model, obs: float(np.mean(model - obs)),
+            stat_func=stat_func,
+            value_norm_param_m=5,
+            station_set=c001_caldor.fs.WeatherStationSet.TSO,
+        )
+
+    assert result is None
+
+
+def test_weather_requirement_records_ignored_empty_station_set(monkeypatch):
+    monkeypatch.setattr(
+        c001_caldor.fs,
+        "validate_h5_weather_stations_structure",
+        lambda *_args, **_kwargs: (True, None),
+    )
+    monkeypatch.setattr(
+        c001_caldor,
+        "BENCHMARK_FUNCTIONS",
+        {"FB001_WX_TEST": lambda _model, _obs, _ctx: None},
+    )
+    context = {}
+
+    results = c001_caldor.req_wx_station(
+        None,
+        None,
+        ["FB001_WX_TEST"],
+        {
+            "variable": "air_temperature",
+            "station_pattern": "station",
+        },
+        context,
+        "R_TEST",
+    )
+
+    assert results == {}
+    assert context["ignored_benchmarks"] == {"FB001_WX_TEST"}
+
+
+def test_run_all_benchmarks_omits_empty_tso_kpi(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    period = c001_caldor.cfg.CURATED_PERIODS["W1"]
+
+    for h5_path, observational in ((obs_path, True), (model_path, False)):
+        with h5py.File(h5_path, "w") as h5:
+            _set_standard_metadata(h5)
+            station = h5.create_group("time_series/station_UNTRUSTED")
+            time = station.create_dataset("time", data=[0, 1])
+            time.attrs["time_origin"] = period[0].isoformat()
+            time.attrs["time_units"] = "hour"
+            variable = station.create_dataset("air_temperature", data=[290, 291])
+            variable.attrs["units"] = "degK"
+            if observational:
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = 0
+
+    c001_caldor.build_registries()
+    results = c001_caldor.run_all_benchmarks(
+        model_path,
+        "0",
+        ["FB001_WX001"],
+        obs_path,
+    )
+
+    assert results == {"benchmarks": {}}
+
+
+def test_ignored_weather_kpi_does_not_affect_aggregation(monkeypatch):
+    monkeypatch.setattr(
+        c001_caldor,
+        "AGGREGATION",
+        {
+            "weather": {
+                "Air Temp": {
+                    "weight": 1,
+                    "benchmarks": {
+                        "FB001_WX001": 1,
+                        "FB001_WX002": 1,
+                    },
+                }
+            }
+        },
+    )
+    results = {
+        "benchmarks": {
+            "FB001_WX002": {
+                "Air temp all sources": 1.5,
+                "Score": 80.0,
+            }
+        }
+    }
+
+    aggregated = c001_caldor.aggregate_scores(results, "weather", {"FB001_WX001"})
+
+    assert "FB001_WX001" not in aggregated["benchmarks"]
+    assert aggregated["score_card"]["Score Air Temp"] == 80.0
+    assert aggregated["score_card"]["Score Total"] == 80.0
+    c001_caldor.raise_if_selected_benchmarks_missing(
+        aggregated["benchmarks"],
+        ["FB001_WX001", "FB001_WX002"],
+        {"FB001_WX001"},
+    )
 
 
 def test_curated_benchmark_target_selects_matching_fire_perimeter_group():
@@ -592,7 +777,11 @@ def test_run_all_benchmarks_validates_both_standard_inputs(monkeypatch, tmp_path
         _set_standard_metadata(model_h5, "9.9" if invalid_input == "model" else "1.0")
 
     monkeypatch.setattr(c001_caldor, "REQUIREMENTS", {})
-    monkeypatch.setattr(c001_caldor, "aggregate_scores", lambda results, _scheme: results)
+    monkeypatch.setattr(
+        c001_caldor,
+        "aggregate_scores",
+        lambda results, _scheme, _ignored=None: results,
+    )
 
     with pytest.raises(ValueError, match="not compatible"):
         c001_caldor.run_all_benchmarks(model_path, "test", [], obs_path)
@@ -610,7 +799,11 @@ def test_run_all_benchmarks_rejects_invalid_referenced_assets(monkeypatch, tmp_p
                 perimeter.attrs["rel_path"] = "missing.kml"
 
     monkeypatch.setattr(c001_caldor, "REQUIREMENTS", {})
-    monkeypatch.setattr(c001_caldor, "aggregate_scores", lambda results, _scheme: results)
+    monkeypatch.setattr(
+        c001_caldor,
+        "aggregate_scores",
+        lambda results, _scheme, _ignored=None: results,
+    )
 
     with pytest.raises(ValueError, match=f"Invalid {invalid_input} referenced asset"):
         c001_caldor.run_all_benchmarks(model_path, "test", [], obs_path)
@@ -694,7 +887,7 @@ def test_weather_benchmark_skips_missing_model_station_outside_period(tmp_path):
         station_outside["time"].attrs["time_units"] = "hour"
         outside_var = station_outside.create_dataset("air_temperature", data=[290, 291])
         outside_var.attrs["units"] = "degK"
-        outside_var.attrs["sensor_height_source_confidence_lvl"] = [0]
+        outside_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [0]
 
         station_inside = time_series.create_group("station_INSIDE")
         station_inside.create_dataset("time", data=[24, 25])
@@ -702,7 +895,7 @@ def test_weather_benchmark_skips_missing_model_station_outside_period(tmp_path):
         station_inside["time"].attrs["time_units"] = "hour"
         inside_var = station_inside.create_dataset("air_temperature", data=[292, 293])
         inside_var.attrs["units"] = "degK"
-        inside_var.attrs["sensor_height_source_confidence_lvl"] = [0]
+        inside_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [0]
 
     with h5py.File(model_path, "w") as model_h5:
         time_series = model_h5.create_group("time_series")
@@ -729,7 +922,7 @@ def test_weather_benchmark_skips_missing_model_station_outside_period(tmp_path):
             metric_func=lambda model, obs: float(np.mean(model - obs)),
             stat_func=lambda values: float(np.mean(values)),
             value_norm_param_m=5,
-            use_all_sensor_height_trust_lvl=True,
+            station_set=c001_caldor.fs.WeatherStationSet.ALL_SOURCES,
         )
 
     assert result["Air temp test"] == 0.0

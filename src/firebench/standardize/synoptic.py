@@ -12,11 +12,16 @@ from .time import datetime_to_iso8601
 from .synoptic_data import (
     DEFAULT_SENSOR_HEIGHT_UNIT,
     SH_TRUST_HIGHEST,
-    SH_TRUST_LVL,
     VARIABLE_CONVERSION,
     load_sensor_height_stations,
     load_sensor_height_providers,
     load_sensor_height_trusted_history,
+)
+from .sensor_height import (
+    SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE,
+    SENSOR_HEIGHT_CONFIDENCE_DESCRIPTION_ATTRIBUTE,
+    parse_sensor_height_confidence,
+    sensor_height_confidence_description,
 )
 
 
@@ -286,7 +291,15 @@ def __add_sh_to_group(
         **hdf5plugin.Zstd(clevel=compression_lvl),
     )
     new_var.attrs["units"] = info_dict["units"]
-    new_var.attrs["sensor_height_source_confidence_lvl"] = SH_TRUST_LVL[trusted_source]
+    confidence = parse_sensor_height_confidence(
+        trusted_source,
+        station=group.name,
+        variable=info_dict["std_name"],
+    )
+    new_var.attrs[SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = int(confidence)
+    new_var.attrs[SENSOR_HEIGHT_CONFIDENCE_DESCRIPTION_ATTRIBUTE] = sensor_height_confidence_description(
+        confidence
+    )
     new_var.attrs["sensor_height"] = sensor_height
     new_var.attrs["sensor_height_units"] = sensor_height_units
     new_var.attrs["sensor_height_source"] = sensor_height_source

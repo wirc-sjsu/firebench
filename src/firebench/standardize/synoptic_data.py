@@ -2,15 +2,11 @@ import json
 from importlib.resources import files
 import numpy as np
 from ..tools import StandardVariableNames as svn
+from .sensor_height import SensorHeightConfidence
 
 DEFAULT_SENSOR_HEIGHT_UNIT = "m"
 
-SH_TRUST_HIGHEST = 2
-SH_TRUST_LVL = [
-    "0 - unknown (guessed or missing metadata)",
-    "1 - provider default (not verified)",
-    "2 - verified measurement",
-]
+SH_TRUST_HIGHEST = SensorHeightConfidence.VERIFIED
 
 VARIABLE_CONVERSION = {
     "air_temp_set_1": {

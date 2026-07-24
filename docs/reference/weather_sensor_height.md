@@ -54,6 +54,12 @@ A reader treats a missing, malformed, or unknown confidence value as level 0 and
 with the affected station and variable. Newly standardized files must write a valid value instead
 of relying on this fallback.
 
+FireBench validates confidence metadata for the selected weather variables and periods before
+executing their KPIs. It uses the same selector for benchmark execution and the station counts
+shown by `firebench list`. The run log records the included and excluded stations, their confidence
+levels, and exclusion reasons. If no station is eligible for a KPI, that KPI is ignored: it has no
+value or score and contributes nothing to aggregation.
+
 ## Source precedence
 
 FireBench uses the first available height in this order:

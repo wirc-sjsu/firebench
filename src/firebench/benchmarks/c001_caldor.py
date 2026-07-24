@@ -154,7 +154,14 @@ def req_wx_station(
         ft.logger.info("Requirement %s valid", req_name)
         for bench_id in list_benchmarks:
             ft.logger.info(f"Run Benchmark {bench_id}")
-            bench_output[bench_id] = BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
+            benchmark_result = BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
+            if benchmark_result is None:
+                ctx.setdefault("ignored_benchmarks", set()).add(bench_id)
+                ft.logger.warning(
+                    "Benchmark %s ignored because its weather station set is empty.", bench_id
+                )
+            else:
+                bench_output[bench_id] = benchmark_result
     else:
         ft.logger.warning(
             "Requirement %s not satisfied. All related benchmarks ignored. Missing item(s): %s",
@@ -198,6 +205,127 @@ def _log_missing_wx_station_requirements(req_name: str, variable_name: str, miss
             missing_station.get("station", "<unknown station>"),
             missing_station.get("variable", variable_name),
             ", ".join(missing_station.get("missing", [])),
+        )
+
+
+def _select_weather_stations(
+    obs_dataset: File,
+    variable: str,
+    period: tuple[datetime, datetime],
+    station_set: fs.WeatherStationSet,
+    ctx: dict | None = None,
+) -> dict[str, list[dict]]:
+    context = ctx if ctx is not None else {}
+    selection_cache = context.setdefault("weather_station_selections", {})
+    cache_key = (variable, period, station_set)
+    if cache_key in selection_cache:
+        return selection_cache[cache_key]
+
+    warning_cache = context.setdefault("weather_confidence_warnings", set())
+    selection = {"included": [], "excluded": []}
+    if fs.TIME_SERIES not in obs_dataset:
+        selection_cache[cache_key] = selection
+        return selection
+
+    for station in obs_dataset[fs.TIME_SERIES].keys():
+        if not station.startswith("station"):
+            continue
+
+        station_path = f"{fs.TIME_SERIES}/{station}"
+        data_path = f"{station_path}/{variable}"
+        if data_path not in obs_dataset:
+            continue
+        if not np.any(get_mask_from_period(obs_dataset, station_path, period)):
+            selection["excluded"].append(
+                {
+                    "station": station,
+                    "confidence": None,
+                    "reason": "no samples in selected period",
+                }
+            )
+            continue
+
+        confidence = fs.parse_sensor_height_confidence(
+            obs_dataset[data_path].attrs.get(fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE),
+            station=station,
+            variable=variable,
+            warning_cache=warning_cache,
+        )
+        station_info = {
+            "station": station,
+            "confidence": int(confidence),
+        }
+        if fs.station_set_includes(station_set, confidence):
+            selection["included"].append(station_info)
+        else:
+            selection["excluded"].append(
+                {
+                    **station_info,
+                    "reason": f"confidence level {int(confidence)} is not eligible for TSO",
+                }
+            )
+
+    selection_cache[cache_key] = selection
+    ft.logger.info(
+        "Weather station selection: variable=%s period=%s/%s station_set=%s included=%d excluded=%d",
+        variable,
+        period[0].isoformat(),
+        period[1].isoformat(),
+        station_set.value,
+        len(selection["included"]),
+        len(selection["excluded"]),
+    )
+    for station_info in selection["included"]:
+        ft.logger.debug(
+            "Weather station included: station=%s variable=%s period=%s/%s station_set=%s " "confidence=%d",
+            station_info["station"],
+            variable,
+            period[0].isoformat(),
+            period[1].isoformat(),
+            station_set.value,
+            station_info["confidence"],
+        )
+    for station_info in selection["excluded"]:
+        ft.logger.debug(
+            "Weather station excluded: station=%s variable=%s period=%s/%s station_set=%s "
+            "confidence=%s reason=%s",
+            station_info["station"],
+            variable,
+            period[0].isoformat(),
+            period[1].isoformat(),
+            station_set.value,
+            station_info["confidence"],
+            station_info["reason"],
+        )
+    return selection
+
+
+def _validate_selected_weather_confidence(
+    obs_dataset: File,
+    selected_benchmarks: list[str],
+    ctx: dict,
+) -> None:
+    selections = set()
+    for bench_id in selected_benchmarks:
+        benchmark = BENCHMARK_FUNCTIONS.get(bench_id)
+        keywords = getattr(benchmark, "keywords", {}) or {}
+        if "wx_variable_name" not in keywords or "station_set" not in keywords:
+            continue
+        selections.add(
+            (
+                keywords["wx_variable_name"],
+                keywords["period"],
+                keywords["station_set"],
+            )
+        )
+
+    for variable, period, station_set in selections:
+        _select_weather_stations(obs_dataset, variable, period, station_set, ctx)
+
+    if selections:
+        ft.logger.info(
+            "Validated observational sensor-height confidence for %d weather selection(s).",
+            len(selections),
         )
 
 
@@ -414,59 +542,52 @@ def bench_wx_generic_index(
     metric_func: any,
     stat_func: any,
     value_norm_param_m: float,
-    use_all_sensor_height_trust_lvl: bool = False,
+    station_set: fs.WeatherStationSet,
 ):
     PENALTY_VALUE = -1e6
-    # Compute metric for erach station
     metric_rslt = []
-    processed_stations = []
-    for station in obs_dataset[f"{fs.TIME_SERIES}"].keys():
-        if not station.startswith("station"):
-            # skip time series that are not wx stations
-            continue
+    selection = _select_weather_stations(
+        obs_dataset,
+        wx_variable_name,
+        period,
+        station_set,
+        ctx,
+    )
+    if not selection["included"]:
+        ft.logger.warning(
+            "Ignoring weather KPI %s: no stations are eligible for %s.",
+            kpi_name_custom,
+            station_set.value,
+        )
+        return None
 
+    for station_info in selection["included"]:
+        station = station_info["station"]
         station_path = f"{fs.TIME_SERIES}/{station}"
         data_path = f"{station_path}/{wx_variable_name}"
+        mask_obs = get_mask_from_period(obs_dataset, station_path, period)
+        mask_model = get_mask_from_period(model_dataset, station_path, period)
+        assert np.sum(mask_obs) == np.sum(mask_model), "time vector size invalid"
 
-        if data_path not in obs_dataset:
-            continue
+        var_obs = (
+            fs.read_quantity_from_fb_dataset(data_path, obs_dataset).to(common_unit).magnitude[mask_obs]
+        )
+        var_model = (
+            fs.read_quantity_from_fb_dataset(data_path, model_dataset).to(common_unit).magnitude[mask_model]
+        )
 
-        if (
-            int(obs_dataset[data_path].attrs["sensor_height_source_confidence_lvl"][0])
-            == fs.SH_TRUST_HIGHEST
-            or use_all_sensor_height_trust_lvl
-        ):
-            # process time
-            mask_obs = get_mask_from_period(obs_dataset, f"{fs.TIME_SERIES}/{station}", period)
-            if not np.any(mask_obs):
-                continue
-            mask_model = get_mask_from_period(model_dataset, f"{fs.TIME_SERIES}/{station}", period)
-            assert np.sum(mask_obs) == np.sum(mask_model), "time vector size invalid"
-
-            var_obs = (
-                fs.read_quantity_from_fb_dataset(data_path, obs_dataset).to(common_unit).magnitude[mask_obs]
+        # replace nan values in model by unrealistic value to severely penalize nans in model
+        if any(np.isnan(var_model)):
+            ft.logger.warning(
+                "Nans found in model dataset for station %s and variable %s. Nans replaced by unrealistic value.",
+                station,
+                wx_variable_name,
             )
-            var_model = (
-                fs.read_quantity_from_fb_dataset(data_path, model_dataset)
-                .to(common_unit)
-                .magnitude[mask_model]
-            )
+            var_model[np.isnan(var_model)] = PENALTY_VALUE
 
-            # replace nan values in model by unrealistic value to severely penalize nans in model
-            if any(np.isnan(var_model)):
-                ft.logger.warning(
-                    "Nans found in model dataset for station %s and variable %s. Nans replaced by unrealistic value.",
-                    station,
-                    wx_variable_name,
-                )
-                var_model[np.isnan(var_model)] = PENALTY_VALUE
+        metric_rslt.append(metric_func(var_model, var_obs))
 
-            if len(var_obs) > 0:
-                metric_rslt.append(metric_func(var_model, var_obs))
-                processed_stations.append(station)
-
-    ft.logger.info("Nb processed stations: %s", len(processed_stations))
-    ft.logger.debug("Processed stations: %s", processed_stations)
+    ft.logger.info("Nb processed stations: %s", len(selection["included"]))
     rslt = stat_func(metric_rslt)
     ft.logger.info("%s: %f", kpi_name_custom, rslt)
     return {
@@ -1130,12 +1251,12 @@ def add_wx_benchmarks():
                 WX_GROUP_BENCHMARKS.setdefault(group_name, {})
                 WX_GROUPS_BY_PERIOD.setdefault(period_name, []).append(group_name)
                 for metric_name, metric_func in metric_funcs[variable_spec["metric_set"]].items():
-                    for trust_txt, trust in cfg.WX_TRUSTED_SOURCE_OPTIONS:
+                    for station_set_text, station_set in cfg.WX_STATION_SET_OPTIONS:
                         for func_name, stat_func in summary_stats_func.items():
                             bench_id = f"FB001_WX{bench_idx:03d}"
                             bench_name = (
                                 f"{variable_spec['label']} {metric_name} {func_name} "
-                                f"{period_name} {trust_txt}"
+                                f"{period_name} {station_set_text}"
                             )
 
                             BENCHMARK_FUNCTIONS[bench_id] = partial(
@@ -1147,7 +1268,7 @@ def add_wx_benchmarks():
                                 metric_func=metric_func,
                                 stat_func=stat_func,
                                 value_norm_param_m=variable_spec["norm_m"],
-                                use_all_sensor_height_trust_lvl=trust,
+                                station_set=station_set,
                             )
                             WX_GROUP_BENCHMARKS[group_name][bench_id] = 1
                             ft.logger.debug("Benchmark %s with name %s added", bench_id, bench_name)
@@ -1433,36 +1554,34 @@ def _weather_station_counts(obs_data: Path, period: tuple[datetime, datetime]) -
         return []
 
     weather_stations = []
+    selection_context = {}
     with File(obs_data, "r") as obs_dataset:
         if fs.TIME_SERIES not in obs_dataset:
             return []
 
         for variable_spec in cfg.WX_VARIABLE_SPECS:
             variable = variable_spec["variable"]
-            stations = 0
-            trusted_stations = 0
-            for station in obs_dataset[fs.TIME_SERIES].keys():
-                if not station.startswith("station"):
-                    continue
-
-                station_path = f"{fs.TIME_SERIES}/{station}"
-                data_path = f"{station_path}/{variable}"
-                if data_path not in obs_dataset:
-                    continue
-                if not np.any(get_mask_from_period(obs_dataset, station_path, period)):
-                    continue
-
-                stations += 1
-                confidence = obs_dataset[data_path].attrs.get("sensor_height_source_confidence_lvl")
-                if confidence is not None and int(confidence[0]) == fs.SH_TRUST_HIGHEST:
-                    trusted_stations += 1
+            all_sources = _select_weather_stations(
+                obs_dataset,
+                variable,
+                period,
+                fs.WeatherStationSet.ALL_SOURCES,
+                selection_context,
+            )
+            tso = _select_weather_stations(
+                obs_dataset,
+                variable,
+                period,
+                fs.WeatherStationSet.TSO,
+                selection_context,
+            )
 
             weather_stations.append(
                 {
                     "variable": variable,
                     "label": variable_spec["label"],
-                    "stations": stations,
-                    "trusted_stations": trusted_stations,
+                    "stations": len(all_sources["included"]),
+                    "trusted_stations": len(tso["included"]),
                 }
             )
 
@@ -1756,7 +1875,7 @@ def run_all_benchmarks(
     ft.logger.debug("run_all_benchmarks")
 
     rslt = {"benchmarks": {}}
-    ctx = {}
+    ctx = {"ignored_benchmarks": set()}
     with File(obs_dataset_path, "r") as obs_dataset, File(model_dataset_path, "r") as model_dataset:
         fs.validate_h5_std(obs_dataset)
         fs.validate_h5_std(model_dataset)
@@ -1767,6 +1886,8 @@ def run_all_benchmarks(
             valid, issue = fs.validate_h5_referenced_files(dataset)
             if not valid:
                 raise ValueError(f"Invalid {input_name} referenced asset: {issue}")
+
+        _validate_selected_weather_confidence(obs_dataset, list_bench, ctx)
 
         for req_name, req_dict in REQUIREMENTS.items():
             # filter list benchmarks
@@ -1781,9 +1902,10 @@ def run_all_benchmarks(
                 ),
             )
 
-    raise_if_selected_benchmarks_missing(rslt["benchmarks"], list_bench)
+    ignored_benchmarks = ctx["ignored_benchmarks"]
+    raise_if_selected_benchmarks_missing(rslt["benchmarks"], list_bench, ignored_benchmarks)
 
-    rslt = aggregate_scores(rslt, agg_scheme)
+    rslt = aggregate_scores(rslt, agg_scheme, ignored_benchmarks)
 
     return rslt
 
@@ -1796,8 +1918,15 @@ def get_benchmark_requirements() -> dict[str, list[str]]:
     return benchmark_requirements
 
 
-def raise_if_selected_benchmarks_missing(benchmark_results: dict, list_bench: list[str]) -> None:
-    missing_benchmarks = [bench_id for bench_id in list_bench if bench_id not in benchmark_results]
+def raise_if_selected_benchmarks_missing(
+    benchmark_results: dict,
+    list_bench: list[str],
+    ignored_benchmarks: set[str] | None = None,
+) -> None:
+    ignored = ignored_benchmarks or set()
+    missing_benchmarks = [
+        bench_id for bench_id in list_bench if bench_id not in benchmark_results and bench_id not in ignored
+    ]
     if not missing_benchmarks:
         return
 
@@ -1820,7 +1949,7 @@ def raise_if_selected_benchmarks_missing(benchmark_results: dict, list_bench: li
     )
 
 
-def aggregate_scores(benchmark_results, agg_scheme):
+def aggregate_scores(benchmark_results, agg_scheme, ignored_benchmarks: set[str] | None = None):
     if agg_scheme == "0":
         ft.logger.warning("Aggregation scheme `0` selected. No aggregation performed")
         return benchmark_results
@@ -1831,6 +1960,7 @@ def aggregate_scores(benchmark_results, agg_scheme):
         )
 
     scheme = AGGREGATION[agg_scheme]
+    ignored = ignored_benchmarks or set()
 
     benchmark_results["score_card"] = {
         "Scheme": scheme,
@@ -1841,12 +1971,22 @@ def aggregate_scores(benchmark_results, agg_scheme):
         group_sum_weight = 0
         group_bench = scheme[group]["benchmarks"]
         for bench_id in group_bench.keys():
+            if bench_id in ignored:
+                ft.logger.info(
+                    "Benchmark ID %s is ignored and does not contribute to group %s.",
+                    bench_id,
+                    group,
+                )
+                continue
             if bench_id not in benchmark_results["benchmarks"].keys():
                 ft.logger.error("Benchmark ID: %s required for aggregation scheme not found.", bench_id)
                 raise KeyError(f"Benchmark result missing for aggregation: {bench_id}. Check log")
             group_score += benchmark_results["benchmarks"][bench_id]["Score"] * group_bench[bench_id]
             group_sum_weight += group_bench[bench_id]
             # print(bench_id, benchmark_results["benchmarks"][bench_id]["Score"],  group_bench[bench_id])
+        if group_sum_weight == 0:
+            ft.logger.warning("Group %s ignored because it has no eligible weighted KPI.", group)
+            continue
         benchmark_results["score_card"][f"Score {group}"] = group_score / group_sum_weight
         ft.logger.info(
             "Score for group: %s = %.2f", group, benchmark_results["score_card"][f"Score {group}"]
@@ -1856,10 +1996,16 @@ def aggregate_scores(benchmark_results, agg_scheme):
     total_score = 0
     total_sum_weight = 0
     for group in scheme.keys():
-        total_score += benchmark_results["score_card"][f"Score {group}"] * scheme[group]["weight"]
+        score_key = f"Score {group}"
+        if score_key not in benchmark_results["score_card"]:
+            continue
+        total_score += benchmark_results["score_card"][score_key] * scheme[group]["weight"]
         total_sum_weight += scheme[group]["weight"]
-    benchmark_results["score_card"]["Score Total"] = total_score / total_sum_weight
-    ft.logger.info("Total Score = %.2f", benchmark_results["score_card"]["Score Total"])
+    if total_sum_weight:
+        benchmark_results["score_card"]["Score Total"] = total_score / total_sum_weight
+        ft.logger.info("Total Score = %.2f", benchmark_results["score_card"]["Score Total"])
+    else:
+        ft.logger.warning("Total score ignored because no eligible weighted group remains.")
 
     benchmark_results["score_card"]["aggregation_scheme_name"] = agg_scheme
     benchmark_results["score_card"]["benchmark_target_name"] = agg_scheme
