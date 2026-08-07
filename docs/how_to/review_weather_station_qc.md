@@ -40,7 +40,7 @@ brew install python-tk@3.13
 ```
 
 Replace `3.13` with the reported version, such as `3.10`, `3.11`, `3.12`, or `3.14`. See the
-[Homebrew `python-tk` formula](https://formulae.brew.sh/formula/python-tk) for the currently
+[Homebrew `python-tk` formula](https://formulae.brew.sh/formula/python-tk@3.14) for the currently
 available versions.
 
 The formula is built for the corresponding Homebrew Python. It does not add Tk to a Python

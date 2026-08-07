@@ -15,10 +15,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add verified PG&E station wind sensor-height fallback data.
 - Add task-oriented documentation, complete CLI and API references, executable examples, and strict
   documentation CI.
+- Document the weather-station QC GUI workflow, assertion semantics, JSON sessions, and exports,
+  and include `wx-qc` in the CLI reference.
+- Add an adaptive OpenStreetMap road basemap with an offline fallback to the weather-station QC map.
+- Define the Caldor weather sensor-height, confidence-level, TSO, all-sources, and model-height
+  contract.
+- Add versioned, provenance-bearing weather sensor-height resources, semantic validation, a
+  source-precedence resolver, and an explicit Synoptic proposal workflow.
+- Add a deterministic Caldor weather release inventory bound to the observation-file hash,
+  FireBench and benchmark-data versions, and trusted-height resource hashes.
 
 ### Changed
 
 - Require `firebench run CASE TARGET MODEL_OUTPUT` and replace `-a` with benchmark targets such as `H013_P`.
+- Use explicit TSO and all-sources station selection, canonical numeric sensor-height confidence,
+  and shared selection logic for Caldor weather execution and CLI station counts.
+- Preserve selected sensor-height provenance in standardized Synoptic variables and replace the
+  temporary trusted-history side effect with reviewed proposal exports.
+- Require prepared TSO model weather variables to record a sensor height matching the trusted
+  observation within 0.01 m after unit conversion.
+- Give TSO and all-sources weather KPIs explicit names, weight TSO at 1, and retain all sources as
+  zero-weight diagnostics. This changes weather aggregation, so FireBench 0.10 weather and total
+  scores are not directly comparable with FireBench 0.9 or earlier 0.10 development builds.
 - Revise Caldor perimeter weights and normalization; FireBench 0.10 scores are not directly
   comparable with FireBench 0.9 scores.
 - Expand benchmark discovery and target details in `firebench list` and generated reports.
@@ -27,9 +45,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Treat missing or malformed sensor-height confidence as level 0 with one contextual warning, and
+  ignore empty weather station sets without adding a KPI value or aggregation contribution.
+- Exclude and report only the affected TSO station when model sensor-height metadata is missing,
+  dimensionally incompatible, or mismatched.
+- Reject unsupported HDF5 standard versions and verify referenced polygon files by path, size, and
+  SHA-256 before benchmarks run.
+- Record verified observational and model referenced-file metadata in benchmark result provenance.
+- Bundle runtime datasets in installed distributions and resolve default data through package
+  resources instead of repository-relative paths.
+- Avoid loading scientific, geospatial, plotting, and PDF dependencies when displaying CLI help.
 - Resolve external polygon paths relative to their HDF5 file during benchmark requirement checks.
 - Preserve established Caldor weather KPI identifiers and canonicalize combined target flags.
 - Support UTC and extended ISO 8601 `date_time` values when standardizing Synoptic observations.
+- Correct weather-station QC handling for contiguous frozen/dropout runs, invalid time axes, and
+  longest and cumulative outage metrics.
+- Apply weather-station QC issue filters consistently and prevent conflicting skipped and greenlit
+  station decisions.
+- Make weather-station QC exports atomic and safely serialized, and apply skipped stations and
+  record removals to cleaned H5 copies.
+- Replace weather-station QC pickle sessions with validated, atomic, versioned JSON sessions that
+  recompute station statistics from the referenced H5 when restored.
+- Support Contextily 1.6 when loading wx-QC road tiles and show complete basemap errors in a dialog
+  and terminal log.
 
 ## [0.9.0] - 2026 / 05 / 18
 ### Added

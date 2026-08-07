@@ -6,6 +6,8 @@ from tempfile import TemporaryDirectory
 from textwrap import dedent
 from zipfile import ZipFile
 
+from packaging.version import Version
+
 try:
     import tomllib
 except ModuleNotFoundError:
@@ -138,7 +140,7 @@ def main() -> None:
 
     wheel = _find_wheel(Path(sys.argv[1]).resolve())
     project_config = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-    expected_version = project_config["project"]["version"]
+    expected_version = str(Version(project_config["project"]["version"]))
     _check_wheel_contents(wheel)
     _check_isolated_import(wheel, expected_version)
     print(f"Verified wheel runtime resources: {wheel}")

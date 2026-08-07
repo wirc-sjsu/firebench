@@ -10,8 +10,8 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-RELEASE_VERSION = "0.10.0"
-RELEASE_DATE = date(2026, 7, 24)
+RELEASE_VERSION = "0.10-dev4"
+RELEASE_DATE = date(2026, 8, 7)
 ZENODO_CONCEPT_DOI = "10.5281/zenodo.15477459"
 
 
