@@ -1,0 +1,107 @@
+{
+    "data_path": "data_Table_8.csv",
+    "no_data_value":"-9999",
+    "metadata": {
+      "firename": {
+        "variable_name": "fire_name",
+        "unit": "None",
+        "type": "object"
+      },
+      "country": {
+        "variable_name": "country",
+        "unit": "None",
+        "type": "object"
+      },
+      "location": {
+        "variable_name": "location",
+        "unit": "None",
+        "type": "object"
+      },
+      "date": {
+        "variable_name": "date",
+        "unit": "None",
+        "type": "object"
+      },
+      "starttime": {
+        "variable_name": "start_time",
+        "unit": "hhmm",
+        "type": "int32"
+      },
+      "endtime": {
+        "variable_name": "end_time",
+        "unit": "hhmm",
+        "type": "int32"
+      },
+      "fuelname": {
+        "variable_name": "fuel_description",
+        "unit": "None",
+        "type": "object"
+      },
+      "ros": {
+        "variable_name": "rate_of_spread",
+        "unit": "m/min",
+        "type": "float64"
+      },
+      "whgt": {
+        "variable_name": "fuel_wind_height",
+        "unit": "m",
+        "type": "float64"
+      },
+      "wspd": {
+        "variable_name": "wind_speed",
+        "unit": "km/h",
+        "type": "float64"
+      },
+      "windrf": {
+        "variable_name": "fuel_wind_reduction_factor",
+        "unit": "dimensionless",
+        "type": "float64"
+      },
+      "temperature": {
+        "variable_name": "temperature",
+        "unit": "degC",
+        "type": "float64"
+      },
+      "rh": {
+        "variable_name": "relative_humidity",
+        "unit": "percent",
+        "type": "float64"
+      },
+      "fmoistdf": {
+        "variable_name": "fuel_moisture_content_fine_dead",
+        "unit": "percent",
+        "type": "float64"
+      },
+      "fheight": {
+        "variable_name": "fuel_height",
+        "unit": "m",
+        "type": "float64"
+      },      
+      "flf": {
+        "variable_name": "fuel_load_fine",
+        "unit": "kg/m^2",
+        "type": "float64"
+      },
+      "fbd": {
+        "variable_name": "fuel_density_bulk",
+        "unit": "kg/m^3",
+        "type": "float64"
+      },
+      "relwthr": {
+        "variable_name": "reliability_of_weather_data",
+        "unit": "None",
+        "type": "object"
+      },
+      "relfuel": {
+        "variable_name": "reliability_of_fuel_data",
+        "unit": "None",
+        "type": "object"
+      },
+      "relros": {
+        "variable_name": "reliability_of_ros_data",
+        "unit": "None",
+        "type": "object"
+      }
+    }
+  }
+    

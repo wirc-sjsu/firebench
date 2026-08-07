@@ -1,18 +1,52 @@
 import logging
 import re
+from collections.abc import Iterator, Mapping
+from importlib import import_module
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
 import click
-import yaml
 
-from .benchmarks import AVAIL_BENCHMARKS
-from .metrics.table import save_comparison_as_table
-from .plotting import plot_from_config
-from .tools.logging_config import configure_logging
+
+class _LazyBenchmarkRegistry(Mapping[str, dict]):
+    def __init__(self) -> None:
+        self._registry = None
+
+    def _load(self) -> dict:
+        if self._registry is None:
+            self._registry = import_module(".benchmarks", __package__).AVAIL_BENCHMARKS
+        return self._registry
+
+    def __getitem__(self, key: str) -> dict:
+        return self._load()[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._load())
+
+    def __len__(self) -> int:
+        return len(self._load())
+
+
+AVAIL_BENCHMARKS: Mapping[str, dict] = _LazyBenchmarkRegistry()
 
 logger = logging.getLogger(__name__)
+
+
+def configure_logging(*args, **kwargs):
+    """Load and call the logging configuration helper on demand."""
+    return import_module(".tools.logging_config", __package__).configure_logging(*args, **kwargs)
+
+
+def save_comparison_as_table(*args, **kwargs):
+    """Load and call the comparison-table writer on demand."""
+    return import_module(".metrics.table", __package__).save_comparison_as_table(*args, **kwargs)
+
+
+def plot_from_config(*args, **kwargs):
+    """Load and call the plotting entry point on demand."""
+    return import_module(".plotting", __package__).plot_from_config(*args, **kwargs)
+
 
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
@@ -394,6 +428,9 @@ def _read_multirun_config(config_path: Path) -> dict:
         raise click.UsageError("Multirun config must be a .yml or .yaml file.")
     if not config_path.is_file():
         raise click.UsageError(f"Multirun config file does not exist: {config_path}")
+
+    yaml = import_module("yaml")
+
     try:
         config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:

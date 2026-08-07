@@ -1,16 +1,11 @@
-import json
-from importlib.resources import files
 import numpy as np
+
 from ..tools import StandardVariableNames as svn
+from .sensor_height import SensorHeightConfidence
 
 DEFAULT_SENSOR_HEIGHT_UNIT = "m"
 
-SH_TRUST_HIGHEST = 2
-SH_TRUST_LVL = [
-    "0 - unknown (guessed or missing metadata)",
-    "1 - provider default (not verified)",
-    "2 - verified measurement",
-]
+SH_TRUST_HIGHEST = SensorHeightConfidence.VERIFIED
 
 VARIABLE_CONVERSION = {
     "air_temp_set_1": {
@@ -56,21 +51,3 @@ VARIABLE_CONVERSION = {
         "default_sensor_height": 0.3,
     },
 }
-
-
-# station trusted sensor height information. Best source of information
-def load_sensor_height_stations() -> dict:
-    path = files("firebench").joinpath("resources/wx_sensor_height_stations.json")
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-# station trusted history. Contains only trusted information from previous json parsing
-def load_sensor_height_trusted_history() -> dict:
-    path = files("firebench").joinpath("resources/wx_sensor_height_trusted_history.json")
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-# Provider based information. Not reliable.
-def load_sensor_height_providers() -> dict:
-    path = files("firebench").joinpath("resources/wx_sensor_height_providers.json")
-    return json.loads(path.read_text(encoding="utf-8"))

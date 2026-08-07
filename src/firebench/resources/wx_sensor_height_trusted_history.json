@@ -1,125 +1,479 @@
 {
-    "BDMC1": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "provider": "Bureau of Land Management",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "6.1",
-        "wind_gust_set_1": "6.1",
-        "wind_speed_set_1": "6.1"
+  "schema_version": 1,
+  "record_type": "historical",
+  "provenance": {
+    "source_reference": "https://api.synopticdata.com/v2/stations/timeseries (legacy FireBench trusted-history export)",
+    "source_date": null,
+    "verification_date": "2026-07-24",
+    "reviewer_or_authority": "FireBench maintainers",
+    "notes": "Migrated from sensor positions previously exported from Synoptic metadata. The legacy export did not retain source dates or source-file hashes; supersede with a new proposal when possible."
+  },
+  "records": [
+    {
+      "record_id": "history-bdmc1-1",
+      "station": "BDMC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "CI013": {
-        "air_temp_set_1": "1.5",
-        "provider": "California Irrigation Management Information System",
-        "relative_humidity_set_1": "1.5",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "2.0"
+    {
+      "record_id": "history-bdmc1-2",
+      "station": "BDMC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "CI227": {
-        "air_temp_set_1": "1.5",
-        "provider": "California Irrigation Management Information System",
-        "relative_humidity_set_1": "1.5",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "2.0"
+    {
+      "record_id": "history-bdmc1-3",
+      "station": "BDMC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 6.1,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "CI228": {
-        "air_temp_set_1": "1.5",
-        "provider": "California Irrigation Management Information System",
-        "relative_humidity_set_1": "1.5",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "2.0"
+    {
+      "record_id": "history-ci013-1",
+      "station": "CI013",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1"
+      ],
+      "height": 1.5,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "CI246": {
-        "air_temp_set_1": "1.5",
-        "provider": "California Irrigation Management Information System",
-        "relative_humidity_set_1": "1.5",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "2.0"
+    {
+      "record_id": "history-ci013-2",
+      "station": "CI013",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "solar_radiation_set_1",
+        "wind_direction_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "COKC1": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "provider": "Bureau of Land Management",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "6.1",
-        "wind_gust_set_1": "6.1",
-        "wind_speed_set_1": "6.1"
+    {
+      "record_id": "history-ci227-1",
+      "station": "CI227",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1"
+      ],
+      "height": 1.5,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "GZFC1": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "provider": "Bureau of Land Management",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "6.1",
-        "wind_gust_set_1": "6.1",
-        "wind_speed_set_1": "6.1"
+    {
+      "record_id": "history-ci227-2",
+      "station": "CI227",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "solar_radiation_set_1",
+        "wind_direction_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "KPVF": {
-        "air_temp_set_1": "2.0",
-        "provider": "National Weather Service",
-        "relative_humidity_set_1": "2.0",
-        "wind_direction_set_1": "10.0",
-        "wind_speed_set_1": "10.0"
+    {
+      "record_id": "history-ci228-1",
+      "station": "CI228",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1"
+      ],
+      "height": 1.5,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "KTVL": {
-        "air_temp_set_1": "2.0",
-        "provider": "National Weather Service",
-        "relative_humidity_set_1": "2.0",
-        "wind_direction_set_1": "10.0",
-        "wind_gust_set_1": "10.0",
-        "wind_speed_set_1": "10.0"
+    {
+      "record_id": "history-ci228-2",
+      "station": "CI228",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "solar_radiation_set_1",
+        "wind_direction_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "MKEC1": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "provider": "Bureau of Land Management",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "6.1",
-        "wind_gust_set_1": "6.1",
-        "wind_speed_set_1": "6.1"
+    {
+      "record_id": "history-ci246-1",
+      "station": "CI246",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1"
+      ],
+      "height": 1.5,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "OWNC1": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "provider": "Bureau of Land Management",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "6.1",
-        "wind_gust_set_1": "6.1",
-        "wind_speed_set_1": "6.1"
+    {
+      "record_id": "history-ci246-2",
+      "station": "CI246",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "solar_radiation_set_1",
+        "wind_direction_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "RBXC1": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "provider": "Bureau of Land Management",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "6.1",
-        "wind_gust_set_1": "6.1",
-        "wind_speed_set_1": "6.1"
+    {
+      "record_id": "history-cokc1-1",
+      "station": "COKC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "RWBC1": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "provider": "Bureau of Land Management",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "6.1",
-        "wind_gust_set_1": "6.1",
-        "wind_speed_set_1": "6.1"
+    {
+      "record_id": "history-cokc1-2",
+      "station": "COKC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     },
-    "TS445": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "provider": "Bureau of Land Management",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "2.0",
-        "wind_gust_set_1": "2.0",
-        "wind_speed_set_1": "2.0"
+    {
+      "record_id": "history-cokc1-3",
+      "station": "COKC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 6.1,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-gzfc1-1",
+      "station": "GZFC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-gzfc1-2",
+      "station": "GZFC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-gzfc1-3",
+      "station": "GZFC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 6.1,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-kpvf-1",
+      "station": "KPVF",
+      "provider": "National Weather Service",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-kpvf-2",
+      "station": "KPVF",
+      "provider": "National Weather Service",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 10.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-ktvl-1",
+      "station": "KTVL",
+      "provider": "National Weather Service",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-ktvl-2",
+      "station": "KTVL",
+      "provider": "National Weather Service",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 10.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-mkec1-1",
+      "station": "MKEC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-mkec1-2",
+      "station": "MKEC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-mkec1-3",
+      "station": "MKEC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 6.1,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-ownc1-1",
+      "station": "OWNC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-ownc1-2",
+      "station": "OWNC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-ownc1-3",
+      "station": "OWNC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 6.1,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-rbxc1-1",
+      "station": "RBXC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-rbxc1-2",
+      "station": "RBXC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-rbxc1-3",
+      "station": "RBXC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 6.1,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-rwbc1-1",
+      "station": "RWBC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-rwbc1-2",
+      "station": "RWBC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-rwbc1-3",
+      "station": "RWBC1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 6.1,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-ts445-1",
+      "station": "TS445",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
+    },
+    {
+      "record_id": "history-ts445-2",
+      "station": "TS445",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1",
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 2,
+      "status": "active"
     }
+  ]
 }

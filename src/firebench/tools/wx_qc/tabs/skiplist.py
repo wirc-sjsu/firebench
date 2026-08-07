@@ -201,7 +201,7 @@ logging_lvl = {logging_lvl}  # 0 NOTSET, 10 DEBUG, 20 INFO, 30 WARNING, 40 ERROR
 {skip_block}
 
 # Per-station/variable time ranges to NaN out (not whole-station skips).
-# Paste the `remove_records` dict from a wx_qc GUI skip-list export here —
+# Paste the `remove_records` dict from a wx_qc GUI skip-list export here,
 # same shape: {{stid: [(var_or_"*", t0_iso, t1_iso, reason), ...]}}.
 {remove_block}
 
@@ -232,7 +232,6 @@ try:
         skip_stations=skip_stations,
         overwrite=True,
         compression_lvl=compression_lvl,
-        export_trusted_history=False,
     )
     apply_record_removals(h5, remove_records)
     h5.close()
@@ -372,8 +371,8 @@ class SkiplistTabMixin:
         ttk.Button(bf, text="Remove", command=self._skip_remove).pack(side="left", padx=PAD)
         ttk.Button(bf, text="Edit Reason", command=self._skip_edit_reason).pack(side="left", padx=PAD)
         ttk.Button(bf, text="Go to Detail ->", command=self._skip_goto_detail).pack(side="left", padx=PAD)
-        ttk.Button(bf, text="Export Script...", command=self._export_script).pack(side="right", padx=PAD)
-        ttk.Button(bf, text="Export Python...", command=self._skip_export).pack(side="right", padx=PAD)
+        ttk.Button(bf, text="Export Script", command=self._export_script).pack(side="right", padx=PAD)
+        ttk.Button(bf, text="Export Python", command=self._skip_export).pack(side="right", padx=PAD)
 
         self.lbl_skip_count = ttk.Label(f, text="", anchor="w", style="Muted.TLabel")
         self.lbl_skip_count.pack(anchor="w", padx=4, pady=(0, 4))
@@ -398,7 +397,7 @@ class SkiplistTabMixin:
         ttk.Button(rbf, text="Go to Detail ->", command=self._removal_goto_detail).pack(
             side="left", padx=PAD
         )
-        ttk.Button(rbf, text="Export cleaned H5...", command=self._export_cleaned_h5).pack(
+        ttk.Button(rbf, text="Export cleaned H5", command=self._export_cleaned_h5).pack(
             side="right", padx=PAD
         )
 
@@ -613,7 +612,7 @@ class SkiplistTabMixin:
             path (str or Path): destination .py file path.
 
         Returns:
-            tuple[str or Path, Path or None]: (path, qc_path) — qc_path is
+            tuple[str or Path, Path or None]: (path, qc_path); qc_path is
                 None when no H5 is currently loaded.
         """
         skip_block = _format_skip_stations_block(self.skip_list)
@@ -670,7 +669,7 @@ class SkiplistTabMixin:
             shown = "\n".join(f"  {s}/{v}: {err}" for s, v, err in errors[:10])
             msg += f"\n\n{len(errors)} dataset write(s) failed and were skipped:\n{shown}"
             if len(errors) > 10:
-                msg += f"\n  ... and {len(errors) - 10} more"
+                msg += f"\n  ({len(errors) - 10} more)"
         messagebox.showinfo("Cleaned H5 exported", msg)
 
     def _export_cleaned_h5_write(self, dest_path):

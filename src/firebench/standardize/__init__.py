@@ -1,6 +1,7 @@
 from .mtbs import standardize_mtbs_from_geotiff
 from .tools import (
     VERSION_STD,
+    get_h5_referenced_file_integrity,
     import_tif_with_rect_box,
     is_iso8601,
     merge_authors,
@@ -9,6 +10,7 @@ from .tools import (
     read_quantity_from_fb_dataset,
     read_string_attribute,
     validate_h5_requirement,
+    validate_h5_referenced_files,
     validate_h5_std,
     validate_h5_weather_stations_structure,
 )
@@ -39,5 +41,33 @@ from .std_file_info import (
     MISCELLANEOUS,
     CERTIFICATES,
 )
-from .synoptic import standardize_synoptic_raws_from_json
+from .synoptic import (
+    export_synoptic_sensor_height_proposal,
+    standardize_synoptic_raws_from_json,
+)
+from .sensor_height import (
+    SENSOR_HEIGHT_ATTRIBUTE,
+    SENSOR_HEIGHT_UNITS_ATTRIBUTE,
+    SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE,
+    SENSOR_HEIGHT_CONFIDENCE_DESCRIPTION_ATTRIBUTE,
+    SENSOR_HEIGHT_MATCH_TOLERANCE_METERS,
+    SensorHeightConfidence,
+    SensorHeightValidation,
+    WeatherStationSet,
+    parse_sensor_height_confidence,
+    read_sensor_height,
+    sensor_height_confidence_description,
+    station_set_includes,
+    validate_weather_sensor_heights,
+)
 from .synoptic_data import SH_TRUST_HIGHEST
+from .sensor_height_resources import (
+    SENSOR_HEIGHT_RESOURCE_SCHEMA_VERSION,
+    SensorHeightRecord,
+    SensorHeightResolution,
+    SensorHeightResources,
+    load_sensor_height_resources,
+    resolve_sensor_height,
+    validate_installed_sensor_height_resources,
+    validate_sensor_height_resource,
+)

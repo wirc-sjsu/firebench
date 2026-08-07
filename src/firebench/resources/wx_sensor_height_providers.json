@@ -1,24 +1,99 @@
 {
-    "California Irrigation Management Information System": {
-        "air_temp_set_1": "1.5",
-        "relative_humidity_set_1": "1.5",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "2.0"
+  "schema_version": 1,
+  "record_type": "provider-default",
+  "provenance": {
+    "source_reference": "legacy:wx_sensor_height_providers.json@schema-v0",
+    "source_date": null,
+    "verification_date": "2026-07-24",
+    "reviewer_or_authority": "FireBench maintainers",
+    "notes": "Migrated from the legacy FireBench provider-default database. These defaults are not station-specific evidence."
+  },
+  "records": [
+    {
+      "record_id": "provider-bureau-of-land-management-1",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "fuel_moisture_set_1"
+      ],
+      "height": 0.3,
+      "units": "m",
+      "confidence": 1,
+      "status": "active"
     },
-    "Bureau of Land Management": {
-        "air_temp_set_1": "2.0",
-        "fuel_moisture_set_1": "0.3",
-        "relative_humidity_set_1": "2.0",
-        "solar_radiation_set_1": "2.0",
-        "wind_direction_set_1": "6.1",
-        "wind_gust_set_1": "6.1",
-        "wind_speed_set_1": "6.1"
+    {
+      "record_id": "provider-bureau-of-land-management-2",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1",
+        "solar_radiation_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 1,
+      "status": "active"
     },
-    "National Weather Service": {
-        "air_temp_set_1": "2.0",
-        "relative_humidity_set_1": "2.0",
-        "wind_direction_set_1": "10.0",
-        "wind_gust_set_1": "10.0",
-        "wind_speed_set_1": "10.0"
+    {
+      "record_id": "provider-bureau-of-land-management-3",
+      "provider": "Bureau of Land Management",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 6.1,
+      "units": "m",
+      "confidence": 1,
+      "status": "active"
+    },
+    {
+      "record_id": "provider-california-irrigation-management-information-system-1",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1"
+      ],
+      "height": 1.5,
+      "units": "m",
+      "confidence": 1,
+      "status": "active"
+    },
+    {
+      "record_id": "provider-california-irrigation-management-information-system-2",
+      "provider": "California Irrigation Management Information System",
+      "variables": [
+        "solar_radiation_set_1",
+        "wind_direction_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 1,
+      "status": "active"
+    },
+    {
+      "record_id": "provider-national-weather-service-1",
+      "provider": "National Weather Service",
+      "variables": [
+        "air_temp_set_1",
+        "relative_humidity_set_1"
+      ],
+      "height": 2.0,
+      "units": "m",
+      "confidence": 1,
+      "status": "active"
+    },
+    {
+      "record_id": "provider-national-weather-service-2",
+      "provider": "National Weather Service",
+      "variables": [
+        "wind_direction_set_1",
+        "wind_gust_set_1",
+        "wind_speed_set_1"
+      ],
+      "height": 10.0,
+      "units": "m",
+      "confidence": 1,
+      "status": "active"
     }
+  ]
 }

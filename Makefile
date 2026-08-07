@@ -1,5 +1,5 @@
 # Declare these targets as phony to avoid conflicts with files of the same name
-.PHONY: test test-cov lint update-lint-score code-formatting fix-code-formatting bandit update-docs-changelog check-consistency-namespace generate-api-doc docs docs-strict docs-linkcheck clean clean-build install-build-tools build check-dist upload-test upload
+.PHONY: test test-cov lint update-lint-score code-formatting fix-code-formatting bandit update-docs-changelog check-consistency-namespace generate-api-doc docs docs-strict docs-linkcheck clean clean-build install-build-tools build check-dist check-wheel-runtime-data upload-test upload
 
 PYTHON ?= python
 
@@ -13,7 +13,7 @@ test-cov:
 
 # Run pylint analysis
 lint:
-	pylint src/firebench --rcfile=.pylintrc
+	python .github/actions/run_pylint.py --check
 
 # Update pylint score in README.md
 update-lint-score:
@@ -73,6 +73,10 @@ build: clean-build
 # Validate built distributions
 check-dist: build
 	$(PYTHON) -m twine check dist/*
+
+# Verify runtime resources from an isolated wheel installation
+check-wheel-runtime-data:
+	$(PYTHON) .github/actions/check_wheel_runtime_data.py dist
 
 # Upload distributions to TestPyPI
 upload-test: check-dist

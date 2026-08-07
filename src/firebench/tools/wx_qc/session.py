@@ -101,8 +101,8 @@ def _validate_config_scalars(config):
         if isinstance(config[key], bool) or not isinstance(config[key], (int, float)):
             raise SessionValidationError(f"cfg.{key} must be a number")
     for key in (
-        "show_errors",
-        "show_warns",
+        "frozen_exempt_calm_wind",
+        "frozen_exempt_rh",
         "perim_show_all",
         "compare_include_skip_greenlit",
     ):
@@ -110,6 +110,10 @@ def _validate_config_scalars(config):
             raise SessionValidationError(f"cfg.{key} must be true or false")
     if config["perim_h5_path"] is not None and not isinstance(config["perim_h5_path"], str):
         raise SessionValidationError("cfg.perim_h5_path must be a string or null")
+    if not isinstance(config["assertion_severity_override"], dict):
+        raise SessionValidationError("cfg.assertion_severity_override must be an object")
+    if not isinstance(config["cbar_overrides"], dict):
+        raise SessionValidationError("cfg.cbar_overrides must be an object")
 
 
 def _validate_hidden_assertions(config):
@@ -123,6 +127,11 @@ def _validate_hidden_assertions(config):
             f"cfg.hidden_assertions contains unknown categories: {', '.join(unknown_assertions)}"
         )
     config["hidden_assertions"] = set(hidden)
+    unknown_overrides = sorted(set(config["assertion_severity_override"]) - _ASSERTION_KEYS)
+    if unknown_overrides:
+        raise SessionValidationError(
+            f"cfg.assertion_severity_override contains unknown categories: {', '.join(unknown_overrides)}"
+        )
 
 
 def _validate_bounds(config):
@@ -378,7 +387,7 @@ class SessionMixin:
         if h5_path and Path(h5_path).is_file():
             self.h5_path = Path(h5_path)
             self.lbl_file.config(text=str(self.h5_path))
-            self.lbl_status.config(text="Loading H5 and recomputing statistics...")
+            self.lbl_status.config(text="Loading H5 and recomputing statistics")
 
             def _on_complete():
                 self._apply_restored_view(session)
@@ -409,7 +418,7 @@ class SessionMixin:
         try:
             session = read_session_file(AUTOSAVE_PATH)
             saved_at = session["saved_at"][:16]
-            h5_name = Path(session["h5_path"]).name if session["h5_path"] else "—"
+            h5_name = Path(session["h5_path"]).name if session["h5_path"] else "--"
             message = (
                 f"Autosave found from {saved_at}\n"
                 f"File: {h5_name}\n"
@@ -437,6 +446,7 @@ class SessionMixin:
         """Autosave non-empty work as JSON, report failures, and close the App."""
         if self.h5_path or self.skip_list or self.green_list or self.removal_list:
             try:
+                AUTOSAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
                 write_session_file(AUTOSAVE_PATH, self._session_state())
             except (OSError, UnicodeError, TypeError, ValueError) as exc:
                 message = (
@@ -448,4 +458,13 @@ class SessionMixin:
                 except tk.TclError:
                     print(f"Weather QC autosave failed: {exc}", file=sys.stderr)
         self._shutdown_map_tiles()
+        # Chunked background work (H5 loading, assertion rerun, multi-station
+        # plotting, map aggregation) schedules its next step via self.after();
+        # any such callback still pending when destroy() runs fires against a
+        # dead Tk interpreter and crashes with "invalid command name".
+        for after_id in self.tk.eval("after info").split():
+            try:
+                self.after_cancel(after_id)
+            except tk.TclError:
+                pass
         self.destroy()

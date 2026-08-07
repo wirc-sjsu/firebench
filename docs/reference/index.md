@@ -9,6 +9,7 @@ dataset descriptions, package inventories, and API details.
 :maxdepth: 1
 
 ../standard_format.md
+weather_sensor_height.md
 ../namespace.md
 ```
 

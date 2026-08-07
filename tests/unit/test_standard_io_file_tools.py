@@ -1,5 +1,6 @@
 import re
 import os
+from pathlib import Path
 import pytest
 from datetime import tzinfo, timezone, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -9,7 +10,6 @@ import numpy as np
 # Replace 'your_module' with the actual module name that defines _resolve_tz
 from firebench.standardize.time import _resolve_tz, datetime_to_iso8601, current_datetime_iso8601
 from firebench.standardize.tools import read_quantity_from_fb_dataset
-from firebench.tools import get_firebench_data_directory
 
 
 # _resolve_tz
@@ -161,8 +161,7 @@ def test_current_datetime_iso8601_with_zoneinfo_without_seconds(monkeypatch):
 # read_quantity_from_fb_dataset
 # -----------------------------
 def test_read_quantity_from_fb_dataset():
-    # Assuming these files exist in the package
-    h5_file_path = os.path.join(get_firebench_data_directory(), "test", "file_test_1.h5")
+    h5_file_path = Path(__file__).resolve().parents[2] / "data" / "test" / "file_test_1.h5"
 
     # Ensure the files exist
     assert os.path.isfile(h5_file_path), f"Missing h5 file: {h5_file_path}"

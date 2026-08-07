@@ -81,7 +81,7 @@ class App(
         self._map_tile_closed = False
         # Time-window aggregation: aggregate matrix precomputed on mode/var/dt change;
         # slider only re-indexes (no recompute-on-drag).
-        self._map_dt_var = tk.StringVar(value="6h")
+        self._map_dt_var = tk.StringVar(value="1d")
         self._map_agg_var = tk.StringVar(value="mean")
         self.var_map_value = tk.StringVar()
         self._map_window_idx = 0
@@ -175,7 +175,7 @@ class App(
         # Use ttk.Label so theme respects system dark/light mode (not hardcoded color).
         self.lbl_file = ttk.Label(bar, text="No file loaded", anchor="w")
         self.lbl_file.pack(side="left", padx=4, fill="x", expand=True)
-        ttk.Button(bar, text="Settings...", command=self._open_thresholds_dialog).pack(
+        ttk.Button(bar, text="Settings", command=self._open_thresholds_dialog).pack(
             side="left", padx=(8, 2)
         )
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6, pady=3)
@@ -222,7 +222,7 @@ class App(
             values=["Full", "14d", "7d", "3d", "1d", "12h", "6h", "3h", "1h"],
         )
         cb_width.pack(side="left", padx=(2, 8))
-        lbl = ttk.Label(f, text="—", font=FONT_MONO, style="Muted.TLabel")
+        lbl = ttk.Label(f, text="--", font=FONT_MONO, style="Muted.TLabel")
 
         def _update_lbl(start, dur):
             end = start + dur
@@ -352,11 +352,18 @@ class App(
         if dlg.result is not None:
             col_visibility = dlg.result.pop("col_visibility")
             perim_path = dlg.result.pop("perim_h5_path")
-            rerun = (
-                dlg.result["frozen_min_run"] != self.cfg["frozen_min_run"]
-                or dlg.result["max_var_outage_min"] != self.cfg.get("max_var_outage_min")
-                or dlg.result["full_outage_min"] != self.cfg.get("full_outage_min")
-                or dlg.result["bounds"] != self.cfg["bounds"]
+            rerun = any(
+                key in dlg.result and dlg.result[key] != self.cfg.get(key)
+                for key in (
+                    "frozen_min_run",
+                    "frozen_exempt_calm_wind",
+                    "frozen_exempt_rh",
+                    "max_var_outage_min",
+                    "full_outage_min",
+                    "dup_max",
+                    "bounds",
+                    "assertion_severity_override",
+                )
             )
             self.cfg.update(dlg.result)
             self.cfg["perim_h5_path"] = perim_path
@@ -388,6 +395,10 @@ class App(
         self._refresh_station_list()
         self._refresh_detail_view()
         self._refresh_map()
+        # _refresh_map's cache-hit path only restores the nav sparkline when the
+        # navigator currently has none, so a fire-area-derivative toggle flipped
+        # in Settings needs this explicit refresh to take effect immediately.
+        self._map_refresh_nav_sparkline()
 
     def _rerun_assertions(self, on_complete=None):
         """Re-run all QC assertions in time-budgeted chunks to keep UI responsive.
@@ -440,7 +451,7 @@ class App(
         self.pb_load["value"] = self._rerun_idx
         n = len(stids)
         if self._rerun_idx < n:
-            self.lbl_status.config(text=f"Re-checking {self._rerun_idx}/{n} stations...")
+            self.lbl_status.config(text=f"Re-checking {self._rerun_idx}/{n} stations")
             self.after(1, lambda: self._rerun_chunk(gen))
             return
         self.all_issues = self._rerun_new_issues

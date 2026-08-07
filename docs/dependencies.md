@@ -24,6 +24,17 @@ the current FireBench 0.10 requirements.
 - SciPy < 2.0
 - Tomli >= 2.0 on Python versions earlier than 3.11
 
+## Weather-station QC GUI
+
+The `firebench wx-qc` command additionally requires Tkinter and a graphical desktop. Tkinter is
+part of Python's standard library, but some Python distributions package the underlying Tk
+bindings separately, so it is not declared as a pip dependency. The rest of FireBench, including
+CLI help and non-GUI commands, does not require Tkinter.
+
+Run `python -m tkinter` to verify the Python environment that contains FireBench. For platform
+package names and macOS Homebrew instructions, see
+[Review Weather-Station Data with the QC GUI](how_to/review_weather_station_qc.md#install-and-launch).
+
 ## Development
 
 Install the development dependency group with `python -m pip install -e ".[dev]"`. It contains:

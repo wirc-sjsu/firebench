@@ -7,7 +7,9 @@ Keep conversion separate from the simulation and benchmark. A repeatable adapter
 3. convert values to documented Pint-compatible units;
 4. write the appropriate standard group with `new_std_file`;
 5. attach time origins, coordinate units, CRS, descriptions, and provenance;
-6. validate and close the output before invoking a benchmark.
+6. for TSO weather variables, prepare model values at the trusted observational sensor height and
+   record that prepared height;
+7. validate and close the output before invoking a benchmark.
 
 Start from the complete [synthetic HDF5 script](../examples/create_model_output.py). Replace its
 NumPy literal with the native reader and preserve the same explicit metadata pattern. Do not copy a
@@ -29,6 +31,26 @@ here with their release status and installation documentation.
 For GeoTIFF, Synoptic, MTBS, LANDFIRE, and RAVG inputs, check the public functions under
 `firebench.standardize` before writing a custom converter. For polygon data, keep each KML beside
 the HDF5 file at the location named by `rel_path`, and record its SHA-256 digest.
+
+For a TSO weather station, obtain the vertical interpolation target from the observation rather
+than a provider or FireBench fallback:
+
+```python
+from firebench import adapter_common
+
+target_height = adapter_common.trusted_observation_sensor_height(
+    observations,
+    "station_TEST",
+    "wind_speed",
+)
+prepared_wind = interpolate_wind(model_wind_profile, target_height=target_height)
+model_wind_speed[...] = prepared_wind
+adapter_common.write_model_sensor_height_metadata(model_wind_speed, target_height)
+```
+
+Here `interpolate_wind` is the adapter's model-specific vertical interpolation function. FireBench
+checks that the recorded model height and trusted observation height have compatible units and
+agree within 0.01 m before including that station in TSO.
 
 After conversion:
 

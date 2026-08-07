@@ -1,22 +1,29 @@
 from pathlib import Path
 import json
 from datetime import datetime
+from tempfile import NamedTemporaryFile
+
 import numpy as np
 import hdf5plugin
 import h5py
 import pytz
+
 from ..tools import StandardVariableNames as svn
 from ..tools import logger, calculate_sha256
 from .std_file_info import TIME_SERIES
 from .time import datetime_to_iso8601
-from .synoptic_data import (
-    DEFAULT_SENSOR_HEIGHT_UNIT,
-    SH_TRUST_HIGHEST,
-    SH_TRUST_LVL,
-    VARIABLE_CONVERSION,
-    load_sensor_height_stations,
-    load_sensor_height_providers,
-    load_sensor_height_trusted_history,
+from .synoptic_data import VARIABLE_CONVERSION
+from .sensor_height import (
+    SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE,
+    SENSOR_HEIGHT_CONFIDENCE_DESCRIPTION_ATTRIBUTE,
+    parse_sensor_height_confidence,
+    sensor_height_confidence_description,
+)
+from .sensor_height_resources import (
+    SENSOR_HEIGHT_RESOURCE_SCHEMA_VERSION,
+    load_sensor_height_resources,
+    resolve_sensor_height,
+    validate_sensor_height_resource,
 )
 
 
@@ -27,7 +34,6 @@ def standardize_synoptic_raws_from_json(
     overwrite: bool = False,
     fb_var_info: dict = VARIABLE_CONVERSION,
     compression_lvl: int = 3,
-    export_trusted_history: bool = False,
 ):
     if not skip_stations:
         skip_stations = []
@@ -41,9 +47,9 @@ def standardize_synoptic_raws_from_json(
     else:
         probes = h5file.create_group(TIME_SERIES)
 
-    fb_sh_hist = load_sensor_height_trusted_history()
-    fb_sh_trusted_stations = load_sensor_height_stations()
-    fb_sh_providers = load_sensor_height_providers()
+    sensor_height_resources = load_sensor_height_resources()
+    source_reference = f"{json_path.name}#sha256={sha_source_file}"
+    verification_date = datetime.now().astimezone().date().isoformat()
 
     # for statistics
     nb_fully_processed = 0
@@ -54,8 +60,6 @@ def standardize_synoptic_raws_from_json(
     nb_var_from_hist = 0
     nb_var_from_provider = 0
     nb_var_from_default = 0
-    if export_trusted_history:
-        trusted_stations_new = {}
 
     for station_dict in data["STATION"]:
         if station_dict["STID"] in skip_stations:
@@ -140,94 +144,53 @@ def standardize_synoptic_raws_from_json(
                     logger.debug("Processing %s", var)
 
                     sensor_height = __get_sensor_height(station_dict["SENSOR_VARIABLES"], var)
-
-                    if sensor_height is not None:
-                        # Sensor heigth from metadata
-                        __add_sh_to_group(
-                            new_station,
-                            station_dict["OBSERVATIONS"][var],
-                            fb_var_info[var],
-                            sensor_height,
-                            DEFAULT_SENSOR_HEIGHT_UNIT,
-                            "from_data",
-                            SH_TRUST_HIGHEST,
-                            compression_lvl,
-                        )
-                        nb_var_from_data += 1
-                        if export_trusted_history:
-                            try:
-                                trusted_stations_new[f"{station_dict['STID']}"][var] = sensor_height
-                                trusted_stations_new[f"{station_dict['STID']}"]["provider"] = str(provider)
-                            except:
-                                trusted_stations_new[f"{station_dict['STID']}"] = {}
-                                trusted_stations_new[f"{station_dict['STID']}"][var] = sensor_height
-                                trusted_stations_new[f"{station_dict['STID']}"]["provider"] = str(provider)
-                    else:
+                    if sensor_height is None:
                         logger.warning(
                             "Missing sensor height info for variable %s from station %s . Looking for values in FireBench databases.",
                             var,
                             station_dict["STID"],
                         )
-                        # Sensor height from default, skip if None
                         fully_processed = False
 
-                        # 1. Use Default value for sensor height form FireBench
-                        sh_from_fb = fb_var_info[var]["default_sensor_height"]
-                        sh_source = "firebench_default"
-                        sh_source_trusted = 0
-                        sh_info_found = False
+                    resolution = resolve_sensor_height(
+                        station=station_dict["STID"],
+                        variable=var,
+                        provider=provider,
+                        synoptic_height=sensor_height,
+                        synoptic_source_reference=source_reference if sensor_height is not None else None,
+                        verification_date=verification_date,
+                        resources=sensor_height_resources,
+                    )
+                    if resolution.source == "from_data":
+                        nb_var_from_data += 1
+                    elif resolution.source == "firebench_trusted_stations":
+                        nb_var_from_stations += 1
+                    elif resolution.source == "firebench_trusted_history":
+                        nb_var_from_hist += 1
+                    elif resolution.source == "firebench_providers_default":
+                        nb_var_from_provider += 1
+                    else:
                         nb_var_from_default += 1
 
-                        # Try find sensor height in stations (highest trust)
-                        try:
-                            sh_from_fb = fb_sh_trusted_stations[f"{station_dict['STID']}"][var]
-                            sh_source = "firebench_trusted_stations"
-                            sh_source_trusted = SH_TRUST_HIGHEST
-                            sh_info_found = True
-                            nb_var_from_stations += 1
-                            logger.debug("Sensor height value found in trusted stations database.")
-                        except KeyError:
-                            pass
-
-                        if not sh_info_found:
-                            # Try find sensor height in history (high trust)
-                            try:
-                                sh_from_fb = fb_sh_hist[f"{station_dict['STID']}"][var]
-                                sh_source = "firebench_trusted_history"
-                                sh_source_trusted = SH_TRUST_HIGHEST
-                                sh_info_found = True
-                                nb_var_from_hist += 1
-                                logger.debug(
-                                    "Sensor height value found in history of trusted information database."
-                                )
-                            except KeyError:
-                                pass
-
-                        if not sh_info_found:
-                            # Try find sensor height in providers (low trust)
-                            try:
-                                sh_from_fb = fb_sh_providers[provider][var]
-                                sh_source = "firebench_providers_default"
-                                sh_source_trusted = 1
-                                sh_info_found = True
-                                nb_var_from_provider += 1
-                                logger.debug("Sensor height value found in providers database.")
-                            except KeyError:
-                                pass
-
-                        if sh_info_found:
-                            nb_var_from_default -= 1
-
-                        __add_sh_to_group(
-                            new_station,
-                            station_dict["OBSERVATIONS"][var],
-                            fb_var_info[var],
-                            sh_from_fb,
-                            DEFAULT_SENSOR_HEIGHT_UNIT,
-                            sh_source,
-                            sh_source_trusted,
-                            compression_lvl,
-                        )
+                    __add_sh_to_group(
+                        new_station,
+                        station_dict["OBSERVATIONS"][var],
+                        fb_var_info[var],
+                        resolution.height,
+                        resolution.units,
+                        resolution.source,
+                        resolution.confidence,
+                        compression_lvl,
+                        sensor_height_provenance={
+                            "provider": resolution.provider,
+                            "source_reference": resolution.source_reference,
+                            "source_date": resolution.source_date,
+                            "verification_date": resolution.verification_date,
+                            "reviewer_or_authority": resolution.reviewer_or_authority,
+                            "notes": resolution.notes,
+                            "record_id": resolution.record_id,
+                        },
+                    )
 
                 else:
                     logger.warning(
@@ -257,9 +220,94 @@ def standardize_synoptic_raws_from_json(
         nb_var_from_data + nb_var_from_stations + nb_var_from_hist,
         nb_var_from_provider + nb_var_from_default,
     )
-    if export_trusted_history:
-        with open("tmp_sh_history.json", "w") as f:
-            json.dump(trusted_stations_new, f, sort_keys=True, indent=4)
+
+
+def export_synoptic_sensor_height_proposal(
+    json_path: Path,
+    proposal_path: Path,
+    *,
+    verification_date: str,
+    reviewer_or_authority: str,
+    source_date: str | None = None,
+    notes: str | None = None,
+    overwrite: bool = False,
+) -> int:
+    """Export Synoptic metadata as an auditable, non-active history proposal.
+
+    The caller supplies the review identity and dates explicitly. Records remain
+    ``proposed`` until a maintainer reviews the evidence and changes their status
+    to ``active`` in the trusted-history resource.
+    """
+
+    json_path = Path(json_path).resolve()
+    proposal_path = Path(proposal_path).resolve()
+    if proposal_path.exists() and not overwrite:
+        raise FileExistsError(f"Sensor-height proposal already exists: {proposal_path}")
+
+    sha_source_file = calculate_sha256(json_path)
+    with open(json_path, "r", encoding="utf-8") as source_file:
+        data = json.load(source_file)
+
+    records = []
+    for station in data["STATION"]:
+        station_id = station["STID"]
+        try:
+            provider = str(station["PROVIDERS"][0]["name"])
+        except (KeyError, IndexError, TypeError):
+            provider = "Synoptic"
+        for variable in station.get("OBSERVATIONS", {}):
+            if variable not in VARIABLE_CONVERSION:
+                continue
+            sensor_height = __get_sensor_height(station.get("SENSOR_VARIABLES", {}), variable)
+            if sensor_height is None:
+                continue
+            records.append(
+                {
+                    "record_id": f"synoptic-{station_id}-{variable}",
+                    "station": station_id,
+                    "provider": provider,
+                    "variables": [variable],
+                    "height": float(sensor_height),
+                    "units": "m",
+                    "confidence": 2,
+                    "status": "proposed",
+                }
+            )
+
+    proposal = {
+        "schema_version": SENSOR_HEIGHT_RESOURCE_SCHEMA_VERSION,
+        "record_type": "historical",
+        "provenance": {
+            "source_reference": f"{json_path.name}#sha256={sha_source_file}",
+            "source_date": source_date,
+            "verification_date": verification_date,
+            "reviewer_or_authority": reviewer_or_authority,
+            "notes": notes
+            or "Generated from Synoptic sensor metadata; records require maintainer activation.",
+        },
+        "records": records,
+    }
+    validate_sensor_height_resource(proposal, expected_type="historical")
+
+    proposal_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = None
+    try:
+        with NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=proposal_path.parent,
+            prefix=f".{proposal_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temp_file:
+            temp_path = Path(temp_file.name)
+            json.dump(proposal, temp_file, indent=2)
+            temp_file.write("\n")
+        temp_path.replace(proposal_path)
+    finally:
+        if temp_path is not None and temp_path.exists():
+            temp_path.unlink()
+    return len(records)
 
 
 def __get_sensor_height(sensor_variables: dict, variable: str):
@@ -278,6 +326,7 @@ def __add_sh_to_group(
     sensor_height_source: str,
     trusted_source: int,
     compression_lvl: int,
+    sensor_height_provenance: dict | None = None,
 ):
     var_data = np.array(variable, dtype=info_dict["dtype"])
     new_var = group.create_dataset(
@@ -286,7 +335,19 @@ def __add_sh_to_group(
         **hdf5plugin.Zstd(clevel=compression_lvl),
     )
     new_var.attrs["units"] = info_dict["units"]
-    new_var.attrs["sensor_height_source_confidence_lvl"] = SH_TRUST_LVL[trusted_source]
+    confidence = parse_sensor_height_confidence(
+        trusted_source,
+        station=group.name,
+        variable=info_dict["std_name"],
+    )
+    new_var.attrs[SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = int(confidence)
+    new_var.attrs[SENSOR_HEIGHT_CONFIDENCE_DESCRIPTION_ATTRIBUTE] = sensor_height_confidence_description(
+        confidence
+    )
     new_var.attrs["sensor_height"] = sensor_height
     new_var.attrs["sensor_height_units"] = sensor_height_units
     new_var.attrs["sensor_height_source"] = sensor_height_source
+    if sensor_height_provenance:
+        for field, value in sensor_height_provenance.items():
+            if value is not None:
+                new_var.attrs[f"sensor_height_{field}"] = value

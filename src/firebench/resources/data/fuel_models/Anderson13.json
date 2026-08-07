@@ -1,0 +1,101 @@
+{
+  "data_path": "data_Anderson13.csv",
+  "metadata": {
+    "fcwh": {
+      "variable_name": "fuel_wind_height",
+      "unit": "m",
+      "type": "float64"
+    },
+    "fcz0": {
+      "variable_name": "fuel_roughness_height",
+      "unit": "m",
+      "type": "float64"
+    },
+    "ffw": {
+      "variable_name": "fuel_fraction_consumed_flame_zone",
+      "unit": "dimensionless",
+      "type": "float64"
+    },
+    "fgi": {
+      "variable_name": "fuel_load_dry_total",
+      "unit": "kg/m^2",
+      "type": "float64"
+    },
+    "fuel_name": {
+      "variable_name": "fuel_description",
+      "unit": "None",
+      "type": "object"
+    },
+    "fueldens": {
+      "variable_name": "fuel_density",
+      "unit": "lb/ft^3",
+      "type": "float64"
+    },
+    "fueldepthm": {
+      "variable_name": "fuel_height",
+      "unit": "m",
+      "type": "float64"
+    },
+    "fuelmce": {
+      "variable_name": "fuel_moisture_extinction",
+      "unit": "dimensionless",
+      "type": "float64"
+    },
+    "ichap": {
+      "variable_name": "fuel_chaparral_flag",
+      "unit": "dimensionless",
+      "type": "int32"
+    },
+    "k_tc": {
+      "variable_name": "fuel_thermal_conductivity",
+      "unit": "W/m/K",
+      "type": "float64"
+    },
+    "savr": {
+      "variable_name": "fuel_surface_area_volume_ratio",
+      "unit": "1/ft",
+      "type": "float64"
+    },
+    "se": {
+      "variable_name": "fuel_mineral_content_effective",
+      "unit": "dimensionless",
+      "type": "float64"
+    },
+    "st": {
+      "variable_name": "fuel_mineral_content_total",
+      "unit": "dimensionless",
+      "type": "float64"
+    },
+    "weight": {
+      "variable_name": "fuel_sfireburnup_consumption_cst",
+      "unit": "dimensionless",
+      "type": "float64"
+    },
+    "windrf": {
+      "variable_name": "fuel_wind_reduction_factor",
+      "unit": "dimensionless",
+      "type": "float64"
+    },
+    "fuel_load_1h": {
+      "variable_name": "fuel_load_dry_1h",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    },
+    "fuel_load_10h": {
+      "variable_name": "fuel_load_dry_10h",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    },
+    "fuel_load_100h": {
+      "variable_name": "fuel_load_dry_100h",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    },
+    "fuel_load_live": {
+      "variable_name": "fuel_load_dry_live",
+      "unit": "short_ton/acre",
+      "type": "float64"
+    }
+  }
+}
+  
