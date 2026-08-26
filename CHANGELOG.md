@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026 / 08 / 26
+
 ### Added
 
 - Add standalone and period-based Caldor targets, including combinable building, perimeter, and
