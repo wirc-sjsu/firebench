@@ -32,7 +32,7 @@ def test_parse_sensor_height_confidence_warns_once_for_malformed_metadata(caplog
 
     with caplog.at_level(logging.WARNING):
         first = fs.parse_sensor_height_confidence(
-            "2 - verified measurement",
+            "verified by hand",
             station="station_TEST",
             variable="wind_speed",
             warning_cache=warning_cache,
@@ -48,6 +48,136 @@ def test_parse_sensor_height_confidence_warns_once_for_malformed_metadata(caplog
     assert len(caplog.records) == 1
     assert "station_TEST" in caplog.text
     assert "wind_speed" in caplog.text
+
+
+def test_parse_sensor_height_confidence_reads_legacy_combined_strings(caplog):
+    """Packages standardized before 0.10 stored the level as a combined string."""
+    with caplog.at_level(logging.WARNING, logger="firebench"):
+        assert (
+            fs.parse_sensor_height_confidence(
+                "2 - verified measurement",
+                station="station_TEST",
+                variable="wind_speed",
+            )
+            is fs.SensorHeightConfidence.VERIFIED
+        )
+        assert (
+            fs.parse_sensor_height_confidence(
+                b"1 - provider default (not verified)",
+                station="station_TEST",
+                variable="wind_speed",
+            )
+            is fs.SensorHeightConfidence.PROVIDER_DEFAULT
+        )
+        assert (
+            fs.parse_sensor_height_confidence(
+                np.bytes_(b"0 - unknown (guessed or missing metadata)"),
+                station="station_TEST",
+                variable="wind_speed",
+            )
+            is fs.SensorHeightConfidence.UNKNOWN
+        )
+
+    assert caplog.records == []
+
+
+def test_parse_sensor_height_confidence_rejects_unrecognized_confidence_strings():
+    """Only the frozen historical strings are trusted, never an arbitrary description."""
+    for value in ("2 - my own guess", "2", "verified measurement", "3 - verified measurement"):
+        assert (
+            fs.parse_sensor_height_confidence(
+                value,
+                station="station_TEST",
+                variable="wind_speed",
+            )
+            is fs.SensorHeightConfidence.UNKNOWN
+        )
+
+
+def test_parse_sensor_height_confidence_logs_legacy_reads_once(caplog):
+    warning_cache = set()
+
+    # Other tests leave the shared FireBench logger above INFO, so raise it for this logger only.
+    with caplog.at_level(logging.INFO, logger="firebench"):
+        for _ in range(2):
+            assert (
+                fs.parse_sensor_height_confidence(
+                    "2 - verified measurement",
+                    station="station_TEST",
+                    variable="wind_speed",
+                    warning_cache=warning_cache,
+                )
+                is fs.SensorHeightConfidence.VERIFIED
+            )
+
+    legacy_records = [record for record in caplog.records if "legacy" in record.message]
+    assert len(legacy_records) == 1
+    assert legacy_records[0].levelno == logging.INFO
+
+
+def test_read_sensor_height_accepts_legacy_text_only_when_allowed(tmp_path):
+    """Observational packages before 0.10 stored provider heights as decimal strings."""
+    h5_path = tmp_path / "heights.h5"
+    with h5py.File(h5_path, "w") as h5:
+        dataset = h5.create_dataset("wind_speed", data=[1.0, 2.0])
+        dataset.attrs["sensor_height"] = "6.1"
+        dataset.attrs["sensor_height_units"] = "m"
+
+    with h5py.File(h5_path, "r") as h5:
+        dataset = h5["wind_speed"]
+        height = fs.read_sensor_height(
+            dataset,
+            dataset_path="wind_speed",
+            allow_legacy_text=True,
+        )
+        assert height.to("m").magnitude == pytest.approx(6.1)
+
+        # Model output must always record a numeric height.
+        with pytest.raises(ValueError, match="numeric"):
+            fs.read_sensor_height(dataset, dataset_path="wind_speed")
+
+
+def test_read_sensor_height_rejects_non_numeric_legacy_text(tmp_path):
+    h5_path = tmp_path / "heights.h5"
+    with h5py.File(h5_path, "w") as h5:
+        dataset = h5.create_dataset("wind_speed", data=[1.0, 2.0])
+        dataset.attrs["sensor_height"] = "about ten metres"
+        dataset.attrs["sensor_height_units"] = "m"
+
+    with h5py.File(h5_path, "r") as h5:
+        with pytest.raises(ValueError, match="numeric"):
+            fs.read_sensor_height(
+                h5["wind_speed"],
+                dataset_path="wind_speed",
+                allow_legacy_text=True,
+            )
+
+
+def test_validate_weather_sensor_heights_accepts_a_legacy_observation(tmp_path):
+    """A pre-0.10 observation is TSO-eligible when the model matches its height."""
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    with h5py.File(obs_path, "w") as h5:
+        dataset = h5.create_dataset("time_series/station_TEST/wind_speed", data=[1.0, 2.0])
+        dataset.attrs["sensor_height"] = "6.1"
+        dataset.attrs["sensor_height_units"] = "m"
+        dataset.attrs[fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = "2 - verified measurement"
+    with h5py.File(model_path, "w") as h5:
+        dataset = h5.create_dataset("time_series/station_TEST/wind_speed", data=[1.1, 2.1])
+        dataset.attrs["sensor_height"] = 6.1
+        dataset.attrs["sensor_height_units"] = "m"
+
+    with h5py.File(obs_path, "r") as obs, h5py.File(model_path, "r") as model:
+        validation = fs.validate_weather_sensor_heights(
+            obs,
+            model,
+            station="station_TEST",
+            variable="wind_speed",
+        )
+
+    assert validation.valid
+    assert validation.reason is None
+    assert validation.observation_height_m == pytest.approx(6.1)
 
 
 def test_station_set_membership_is_explicit():

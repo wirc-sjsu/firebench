@@ -7,7 +7,7 @@
 <div style="height: 20px;"></div> <!-- Adds a blank space -->
 
 [![CI](https://github.com/wirc-sjsu/firebench/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/ci.yml)
-[![pages-build-deployment](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/pages/pages-build-deployment)
+[![Documentation Status](https://readthedocs.org/projects/firebench/badge/?version=latest)](https://firebench.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/github/wirc-sjsu/firebench/graph/badge.svg?token=8F44OX12EW)](https://codecov.io/github/wirc-sjsu/firebench)
 [![Security Analysis](https://github.com/wirc-sjsu/firebench/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/wirc-sjsu/firebench/actions/workflows/security.yml)
 ![Pylint Score](https://img.shields.io/badge/Pylint-9.63-brightgreen.svg)

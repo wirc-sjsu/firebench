@@ -37,6 +37,17 @@ SENSOR_HEIGHT_CONFIDENCE_DESCRIPTIONS = {
     SensorHeightConfidence.VERIFIED: "verified measurement or accepted trusted record",
 }
 
+# Frozen historical values of `sensor_height_source_confidence_lvl`. FireBench releases before
+# 0.10 wrote the confidence as a combined "<level> - <description>" string instead of the
+# canonical scalar integer. The set never changed while that encoding was in use, so it is matched
+# exactly: only these three strings are recognized, and any other string stays level 0. Read-only
+# compatibility for already published observational packages; new files must write the integer.
+LEGACY_SENSOR_HEIGHT_CONFIDENCE_VALUES = {
+    "0 - unknown (guessed or missing metadata)": SensorHeightConfidence.UNKNOWN,
+    "1 - provider default (not verified)": SensorHeightConfidence.PROVIDER_DEFAULT,
+    "2 - verified measurement": SensorHeightConfidence.VERIFIED,
+}
+
 
 @dataclass(frozen=True)
 class SensorHeightValidation:
@@ -64,6 +75,22 @@ def parse_sensor_height_confidence(
             pass
 
     warning_key = (station, variable)
+
+    legacy_confidence = _legacy_sensor_height_confidence(parsed_value)
+    if legacy_confidence is not None:
+        if warning_cache is None or warning_key not in warning_cache:
+            logger.info(
+                "Reading legacy sensor-height confidence for station %s variable %s: %r. "
+                "Interpreting it as level %d.",
+                station,
+                variable,
+                parsed_value,
+                int(legacy_confidence),
+            )
+            if warning_cache is not None:
+                warning_cache.add(warning_key)
+        return legacy_confidence
+
     if warning_cache is None or warning_key not in warning_cache:
         logger.warning(
             "Missing or malformed sensor-height confidence for station %s variable %s: %r. "
@@ -92,9 +119,24 @@ def station_set_includes(station_set: WeatherStationSet, confidence: SensorHeigh
     raise ValueError(f"Unsupported weather station set: {station_set!r}")
 
 
-def read_sensor_height(dataset, *, dataset_path: str) -> ureg.Quantity:
-    """Read and convert a dataset's scalar sensor height to meters."""
+def read_sensor_height(dataset, *, dataset_path: str, allow_legacy_text: bool = False) -> ureg.Quantity:
+    """
+    Read and convert a dataset's scalar sensor height to meters.
+
+    ``allow_legacy_text`` additionally accepts a decimal string, which observational packages
+    standardized before FireBench 0.10 wrote whenever the height came from the provider metadata.
+    Model output is always required to record a numeric height.
+    """
     raw_height = _single_value(dataset.attrs.get(SENSOR_HEIGHT_ATTRIBUTE))
+    if allow_legacy_text:
+        legacy_height = _legacy_sensor_height_text(raw_height)
+        if legacy_height is not None:
+            logger.info(
+                "Reading legacy text sensor height for dataset '%s': %r.",
+                dataset_path,
+                raw_height,
+            )
+            raw_height = legacy_height
     if isinstance(raw_height, (bool, np.bool_)) or not isinstance(
         raw_height, (Integral, float, np.floating)
     ):
@@ -153,6 +195,7 @@ def validate_weather_sensor_heights(
         observation_height = read_sensor_height(
             observation_dataset[data_path],
             dataset_path=data_path,
+            allow_legacy_text=True,
         )
     except ValueError as exc:
         return SensorHeightValidation(False, f"observational {exc}")
@@ -184,6 +227,33 @@ def validate_weather_sensor_heights(
         observation_height_m,
         model_height_m,
     )
+
+
+def _legacy_sensor_height_text(value) -> float | None:
+    """Return the height encoded by a pre-0.10 decimal-string `sensor_height`, if any."""
+    if isinstance(value, bytes):
+        try:
+            value = value.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    if not isinstance(value, str):
+        return None
+    try:
+        return float(value.strip())
+    except ValueError:
+        return None
+
+
+def _legacy_sensor_height_confidence(value) -> SensorHeightConfidence | None:
+    """Return the confidence encoded by a pre-0.10 combined level/description string, if any."""
+    if isinstance(value, bytes):
+        try:
+            value = value.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    if not isinstance(value, str):
+        return None
+    return LEGACY_SENSOR_HEIGHT_CONFIDENCE_VALUES.get(value.strip())
 
 
 def _single_value(value):
