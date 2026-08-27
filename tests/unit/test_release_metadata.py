@@ -11,7 +11,7 @@ except ModuleNotFoundError:
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 RELEASE_VERSION = "0.10.0"
-RELEASE_DATE = date(2026, 8, 26)
+RELEASE_DATE = date(2026, 8, 27)
 ZENODO_CONCEPT_DOI = "10.5281/zenodo.15477459"
 
 

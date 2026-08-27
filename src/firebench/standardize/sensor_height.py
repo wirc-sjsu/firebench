@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, IntEnum
 from numbers import Integral
+from pathlib import Path
 
 import numpy as np
 from pint.errors import PintError
@@ -206,6 +207,7 @@ def validate_weather_sensor_heights(
         model_height = read_sensor_height(
             model_dataset[data_path],
             dataset_path=data_path,
+            allow_legacy_text=_same_physical_file(observation_dataset, model_dataset),
         )
     except ValueError as exc:
         return SensorHeightValidation(False, f"model {exc}")
@@ -227,6 +229,14 @@ def validate_weather_sensor_heights(
         observation_height_m,
         model_height_m,
     )
+
+
+def _same_physical_file(first_dataset, second_dataset) -> bool:
+    """Return whether two open HDF5 handles refer to the same filesystem file."""
+    try:
+        return Path(first_dataset.filename).samefile(second_dataset.filename)
+    except (AttributeError, OSError, TypeError):
+        return False
 
 
 def _legacy_sensor_height_text(value) -> float | None:

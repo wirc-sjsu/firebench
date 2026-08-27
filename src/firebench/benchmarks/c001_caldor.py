@@ -17,6 +17,10 @@ from firebench.plotting import plot_perimeter_contours
 import numpy as np
 from firebench import __version__ as fb_version
 from firebench import Quantity
+from firebench.benchmarks.c001_caldor_discovery import (
+    KPI_GROUP_CATEGORIES,
+    describe_available_targets_summary,
+)
 
 CASE_NAME = cfg.CASE_NAME
 CASE_SHORT_NAME = cfg.CASE_SHORT_NAME
@@ -35,24 +39,11 @@ DEFAULT_SCORE_CARD_REPORT_PATH = cfg.DEFAULT_SCORE_CARD_REPORT_PATH
 output_path_json = DEFAULT_OUTPUT_PATH_JSON
 score_card_report_path = DEFAULT_SCORE_CARD_REPORT_PATH
 
-PERIOD_TARGET_PATTERN = re.compile(r"^(H\d{3}|P\d{2})_([BPW]+)$")
+PERIOD_TARGET_PATTERN = re.compile(r"^(H\d{3}|P\d{2})_([BPTW]+)$")
 RETAINED_PERIOD_TARGET_PATTERNS = (
     (re.compile(r"^WX(\d+)$"), "P{:02d}"),
     (re.compile(r"^WX_WH(\d+)$"), "H{:03d}"),
     (re.compile(r"^FP_H(\d+)$"), "H{:03d}"),
-)
-KPI_GROUP_CATEGORIES = (
-    ("B", "Building Damage"),
-    ("S", "Burn Severity"),
-    ("CC", "Canopy Cover Loss"),
-    ("P", "Fire Perimeters"),
-    ("W", "Weather Stations"),
-)
-STANDALONE_TARGETS = (
-    ("B", "Building Damage"),
-    ("S", "Burn Severity"),
-    ("CC", "Canopy Cover Loss"),
-    ("FP", "Fire Perimeters (all curated periods)"),
 )
 BINARY_KPI_SUFFIXES = (
     "Accuracy",
@@ -1358,6 +1349,10 @@ WX_GROUP_BENCHMARKS = {}
 WX_GROUPS_BY_PERIOD = {}
 HRRR_FP_GROUP_BENCHMARKS = {}
 FIRE_PERIMETER_GROUP_PERIMETERS = {}
+WX_STATION_SET_OPTIONS = (
+    ("TSO", fs.WeatherStationSet.TSO, 1),
+    ("All sources", fs.WeatherStationSet.ALL_SOURCES, 0),
+)
 _BASE_REQUIREMENTS = copy.deepcopy(REQUIREMENTS)
 _BASE_BENCHMARK_FUNCTIONS = BENCHMARK_FUNCTIONS.copy()
 
@@ -1395,7 +1390,7 @@ def add_wx_benchmarks():
                 WX_GROUP_BENCHMARKS.setdefault(group_name, {})
                 WX_GROUPS_BY_PERIOD.setdefault(period_name, []).append(group_name)
                 for metric_name, metric_func in metric_funcs[variable_spec["metric_set"]].items():
-                    for station_set_text, station_set, weight in cfg.WX_STATION_SET_OPTIONS:
+                    for station_set_text, station_set, weight in WX_STATION_SET_OPTIONS:
                         for func_name, stat_func in summary_stats_func.items():
                             bench_id = f"FB001_WX{bench_idx:03d}"
                             bench_name = (
@@ -1568,7 +1563,20 @@ def _weather_period_aggregation(period_name: str) -> dict:
     return _copy_groups(_weather_group_names(period_name))
 
 
-def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
+def _weather_period_tso_aggregation(period_name: str) -> dict:
+    aggregation = _weather_period_aggregation(period_name)
+    for group in aggregation.values():
+        group["benchmarks"] = {
+            benchmark_id: weight
+            for benchmark_id, weight in group["benchmarks"].items()
+            if BENCHMARK_FUNCTIONS[benchmark_id].keywords["station_set"] is fs.WeatherStationSet.TSO
+        }
+    return aggregation
+
+
+def _parse_benchmark_target(
+    benchmark_target: str,
+) -> tuple[str, list[str], fs.WeatherStationSet | None]:
     target = str(benchmark_target).strip().upper()
     parts = target.split("_")
     if len(parts) != 2:
@@ -1580,15 +1588,22 @@ def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
     if not analysis_flags:
         raise ValueError(f"Invalid benchmark target '{benchmark_target}'. Missing analysis flags.")
 
-    unsupported_flags = sorted(set(analysis_flags) - {"B", "P", "W"})
+    unsupported_flags = sorted(set(analysis_flags) - {"B", "P", "T", "W"})
     if unsupported_flags:
         raise ValueError(
             f"Invalid benchmark target '{benchmark_target}'. Unsupported analysis flags: "
             f"{', '.join(unsupported_flags)}."
         )
 
+    if "T" in analysis_flags and "W" in analysis_flags:
+        raise ValueError(
+            f"Invalid benchmark target '{benchmark_target}'. Weather flags T and W cannot be combined: "
+            "T selects TSO only, while W already includes TSO and all sources."
+        )
+
     group_names = []
-    canonical_flags = "".join(flag for flag in "BPW" if flag in analysis_flags)
+    canonical_flags = "".join(flag for flag in "BPTW" if flag in analysis_flags)
+    weather_station_set = fs.WeatherStationSet.TSO if "T" in canonical_flags else None
     if period_selector.startswith("H"):
         period_number_text = period_selector.removeprefix("H")
         if not period_number_text.isdigit():
@@ -1604,7 +1619,7 @@ def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
             group_names.append("Building Damage")
         if "P" in canonical_flags:
             group_names.append(f"FP_H{period_number}")
-        if "W" in canonical_flags:
+        if "T" in canonical_flags or "W" in canonical_flags:
             group_names.extend(_weather_group_names(period_name))
     elif period_selector.startswith("P"):
         period_number_text = period_selector.removeprefix("P")
@@ -1621,14 +1636,14 @@ def _parse_benchmark_target(benchmark_target: str) -> tuple[str, list[str]]:
             group_names.append("Building Damage")
         if "P" in canonical_flags:
             group_names.append(f"Fire Perimeter W{period_number}")
-        if "W" in canonical_flags:
+        if "T" in canonical_flags or "W" in canonical_flags:
             group_names.extend(_weather_group_names(period_name))
     else:
         raise ValueError(
             f"Invalid benchmark target '{benchmark_target}'. Period selector must start with H or P."
         )
 
-    return f"{canonical_period}_{canonical_flags}", group_names
+    return f"{canonical_period}_{canonical_flags}", group_names, weather_station_set
 
 
 def normalize_benchmark_target(benchmark_target: str) -> str:
@@ -1747,8 +1762,6 @@ def _weather_station_counts(obs_data: Path, period: tuple[datetime, datetime]) -
 
 
 def describe_available_targets(benchmark_target: str | None = None, obs_data: Path | None = None) -> dict:
-    period_kpi_groups = dict(KPI_GROUP_CATEGORIES[index] for index in (0, 3, 4))
-
     if benchmark_target is not None:
         build_registries()
         canonical_target = resolve_benchmark_target(benchmark_target)
@@ -1769,6 +1782,13 @@ def describe_available_targets(benchmark_target: str | None = None, obs_data: Pa
         selected_groups = GROUPS if canonical_target == "0" else AGGREGATION[canonical_target]
         group_display_names = _target_group_display_names(canonical_target)
         kpi_groups = _target_kpi_groups(selected_groups)
+        if period_target is not None and "W" in kpi_groups:
+            analysis_flags = period_target.group(2)
+            if "T" in analysis_flags:
+                del kpi_groups["W"]
+                kpi_groups["T"] = "Weather Stations (TSO only)"
+            elif "W" in analysis_flags:
+                kpi_groups["W"] = "Weather Stations (TSO and all sources)"
         obs_data = obs_data or DEFAULT_OBS_DATA_PATH
 
         perimeters = []
@@ -1813,38 +1833,13 @@ def describe_available_targets(benchmark_target: str | None = None, obs_data: Pa
             "perimeters": perimeters,
             "weather_stations": (
                 _weather_station_counts(obs_data, (start, end))
-                if "W" in kpi_groups and period is not None
+                if {"T", "W"}.intersection(kpi_groups) and period is not None
                 else []
             ),
             "kpis": kpis,
         }
 
-    periods = []
-    for period_name, (start, end) in cfg.HRRR_PERIODS.items():
-        period_number = int(period_name.removeprefix("WH"))
-        periods.append(
-            {
-                "target": f"H{period_number:03d}",
-                "start": start,
-                "end": end,
-            }
-        )
-    for period_name, (start, end) in cfg.CURATED_PERIODS.items():
-        period_number = int(period_name.removeprefix("W"))
-        periods.append(
-            {
-                "target": f"P{period_number:02d}",
-                "start": start,
-                "end": end,
-            }
-        )
-
-    return {
-        "standalone_targets": dict(STANDALONE_TARGETS),
-        "period_target_syntax": "PERIOD_FLAGS",
-        "periods": periods,
-        "kpi_groups": period_kpi_groups,
-    }
+    return describe_available_targets_summary()
 
 
 def _group_category(group_name: str) -> tuple[str, str] | None:
@@ -1886,8 +1881,17 @@ def resolve_benchmark_target(benchmark_target: str) -> str:
     if target in AGGREGATION:
         return target
 
-    canonical_target, group_names = _parse_benchmark_target(benchmark_target)
-    AGGREGATION[canonical_target] = _copy_groups(group_names)
+    canonical_target, group_names, weather_station_set = _parse_benchmark_target(benchmark_target)
+    aggregation = _copy_groups(group_names)
+    if weather_station_set is fs.WeatherStationSet.TSO:
+        period_selector = canonical_target.split("_", maxsplit=1)[0]
+        period_name = (
+            f"WH{int(period_selector.removeprefix('H'))}"
+            if period_selector.startswith("H")
+            else f"W{int(period_selector.removeprefix('P'))}"
+        )
+        aggregation.update(_weather_period_tso_aggregation(period_name))
+    AGGREGATION[canonical_target] = aggregation
     return canonical_target
 
 

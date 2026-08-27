@@ -6,8 +6,9 @@ scientific evaluation; the target selects a time period, KPI groups, and aggrega
 ## Read a target
 
 In `H013_P`, `H013` is the 13th 48-hour HRRR-aligned period and `P` selects fire-perimeter KPIs.
-Period flags can combine building damage (`B`), perimeters (`P`), and weather (`W`), so
-`H013_BPW` selects all three groups. Curated periods use `P01` through `P04`.
+Period flags can combine building damage (`B`), perimeters (`P`), and TSO-only weather (`T`), so
+`H013_BPT` selects all three groups without all-sources diagnostics. Use `W` instead of `T` to
+include both TSO and all-sources weather KPIs. Curated periods use `P01` through `P04`.
 
 ```bash
 firebench list 2021_Caldor

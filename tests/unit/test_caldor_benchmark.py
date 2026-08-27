@@ -187,6 +187,46 @@ def test_hrrr_benchmark_target_selects_matching_weather_groups():
     }
 
 
+@pytest.mark.parametrize("target", ["H013_T", "P02_T"])
+def test_period_tso_target_selects_only_trusted_weather_kpis(target):
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target(target)
+    selected_benchmarks = c001_caldor.get_list_benchmark_with_agg(
+        c001_caldor.AGGREGATION,
+        selected_target,
+    )
+
+    assert selected_target == target
+    assert selected_benchmarks
+    assert all(
+        c001_caldor.BENCHMARK_FUNCTIONS[benchmark_id].keywords["station_set"]
+        is c001_caldor.fs.WeatherStationSet.TSO
+        for benchmark_id in selected_benchmarks
+    )
+    assert c001_caldor.describe_available_targets(target)["kpi_groups"] == {
+        "T": "Weather Stations (TSO only)"
+    }
+
+
+def test_hrrr_combined_weather_target_keeps_tso_and_all_sources():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("H013_W")
+    station_sets = {
+        c001_caldor.BENCHMARK_FUNCTIONS[benchmark_id].keywords["station_set"]
+        for benchmark_id in c001_caldor.get_list_benchmark_with_agg(
+            c001_caldor.AGGREGATION,
+            selected_target,
+        )
+    }
+
+    assert station_sets == {
+        c001_caldor.fs.WeatherStationSet.TSO,
+        c001_caldor.fs.WeatherStationSet.ALL_SOURCES,
+    }
+
+
 def test_hrrr_benchmark_target_selects_building_damage_group():
     c001_caldor.build_registries()
 
@@ -451,6 +491,16 @@ def test_combined_target_flags_are_canonicalized(target):
     assert c001_caldor.normalize_benchmark_target(target) == "H013_BPW"
 
 
+@pytest.mark.parametrize("target", ["H013_TPB", "H013_PBT", "h13_tbp"])
+def test_combined_tso_target_flags_are_canonicalized(target):
+    assert c001_caldor.normalize_benchmark_target(target) == "H013_BPT"
+
+
+def test_period_target_rejects_redundant_weather_flags():
+    with pytest.raises(ValueError, match="T and W cannot be combined"):
+        c001_caldor.normalize_benchmark_target("H013_TW")
+
+
 @pytest.mark.parametrize("target", ["H013_S", "H013_CC", "P02_SC"])
 def test_period_targets_reject_nonperiod_kpi_groups(target):
     with pytest.raises(ValueError, match="Unsupported analysis flags"):
@@ -470,7 +520,8 @@ def test_target_discovery_describes_standalone_and_period_targets():
     assert target_info["kpi_groups"] == {
         "B": "Building Damage",
         "P": "Fire Perimeters",
-        "W": "Weather Stations",
+        "T": "Weather Stations (TSO only)",
+        "W": "Weather Stations (TSO and all sources)",
     }
     assert len(target_info["periods"]) == len(c001_caldor.cfg.HRRR_PERIODS) + len(
         c001_caldor.cfg.CURATED_PERIODS
@@ -522,7 +573,7 @@ def test_describe_available_weather_target_includes_station_counts(tmp_path):
     target_info = c001_caldor.describe_available_targets("H013_W", obs_data=obs_path)
 
     assert target_info["target"] == "H013_W"
-    assert target_info["kpi_groups"] == {"W": "Weather Stations"}
+    assert target_info["kpi_groups"] == {"W": "Weather Stations (TSO and all sources)"}
     assert target_info["perimeters"] == []
     assert target_info["weather_stations"][0] == {
         "variable": "air_temperature",

@@ -10,8 +10,10 @@ from execution where practical. A case integration needs:
 - unit, functional, and regression tests for selection and stable identifiers.
 
 Register those functions in `src/firebench/benchmarks/registry.py` under a zero-padded case ID.
-Include a unique short name, documentation URL, data versions, and defaults. Then verify all public
-entry points:
+Include a unique short name, documentation URL, data versions, and defaults. Keep registry metadata
+and target summaries lightweight, and register runtime functions through wrappers that import the
+benchmark implementation only when called. Static list commands must not import scientific,
+geospatial, plotting, or PDF dependencies. Then verify all public entry points:
 
 ```bash
 firebench list

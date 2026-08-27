@@ -183,6 +183,11 @@ units, or a larger mismatch is excluded from that TSO KPI with the reason in the
 eligible stations continue to run, and validation is limited to the variables, periods, and
 stations selected by the target.
 
+The one compatibility exception is a smoke test that opens the same physical observation HDF5 file
+as both model and observation input. In that case FireBench accepts the legacy decimal-string
+sensor heights written by older observation standardizers. A separate model file, including a copy
+of the observation file, must still record canonical numeric model heights.
+
 ## Scientific limitations of all-sources comparisons
 
 All-sources KPIs are useful diagnostics for spatial and temporal coverage, but some comparisons use
@@ -212,3 +217,6 @@ parameters from an observational file with:
 ```bash
 firebench list 2021_Caldor H013_W --obs-data v2026.2/Caldor.h5
 ```
+
+Use `H013_T` to list or run only the TSO KPI variants. `H013_W` retains both TSO and all-sources
+variants; all-sources KPIs remain zero-weight diagnostics.

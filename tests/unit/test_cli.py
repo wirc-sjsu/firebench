@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -35,6 +36,50 @@ def test_cli_import_does_not_load_heavy_runtime_dependencies():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == ""
+
+
+@pytest.mark.parametrize(
+    "args",
+    (
+        ["list"],
+        ["list", "001"],
+        ["data", "list"],
+        ["data", "versions", "001"],
+    ),
+)
+def test_static_list_commands_start_quickly_without_heavy_runtime_dependencies(args):
+    heavy_dependencies = {
+        "geopandas",
+        "h5py",
+        "matplotlib",
+        "numpy",
+        "pandas",
+        "rasterio",
+        "reportlab",
+        "scipy",
+    }
+    script = "\n".join(
+        (
+            "import sys",
+            "from firebench.cli import main",
+            f"main.main(args={args!r}, standalone_mode=False)",
+            f"print('LOADED:' + ','.join(sorted({heavy_dependencies!r}.intersection(sys.modules))))",
+        )
+    )
+
+    start = time.perf_counter()
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        cwd=Path(__file__).resolve().parents[2],
+        text=True,
+    )
+    elapsed = time.perf_counter() - start
+
+    assert result.returncode == 0, result.stderr
+    assert "LOADED:\n" in result.stdout
+    assert elapsed < 2.0, f"{' '.join(args)} took {elapsed:.3f} seconds"
 
 
 def test_wx_qc_is_registered_with_useful_help():
@@ -216,7 +261,8 @@ def _fake_registry(tmp_path, call):
             "kpi_groups": {
                 "B": "Building Damage",
                 "P": "Fire Perimeters",
-                "W": "Weather Stations",
+                "T": "Weather Stations (TSO only)",
+                "W": "Weather Stations (TSO and all sources)",
             },
         }
 
@@ -819,7 +865,7 @@ def test_list_command_prints_case_targets(monkeypatch, tmp_path):
         "FP: Fire Perimeters (all curated periods)\n"
         "\n"
         "Period targets\n"
-        "Syntax: PERIOD_FLAGS (for example, H013_BPW or P02_P)\n"
+        "Syntax: PERIOD_FLAGS (for example, H013_BPT or P02_W)\n"
         "\n"
         "Available periods\n"
         "Target   Start   End\n"
@@ -829,7 +875,8 @@ def test_list_command_prints_case_targets(monkeypatch, tmp_path):
         "Combinable flags\n"
         "B: Building Damage\n"
         "P: Fire Perimeters\n"
-        "W: Weather Stations\n"
+        "T: Weather Stations (TSO only)\n"
+        "W: Weather Stations (TSO and all sources)\n"
     )
 
 

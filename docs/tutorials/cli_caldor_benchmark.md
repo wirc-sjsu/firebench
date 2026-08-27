@@ -62,19 +62,20 @@ command: `CDI` includes building damage, three curated perimeter periods, and pa
 checks. Use `firebench list 2021_Caldor CDI --obs-data v2026.2/Caldor.h5` to inspect that retained
 scheme.
 
-To inspect weather KPIs, use a curated or HRRR-aligned target with the `W` flag:
+To inspect weather KPIs, use a curated or HRRR-aligned target with `T` for TSO only or `W` for TSO
+plus all sources:
 
 ```bash
-firebench list 2021_Caldor P02_W --obs-data v2026.2/Caldor.h5
+firebench list 2021_Caldor P02_T --obs-data v2026.2/Caldor.h5
 firebench list 2021_Caldor H013_W --obs-data v2026.2/Caldor.h5
 ```
 
-Each weather target includes a Trusted Sources Only (TSO) variant and an all-sources variant. TSO
-uses only confidence-level-2 sensor heights and is the scored mode. All sources includes TSO plus
-confidence levels 0 and 1; it is a zero-weight diagnostic, not an untrusted-only comparison. The
-detailed listing shows the generated KPI IDs, station counts, weights, and normalization
-parameters. See [Weather Sensor Height and Trust](../reference/weather_sensor_height.md) before
-preparing weather model output.
+TSO uses only confidence-level-2 sensor heights and is the scored mode. The `W` flag additionally
+runs all-sources KPIs, which include TSO plus confidence levels 0 and 1. They are zero-weight
+diagnostics, not an untrusted-only comparison. The detailed listing shows the generated KPI IDs,
+station counts, weights, and normalization parameters. See
+[Weather Sensor Height and Trust](../reference/weather_sensor_height.md) before preparing weather
+model output.
 
 ## 4. Run the benchmark
 
@@ -93,12 +94,15 @@ This command writes the default Caldor outputs in the working directory:
 Use a different model output file by replacing `my_model_output.h5` with the path to your FireBench
 standard HDF5 output. If you do not have model output yet, use the
 observational dataset `v2026.2/Caldor.h5` as both model output and observations to produce a perfect
-scorecard for a smoke test.
+scorecard for a smoke test. In this exact same-file case, FireBench accepts the legacy numeric-string
+sensor heights stored by released observation packages. Separate model files must use canonical
+numeric sensor-height attributes.
 
-For a weather-only run, replace the target with `P02_W` or `H013_W`:
+For a TSO-only weather run, replace the target with `P02_T` or `H013_T`. Use `W` when the
+zero-weight all-sources diagnostics are also wanted:
 
 ```bash
-firebench run 2021_Caldor H013_W my_model_output.h5 --obs-data v2026.2/Caldor.h5 -o
+firebench run 2021_Caldor H013_T my_model_output.h5 --obs-data v2026.2/Caldor.h5 -o
 ```
 
 Model values processed by TSO must be prepared at the trusted sensor height stored on the matching

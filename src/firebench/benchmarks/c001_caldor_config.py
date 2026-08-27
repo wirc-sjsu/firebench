@@ -5,8 +5,6 @@ from pathlib import Path
 
 import pytz
 
-from firebench import standardize as fs
-
 CASE_NAME = "Caldor 2021"
 CASE_SHORT_NAME = "Caldor"
 BENCHMARK_SHORT_NAME = "2021_Caldor"
@@ -62,7 +60,7 @@ def _localize_in_ref_tz(value: datetime) -> datetime:
 
 
 def _perimeter_path(value: datetime) -> str:
-    return f"/{fs.GEOPOLYGONS}/Caldor_{value.isoformat(timespec='minutes')}"
+    return f"/polygons/Caldor_{value.isoformat(timespec='minutes')}"
 
 
 PERIMETER_DATETIMES = sorted(_parse_time(value) for value in PERIMETER_TIMES)
@@ -160,10 +158,6 @@ WX_PERIOD_SETS = (
 )
 
 WX_SUMMARY_STATS = ("min", "mean", "max")
-WX_STATION_SET_OPTIONS = (
-    ("TSO", fs.WeatherStationSet.TSO, 1),
-    ("All sources", fs.WeatherStationSet.ALL_SOURCES, 0),
-)
 WX_VARIABLE_SPECS = (
     {
         "requirement": "R08",

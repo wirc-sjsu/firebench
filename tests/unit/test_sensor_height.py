@@ -180,6 +180,51 @@ def test_validate_weather_sensor_heights_accepts_a_legacy_observation(tmp_path):
     assert validation.observation_height_m == pytest.approx(6.1)
 
 
+def test_validate_weather_sensor_heights_accepts_legacy_model_height_for_same_file(tmp_path):
+    """The released observation file can also serve as model input for a smoke test."""
+    h5_path = tmp_path / "weather.h5"
+    with h5py.File(h5_path, "w") as h5:
+        dataset = h5.create_dataset("time_series/station_TEST/wind_speed", data=[1.0, 2.0])
+        dataset.attrs["sensor_height"] = "6.1"
+        dataset.attrs["sensor_height_units"] = "m"
+        dataset.attrs[fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = "2 - verified measurement"
+
+    with h5py.File(h5_path, "r") as obs, h5py.File(h5_path, "r") as model:
+        validation = fs.validate_weather_sensor_heights(
+            obs,
+            model,
+            station="station_TEST",
+            variable="wind_speed",
+        )
+
+    assert validation.valid
+    assert validation.reason is None
+    assert validation.observation_height_m == pytest.approx(6.1)
+    assert validation.model_height_m == pytest.approx(6.1)
+
+
+def test_validate_weather_sensor_heights_rejects_legacy_model_height_in_separate_file(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    for path in (obs_path, model_path):
+        with h5py.File(path, "w") as h5:
+            dataset = h5.create_dataset("time_series/station_TEST/wind_speed", data=[1.0, 2.0])
+            dataset.attrs["sensor_height"] = "6.1"
+            dataset.attrs["sensor_height_units"] = "m"
+            dataset.attrs[fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = "2 - verified measurement"
+
+    with h5py.File(obs_path, "r") as obs, h5py.File(model_path, "r") as model:
+        validation = fs.validate_weather_sensor_heights(
+            obs,
+            model,
+            station="station_TEST",
+            variable="wind_speed",
+        )
+
+    assert not validation.valid
+    assert "missing a numeric `sensor_height`" in validation.reason
+
+
 def test_station_set_membership_is_explicit():
     assert fs.station_set_includes(
         fs.WeatherStationSet.TSO,
