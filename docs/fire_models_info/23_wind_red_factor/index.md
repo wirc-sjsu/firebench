@@ -34,7 +34,8 @@ When considering that the reference wind speed is 20 ft above the fuel top, the 
 $$\alpha (h, h_f) = \frac{1 + 0.36 h / h_f}{\ln \left ( \frac{20 + 0.36h}{0.13h} \right )} \left [ \ln \left ( \frac{h_f/h + 0.36}{0.13} \right ) -1 \right ],$$
 
 where $h$ is the fuel height [ft], and $h_f$ is the flame height [ft].
-This wind reduction factor does not interpolate the value to midflame height but allows to calculate the average wind speed over the flame length.
+This wind reduction factor does not interpolate to midflame height; it calculates average wind
+speed over the flame length.
 
 ![blockdiagram](../../_static/diagram_blocks/process/Baughman_20ft_wind_reduction_factor_unsheltered.svg)
 
@@ -44,7 +45,8 @@ This formula can be applied to [Anderson](../21_fuel_models/02_Anderson.md) fuel
 ### Generalized unsheltered wind reduction factor
 
 The methodology described in [1, 2] can be applied to any reference height for the input wind, noted $h_r$.
-The advantage of this formulation is that is does not force the input wind to a certain height and it works with any units (m or ft) as long as they are the same for all input variables.
+This formulation does not force input wind to a particular height and accepts any consistent length
+unit, such as metres or feet.
 The definition of $h_r$ can be different depending on the context, explicited in the following paragraphes.
 In any case, the following integral needs to be computed:
 

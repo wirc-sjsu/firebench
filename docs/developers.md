@@ -1,22 +1,24 @@
-# 11. Developer's Guide
+# Developer Guide
 
-## Running Tests
+## Set Up a Development Environment
 
-To run tests, ensure you are at the root of the project directory.
-
-### Install Dependencies
+From the repository root, create an isolated environment and install the source tree, tests, and
+documentation tools in editable mode:
 
 ```bash
-pip install -e ".[dev]"
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev,docs]"
 ```
 
-### Run Tests
+On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1`.
+
+## Run Tests
 
 ```bash
 pytest tests
 ```
-
-or
 
 ```bash
 make test
@@ -30,26 +32,30 @@ make test-cov
 
 ## Building Documentation Locally
 
-### Install Dependencies
-
-```bash
-pip install ".[dev]"
-cd docs
-pip install -r requirements.txt
-```
-
 ### Update Changelog
 
 ```bash
 make update-docs-changelog
 ```
 
-### Serve Documentation
+### Build Documentation
 
 ```bash
-make clean && make docs
+make docs
 ```
-This will build the documentation in `docs/_build`
+
+This builds HTML in `docs/_build/html`. CI treats Sphinx warnings as errors; reproduce that check
+locally with `make docs-strict`. Check external links separately with `make docs-linkcheck` because
+remote services can be intermittent.
+
+Preview the result at `http://localhost:8000`:
+
+```bash
+python -m http.server --directory docs/_build/html 8000
+```
+
+See [Preview the Documentation Locally with WSL](tutorials/preview_documentation_wsl.md) for a
+complete Windows and WSL walkthrough.
 
 ## Linting
 

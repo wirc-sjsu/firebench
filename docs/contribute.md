@@ -1,4 +1,4 @@
-# 10. Contributing to FireBench
+# Contributing to FireBench
 
 Thank you for your interest in contributing to **FireBench**! There are several ways you can help improve this project:
 

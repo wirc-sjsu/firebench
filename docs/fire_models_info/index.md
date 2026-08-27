@@ -1,4 +1,4 @@
-# 2. Models used in FireBench
+# Models Used in FireBench
 The list of models supported by `FireBench` is given [here](../content.md).
 
 The information pages about models should contain a description of the model, a compatibility table with other models, a validity domain analysis and the results from workflows and benchmarks.

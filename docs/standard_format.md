@@ -1,8 +1,8 @@
-# 4. Standard FireBench file format
+# FireBench Standard File Format
 
 - **Version**: 1.0
-- **Status**: PreRelease
-- **Last update**: 2026-01-02
+- **Status**: Pre-release
+- **Last update**: 2026-07-24
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
 
@@ -37,6 +37,10 @@ Attributes | Type | Description
 `created_on` | str | ISO 8601 date-time of file creation
 `created_by` | str | Creator identifier (name, affiliation). `created_by` is a `;`-separated list; whitespace around entries should be ignored; entries must not contain `;`.
 
+FireBench validators accept the current standard version and versions explicitly listed as
+compatible with it. Files with missing, malformed, unknown, or unsupported
+`FireBench_io_version` values are rejected.
+
 
 Suggested additional attributes:
 Attributes | Type | Description
@@ -53,11 +57,13 @@ No `/metadata` group is required; prefer file-level attributes. The `/metadata` 
 
 ## Compression
 
-Compression of datasets is done using Zstandard. It is included in the python library `hdf5plugin` so no external dependency is needed. Compression level can go from 1 (low compression, faster) to 22 (highest compression, slower). Zstandard has been chosen for its better I/O and better compression performance than more classic gzip compression.
-As most benchmarking processes are not time sensitive, the recommended compression level is **20**.
+Datasets use Zstandard compression through the Python package `hdf5plugin`, so no separate system
+library is required. Compression levels range from 1 (faster, less compression) to 22 (slower,
+more compression). The recommended level is **20** for workflows where file size matters more than
+write time.
 
 ## Units
-**No units is implicitly assumed.** 
+**No unit is assumed implicitly.**
 Units are described as strings that are compatible with [Pint](https://pint.readthedocs.io/en/stable/) terminology. The default unit registry (*i.e.* the list of acceptable units) can be found [here](https://github.com/hgrecco/pint/blob/master/pint/default_en.txt).
 
 Units must be specified:
@@ -153,7 +159,7 @@ They do not need to be normalized, but must be non-colinear.
 - The group containing these fields must have an attribute `crs` identifying the CRS (*e.g.*, "EPSG:4326") 
 
 
-### Cross-Section with cartesian reference point
+### Cross-Section with Cartesian Reference Point
 
 Use when data is aligned along a 2D cross-section that does not follow cardinal (x/y/z) directions.
 Vectors are unitless direction vectors in the same coordinate basis as the origin CRS.
@@ -224,7 +230,43 @@ Units attributes must be set for each field.
 - Each dataset (temperature, wind_speed, *etc.*) must be named using the [Standard Variable Namespace](./namespace.md). If the name of the variable is not present, use a variable name as descriptive as possible and open a pull request to add the variable name to the Standard Variable Namespace. Units must be defined as an attribute `units` compatible with [Pint](https://pint.readthedocs.io/en/stable/) terminology.
 - The time coordinate dataset must be a dataset named `time`, and must use only one time encoding (absolute or relative); do not mix string and numeric (see Time format).
 - Identification information for weather stations (ID, MNET ID, provider, name) should be included as attributes if the information is accessible.
-- Sensor height must be included at dataset level (*e.g.* temperature, wind_speed) as an attribute `sensor_height`, along with `sensor_height_units` specifying the unit of the sensor height. The source of the sensor height information must be included in an attribute `sensor_height_source`.
+- Sensor height must be included at dataset level (*e.g.* temperature, wind_speed) as an attribute
+  `sensor_height`, along with `sensor_height_units` specifying the unit of the sensor height. The
+  source of the sensor height information must be included in an attribute
+  `sensor_height_source`.
+- Observational weather datasets used for trust-based station selection must include the following
+  sensor-height confidence attributes:
+
+  Attribute | Type | Description
+  --------- | ---- | -----------
+  `sensor_height_source_confidence_lvl` | scalar integer | `0` unknown, guessed, or missing metadata; `1` provider default not verified for the station; `2` verified measurement or accepted trusted record
+  `sensor_height_source_confidence_description` | str | Human-readable meaning of the numeric confidence; informational only
+  `sensor_height_provider` | str | Provider associated with the selected height
+  `sensor_height_source_reference` | str | Source URL, resource reference, or source filename plus SHA-256
+  `sensor_height_source_date` | `YYYY-MM-DD` str | Source date, when available
+  `sensor_height_verification_date` | `YYYY-MM-DD` str | Date the evidence or metadata was accepted
+  `sensor_height_reviewer_or_authority` | str | Reviewer or authority responsible for the source
+  `sensor_height_notes` | str | Optional provenance or limitation notes
+  `sensor_height_record_id` | str | Installed resource record ID, when a resource supplied the height
+
+  The numeric attribute is the canonical value used for selection. The description must never be
+  parsed to determine behavior. A missing, malformed, or unknown confidence is treated as level 0
+  and produces a warning identifying the station and variable. Newly standardized files must
+  always write a valid numeric value. Files written before FireBench 0.10 stored the level as a
+  combined `"<level> - <description>"` string, and stored `sensor_height` as a decimal string when
+  the height came from provider metadata; a reader still recognizes those exact historical
+  confidence values and reads a decimal-string observational height, while any other string stays
+  level 0. See
+  [Weather Sensor Height and Trust](reference/weather_sensor_height.md) for source precedence,
+  the versioned trusted-height resources, station-set definitions, and model-preparation
+  requirements. New Synoptic standardization records the available provenance attributes;
+  `sensor_height_source_date` and resource-specific optional fields can be absent when unavailable.
+- A model weather-variable dataset used by a Trusted Sources Only (TSO) KPI must record numeric
+  `sensor_height` and Pint-compatible `sensor_height_units`. The model value must have been
+  prepared at the corresponding trusted observational height. FireBench converts compatible units
+  and requires the model and observation heights to agree within an absolute tolerance of 0.01 m.
+  A missing, dimensionally incompatible, or mismatched model height excludes that station from the
+  TSO KPI.
 - Location of the dataset must be defined as attributes following a spatial description convention.
 - If geographic coordinates are used, a CRS must be included.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
@@ -359,6 +401,8 @@ Units attributes must be set for each field.
     - `rel_path` (str): relative path to the KML file (relative to the HDF5 file directory)
     - `file_size_bytes` (int): KML file size in bytes (*e.g.*, using `os.path.getsize`)
     - `sha256` (str): hash of the KML file using `firebench.tools.calculate_sha256`
+- Validation resolves `rel_path` relative to the HDF5 file and rejects missing files or files whose
+  current size or SHA-256 digest differs from these attributes.
 - Users are encouraged to add an attribute `description` to groups and datasets for information/context about the data.
 
 In the following example, we have a standard file `dataset.h5`, containing one polygons dataset. We also have a directory `kml` containing one KML file `polygons_2022_07_14.kml`.
@@ -457,4 +501,4 @@ kml/polygons_2022_07_14.kml
 
 ### Certificates
 
-- Reserved namespace for FireBench certicitates. See certification documentation.
+- Reserved namespace for FireBench certificates. See the signing and verification guide.

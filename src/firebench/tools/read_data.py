@@ -1,5 +1,6 @@
 import json
 import os
+from importlib.resources import files
 from os import path
 from pathlib import Path
 import warnings
@@ -208,25 +209,22 @@ def _get_json_data_file_path(
 
 
 def _default_firebench_data_directory() -> Path:
-    current_file = Path(__file__).resolve()
-    candidates = [
-        current_file.parents[3] / "data",
-        current_file.parents[2] / "data",
-        current_file.parents[1] / "data",
-        Path.cwd() / "data",
-    ]
-    for candidate in candidates:
-        if candidate.is_dir():
-            return candidate
-    return candidates[0]
+    data_directory = files("firebench").joinpath("resources", "data")
+    if not data_directory.is_dir():
+        raise FileNotFoundError("Bundled FireBench data directory is missing from the installation.")
+
+    try:
+        return Path(os.fspath(data_directory))
+    except TypeError as exc:
+        raise RuntimeError("Bundled FireBench data must be installed as filesystem resources.") from exc
 
 
 def get_firebench_data_directory(data_path: str | os.PathLike | None = None):
     """
     Retrieve the absolute path of the firebench data directory.
 
-    If ``data_path`` is not provided, this function uses the bundled repository
-    ``data`` directory. The legacy FIREBENCH_DATA_PATH environment variable is
+    If ``data_path`` is not provided, this function uses the bundled package
+    ``resources/data`` directory. The legacy FIREBENCH_DATA_PATH environment variable is
     still supported temporarily for backward compatibility.
 
     Returns

@@ -1,4 +1,4 @@
-# 6. Benchmarks list
+# Benchmark Specifications
 This section groups the workflows, tests, and benchmarks proposed by FireBench.
 
 ## Events

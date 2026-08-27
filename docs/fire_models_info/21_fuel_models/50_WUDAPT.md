@@ -19,7 +19,8 @@ Import the WUDAPT fuel model data using `FireBench` with:
 import firebench.tools as ft
 fuel_data = ft.import_wudapt_fuel_model()
 ```
-The data is stored in the dictionnary `fuel_data`. The keys are the standard variable names and the values are numpy array associated with pint unit.
+The data is stored in `fuel_data`. Keys are standard variable names; values are NumPy arrays with
+Pint units.
 
 ![blockdiagram](../../_static/diagram_blocks/fuel_model/WUDAPT_urban.svg)
 

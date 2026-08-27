@@ -1,0 +1,92 @@
+{
+    "data_path": "data_Table_A1.csv",
+    "no_data_value":"-9999",
+    "metadata": {
+      "code": {
+        "variable_name": "code",
+        "unit": "None",
+        "type": "object"
+      },
+      "country": {
+        "variable_name": "country",
+        "unit": "None",
+        "type": "object"
+      },
+      "fityp": {
+        "variable_name": "fire_type",
+        "unit": "None",
+        "type": "object"
+      },
+      "fueldepthm": {
+        "variable_name": "fuel_height",
+        "unit": "m",
+        "type": "float64"
+      },
+      "fcover": {
+        "variable_name": "fuel_cover",
+        "unit": "percent",
+        "type": "float64"
+      },
+      "fldf": {
+        "variable_name": "fuel_load_fine_dead",
+        "unit": "kg/m^2",
+        "type": "float64"
+      },
+      "fllf": {
+        "variable_name": "fuel_load_fine_live",
+        "unit": "kg/m^2",
+        "type": "float64"
+      },
+      "fldry": {
+        "variable_name": "fuel_load_dry_total",
+        "unit": "kg/m^2",
+        "type": "float64"
+      },
+      "temperature": {
+        "variable_name": "temperature",
+        "unit": "degC",
+        "type": "float64"
+      },
+      "rh": {
+        "variable_name": "relative_humidity",
+        "unit": "percent",
+        "type": "float64"
+      },
+      "whgt": {
+        "variable_name": "fuel_wind_height",
+        "unit": "m",
+        "type": "float64"
+      },
+      "wspd": {
+        "variable_name": "wind_speed",
+        "unit": "km/h",
+        "type": "float64"
+      },
+      "slope": {
+        "variable_name": "slope_angle",
+        "unit": "percent",
+        "type": "float64"
+      },
+      "fmde": {
+        "variable_name": "fuel_moisture_content_elevated_dead",
+        "unit": "percent",
+        "type": "float64"
+      },
+      "fml": {
+        "variable_name": "fuel_moisture_content_live",
+        "unit": "percent",
+        "type": "float64"
+      },
+      "ignln": {
+        "variable_name": "ignition_length",
+        "unit": "m",
+        "type": "float64"
+      },
+      "ros": {
+        "variable_name": "rate_of_spread",
+        "unit": "m/min",
+        "type": "float64"
+      }
+    }
+  }
+    

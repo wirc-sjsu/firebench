@@ -1,0 +1,16 @@
+{
+  "data_path": "data_WUDAPT_urban.csv",
+  "metadata": {
+    "side_length": {
+      "variable_name": "building_length_side",
+      "unit": "m",
+      "type": "float64"
+    },
+    "separation": {
+      "variable_name": "building_length_separation",
+      "unit": "m",
+      "type": "float64"
+    }      
+  }
+}
+  

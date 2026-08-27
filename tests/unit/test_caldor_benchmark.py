@@ -1,6 +1,27 @@
+import hashlib
 from pathlib import Path
+from datetime import datetime
+
+import h5py
+import numpy as np
+import pytest
+import pytz
 
 from firebench.benchmarks import c001_caldor
+
+
+def _set_standard_metadata(h5, version="1.0"):
+    h5.attrs["FireBench_io_version"] = version
+    h5.attrs["created_on"] = "2026-07-24T12:00:00+00:00"
+    h5.attrs["created_by"] = "FireBench tests"
+
+
+def _add_referenced_perimeter(h5, kml_path):
+    perimeter = h5.create_dataset("/polygons/perimeter", data=0)
+    perimeter.attrs["rel_path"] = kml_path.name
+    perimeter.attrs["file_size_bytes"] = kml_path.stat().st_size
+    perimeter.attrs["sha256"] = hashlib.sha256(kml_path.read_bytes()).hexdigest()
+    perimeter.attrs["time"] = "2021-08-20T20:20-07:00"
 
 
 def test_build_registries_is_fresh():
@@ -12,7 +33,899 @@ def test_build_registries_is_fresh():
 
     assert len(c001_caldor.REQUIREMENTS["R08"]["benchmarks"]) == first_r08_count
     assert len(c001_caldor.BENCHMARK_FUNCTIONS) == first_benchmark_count
-    assert first_r08_count == 72
+    assert first_r08_count == 1188
+
+
+@pytest.mark.parametrize(
+    ("requirement", "first_id", "last_id", "variable_label", "metric_names"),
+    [
+        ("R08", 1, 72, "Air temp", ("MAE", "RMSE", "Bias")),
+        ("R09", 73, 144, "RH", ("MAE", "RMSE", "Bias")),
+        ("R10", 145, 216, "Wind Speed", ("MAE", "RMSE", "Bias")),
+        ("R11", 217, 240, "Wind Direction", ("circular bias",)),
+        ("R12", 241, 312, "FMC 10h", ("MAE", "RMSE", "Bias")),
+    ],
+)
+def test_curated_weather_ids_and_kpi_names_are_explicit(
+    requirement, first_id, last_id, variable_label, metric_names
+):
+    c001_caldor.build_registries()
+
+    expected_ids = [f"FB001_WX{index:03d}" for index in range(first_id, last_id + 1)]
+    expected_names = [
+        f"{variable_label} {metric_name} {summary_stat} W{period_number} {trust_label}"
+        for period_number in range(1, 5)
+        for metric_name in metric_names
+        for trust_label in ("TSO", "All sources")
+        for summary_stat in ("min", "mean", "max")
+    ]
+
+    curated_ids = c001_caldor.REQUIREMENTS[requirement]["benchmarks"][: len(expected_ids)]
+    curated_names = [
+        c001_caldor.BENCHMARK_FUNCTIONS[benchmark_id].keywords["kpi_name_custom"]
+        for benchmark_id in curated_ids
+    ]
+    assert curated_ids == expected_ids
+    assert curated_names == expected_names
+
+
+def test_weather_station_sets_have_decided_names_and_weights():
+    c001_caldor.build_registries()
+
+    for group in c001_caldor.WX_GROUP_BENCHMARKS.values():
+        for benchmark_id, weight in group.items():
+            benchmark = c001_caldor.BENCHMARK_FUNCTIONS[benchmark_id]
+            station_set = benchmark.keywords["station_set"]
+            kpi_name = benchmark.keywords["kpi_name_custom"]
+            if station_set is c001_caldor.fs.WeatherStationSet.TSO:
+                assert kpi_name.endswith(" TSO")
+                assert weight == 1
+            else:
+                assert station_set is c001_caldor.fs.WeatherStationSet.ALL_SOURCES
+                assert kpi_name.endswith(" All sources")
+                assert weight == 0
+
+
+def test_hrrr_weather_ids_follow_curated_weather_ids():
+    c001_caldor.build_registries()
+
+    first_hrrr_id = c001_caldor.WX_GROUPS_BY_PERIOD["WH1"][0]
+    first_hrrr_benchmark = next(iter(c001_caldor.WX_GROUP_BENCHMARKS[first_hrrr_id]))
+
+    assert first_hrrr_benchmark == "FB001_WX313"
+    assert (
+        c001_caldor.BENCHMARK_FUNCTIONS[first_hrrr_benchmark].keywords["kpi_name_custom"]
+        == "Air temp MAE min WH1 TSO"
+    )
+
+
+def test_hrrr_weather_aggregation_schemes_are_generated():
+    c001_caldor.build_registries()
+
+    assert "WX_WH1" in c001_caldor.AGGREGATION
+    assert "WX_WH62" in c001_caldor.AGGREGATION
+    assert "WX_WH_ALL" in c001_caldor.AGGREGATION
+    assert list(c001_caldor.AGGREGATION["WX_WH1"]) == [
+        "Air Temp WH1",
+        "RH WH1",
+        "Wind Speed WH1",
+        "Wind Direction WH1",
+        "FMC 10h WH1",
+    ]
+    assert len(c001_caldor.AGGREGATION["WX_WH_ALL"]) == 5 * len(c001_caldor.WH_PERIODS)
+
+
+@pytest.mark.parametrize("period_number", range(1, 5))
+def test_retained_weather_targets_match_curated_period_targets(period_number):
+    c001_caldor.build_registries()
+
+    retained_target = f"WX{period_number}"
+    period_target = c001_caldor.resolve_benchmark_target(f"P{period_number:02d}_W")
+
+    assert c001_caldor.AGGREGATION[retained_target] == c001_caldor.AGGREGATION[period_target]
+    assert c001_caldor.get_list_benchmark_with_agg(
+        c001_caldor.AGGREGATION, retained_target
+    ) == c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, period_target)
+
+
+def test_hrrr_fire_perimeter_aggregation_schemes_are_generated():
+    c001_caldor.build_registries()
+
+    assert "FP_H1" in c001_caldor.AGGREGATION
+    assert "FP_H12" in c001_caldor.AGGREGATION
+    assert "FP_H62" in c001_caldor.AGGREGATION
+    assert len(c001_caldor.AGGREGATION["FP_H12"]["FP_H12"]["benchmarks"]) == 8
+    assert "R_FP_H12" in c001_caldor.REQUIREMENTS
+    assert len(c001_caldor.REQUIREMENTS["R_FP_H12"]["benchmarks"]) == 8
+
+
+def test_fire_perimeter_aggregation_scores_jaccard_and_keeps_diagnostics_unweighted():
+    c001_caldor.build_registries()
+
+    curated_weights = list(c001_caldor.GROUPS["Fire Perimeter W1"]["benchmarks"].values())
+    hrrr_weights = list(c001_caldor.GROUPS["FP_H13"]["benchmarks"].values())
+
+    assert curated_weights == [2, 1, 0, 0, 0, 0, 1, 1]
+    assert hrrr_weights == [2, 1, 0, 0, 0, 0, 1, 1]
+
+
+def test_hrrr_benchmark_target_selects_matching_fire_perimeter_group():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("h013_p")
+
+    assert selected_target == "H013_P"
+    assert c001_caldor.AGGREGATION["H013_P"] == c001_caldor.AGGREGATION["FP_H13"]
+    assert c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "H013_P") == (
+        c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "FP_H13")
+    )
+    assert c001_caldor._target_group_display_names("H013_P") == {"FP_H13": "Fire Perimeters"}
+
+
+def test_hrrr_benchmark_target_selects_matching_weather_groups():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("h013_w")
+
+    assert selected_target == "H013_W"
+    assert list(c001_caldor.AGGREGATION["H013_W"]) == [
+        "Air Temp WH13",
+        "RH WH13",
+        "Wind Speed WH13",
+        "Wind Direction WH13",
+        "FMC 10h WH13",
+    ]
+    assert c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "H013_W") == (
+        c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "WX_WH13")
+    )
+    assert c001_caldor._target_group_display_names("H013_W") == {
+        "Air Temp WH13": "Weather Stations",
+        "RH WH13": "Weather Stations",
+        "Wind Speed WH13": "Weather Stations",
+        "Wind Direction WH13": "Weather Stations",
+        "FMC 10h WH13": "Weather Stations",
+    }
+
+
+@pytest.mark.parametrize("target", ["H013_T", "P02_T"])
+def test_period_tso_target_selects_only_trusted_weather_kpis(target):
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target(target)
+    selected_benchmarks = c001_caldor.get_list_benchmark_with_agg(
+        c001_caldor.AGGREGATION,
+        selected_target,
+    )
+
+    assert selected_target == target
+    assert selected_benchmarks
+    assert all(
+        c001_caldor.BENCHMARK_FUNCTIONS[benchmark_id].keywords["station_set"]
+        is c001_caldor.fs.WeatherStationSet.TSO
+        for benchmark_id in selected_benchmarks
+    )
+    assert c001_caldor.describe_available_targets(target)["kpi_groups"] == {
+        "T": "Weather Stations (TSO only)"
+    }
+
+
+def test_hrrr_combined_weather_target_keeps_tso_and_all_sources():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("H013_W")
+    station_sets = {
+        c001_caldor.BENCHMARK_FUNCTIONS[benchmark_id].keywords["station_set"]
+        for benchmark_id in c001_caldor.get_list_benchmark_with_agg(
+            c001_caldor.AGGREGATION,
+            selected_target,
+        )
+    }
+
+    assert station_sets == {
+        c001_caldor.fs.WeatherStationSet.TSO,
+        c001_caldor.fs.WeatherStationSet.ALL_SOURCES,
+    }
+
+
+def test_hrrr_benchmark_target_selects_building_damage_group():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("h013_b")
+
+    assert selected_target == "H013_B"
+    assert c001_caldor.AGGREGATION["H013_B"] == c001_caldor.AGGREGATION["B"]
+    assert c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "H013_B") == (
+        c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "B")
+    )
+    assert c001_caldor._target_group_display_names("H013_B") == {"Building Damage": "Building Damage"}
+
+
+def test_hrrr_benchmark_target_can_combine_building_damage_and_perimeters():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("h013_bp")
+
+    assert selected_target == "H013_BP"
+    assert list(c001_caldor.AGGREGATION["H013_BP"]) == ["Building Damage", "FP_H13"]
+    assert c001_caldor._target_group_display_names("H013_BP") == {
+        "Building Damage": "Building Damage",
+        "FP_H13": "Fire Perimeters",
+    }
+
+
+@pytest.mark.parametrize(
+    ("retained_target", "canonical_target", "period_selector"),
+    [
+        ("WX1", "P01_W", "P01"),
+        ("WX_WH13", "H013_W", "H013"),
+        ("FP_H13", "H013_P", "H013"),
+    ],
+)
+def test_describe_available_targets_resolves_retained_alias_periods(
+    retained_target, canonical_target, period_selector
+):
+    """A retained alias names the same period as its canonical target."""
+    retained_info = c001_caldor.describe_available_targets(retained_target)
+    canonical_info = c001_caldor.describe_available_targets(canonical_target)
+
+    assert retained_info["period"]["target"] == period_selector
+    assert retained_info["period"] == canonical_info["period"]
+
+
+@pytest.mark.parametrize("target", ["WX_WH_ALL", "A", "B"])
+def test_describe_available_targets_has_no_period_for_multi_period_targets(target):
+    assert c001_caldor.describe_available_targets(target)["period"] is None
+
+
+def test_describe_available_targets_with_full_target_includes_details():
+    target_info = c001_caldor.describe_available_targets("H013_P")
+
+    assert target_info["target"] == "H013_P"
+    assert target_info["period"]["target"] == "H013"
+    assert target_info["kpi_groups"] == {"P": "Fire Perimeters"}
+    assert target_info["perimeters"] == [
+        {
+            "time": "2021-08-20T20:20-07:00",
+            "path": "/polygons/Caldor_2021-08-20T20:20-07:00",
+        },
+        {
+            "time": "2021-08-21T21:15-07:00",
+            "path": "/polygons/Caldor_2021-08-21T21:15-07:00",
+        },
+    ]
+    assert target_info["kpis"][0] == {
+        "id": "FB001_FPH097",
+        "name": "Average Jaccard Index",
+        "group": "Fire Perimeters",
+        "weight": 2,
+        "value_norm_param_m": None,
+    }
+    assert target_info["kpis"][-2:] == [
+        {
+            "id": "FB001_FPH103",
+            "name": "Final Burn Area Bias",
+            "group": "Fire Perimeters",
+            "weight": 1,
+            "value_norm_param_m": None,
+            "value_norm_param_m_definition": "20% of final observed area",
+        },
+        {
+            "id": "FB001_FPH104",
+            "name": "Burn Area RMSE",
+            "group": "Fire Perimeters",
+            "weight": 1,
+            "value_norm_param_m": None,
+            "value_norm_param_m_definition": "20% of RMS observed area",
+        },
+    ]
+
+
+def test_describe_available_targets_calculates_fire_area_norm_params(monkeypatch, tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    with h5py.File(obs_path, "w"):
+        pass
+
+    monkeypatch.setattr(
+        c001_caldor,
+        "area_from_list",
+        lambda dataset, perimeters, projection: c001_caldor.Quantity(np.array([100.0, 200.0]), "acre"),
+    )
+
+    target_info = c001_caldor.describe_available_targets("H013_P", obs_data=obs_path)
+
+    assert target_info["kpis"][-2]["value_norm_param_m"] == pytest.approx(40.0)
+    assert target_info["kpis"][-1]["value_norm_param_m"] == pytest.approx(
+        0.20 * np.sqrt(np.mean(np.square([100.0, 200.0])))
+    )
+
+
+def test_fire_area_kpis_derive_norm_params_from_observed_area(monkeypatch):
+    model_dataset = object()
+    obs_dataset = object()
+
+    def fake_area_from_list(dataset, perimeters, projection):
+        if len(perimeters) == 1:
+            values = [250.0] if dataset is model_dataset else [200.0]
+        else:
+            values = [120.0, 260.0] if dataset is model_dataset else [100.0, 200.0]
+        return c001_caldor.Quantity(np.array(values), "acre")
+
+    monkeypatch.setattr(c001_caldor, "area_from_list", fake_area_from_list)
+
+    bias_result = c001_caldor.bench_fp_generic_area_final_bias(
+        model_dataset, obs_dataset, {}, "TEST", ["first", "final"]
+    )
+    rmse_result = c001_caldor.bench_fp_generic_area(
+        model_dataset,
+        obs_dataset,
+        {},
+        "Burn Area RMSE",
+        "TEST",
+        ["first", "final"],
+        c001_caldor.fm.stats.rmse,
+    )
+
+    bias_m = 0.20 * 200.0
+    area_rmse = np.sqrt(np.mean(np.square([20.0, 60.0])))
+    rmse_m = 0.20 * np.sqrt(np.mean(np.square([100.0, 200.0])))
+    assert bias_result["Final Burn Area Bias TEST"] == pytest.approx(50.0)
+    assert bias_result["Score"] == pytest.approx(
+        c001_caldor.fm.kpi_norm_symmetric_open_exponential(50.0, bias_m)
+    )
+    assert rmse_result["Burn Area RMSE TEST"] == pytest.approx(area_rmse)
+    assert rmse_result["Score"] == pytest.approx(
+        c001_caldor.fm.kpi_norm_symmetric_open_exponential(area_rmse, rmse_m)
+    )
+
+
+def test_fire_area_norm_params_do_not_floor_zero_observed_area():
+    with pytest.raises(ValueError, match="must be positive"):
+        c001_caldor.fire_area_final_bias_norm_param_m([0.0])
+    with pytest.raises(ValueError, match="must be positive"):
+        c001_caldor.fire_area_rmse_norm_param_m([0.0, 0.0])
+
+
+def test_describe_available_building_damage_target_includes_details():
+    target_info = c001_caldor.describe_available_targets("H013_B")
+
+    assert target_info["target"] == "H013_B"
+    assert target_info["period"]["target"] == "H013"
+    assert target_info["kpi_groups"] == {"B": "Building Damage"}
+    assert target_info["perimeters"] == []
+    assert target_info["weather_stations"] == []
+    assert target_info["kpis"][0] == {
+        "id": "FB001_BD01",
+        "name": "Binary Structure Loss Accuracy",
+        "group": "Building Damage",
+        "weight": 1,
+        "value_norm_param_m": None,
+    }
+
+
+def test_describe_available_standalone_building_damage_target_includes_details():
+    target_info = c001_caldor.describe_available_targets("B")
+
+    assert target_info["target"] == "B"
+    assert target_info["period"] is None
+    assert target_info["kpi_groups"] == {"B": "Building Damage"}
+    assert [kpi["id"] for kpi in target_info["kpis"]] == [
+        "FB001_BD01",
+        "FB001_BD02",
+        "FB001_BD03",
+        "FB001_BD04",
+        "FB001_BD05",
+        "FB001_BD06",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("target", "expected_kpi_groups", "expected_period"),
+    [
+        ("A", {"B", "S", "CC", "P", "W"}, None),
+        ("S", {"S"}, None),
+        ("CC", {"CC"}, None),
+        ("CDI", {"B", "P", "W"}, None),
+        ("BS3", {"B", "S"}, None),
+        ("WX1", {"W"}, "P01"),
+        ("WX2", {"W"}, "P02"),
+        ("WX3", {"W"}, "P03"),
+        ("WX4", {"W"}, "P04"),
+        ("short_all", {"B", "S", "CC", "P", "W"}, None),
+        ("WX_short", {"B", "S", "CC", "W"}, None),
+    ],
+)
+def test_describe_retained_target_uses_selected_groups(target, expected_kpi_groups, expected_period):
+    target_info = c001_caldor.describe_available_targets(target)
+
+    assert target_info["target"] == target
+    if expected_period is None:
+        # The target spans several periods or none, so no single period describes it.
+        assert target_info["period"] is None
+    else:
+        assert target_info["period"]["target"] == expected_period
+    assert target_info["aggregated"] is True
+    assert set(target_info["kpi_groups"]) == expected_kpi_groups
+    assert target_info["kpis"]
+
+
+def test_describe_unaggregated_target_zero_includes_every_kpi_once():
+    target_info = c001_caldor.describe_available_targets("0")
+
+    assert target_info["target"] == "0"
+    assert target_info["period"] is None
+    assert target_info["aggregated"] is False
+    assert set(target_info["kpi_groups"]) == {"B", "S", "CC", "P", "W"}
+    kpi_ids = [kpi["id"] for kpi in target_info["kpis"]]
+    assert len(kpi_ids) == len(c001_caldor.BENCHMARK_FUNCTIONS)
+    assert set(kpi_ids) == set(c001_caldor.BENCHMARK_FUNCTIONS)
+    assert {kpi["weight"] for kpi in target_info["kpis"]} == {None}
+
+
+@pytest.mark.parametrize(
+    ("target", "expected_groups"),
+    [
+        ("B", ["Building Damage"]),
+        ("S", ["Burn Severity"]),
+        ("CC", ["Canopy Cover Loss"]),
+        (
+            "FP",
+            [
+                "Fire Perimeter W1",
+                "Fire Perimeter W2",
+                "Fire Perimeter W3",
+                "Fire Perimeter W4",
+            ],
+        ),
+    ],
+)
+def test_standalone_targets_select_documented_groups(target, expected_groups):
+    target_info = c001_caldor.describe_available_targets(target)
+
+    assert list(c001_caldor.AGGREGATION[target]) == expected_groups
+    assert target_info["period"] is None
+    assert target_info["kpis"]
+
+
+@pytest.mark.parametrize("target", ["H013_WPB", "H013_PWB", "H013_BWPP", "h13_wbp"])
+def test_combined_target_flags_are_canonicalized(target):
+    assert c001_caldor.normalize_benchmark_target(target) == "H013_BPW"
+
+
+@pytest.mark.parametrize("target", ["H013_TPB", "H013_PBT", "h13_tbp"])
+def test_combined_tso_target_flags_are_canonicalized(target):
+    assert c001_caldor.normalize_benchmark_target(target) == "H013_BPT"
+
+
+def test_period_target_rejects_redundant_weather_flags():
+    with pytest.raises(ValueError, match="T and W cannot be combined"):
+        c001_caldor.normalize_benchmark_target("H013_TW")
+
+
+@pytest.mark.parametrize("target", ["H013_S", "H013_CC", "P02_SC"])
+def test_period_targets_reject_nonperiod_kpi_groups(target):
+    with pytest.raises(ValueError, match="Unsupported analysis flags"):
+        c001_caldor.normalize_benchmark_target(target)
+
+
+def test_target_discovery_describes_standalone_and_period_targets():
+    target_info = c001_caldor.describe_available_targets()
+
+    assert target_info["standalone_targets"] == {
+        "B": "Building Damage",
+        "S": "Burn Severity",
+        "CC": "Canopy Cover Loss",
+        "FP": "Fire Perimeters (all curated periods)",
+    }
+    assert target_info["period_target_syntax"] == "PERIOD_FLAGS"
+    assert target_info["kpi_groups"] == {
+        "B": "Building Damage",
+        "P": "Fire Perimeters",
+        "T": "Weather Stations (TSO only)",
+        "W": "Weather Stations (TSO and all sources)",
+    }
+    assert len(target_info["periods"]) == len(c001_caldor.cfg.HRRR_PERIODS) + len(
+        c001_caldor.cfg.CURATED_PERIODS
+    )
+
+
+def test_every_discoverable_kpi_has_a_descriptive_name():
+    target_info = c001_caldor.describe_available_targets("0")
+
+    assert all(kpi["name"].strip() for kpi in target_info["kpis"])
+
+
+def test_normalize_benchmark_target_accepts_building_damage_targets():
+    assert c001_caldor.normalize_benchmark_target("B") == "B"
+    assert c001_caldor.normalize_benchmark_target("h013_b") == "H013_B"
+
+
+def test_describe_available_weather_target_includes_station_counts(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    period_start, period_end = c001_caldor._target_period("H013")
+
+    with h5py.File(obs_path, "w") as h5:
+        time_series = h5.create_group("time_series")
+        station_trusted = time_series.create_group("station_TRUSTED")
+        station_trusted.create_dataset("time", data=[0, 1])
+        station_trusted["time"].attrs["time_origin"] = period_start.isoformat()
+        station_trusted["time"].attrs["time_units"] = "hour"
+        trusted_var = station_trusted.create_dataset("air_temperature", data=[290, 291])
+        trusted_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [
+            c001_caldor.fs.SH_TRUST_HIGHEST
+        ]
+
+        station_untrusted = time_series.create_group("station_UNTRUSTED")
+        station_untrusted.create_dataset("time", data=[0, 1])
+        station_untrusted["time"].attrs["time_origin"] = period_start.isoformat()
+        station_untrusted["time"].attrs["time_units"] = "hour"
+        untrusted_var = station_untrusted.create_dataset("air_temperature", data=[292, 293])
+        untrusted_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [0]
+
+        station_outside = time_series.create_group("station_OUTSIDE")
+        station_outside.create_dataset("time", data=[1, 2])
+        station_outside["time"].attrs["time_origin"] = period_end.isoformat()
+        station_outside["time"].attrs["time_units"] = "hour"
+        outside_var = station_outside.create_dataset("air_temperature", data=[294, 295])
+        outside_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [
+            c001_caldor.fs.SH_TRUST_HIGHEST
+        ]
+
+    target_info = c001_caldor.describe_available_targets("H013_W", obs_data=obs_path)
+
+    assert target_info["target"] == "H013_W"
+    assert target_info["kpi_groups"] == {"W": "Weather Stations (TSO and all sources)"}
+    assert target_info["perimeters"] == []
+    assert target_info["weather_stations"][0] == {
+        "variable": "air_temperature",
+        "label": "Air temp",
+        "stations": 2,
+        "trusted_stations": 1,
+    }
+
+
+def test_weather_station_selector_handles_missing_confidence_once(caplog, tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    period = c001_caldor._target_period("H013")
+
+    with h5py.File(obs_path, "w") as h5:
+        time_series = h5.create_group("time_series")
+        for station_name, confidence in (
+            ("station_TRUSTED", 2),
+            ("station_PROVIDER", 1),
+            ("station_LEGACY", "2 - verified measurement"),
+            ("station_MALFORMED", "verified by hand"),
+            ("station_MISSING", None),
+        ):
+            station = time_series.create_group(station_name)
+            time = station.create_dataset("time", data=[0, 1])
+            time.attrs["time_origin"] = period[0].isoformat()
+            time.attrs["time_units"] = "hour"
+            variable = station.create_dataset("air_temperature", data=[290, 291])
+            if confidence is not None:
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = confidence
+
+    context = {}
+    with h5py.File(obs_path, "r") as obs_h5, caplog.at_level("WARNING"):
+        tso = c001_caldor._select_weather_stations(
+            obs_h5,
+            "air_temperature",
+            period,
+            c001_caldor.fs.WeatherStationSet.TSO,
+            context,
+        )
+        all_sources = c001_caldor._select_weather_stations(
+            obs_h5,
+            "air_temperature",
+            period,
+            c001_caldor.fs.WeatherStationSet.ALL_SOURCES,
+            context,
+        )
+
+    # A pre-0.10 combined confidence string is read, so the station stays eligible for TSO.
+    assert {item["station"] for item in tso["included"]} == {"station_TRUSTED", "station_LEGACY"}
+    assert {item["station"] for item in all_sources["included"]} == {
+        "station_TRUSTED",
+        "station_PROVIDER",
+        "station_LEGACY",
+        "station_MALFORMED",
+        "station_MISSING",
+    }
+    confidence_warnings = [
+        record
+        for record in caplog.records
+        if "Missing or malformed sensor-height confidence" in record.message
+    ]
+    assert len(confidence_warnings) == 2
+    assert {record.args[0] for record in confidence_warnings} == {
+        "station_MALFORMED",
+        "station_MISSING",
+    }
+    assert all("air_temperature" in record.message for record in confidence_warnings)
+
+
+@pytest.mark.parametrize("stat_func", [np.nanmin, np.nanmean, np.nanmax])
+def test_weather_benchmark_ignores_empty_tso_station_set(tmp_path, stat_func):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    period = c001_caldor._target_period("H013")
+
+    for h5_path, observational in ((obs_path, True), (model_path, False)):
+        with h5py.File(h5_path, "w") as h5:
+            station = h5.create_group("time_series/station_UNTRUSTED")
+            time = station.create_dataset("time", data=[0, 1])
+            time.attrs["time_origin"] = period[0].isoformat()
+            time.attrs["time_units"] = "hour"
+            variable = station.create_dataset("air_temperature", data=[290, 291])
+            variable.attrs["units"] = "degK"
+            if observational:
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = 0
+
+    with h5py.File(model_path, "r") as model_h5, h5py.File(obs_path, "r") as obs_h5:
+        result = c001_caldor.bench_wx_generic_index(
+            model_h5,
+            obs_h5,
+            {},
+            kpi_name_custom="Air temp empty TSO",
+            period=period,
+            wx_variable_name="air_temperature",
+            common_unit="degK",
+            metric_func=lambda model, obs: float(np.mean(model - obs)),
+            stat_func=stat_func,
+            value_norm_param_m=5,
+            station_set=c001_caldor.fs.WeatherStationSet.TSO,
+        )
+
+    assert result is None
+
+
+def test_weather_benchmark_excludes_tso_model_height_mismatch(caplog, tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    period = c001_caldor._target_period("H013")
+
+    for h5_path, observational in ((obs_path, True), (model_path, False)):
+        with h5py.File(h5_path, "w") as h5:
+            for station_name, height, values in (
+                ("station_MATCH", 10, [290, 291]),
+                ("station_MISMATCH", 2 if not observational else 10, [300, 301]),
+            ):
+                station = h5.create_group(f"time_series/{station_name}")
+                time = station.create_dataset("time", data=[0, 1])
+                time.attrs["time_origin"] = period[0].isoformat()
+                time.attrs["time_units"] = "hour"
+                variable = station.create_dataset("air_temperature", data=values)
+                if not observational and station_name == "station_MISMATCH":
+                    variable[...] = [310, 311]
+                variable.attrs["units"] = "degK"
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_ATTRIBUTE] = height
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_UNITS_ATTRIBUTE] = "m"
+                if observational:
+                    variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = 2
+
+    with (
+        h5py.File(model_path, "r") as model_h5,
+        h5py.File(obs_path, "r") as obs_h5,
+        caplog.at_level("WARNING"),
+    ):
+        result = c001_caldor.bench_wx_generic_index(
+            model_h5,
+            obs_h5,
+            {},
+            kpi_name_custom="Air temp matching height",
+            period=period,
+            wx_variable_name="air_temperature",
+            common_unit="degK",
+            metric_func=lambda model, obs: float(np.mean(model - obs)),
+            stat_func=lambda values: float(np.mean(values)),
+            value_norm_param_m=5,
+            station_set=c001_caldor.fs.WeatherStationSet.TSO,
+        )
+
+    assert result["Air temp matching height"] == 0
+    assert "station_MISMATCH" in caplog.text
+    assert "does not match" in caplog.text
+
+
+def test_weather_requirement_records_ignored_empty_station_set(monkeypatch):
+    monkeypatch.setattr(
+        c001_caldor.fs,
+        "validate_h5_weather_stations_structure",
+        lambda *_args, **_kwargs: (True, None),
+    )
+    monkeypatch.setattr(
+        c001_caldor,
+        "BENCHMARK_FUNCTIONS",
+        {"FB001_WX_TEST": lambda _model, _obs, _ctx: None},
+    )
+    context = {}
+
+    results = c001_caldor.req_wx_station(
+        None,
+        None,
+        ["FB001_WX_TEST"],
+        {
+            "variable": "air_temperature",
+            "station_pattern": "station",
+        },
+        context,
+        "R_TEST",
+    )
+
+    assert results == {}
+    assert context["ignored_benchmarks"] == {"FB001_WX_TEST"}
+
+
+def test_run_all_benchmarks_omits_empty_tso_kpi(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    period = c001_caldor.cfg.CURATED_PERIODS["W1"]
+
+    for h5_path, observational in ((obs_path, True), (model_path, False)):
+        with h5py.File(h5_path, "w") as h5:
+            _set_standard_metadata(h5)
+            station = h5.create_group("time_series/station_UNTRUSTED")
+            time = station.create_dataset("time", data=[0, 1])
+            time.attrs["time_origin"] = period[0].isoformat()
+            time.attrs["time_units"] = "hour"
+            variable = station.create_dataset("air_temperature", data=[290, 291])
+            variable.attrs["units"] = "degK"
+            if observational:
+                variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = 0
+
+    c001_caldor.build_registries()
+    results = c001_caldor.run_all_benchmarks(
+        model_path,
+        "0",
+        ["FB001_WX001"],
+        obs_path,
+    )
+
+    assert results == {"benchmarks": {}}
+
+
+def test_ignored_weather_kpi_does_not_affect_aggregation(monkeypatch):
+    monkeypatch.setattr(
+        c001_caldor,
+        "AGGREGATION",
+        {
+            "weather": {
+                "Air Temp": {
+                    "weight": 1,
+                    "benchmarks": {
+                        "FB001_WX001": 1,
+                        "FB001_WX002": 1,
+                    },
+                }
+            }
+        },
+    )
+    results = {
+        "benchmarks": {
+            "FB001_WX002": {
+                "Air temp all sources": 1.5,
+                "Score": 80.0,
+            }
+        }
+    }
+
+    aggregated = c001_caldor.aggregate_scores(results, "weather", {"FB001_WX001"})
+
+    assert "FB001_WX001" not in aggregated["benchmarks"]
+    assert aggregated["score_card"]["Score Air Temp"] == 80.0
+    assert aggregated["score_card"]["Score Total"] == 80.0
+    c001_caldor.raise_if_selected_benchmarks_missing(
+        aggregated["benchmarks"],
+        ["FB001_WX001", "FB001_WX002"],
+        {"FB001_WX001"},
+    )
+
+
+def test_zero_weight_weather_diagnostic_does_not_affect_total_denominator(monkeypatch):
+    monkeypatch.setattr(
+        c001_caldor,
+        "AGGREGATION",
+        {
+            "mixed": {
+                "Air Temp": {
+                    "weight": 1,
+                    "benchmarks": {
+                        "FB001_WX001": 1,
+                        "FB001_WX002": 0,
+                    },
+                },
+                "Fire Perimeter": {
+                    "weight": 1,
+                    "benchmarks": {"FB001_FP01": 1},
+                },
+            }
+        },
+    )
+    results = {
+        "benchmarks": {
+            "FB001_WX002": {
+                "Air temp MAE min W1 All sources": 1.5,
+                "Score": 80.0,
+            },
+            "FB001_FP01": {
+                "Jaccard W1": 0.6,
+                "Score": 60.0,
+            },
+        }
+    }
+
+    aggregated = c001_caldor.aggregate_scores(results, "mixed", {"FB001_WX001"})
+
+    assert "Score Air Temp" not in aggregated["score_card"]
+    assert aggregated["score_card"]["Score Fire Perimeter"] == 60.0
+    assert aggregated["score_card"]["Score Total"] == 60.0
+
+
+def test_curated_benchmark_target_selects_matching_fire_perimeter_group():
+    c001_caldor.build_registries()
+
+    selected_target = c001_caldor.resolve_benchmark_target("P02_P")
+
+    assert selected_target == "P02_P"
+    assert list(c001_caldor.AGGREGATION["P02_P"]) == ["Fire Perimeter W2"]
+    assert c001_caldor.AGGREGATION["P02_P"]["Fire Perimeter W2"] == (
+        c001_caldor.GROUPS["Fire Perimeter W2"]
+    )
+
+
+@pytest.mark.parametrize("benchmark_target", ["H999_P", "P99_P", "H013_X", "bad"])
+def test_invalid_benchmark_target_fails_clearly(benchmark_target):
+    c001_caldor.build_registries()
+
+    with pytest.raises(ValueError, match="benchmark target|Unsupported|Unknown"):
+        c001_caldor.resolve_benchmark_target(benchmark_target)
+
+
+def test_demo_aggregation_contains_wh16_weather_and_fire_perimeter():
+    c001_caldor.build_registries()
+
+    assert list(c001_caldor.AGGREGATION["DEMO"]) == [
+        "Air Temp WH16",
+        "RH WH16",
+        "Wind Speed WH16",
+        "Wind Direction WH16",
+        "FMC 10h WH16",
+        "FP_H16",
+    ]
+    assert len(c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, "DEMO")) == 86
+    assert "FB001_WX583" in c001_caldor.AGGREGATION["DEMO"]["Air Temp WH16"]["benchmarks"]
+
+
+def test_demo_wx0_sets_weather_group_weights_to_zero():
+    c001_caldor.build_registries()
+
+    assert list(c001_caldor.AGGREGATION["DEMO_WX0"]) == [
+        "Air Temp WH16",
+        "RH WH16",
+        "Wind Speed WH16",
+        "Wind Direction WH16",
+        "FMC 10h WH16",
+        "FP_H16",
+    ]
+    for group_name, group in c001_caldor.AGGREGATION["DEMO_WX0"].items():
+        if group_name == "FP_H16":
+            assert group["weight"] == 1
+        else:
+            assert group["weight"] == 0
+            assert set(group["benchmarks"].values()) == {0, 1}
+
+
+def test_describe_benchmark_registry_prints_selected_groups():
+    description = c001_caldor.describe_benchmark_registry("DEMO")
+
+    assert "Benchmark target: DEMO" in description
+    assert "Selected groups: 6" in description
+    assert "- Air Temp WH16" in description
+    assert "- FP_H16" in description
+    assert "FB001_WX" in description
+    assert "FB001_FPH" in description
+    assert "Air temp" in description
+    assert "Perimeters:" in description
+    assert "/polygons/Caldor_2021-08-21T21:15-07:00" in description
 
 
 def test_get_list_benchmark_with_aggregation_scheme():
@@ -46,6 +959,72 @@ def test_overwrite_previous_run(monkeypatch, tmp_path):
     assert c001_caldor.overwrite_previous_run(False, output_path) is True
 
 
+@pytest.mark.parametrize("invalid_input", ["observational", "model"])
+def test_run_all_benchmarks_validates_both_standard_inputs(monkeypatch, tmp_path, invalid_input):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    with h5py.File(obs_path, "w") as obs_h5:
+        _set_standard_metadata(obs_h5, "9.9" if invalid_input == "observational" else "1.0")
+    with h5py.File(model_path, "w") as model_h5:
+        _set_standard_metadata(model_h5, "9.9" if invalid_input == "model" else "1.0")
+
+    monkeypatch.setattr(c001_caldor, "REQUIREMENTS", {})
+    monkeypatch.setattr(
+        c001_caldor,
+        "aggregate_scores",
+        lambda results, _scheme, _ignored=None: results,
+    )
+
+    with pytest.raises(ValueError, match="not compatible"):
+        c001_caldor.run_all_benchmarks(model_path, "test", [], obs_path)
+
+
+@pytest.mark.parametrize("invalid_input", ["observational", "model"])
+def test_run_all_benchmarks_rejects_invalid_referenced_assets(monkeypatch, tmp_path, invalid_input):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    for input_name, h5_path in (("observational", obs_path), ("model", model_path)):
+        with h5py.File(h5_path, "w") as h5:
+            _set_standard_metadata(h5)
+            if input_name == invalid_input:
+                perimeter = h5.create_dataset("/polygons/perimeter", data=0)
+                perimeter.attrs["rel_path"] = "missing.kml"
+
+    monkeypatch.setattr(c001_caldor, "REQUIREMENTS", {})
+    monkeypatch.setattr(
+        c001_caldor,
+        "aggregate_scores",
+        lambda results, _scheme, _ignored=None: results,
+    )
+
+    with pytest.raises(ValueError, match=f"Invalid {invalid_input} referenced asset"):
+        c001_caldor.run_all_benchmarks(model_path, "test", [], obs_path)
+
+
+def test_get_files_hash_records_referenced_asset_changes(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    kml_path = tmp_path / "perimeter.kml"
+    kml_path.write_text("<kml>a</kml>", encoding="utf-8")
+
+    with h5py.File(obs_path, "w") as obs_h5:
+        _set_standard_metadata(obs_h5)
+        _add_referenced_perimeter(obs_h5, kml_path)
+    with h5py.File(model_path, "w") as model_h5:
+        _set_standard_metadata(model_h5)
+
+    first = c001_caldor.get_files_hash(model_path, obs_path)
+    kml_path.write_text("<kml>b</kml>", encoding="utf-8")
+    with h5py.File(obs_path, "r+") as obs_h5:
+        obs_h5["/polygons/perimeter"].attrs["sha256"] = hashlib.sha256(kml_path.read_bytes()).hexdigest()
+    second = c001_caldor.get_files_hash(model_path, obs_path)
+
+    first_asset = first["obs_referenced_assets"]["/polygons/perimeter"]
+    second_asset = second["obs_referenced_assets"]["/polygons/perimeter"]
+    assert first_asset["sha256"] != second_asset["sha256"]
+    assert first_asset["rel_path"] == second_asset["rel_path"] == "perimeter.kml"
+
+
 def test_resolve_h5_relative_path(tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -60,3 +1039,82 @@ def test_resolve_h5_relative_path(tmp_path):
 
     absolute_path = (tmp_path / "absolute.kml").resolve()
     assert c001_caldor.resolve_h5_relative_path(FakeH5File(), absolute_path) == absolute_path
+
+
+def test_get_mask_from_period_handles_byte_string_absolute_times(tmp_path):
+    h5_path = tmp_path / "times.h5"
+    with h5py.File(h5_path, "w") as h5:
+        station = h5.create_group("time_series/station_TEST")
+        station.create_dataset(
+            "time",
+            data=np.array(
+                [
+                    b"2021-08-20T16:00:00-07:00",
+                    b"2021-08-20T18:00:00-07:00",
+                    b"2021-08-20T20:00:00-07:00",
+                ]
+            ),
+        )
+
+    tz_ref = pytz.timezone("US/Pacific")
+    period = (
+        tz_ref.localize(datetime(2021, 8, 20, 17)),
+        tz_ref.localize(datetime(2021, 8, 20, 19)),
+    )
+    with h5py.File(h5_path, "r") as h5:
+        mask = c001_caldor.get_mask_from_period(h5, "time_series/station_TEST", period)
+
+    assert mask.tolist() == [False, True, False]
+
+
+def test_weather_benchmark_skips_missing_model_station_outside_period(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+
+    with h5py.File(obs_path, "w") as obs_h5:
+        time_series = obs_h5.create_group("time_series")
+        station_outside = time_series.create_group("station_OUTSIDE")
+        station_outside.create_dataset("time", data=[0, 1])
+        station_outside["time"].attrs["time_origin"] = "2021-08-20T00:00:00+00:00"
+        station_outside["time"].attrs["time_units"] = "hour"
+        outside_var = station_outside.create_dataset("air_temperature", data=[290, 291])
+        outside_var.attrs["units"] = "degK"
+        outside_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [0]
+
+        station_inside = time_series.create_group("station_INSIDE")
+        station_inside.create_dataset("time", data=[24, 25])
+        station_inside["time"].attrs["time_origin"] = "2021-08-20T00:00:00+00:00"
+        station_inside["time"].attrs["time_units"] = "hour"
+        inside_var = station_inside.create_dataset("air_temperature", data=[292, 293])
+        inside_var.attrs["units"] = "degK"
+        inside_var.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = [0]
+
+    with h5py.File(model_path, "w") as model_h5:
+        time_series = model_h5.create_group("time_series")
+        station_inside = time_series.create_group("station_INSIDE")
+        station_inside.create_dataset("time", data=[24, 25])
+        station_inside["time"].attrs["time_origin"] = "2021-08-20T00:00:00+00:00"
+        station_inside["time"].attrs["time_units"] = "hour"
+        inside_var = station_inside.create_dataset("air_temperature", data=[292, 293])
+        inside_var.attrs["units"] = "degK"
+
+    period = (
+        datetime(2021, 8, 21, 0, tzinfo=pytz.UTC),
+        datetime(2021, 8, 21, 1, tzinfo=pytz.UTC),
+    )
+    with h5py.File(model_path, "r") as model_h5, h5py.File(obs_path, "r") as obs_h5:
+        result = c001_caldor.bench_wx_generic_index(
+            model_h5,
+            obs_h5,
+            {},
+            kpi_name_custom="Air temp test",
+            period=period,
+            wx_variable_name="air_temperature",
+            common_unit="degK",
+            metric_func=lambda model, obs: float(np.mean(model - obs)),
+            stat_func=lambda values: float(np.mean(values)),
+            value_norm_param_m=5,
+            station_set=c001_caldor.fs.WeatherStationSet.ALL_SOURCES,
+        )
+
+    assert result["Air temp test"] == 0.0

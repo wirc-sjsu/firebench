@@ -4,7 +4,7 @@
 
 The dataset presented in [1] compiles shrubland fire behavior data from experimental studies conducted across Australia, New Zealand, Europe, and South Africa. It encompasses a wide range of heathland and shrubland vegetation types and structures.  The dataset contains independent data from prescribed fires and wildfires. Additionally, the dataset supports the evaluation of a model for dead fuel moisture prediction and introduces a correction for ignition line length. While the models offer robust predictions across diverse shrubland conditions, further research is needed to address the impacts of slope steepness, fuel variation, and thresholds for continuous fire spread.
 
-## Firebench dataset content
+## FireBench Dataset Content
 
 ### Table A1 dataset
 
@@ -67,8 +67,8 @@ import firebench.tools as ft
 anderson_dataset_A1 = ft.read_data_file("Table_A1", "ros_model_validation/Anderson_2015")
 anderson_dataset_8 = ft.read_data_file("Table_8", "ros_model_validation/Anderson_2015")
 ```
-The data is stored in the dictionnary `anderson_dataset_A1` for the data of Table A1 and `anderson_dataset_8` for the data of Table 8.
-The keys are the standard variable names and the values are numpy array associated with pint unit.
+Table A1 data is stored in `anderson_dataset_A1`, and Table 8 data is stored in
+`anderson_dataset_8`. Keys are standard variable names; values are NumPy arrays with Pint units.
 
 ![blockdiagram](../_static/diagram_blocks/dataset/anderson2015_A1.svg)
 ![blockdiagram](../_static/diagram_blocks/dataset/anderson2015_8.svg)

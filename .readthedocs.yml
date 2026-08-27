@@ -6,8 +6,8 @@ build:
     python: "3.10"
   jobs:
     pre_build:
-      - pip install ".[dev]"
-      - pip install -r docs/requirements.txt
+      # The docs extra carries the Sphinx extensions that docs/conf.py loads.
+      - pip install ".[dev,docs]"
 
 sphinx:
   configuration: docs/conf.py

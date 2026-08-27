@@ -36,7 +36,7 @@ def test_cli_list_works_without_deprecated_env_vars(monkeypatch):
     result = CliRunner().invoke(main, ["list"])
 
     assert result.exit_code == 0, result.output
-    assert "2021 Caldor Fire" in result.output
+    assert "2021_Caldor" in result.output
 
 
 def test_deprecated_env_var_usage_emits_deprecation_warning(monkeypatch, tmp_path):

@@ -34,7 +34,7 @@ The Hamada_1 model is a class derived from `firebench.ros_models.RateOfSpreadMod
 ```python
 # Import rate of spread package from firebench
 import firebench.ros_models as rm
-# create the input dictionnary with the inputs listed above
+# Create the input dictionary with the inputs listed above.
 model_inputs = {...}
 # compute the rate of spread
 ros = rm.Hamada_1.compute_ros(model_inputs)

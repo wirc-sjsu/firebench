@@ -1,4 +1,7 @@
+import hashlib
+from numbers import Integral
 from pathlib import Path
+from datetime import datetime
 import re
 import h5py
 import hdf5plugin
@@ -9,7 +12,7 @@ from rasterio.windows import from_bounds
 from rasterio.warp import transform_bounds
 from ..tools.logging_config import logger
 from ..tools.units import ureg
-from .std_file_info import TIME_SERIES
+from .std_file_info import GEOPOLYGONS, TIME_SERIES
 
 VERSION_STD = "1.0"
 
@@ -20,6 +23,7 @@ VERSION_STD_COMPATIBILITY = {
 }
 
 VALIDATION_SCHEME_1 = ["0.1", "0.2", "1.0"]
+REFERENCED_FILE_ATTRIBUTES = ("rel_path", "file_size_bytes", "sha256")
 
 
 ISO8601_REGEX = re.compile(
@@ -42,12 +46,9 @@ def check_std_version(file: h5py.File):
     It compares the file's version with the current standard version defined in `VERSION_STD`.
     The return value indicates whether the caller should update the file's standard version.
 
-    The logic is as follows:
-    - If the attribute is missing, the file is treated as new and should be updated.
-    - If the attribute matches the current standard version, the file is already up to date and may be updated.
-    - If the attribute is in the compatibility list for the current version, the file is considered valid
-      but should not be updated; a warning is logged instead.
-    - If the attribute is not compatible with the current version, a `ValueError` is raised.
+    A missing attribute is treated as a new file that should be updated. A matching version is
+    already current and may be updated. A version in the current compatibility list is valid but
+    should not be updated, and produces a warning. Any other version raises ``ValueError``.
 
     Parameters
     ----------
@@ -70,7 +71,7 @@ def check_std_version(file: h5py.File):
     if "FireBench_io_version" not in file.attrs:
         return True
 
-    file_version = file.attrs["FireBench_io_version"]
+    file_version = _read_std_version(file)
 
     if file_version == VERSION_STD:
         return True
@@ -85,7 +86,21 @@ def check_std_version(file: h5py.File):
 
 
 def is_iso8601(s: str) -> bool:
-    return bool(ISO8601_REGEX.match(s))
+    return isinstance(s, str) and bool(ISO8601_REGEX.match(s))
+
+
+def _read_std_version(file: h5py.File) -> str:
+    raw_version = file.attrs["FireBench_io_version"]
+    try:
+        file_version = _decode_h5_text(raw_version)
+    except UnicodeDecodeError as exc:
+        raise ValueError("Attribute `FireBench_io_version` is not valid UTF-8 text.") from exc
+
+    if not isinstance(file_version, str) or not re.fullmatch(r"\d+\.\d+", file_version):
+        raise ValueError(
+            "Attribute `FireBench_io_version` must be a version string in `major.minor` format."
+        )
+    return file_version
 
 
 def validate_h5_std(file: h5py.File):
@@ -95,22 +110,26 @@ def validate_h5_std(file: h5py.File):
     if "FireBench_io_version" not in file.attrs:
         raise ValueError("Attribute `FireBench_io_version` not found.")
 
-    if file.attrs["FireBench_io_version"] in VALIDATION_SCHEME_1:
-        # check creation date
-        if "created_on" not in file.attrs:
-            raise ValueError("Attribute `created_on` not found.")
+    check_std_version(file)
+    file_version = _read_std_version(file)
+    if file_version not in VALIDATION_SCHEME_1:
+        raise ValueError(f"No validation scheme is available for standard version {file_version}.")
 
-        if not is_iso8601(file.attrs["created_on"]):
-            raise ValueError("Attribute `created_on` not compliant with ISO8601.")
+    # check creation date
+    if "created_on" not in file.attrs:
+        raise ValueError("Attribute `created_on` not found.")
 
-        # check authors
-        if "created_by" not in file.attrs:
-            raise ValueError("Attribute `created_by` not found.")
+    if not is_iso8601(_decode_h5_text(file.attrs["created_on"])):
+        raise ValueError("Attribute `created_on` not compliant with ISO8601.")
+
+    # check authors
+    if "created_by" not in file.attrs:
+        raise ValueError("Attribute `created_by` not found.")
 
 
 def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
     """
-    Check if all datasets and associated attributs are present in the file.
+    Check if all datasets and associated attributes are present in the file.
     Return False and the name of the first missing item if either the dataset or an attribute is missing
     """
     for dset_path, attrs in required.items():
@@ -123,12 +142,111 @@ def validate_h5_requirement(file: h5py.File, required: dict[str, list[str]]):
             if attr_name not in dset.attrs:
                 return False, f"attr `{attr_name}` of dataset `{dset_path}`"
 
-        # check that KML files exist
-        if "rel_path" in attrs:
-            if not Path(dset.attrs["rel_path"]).exists():
-                return False, f"file `{dset.attrs['rel_path']}` not found from `{dset_path}`"
+        if dset_path.lstrip("/").startswith(f"{GEOPOLYGONS}/") or "rel_path" in attrs:
+            valid, issue = _validate_h5_referenced_file(file, dset_path, dset)
+            if not valid:
+                return False, issue
 
     return True, None
+
+
+def _resolve_h5_relative_path(file: h5py.File, rel_path: str | bytes | Path) -> Path:
+    path = Path(_decode_h5_text(rel_path))
+    if path.is_absolute():
+        return path
+    return Path(file.filename).resolve().parent / path
+
+
+def validate_h5_referenced_files(file: h5py.File):
+    """Validate every external file reference stored in an HDF5 input."""
+    if GEOPOLYGONS in file and not isinstance(file[GEOPOLYGONS], h5py.Group):
+        return False, f"`/{GEOPOLYGONS}` must be a group"
+
+    for dset_path in _h5_referenced_file_paths(file):
+        valid, issue = _validate_h5_referenced_file(file, dset_path, file[dset_path])
+        if not valid:
+            return False, issue
+    return True, None
+
+
+def get_h5_referenced_file_integrity(file: h5py.File) -> dict[str, dict[str, str | int]]:
+    """Return verified provenance records for every external file referenced by an HDF5 input."""
+    integrity = {}
+    for dset_path in _h5_referenced_file_paths(file):
+        dset = file[dset_path]
+        valid, issue = _validate_h5_referenced_file(file, dset_path, dset)
+        if not valid:
+            raise ValueError(issue)
+
+        rel_path = _decode_h5_text(dset.attrs["rel_path"])
+        referenced_path = _resolve_h5_relative_path(file, rel_path)
+        integrity[dset_path] = {
+            "rel_path": rel_path,
+            "file_size_bytes": referenced_path.stat().st_size,
+            "sha256": _calculate_sha256(referenced_path),
+        }
+    return integrity
+
+
+def _h5_referenced_file_paths(file: h5py.File) -> list[str]:
+    referenced_paths = set()
+    if GEOPOLYGONS in file and isinstance(file[GEOPOLYGONS], h5py.Group):
+        referenced_paths.update(obj.name for obj in file[GEOPOLYGONS].values())
+
+    def collect_rel_paths(_name, obj):
+        if "rel_path" in obj.attrs:
+            referenced_paths.add(obj.name)
+
+    file.visititems(collect_rel_paths)
+    return sorted(referenced_paths)
+
+
+def _validate_h5_referenced_file(file: h5py.File, dset_path: str, dset):
+    for attr_name in REFERENCED_FILE_ATTRIBUTES:
+        if attr_name not in dset.attrs:
+            return False, f"attr `{attr_name}` of referenced dataset `{dset_path}`"
+
+    rel_path = _decode_h5_text(dset.attrs["rel_path"])
+    if not isinstance(rel_path, str) or not rel_path:
+        return False, f"attr `rel_path` of referenced dataset `{dset_path}` must be non-empty text"
+    if Path(rel_path).is_absolute():
+        return False, f"attr `rel_path` of referenced dataset `{dset_path}` must be relative"
+
+    referenced_path = _resolve_h5_relative_path(file, rel_path)
+    if not referenced_path.is_file():
+        return False, f"file `{rel_path}` not found from `{dset_path}`"
+
+    expected_size = dset.attrs["file_size_bytes"]
+    if isinstance(expected_size, (bool, np.bool_)) or not isinstance(expected_size, Integral):
+        return False, f"attr `file_size_bytes` of referenced dataset `{dset_path}` must be an integer"
+    actual_size = referenced_path.stat().st_size
+    if expected_size != actual_size:
+        return (
+            False,
+            f"file `{rel_path}` size mismatch from `{dset_path}`: expected {expected_size}, "
+            f"found {actual_size}",
+        )
+
+    expected_sha256 = _decode_h5_text(dset.attrs["sha256"])
+    if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", expected_sha256):
+        return False, f"attr `sha256` of referenced dataset `{dset_path}` must be 64 hexadecimal digits"
+    actual_sha256 = _calculate_sha256(referenced_path)
+    if expected_sha256.lower() != actual_sha256:
+        return (
+            False,
+            f"file `{rel_path}` SHA-256 mismatch from `{dset_path}`: expected "
+            f"{expected_sha256.lower()}, found {actual_sha256}",
+        )
+
+    return True, None
+
+
+def _calculate_sha256(path: Path) -> str:
+    sha256 = hashlib.sha256()
+    with path.open("rb") as file:
+        for block in iter(lambda: file.read(1024 * 1024), b""):
+            sha256.update(block)
+    return sha256.hexdigest()
 
 
 def validate_h5_weather_stations_structure(
@@ -136,26 +254,80 @@ def validate_h5_weather_stations_structure(
     file_ref: h5py.File,
     variable_checked: str,
     station_grp_name_starts_with: str = "station",
+    periods: list[tuple[datetime, datetime]] | None = None,
+    selected_stations: set[str] | None = None,
 ):
     """
-    Check if all datasets and associated attributs are present in the file.
-    Return False and the name of the first missing item if either the dataset or an attribute is missing
+    Check whether selected reference weather stations exist in a model file.
+
+    ``periods`` limits the check to stations with samples in a selected period, and
+    ``selected_stations`` applies the observational TSO/all-sources selection. Return detailed
+    missing paths for every selected station.
     """
-    ref_paths = []
+    missing = []
     for station in file_ref[f"{TIME_SERIES}"].keys():
         if not station.startswith(station_grp_name_starts_with):
+            continue
+        if selected_stations is not None and station not in selected_stations:
             continue
         # check if station contains variable
         station_path = f"{TIME_SERIES}/{station}"
         if variable_checked in map(str, file_ref[station_path].keys()):
-            ref_paths.append(f"{TIME_SERIES}/{station}/time")
-            ref_paths.append(f"{TIME_SERIES}/{station}/{variable_checked}")
+            if periods and not _station_has_samples_in_periods(file_ref, station_path, periods):
+                continue
 
-    for path in ref_paths:
-        if path not in file_checked:
-            return False, path
+            station_missing = []
+            for dataset_name in ("time", variable_checked):
+                path = f"{station_path}/{dataset_name}"
+                if path not in file_checked:
+                    station_missing.append(path)
+
+            if station_missing:
+                missing.append(
+                    {
+                        "station": station,
+                        "variable": variable_checked,
+                        "missing": station_missing,
+                    }
+                )
+
+    if missing:
+        return False, missing
 
     return True, None
+
+
+def _decode_h5_text(value):
+    if isinstance(value, bytes):
+        return value.decode()
+    return value
+
+
+def _station_has_samples_in_periods(
+    file_ref: h5py.File,
+    station_path: str,
+    periods: list[tuple[datetime, datetime]],
+) -> bool:
+    if f"{station_path}/time" not in file_ref:
+        return True
+
+    time_ds = file_ref[f"{station_path}/time"]
+    if "time_origin" in time_ds.attrs.keys() and "time_units" in time_ds.attrs.keys():
+        time_origin = datetime.fromisoformat(_decode_h5_text(time_ds.attrs["time_origin"]))
+        time_units = _decode_h5_text(time_ds.attrs["time_units"])
+        time_values = ureg.Quantity(np.asarray(time_ds[:], dtype=np.float64), time_units).to("s").magnitude
+        for period_start, period_end in periods:
+            period_start_s = (period_start - time_origin).total_seconds()
+            period_end_s = (period_end - time_origin).total_seconds()
+            if np.any((time_values >= period_start_s) & (time_values <= period_end_s)):
+                return True
+        return False
+
+    time_values = np.array([datetime.fromisoformat(_decode_h5_text(value)) for value in time_ds[:]])
+    for period_start, period_end in periods:
+        if np.any((time_values >= period_start) & (time_values <= period_end)):
+            return True
+    return False
 
 
 def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5py.Group | h5py.Dataset):
@@ -192,9 +364,8 @@ def read_quantity_from_fb_dataset(dataset_path: str, file_object: h5py.File | h5
 
     Notes
     -----
-    - The function reads the **entire dataset** into memory; for very large datasets,
-    consider reading subsets instead.
-    - Compliant with FireBench I/O standard >= 0.1.
+    The function reads the entire dataset into memory; consider reading subsets of very large
+    datasets instead. The reader supports FireBench I/O standard version 0.1 and later.
     """  # pylint: disable=line-too-long
     ds = file_object[dataset_path]
 
@@ -433,19 +604,9 @@ def merge_trees(
     """
     Recursively fill `merged_file` with content from `file1` and `file2`.
 
-    Order:
-    ------
-    1. Copy the full tree from file1 into merged_file.
-    2. Merge the full tree from file2 into merged_file:
-       - If a path does not exist in merged_file, copy it.
-       - If a dataset already exists:
-           * If a conflict solver is provided for this path, use it to
-             combine existing and incoming data.
-           * Otherwise, keep the existing data (we assume they are compatible
-             because conflicts were checked earlier).
-       - Group attributes:
-           * Add attributes that don't exist yet in merged_file.
-           * Attributes listed in IGNORE_ATTRIBUTES are skipped.
+    The function first copies the full tree from ``file1``. It then copies paths that exist only in
+    ``file2`` and preserves compatible datasets already copied. New group attributes are added,
+    except for entries in ``IGNORE_ATTRIBUTES``. Callers must check conflicts before merging.
     """
 
     # 1) copy everything from file1 (no conflicts, merged_file is new/empty)
@@ -594,7 +755,7 @@ def import_tif(
     Parameters
     ----------
     geotiff_path : str
-        Path to the MTBS GeoTIFF (ending with *_dnbr6.tif).
+        Path to the MTBS GeoTIFF (ending with ``_dnbr6.tif``).
     h5file :  h5py.File
         target HDF5 file
     group_name : str | None
@@ -646,15 +807,9 @@ def copy_entire_object_zstd(
     """
     Recursively copy `name` from src_parent to dst_parent.
 
-    Policy:
-    - Groups:
-        * If missing in dst -> create
-        * If already exists -> copy only new attrs via _copy_attributes
-        * Recurse into children
-    - Datasets:
-        * If missing -> create with Zstd(clevel=compression_lvl), load ONE dataset at a time
-        * If exists -> raise
-    - Links/other: skipped
+    Missing groups are created; existing groups receive only new attributes before their children
+    are visited. Missing datasets are copied one at a time with Zstandard compression. An existing
+    destination dataset raises ``ValueError``. Links and other object types are skipped.
     """  # pylint: disable=line-too-long
     src_obj = src_parent.get(name, getlink=False)
     if src_obj is None:

@@ -40,7 +40,7 @@ Overall, the performance is very similar for each fuel category, and a mean exec
     </strong>
     :
     <em>
-        Execution time boxplot for Balbi 2022 rate of spread model using Anderson13 fuel model. Fliers points not shown on the figure. 
+        Execution-time box plot for the Balbi 2022 rate-of-spread model using the Anderson 13 fuel model. Outliers are omitted.
     </em>
 </p>
 

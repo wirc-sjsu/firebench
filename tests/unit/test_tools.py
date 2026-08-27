@@ -170,13 +170,16 @@ def test_get_firebench_data_directory_success(mocker):
     assert result == "/fake/path/to/firebench/data"
 
 
-def test_get_firebench_data_directory_no_env_var(mocker):
-    # Ensure the environment variable is not set
-    mocker.patch.dict(os.environ, {}, clear=True)
+def test_get_firebench_data_directory_no_env_var(monkeypatch, tmp_path):
+    monkeypatch.delenv("FIREBENCH_DATA_PATH", raising=False)
+    decoy_data = tmp_path / "data"
+    decoy_data.mkdir()
+    monkeypatch.chdir(tmp_path)
 
     result = ft.get_firebench_data_directory()
-    assert Path(result).name == "data"
-    assert os.path.isdir(result)
+
+    assert Path(result) == ft.read_data._default_firebench_data_directory()
+    assert Path(result) != decoy_data
 
 
 def test_fuel_model_json_file_not_exists():
