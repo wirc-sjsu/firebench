@@ -1,18 +1,24 @@
 """Headless construction tests for the weather-QC user interface."""
 
+from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
-from pathlib import Path
+from unittest.mock import patch
 
 import matplotlib
 
-from firebench.tools.wx_qc import app as app_module
-from firebench.tools.wx_qc import dialogs
-from firebench.tools.wx_qc.app import App
+
+# The application selects TkAgg at import time. A headless CI runner cannot
+# activate that interactive backend, so suppress only the selection call while
+# importing the classes exercised by these construction tests.
+with patch.object(matplotlib, "use"):
+    from firebench.tools.wx_qc import app as app_module
+    from firebench.tools.wx_qc import dialogs
+    from firebench.tools.wx_qc.app import App
 
 
-# Importing the GUI intentionally selects TkAgg. Restore the non-interactive
-# backend so this test module cannot affect plotting tests collected after it.
+# Keep the non-interactive backend explicit so this test module cannot affect
+# plotting tests collected after it.
 matplotlib.use("Agg", force=True)
 
 
