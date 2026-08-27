@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -35,6 +36,50 @@ def test_cli_import_does_not_load_heavy_runtime_dependencies():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == ""
+
+
+@pytest.mark.parametrize(
+    "args",
+    (
+        ["list"],
+        ["list", "001"],
+        ["data", "list"],
+        ["data", "versions", "001"],
+    ),
+)
+def test_static_list_commands_start_quickly_without_heavy_runtime_dependencies(args):
+    heavy_dependencies = {
+        "geopandas",
+        "h5py",
+        "matplotlib",
+        "numpy",
+        "pandas",
+        "rasterio",
+        "reportlab",
+        "scipy",
+    }
+    script = "\n".join(
+        (
+            "import sys",
+            "from firebench.cli import main",
+            f"main.main(args={args!r}, standalone_mode=False)",
+            f"print('LOADED:' + ','.join(sorted({heavy_dependencies!r}.intersection(sys.modules))))",
+        )
+    )
+
+    start = time.perf_counter()
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        cwd=Path(__file__).resolve().parents[2],
+        text=True,
+    )
+    elapsed = time.perf_counter() - start
+
+    assert result.returncode == 0, result.stderr
+    assert "LOADED:\n" in result.stdout
+    assert elapsed < 0.5, f"{' '.join(args)} took {elapsed:.3f} seconds"
 
 
 def test_wx_qc_is_registered_with_useful_help():

@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Keep static benchmark listing below half a second by deferring Caldor scientific, geospatial,
+  plotting, and PDF imports until runtime functionality is requested.
 - Pin the Hatchling build backend below 1.32 so built distributions declare a metadata
   version that Twine and PyPI accept.
 - Install the `docs` extra when building on Read the Docs, so the Sphinx extensions that

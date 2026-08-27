@@ -17,6 +17,10 @@ from firebench.plotting import plot_perimeter_contours
 import numpy as np
 from firebench import __version__ as fb_version
 from firebench import Quantity
+from firebench.benchmarks.c001_caldor_discovery import (
+    KPI_GROUP_CATEGORIES,
+    describe_available_targets_summary,
+)
 
 CASE_NAME = cfg.CASE_NAME
 CASE_SHORT_NAME = cfg.CASE_SHORT_NAME
@@ -40,19 +44,6 @@ RETAINED_PERIOD_TARGET_PATTERNS = (
     (re.compile(r"^WX(\d+)$"), "P{:02d}"),
     (re.compile(r"^WX_WH(\d+)$"), "H{:03d}"),
     (re.compile(r"^FP_H(\d+)$"), "H{:03d}"),
-)
-KPI_GROUP_CATEGORIES = (
-    ("B", "Building Damage"),
-    ("S", "Burn Severity"),
-    ("CC", "Canopy Cover Loss"),
-    ("P", "Fire Perimeters"),
-    ("W", "Weather Stations"),
-)
-STANDALONE_TARGETS = (
-    ("B", "Building Damage"),
-    ("S", "Burn Severity"),
-    ("CC", "Canopy Cover Loss"),
-    ("FP", "Fire Perimeters (all curated periods)"),
 )
 BINARY_KPI_SUFFIXES = (
     "Accuracy",
@@ -1358,6 +1349,10 @@ WX_GROUP_BENCHMARKS = {}
 WX_GROUPS_BY_PERIOD = {}
 HRRR_FP_GROUP_BENCHMARKS = {}
 FIRE_PERIMETER_GROUP_PERIMETERS = {}
+WX_STATION_SET_OPTIONS = (
+    ("TSO", fs.WeatherStationSet.TSO, 1),
+    ("All sources", fs.WeatherStationSet.ALL_SOURCES, 0),
+)
 _BASE_REQUIREMENTS = copy.deepcopy(REQUIREMENTS)
 _BASE_BENCHMARK_FUNCTIONS = BENCHMARK_FUNCTIONS.copy()
 
@@ -1395,7 +1390,7 @@ def add_wx_benchmarks():
                 WX_GROUP_BENCHMARKS.setdefault(group_name, {})
                 WX_GROUPS_BY_PERIOD.setdefault(period_name, []).append(group_name)
                 for metric_name, metric_func in metric_funcs[variable_spec["metric_set"]].items():
-                    for station_set_text, station_set, weight in cfg.WX_STATION_SET_OPTIONS:
+                    for station_set_text, station_set, weight in WX_STATION_SET_OPTIONS:
                         for func_name, stat_func in summary_stats_func.items():
                             bench_id = f"FB001_WX{bench_idx:03d}"
                             bench_name = (
@@ -1747,8 +1742,6 @@ def _weather_station_counts(obs_data: Path, period: tuple[datetime, datetime]) -
 
 
 def describe_available_targets(benchmark_target: str | None = None, obs_data: Path | None = None) -> dict:
-    period_kpi_groups = dict(KPI_GROUP_CATEGORIES[index] for index in (0, 3, 4))
-
     if benchmark_target is not None:
         build_registries()
         canonical_target = resolve_benchmark_target(benchmark_target)
@@ -1819,32 +1812,7 @@ def describe_available_targets(benchmark_target: str | None = None, obs_data: Pa
             "kpis": kpis,
         }
 
-    periods = []
-    for period_name, (start, end) in cfg.HRRR_PERIODS.items():
-        period_number = int(period_name.removeprefix("WH"))
-        periods.append(
-            {
-                "target": f"H{period_number:03d}",
-                "start": start,
-                "end": end,
-            }
-        )
-    for period_name, (start, end) in cfg.CURATED_PERIODS.items():
-        period_number = int(period_name.removeprefix("W"))
-        periods.append(
-            {
-                "target": f"P{period_number:02d}",
-                "start": start,
-                "end": end,
-            }
-        )
-
-    return {
-        "standalone_targets": dict(STANDALONE_TARGETS),
-        "period_target_syntax": "PERIOD_FLAGS",
-        "periods": periods,
-        "kpi_groups": period_kpi_groups,
-    }
+    return describe_available_targets_summary()
 
 
 def _group_category(group_name: str) -> tuple[str, str] | None:
