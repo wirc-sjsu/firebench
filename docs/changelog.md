@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026 / 08 / 26
+
 ### Added
 
 - Add standalone and period-based Caldor targets, including combinable building, perimeter, and
@@ -45,6 +47,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Pin the Hatchling build backend below 1.32 so built distributions declare a metadata
+  version that Twine and PyPI accept.
+- Read the pre-0.10 combined `"<level> - <description>"` sensor-height confidence strings, so
+  observational packages standardized before the canonical numeric attribute keep their verified
+  stations in TSO instead of falling back to level 0. Only the exact historical values written by
+  FireBench are recognized.
+- Read the pre-0.10 decimal-string `sensor_height` attribute for observational weather data, which
+  those releases wrote for exactly the provider-supplied heights that carry verified confidence.
+  Model output must still record a numeric height.
+- Report the period, and therefore the weather-station counts, for retained benchmark target
+  aliases such as `WX1`, `WX_WH13`, and `FP_H13` in `firebench list` and generated reports.
+- Render score cards and comparison score cards for runs where aggregation ignored a KPI or
+  dropped a group with no eligible weighted KPI, reporting them as not scored instead of failing
+  with a `KeyError`.
 - Treat missing or malformed sensor-height confidence as level 0 with one contextual warning, and
   ignore empty weather station sets without adding a KPI value or aggregation contribution.
 - Exclude and report only the affected TSO station when model sensor-height metadata is missing,

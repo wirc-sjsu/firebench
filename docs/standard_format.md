@@ -252,7 +252,11 @@ Units attributes must be set for each field.
   The numeric attribute is the canonical value used for selection. The description must never be
   parsed to determine behavior. A missing, malformed, or unknown confidence is treated as level 0
   and produces a warning identifying the station and variable. Newly standardized files must
-  always write a valid numeric value. See
+  always write a valid numeric value. Files written before FireBench 0.10 stored the level as a
+  combined `"<level> - <description>"` string, and stored `sensor_height` as a decimal string when
+  the height came from provider metadata; a reader still recognizes those exact historical
+  confidence values and reads a decimal-string observational height, while any other string stays
+  level 0. See
   [Weather Sensor Height and Trust](reference/weather_sensor_height.md) for source precedence,
   the versioned trusted-height resources, station-set definitions, and model-preparation
   requirements. New Synoptic standardization records the available provenance attributes;

@@ -29,6 +29,11 @@ SCORECARD_COLORS = {
 }
 
 
+# Shown wherever aggregation produced no score: a KPI was ignored (for example a weather KPI with
+# no eligible station), so its group carries no weight and no score exists to display.
+NOT_SCORED_TEXT = "n/a"
+
+
 def _score_to_color(score):
     """
     Map a score from 0 to 100 to a colorblind-safer gray -> blue -> green scale.
@@ -74,33 +79,48 @@ def _scorecard_comparison_rows(
     if score_card is None:
         raise ValueError("Comparison scorecard requires aggregated benchmark results")
 
-    rows = [("Total Score", [result["score_card"]["Score Total"] for result in results])]
+    rows = [("Total Score", [result["score_card"].get("Score Total") for result in results])]
     for group_name in score_card["Scheme"].keys():
         group_content = score_card["Scheme"][group_name]
         rows.append(
             (
                 f"Group: {_scorecard_group_name(first_result, group_name)}",
-                [result["score_card"][f"Score {group_name}"] for result in results],
+                [result["score_card"].get(f"Score {group_name}") for result in results],
             )
         )
         if include_kpis:
             for bench_id in group_content["benchmarks"].keys():
-                kpi_name = next(
-                    key for key in first_result["benchmarks"][bench_id].keys() if key != "Score"
-                )
+                kpi_name = _comparison_kpi_name(results, bench_id)
+                if kpi_name is None:
+                    # The KPI was ignored for every model, so no result carries a name or a score.
+                    continue
                 rows.append(
                     (
                         _scorecard_kpi_name(bench_id, kpi_name, full_name=full_name),
-                        [result["benchmarks"][bench_id]["Score"] for result in results],
+                        [result["benchmarks"].get(bench_id, {}).get("Score") for result in results],
                     )
                 )
     return rows
 
 
+def _comparison_kpi_name(results: list[dict], bench_id: str) -> str | None:
+    """Return the KPI name from the first model that actually produced this benchmark."""
+    for result in results:
+        benchmark = result["benchmarks"].get(bench_id)
+        if benchmark:
+            return next((key for key in benchmark.keys() if key != "Score"), None)
+    return None
+
+
 def _scorecard_comparison_cell_colors(scores: list[float]) -> list[str]:
     score_colormap = colormaps["RdYlGn"]
     return [
-        to_hex(score_colormap(min(max(score, 0), 100) / 100), keep_alpha=False).upper() for score in scores
+        (
+            SCORECARD_COLORS["invalid_score"]
+            if score is None
+            else to_hex(score_colormap(min(max(score, 0), 100) / 100), keep_alpha=False).upper()
+        )
+        for score in scores
     ]
 
 
@@ -272,7 +292,7 @@ def save_comparison_as_table(
             pdf_canvas.rect(cell_x, row_y, model_col_width, row_height, stroke=1, fill=1)
             pdf_canvas.setFillColor(_scorecard_contrasting_text_color(background))
             pdf_canvas.setFont(score_font, row_font_size)
-            score_text = f"{score:.2f}"
+            score_text = NOT_SCORED_TEXT if score is None else f"{score:.2f}"
             text_width = pdf_canvas.stringWidth(score_text, score_font, row_font_size)
             pdf_canvas.drawString(
                 cell_x + (model_col_width - text_width) / 2, row_y + row_text_offset, score_text
@@ -328,18 +348,6 @@ def save_as_table(
             raise ValueError("Certificate verification failed")
         verif_lvl = data.get("verification_lvl", DEFAULT_VL)
 
-    # Get the number of row
-    nb_rows = 3  # header and footer
-    nb_bench = len(data["benchmarks"].keys())
-    score_card = data.get("score_card")
-    if score_card is None:
-        # No aggregation, no total score
-        nb_rows += nb_bench
-    else:
-        # get number of rows from schemes
-        for group_name, group_content in data["score_card"]["Scheme"].items():
-            nb_rows += len(group_content["benchmarks"]) + 1
-
     # ------------------------------------------------------------------
     # 1) Create PDF
     # ------------------------------------------------------------------
@@ -360,8 +368,14 @@ def save_as_table(
     if "score_card" in data:
         scheme_name = data["score_card"]["aggregation_scheme_name"]
         valid_scheme = True
+        total_score = data["score_card"].get("Score Total")
         text_table.append(
-            _scorecard_title(data, scheme_name, verif_lvl, f"{data['score_card']['Score Total']:.2f}")
+            _scorecard_title(
+                data,
+                scheme_name,
+                verif_lvl,
+                NOT_SCORED_TEXT if total_score is None else f"{total_score:.2f}",
+            )
         )
     else:
         # Aggregation scheme is 0 or invalid
@@ -373,19 +387,23 @@ def save_as_table(
     group_rows = []
     if valid_scheme:
         for group_name, group_content in data["score_card"]["Scheme"].items():
-            # add group row
-            group_score = data["score_card"][f"Score {group_name}"]
+            # add group row. A group with no eligible weighted KPI is dropped by aggregation, so it
+            # is reported without a score instead of being hidden from the report.
+            group_score = data["score_card"].get(f"Score {group_name}")
             group_rows.append(len(text_table))
             text_table.append(
                 [
                     f"Group: {_scorecard_group_name(data, group_name)}",
                     "",
                     f"{group_content['weight']}",
-                    f"{group_score:.2f}",
+                    NOT_SCORED_TEXT if group_score is None else f"{group_score:.2f}",
                 ]
             )
             # add benchamrk rows
             for bench_id, bench_weight in group_content["benchmarks"].items():
+                if bench_id not in data["benchmarks"]:
+                    # The KPI was ignored, so it produced neither a KPI value nor a score.
+                    continue
                 for key, item in data["benchmarks"][bench_id].items():
                     if key == "Score":
                         bench_score = item
@@ -428,6 +446,8 @@ def save_as_table(
             "",
         ]
     )
+
+    nb_rows = len(text_table)
 
     col_widths = [130 * mm, 20 * mm, 20 * mm, 20 * mm]
 
@@ -489,12 +509,17 @@ def save_as_table(
         table_style.append(("ALIGN", (0, i + 1), (0, i + 1), "LEFT"))
 
     if valid_scheme:
+        total_score = data["score_card"].get("Score Total")
         table_style.append(
             (
                 "BACKGROUND",
                 (3, 0),
                 (3, 0),
-                colors.HexColor(_score_to_color(data["score_card"]["Score Total"])),
+                colors.HexColor(
+                    SCORECARD_COLORS["invalid_score"]
+                    if total_score is None
+                    else _score_to_color(total_score)
+                ),
             ),  # merged header row
         )
         table_style.append(("TEXTCOLOR", (3, 0), (3, 0), colors.white))

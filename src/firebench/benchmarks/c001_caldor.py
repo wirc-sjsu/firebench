@@ -36,6 +36,11 @@ output_path_json = DEFAULT_OUTPUT_PATH_JSON
 score_card_report_path = DEFAULT_SCORE_CARD_REPORT_PATH
 
 PERIOD_TARGET_PATTERN = re.compile(r"^(H\d{3}|P\d{2})_([BPW]+)$")
+RETAINED_PERIOD_TARGET_PATTERNS = (
+    (re.compile(r"^WX(\d+)$"), "P{:02d}"),
+    (re.compile(r"^WX_WH(\d+)$"), "H{:03d}"),
+    (re.compile(r"^FP_H(\d+)$"), "H{:03d}"),
+)
 KPI_GROUP_CATEGORIES = (
     ("B", "Building Damage"),
     ("S", "Burn Severity"),
@@ -1631,6 +1636,20 @@ def normalize_benchmark_target(benchmark_target: str) -> str:
     return resolve_benchmark_target(benchmark_target)
 
 
+def _retained_target_period_selector(benchmark_target: str) -> str | None:
+    """
+    Return the period selector of a retained target alias, or None when it spans no single period.
+
+    Retained aliases such as `WX1`, `WX_WH13`, and `FP_H13` name the same period as the canonical
+    targets `P01_W`, `H013_W`, and `H013_P`, but do not follow the canonical target spelling.
+    """
+    for pattern, template in RETAINED_PERIOD_TARGET_PATTERNS:
+        match = pattern.fullmatch(benchmark_target)
+        if match is not None:
+            return template.format(int(match.group(1)))
+    return None
+
+
 def _target_period(period_selector: str) -> tuple[datetime, datetime]:
     if period_selector.startswith("H"):
         period_name = f"WH{int(period_selector.removeprefix('H'))}"
@@ -1736,6 +1755,9 @@ def describe_available_targets(benchmark_target: str | None = None, obs_data: Pa
         period_target = PERIOD_TARGET_PATTERN.fullmatch(canonical_target)
         if period_target is not None:
             period_selector = period_target.group(1)
+        else:
+            period_selector = _retained_target_period_selector(canonical_target)
+        if period_selector is not None:
             start, end = _target_period(period_selector)
             period = {
                 "target": period_selector,

@@ -59,6 +59,28 @@ A reader treats a missing, malformed, or unknown confidence value as level 0 and
 with the affected station and variable. Newly standardized files must write a valid value instead
 of relying on this fallback.
 
+### Reading packages standardized before 0.10
+
+FireBench releases before 0.10 stored the confidence as a combined `"<level> - <description>"`
+string rather than a scalar integer. A reader still recognizes those historical values so that
+already published observational packages keep their verified stations in TSO. Only the three
+strings that FireBench itself wrote are accepted:
+
+- `0 - unknown (guessed or missing metadata)`
+- `1 - provider default (not verified)`
+- `2 - verified measurement`
+
+Any other string is malformed and stays level 0, so a hand-edited description cannot promote a
+station into TSO. Reading a historical value is logged once per station and variable. This is
+read-only compatibility: newly standardized files always write the scalar integer, and
+re-standardizing an older package converts it.
+
+Those releases also wrote `sensor_height` itself as a decimal string whenever the height came from
+the provider metadata, which is exactly the case for the verified heights. A reader accepts a
+decimal string for observational data so those stations stay eligible for TSO. Model output is
+always required to record a numeric height, because the model-preparation contract is new in 0.10
+and has no historical files to read.
+
 FireBench validates confidence metadata for the selected weather variables and periods before
 executing their KPIs. It uses the same selector for benchmark execution and the station counts
 shown by `firebench list`. The run log records the included and excluded stations, their confidence

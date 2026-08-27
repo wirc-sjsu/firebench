@@ -213,6 +213,30 @@ def test_hrrr_benchmark_target_can_combine_building_damage_and_perimeters():
     }
 
 
+@pytest.mark.parametrize(
+    ("retained_target", "canonical_target", "period_selector"),
+    [
+        ("WX1", "P01_W", "P01"),
+        ("WX_WH13", "H013_W", "H013"),
+        ("FP_H13", "H013_P", "H013"),
+    ],
+)
+def test_describe_available_targets_resolves_retained_alias_periods(
+    retained_target, canonical_target, period_selector
+):
+    """A retained alias names the same period as its canonical target."""
+    retained_info = c001_caldor.describe_available_targets(retained_target)
+    canonical_info = c001_caldor.describe_available_targets(canonical_target)
+
+    assert retained_info["period"]["target"] == period_selector
+    assert retained_info["period"] == canonical_info["period"]
+
+
+@pytest.mark.parametrize("target", ["WX_WH_ALL", "A", "B"])
+def test_describe_available_targets_has_no_period_for_multi_period_targets(target):
+    assert c001_caldor.describe_available_targets(target)["period"] is None
+
+
 def test_describe_available_targets_with_full_target_includes_details():
     target_info = c001_caldor.describe_available_targets("H013_P")
 
@@ -355,26 +379,30 @@ def test_describe_available_standalone_building_damage_target_includes_details()
 
 
 @pytest.mark.parametrize(
-    ("target", "expected_kpi_groups"),
+    ("target", "expected_kpi_groups", "expected_period"),
     [
-        ("A", {"B", "S", "CC", "P", "W"}),
-        ("S", {"S"}),
-        ("CC", {"CC"}),
-        ("CDI", {"B", "P", "W"}),
-        ("BS3", {"B", "S"}),
-        ("WX1", {"W"}),
-        ("WX2", {"W"}),
-        ("WX3", {"W"}),
-        ("WX4", {"W"}),
-        ("short_all", {"B", "S", "CC", "P", "W"}),
-        ("WX_short", {"B", "S", "CC", "W"}),
+        ("A", {"B", "S", "CC", "P", "W"}, None),
+        ("S", {"S"}, None),
+        ("CC", {"CC"}, None),
+        ("CDI", {"B", "P", "W"}, None),
+        ("BS3", {"B", "S"}, None),
+        ("WX1", {"W"}, "P01"),
+        ("WX2", {"W"}, "P02"),
+        ("WX3", {"W"}, "P03"),
+        ("WX4", {"W"}, "P04"),
+        ("short_all", {"B", "S", "CC", "P", "W"}, None),
+        ("WX_short", {"B", "S", "CC", "W"}, None),
     ],
 )
-def test_describe_retained_target_uses_selected_groups(target, expected_kpi_groups):
+def test_describe_retained_target_uses_selected_groups(target, expected_kpi_groups, expected_period):
     target_info = c001_caldor.describe_available_targets(target)
 
     assert target_info["target"] == target
-    assert target_info["period"] is None
+    if expected_period is None:
+        # The target spans several periods or none, so no single period describes it.
+        assert target_info["period"] is None
+    else:
+        assert target_info["period"]["target"] == expected_period
     assert target_info["aggregated"] is True
     assert set(target_info["kpi_groups"]) == expected_kpi_groups
     assert target_info["kpis"]
@@ -513,7 +541,8 @@ def test_weather_station_selector_handles_missing_confidence_once(caplog, tmp_pa
         for station_name, confidence in (
             ("station_TRUSTED", 2),
             ("station_PROVIDER", 1),
-            ("station_MALFORMED", "2 - verified measurement"),
+            ("station_LEGACY", "2 - verified measurement"),
+            ("station_MALFORMED", "verified by hand"),
             ("station_MISSING", None),
         ):
             station = time_series.create_group(station_name)
@@ -541,10 +570,12 @@ def test_weather_station_selector_handles_missing_confidence_once(caplog, tmp_pa
             context,
         )
 
-    assert [item["station"] for item in tso["included"]] == ["station_TRUSTED"]
+    # A pre-0.10 combined confidence string is read, so the station stays eligible for TSO.
+    assert {item["station"] for item in tso["included"]} == {"station_TRUSTED", "station_LEGACY"}
     assert {item["station"] for item in all_sources["included"]} == {
         "station_TRUSTED",
         "station_PROVIDER",
+        "station_LEGACY",
         "station_MALFORMED",
         "station_MISSING",
     }

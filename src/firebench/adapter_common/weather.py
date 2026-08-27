@@ -35,7 +35,7 @@ def trusted_observation_sensor_height(
             f"Observational dataset `{data_path}` is not TSO: confidence level " f"{int(confidence)}."
         )
 
-    return read_sensor_height(dataset, dataset_path=data_path).to(units)
+    return read_sensor_height(dataset, dataset_path=data_path, allow_legacy_text=True).to(units)
 
 
 def write_model_sensor_height_metadata(model_variable, prepared_height) -> None:
