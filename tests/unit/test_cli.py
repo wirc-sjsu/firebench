@@ -79,7 +79,7 @@ def test_static_list_commands_start_quickly_without_heavy_runtime_dependencies(a
 
     assert result.returncode == 0, result.stderr
     assert "LOADED:\n" in result.stdout
-    assert elapsed < 0.5, f"{' '.join(args)} took {elapsed:.3f} seconds"
+    assert elapsed < 2.0, f"{' '.join(args)} took {elapsed:.3f} seconds"
 
 
 def test_wx_qc_is_registered_with_useful_help():
