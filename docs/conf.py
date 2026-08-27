@@ -60,12 +60,15 @@ napoleon_numpy_docstring = True
 linkcheck_retries = 2
 linkcheck_timeout = 15
 linkcheck_anchors = True
-# These publisher and incident pages are valid in a browser but reject automated GET requests with
-# bot-protection responses. Their exact URLs are reviewed manually when references change.
+# These pages are valid in a browser but either reject automated GET requests or repeatedly time out
+# from GitHub Actions. Their exact URLs are reviewed manually when references change.
 linkcheck_ignore = [
     r"https://doi\.org/10\.1175/BAMS-D-(11-00019|16-0236)\.1",
     r"https://doi\.org/10\.(1071|1155|3390)/.*",
     r"https://www\.fire\.ca\.gov/incidents/.*",
+    r"https://www\.frames\.gov/catalog/815[12]",
+    r"https://www\.frames\.gov/documents/behaveplus/publications/"
+    r"Baughman_and_Albini_1980_EstMidflamWind_ocr\.pdf",
     r"https://www\.publish\.csiro\.au/.*",
 ]
 
