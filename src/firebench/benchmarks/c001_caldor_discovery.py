@@ -15,6 +15,12 @@ STANDALONE_TARGETS = (
     ("CC", "Canopy Cover Loss"),
     ("FP", "Fire Perimeters (all curated periods)"),
 )
+PERIOD_TARGET_FLAGS = (
+    ("B", "Building Damage"),
+    ("P", "Fire Perimeters"),
+    ("T", "Weather Stations (TSO only)"),
+    ("W", "Weather Stations (TSO and all sources)"),
+)
 
 
 def describe_available_targets_summary() -> dict:
@@ -43,5 +49,5 @@ def describe_available_targets_summary() -> dict:
         "standalone_targets": dict(STANDALONE_TARGETS),
         "period_target_syntax": "PERIOD_FLAGS",
         "periods": periods,
-        "kpi_groups": dict(KPI_GROUP_CATEGORIES[index] for index in (0, 3, 4)),
+        "kpi_groups": dict(PERIOD_TARGET_FLAGS),
     }

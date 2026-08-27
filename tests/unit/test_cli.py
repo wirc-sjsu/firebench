@@ -261,7 +261,8 @@ def _fake_registry(tmp_path, call):
             "kpi_groups": {
                 "B": "Building Damage",
                 "P": "Fire Perimeters",
-                "W": "Weather Stations",
+                "T": "Weather Stations (TSO only)",
+                "W": "Weather Stations (TSO and all sources)",
             },
         }
 
@@ -864,7 +865,7 @@ def test_list_command_prints_case_targets(monkeypatch, tmp_path):
         "FP: Fire Perimeters (all curated periods)\n"
         "\n"
         "Period targets\n"
-        "Syntax: PERIOD_FLAGS (for example, H013_BPW or P02_P)\n"
+        "Syntax: PERIOD_FLAGS (for example, H013_BPT or P02_W)\n"
         "\n"
         "Available periods\n"
         "Target   Start   End\n"
@@ -874,7 +875,8 @@ def test_list_command_prints_case_targets(monkeypatch, tmp_path):
         "Combinable flags\n"
         "B: Building Damage\n"
         "P: Fire Perimeters\n"
-        "W: Weather Stations\n"
+        "T: Weather Stations (TSO only)\n"
+        "W: Weather Stations (TSO and all sources)\n"
     )
 
 

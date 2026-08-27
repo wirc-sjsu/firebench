@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Add standalone and period-based Caldor targets, including combinable building, perimeter, and
   weather flags discoverable through `firebench list`.
+- Add the `T` period-target flag for TSO-only Caldor weather runs while retaining `W` for TSO plus
+  zero-weight all-sources diagnostics.
 - Integrate the `firebench-adapter-common` source code into FireBench as `firebench.adapter_common`.
 - Allow `firebench data get` to resolve benchmark registry short names such as `2021_Caldor`.
 - Add verified PG&E station wind sensor-height fallback data.
@@ -47,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Allow a downloaded legacy observation package to serve as both model and observation input for
+  a TSO smoke test without relaxing numeric sensor-height requirements for separate model files.
 - Keep static benchmark listing below half a second by deferring Caldor scientific, geospatial,
   plotting, and PDF imports until runtime functionality is requested.
 - Pin the Hatchling build backend below 1.32 so built distributions declare a metadata

@@ -252,7 +252,7 @@ def _echo_case_targets(case: str, target: str | None = None, obs_data: Path | No
 
     click.echo("")
     click.echo("Period targets")
-    click.echo(f"Syntax: {target_info['period_target_syntax']} (for example, H013_BPW or P02_P)")
+    click.echo(f"Syntax: {target_info['period_target_syntax']} (for example, H013_BPT or P02_W)")
     click.echo("")
     click.echo("Available periods")
     click.echo("Target   Start   End")
