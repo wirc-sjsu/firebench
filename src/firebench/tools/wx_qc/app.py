@@ -18,16 +18,24 @@ from .tabs.overview import OverviewTabMixin
 from .tabs.detail import DetailTabMixin
 from .tabs.map_tab import MapTabMixin
 from .tabs.skiplist import SkiplistTabMixin
+from .tabs.actions import ActionsTabMixin
 from .session import SessionMixin
 from .loader import LoaderMixin
 
 
 class App(
-    OverviewTabMixin, DetailTabMixin, MapTabMixin, SkiplistTabMixin, SessionMixin, LoaderMixin, tk.Tk
+    OverviewTabMixin,
+    DetailTabMixin,
+    MapTabMixin,
+    SkiplistTabMixin,
+    ActionsTabMixin,
+    SessionMixin,
+    LoaderMixin,
+    tk.Tk,
 ):
     """Tk root that owns the shared state documented by each GUI mixin."""
 
-    def __init__(self):
+    def __init__(self, manifest_path=None):
         """Initialize the Weather Station QC application.
 
         Sets up the main window, initializes data storage for stations and QC results,
@@ -47,6 +55,9 @@ class App(
         # Record-removal QC: stid -> list of {var, t0, t1, reason}. Non-destructive;
         # original data plotted + visual overlay. t0/t1 inclusive ISO (minute); "*"=all vars.
         self.removal_list = {}
+        self.qc_manifest_path = None
+        self.qc_manifest = None
+        self.qc_reviewer = ""
         self.stids = []
         self._map_stids = []
         self._map_cbar = None
@@ -154,6 +165,8 @@ class App(
         # later causes transparent corners. update_idletasks ensures clean render.
         self.update_idletasks()
         self.after(100, self._check_autosave)
+        if manifest_path is not None:
+            self.after(150, lambda: self._open_qc_manifest(manifest_path))
 
     def _build_ui(self):
         """Construct the main application interface with all notebook tabs."""
@@ -166,12 +179,14 @@ class App(
         self._build_detail_tab()
         self._build_map_tab()
         self._build_skiplist_tab()
+        self._build_actions_tab()
 
     def _build_topbar(self):
         """Build the top navigation bar with file/session controls and status display."""
         bar = ttk.Frame(self, relief="flat")
         bar.pack(fill="x", padx=4, pady=4)
         ttk.Button(bar, text="Open H5", command=self._open_file).pack(side="left", padx=(4, 2))
+        ttk.Button(bar, text="Open QC", command=self._open_qc_manifest).pack(side="left", padx=2)
         # Use ttk.Label so theme respects system dark/light mode (not hardcoded color).
         self.lbl_file = ttk.Label(bar, text="No file loaded", anchor="w")
         self.lbl_file.pack(side="left", padx=4, fill="x", expand=True)
@@ -324,6 +339,14 @@ class App(
             reason (str): Reason for skipping this station.
             switch_tab (bool): If True, switch to skiplist tab after adding.
         """
+        if not self._record_manual_qc_action(
+            stid,
+            None,
+            {"reason": reason},
+            {"kind": "exclude_station"},
+            f"Manually exclude station: {reason}",
+        ):
+            return
         mark_stations_skipped(self.skip_list, self.green_list, (stid,), reason)
         self._refresh_skiplist()
         self._refresh_overview(dirty={stid})

@@ -94,6 +94,9 @@ def test_wx_qc_is_registered_with_useful_help():
     assert "weather-station quality-control GUI" in command_help.output
     assert "HDF5" in command_help.output
     assert "Tk support" in command_help.output
+    assert "process" in command_help.output
+    assert "review" in command_help.output
+    assert "finalize" in command_help.output
 
 
 def _fake_registry(tmp_path, call):

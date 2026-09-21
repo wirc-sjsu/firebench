@@ -51,9 +51,7 @@ def plot_from_config(*args, **kwargs):
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
 
-FIREBENCH_BANNER = (
-    "\b"
-    + r"""
+FIREBENCH_BANNER = "\b" + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -63,7 +61,6 @@ FIREBENCH_BANNER = (
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
-)
 
 
 @click.group(help=FIREBENCH_BANNER)
@@ -863,8 +860,9 @@ def data_get(case: str, version: str, output_dir: Path) -> None:
     return 0
 
 
-@main.command("wx-qc")
-def wx_qc() -> None:
+@main.group("wx-qc", invoke_without_command=True, no_args_is_help=False)
+@click.pass_context
+def wx_qc(context: click.Context) -> None:
     """
     Launch the weather-station quality-control GUI.
 
@@ -872,9 +870,73 @@ def wx_qc() -> None:
     observation decisions, restore JSON sessions, and export cleaned data.
     A graphical desktop and Tk support are required.
     """
+    if context.invoked_subcommand is not None:
+        return
     from .tools.wx_qc.app import App
 
     App().mainloop()
+
+
+@wx_qc.command("process")
+@click.argument("input_json", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--policy", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--candidate", required=True, type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--manifest", required=True, type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--log", "log_path", required=True, type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--overwrite", is_flag=True, help="Replace existing QC artifacts.")
+def wx_qc_process(
+    input_json: Path,
+    policy: Path | None,
+    candidate: Path,
+    manifest: Path,
+    log_path: Path,
+    overwrite: bool,
+) -> None:
+    """Process Synoptic INPUT_JSON into an auditable candidate HDF5."""
+    from .tools.wx_qc.pipeline import process_synoptic_json
+
+    try:
+        result = process_synoptic_json(
+            input_json,
+            policy,
+            candidate,
+            manifest,
+            log_path,
+            overwrite=overwrite,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(
+        f"Created {candidate} with {result['summary']['actions']} actions "
+        f"({result['summary']['pending']} pending review)."
+    )
+    click.echo(f"Manifest: {manifest}")
+    click.echo(f"Log: {log_path}")
+
+
+@wx_qc.command("review")
+@click.argument("manifest", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def wx_qc_review(manifest: Path) -> None:
+    """Open a QC MANIFEST and its candidate HDF5 in the GUI."""
+    from .tools.wx_qc.app import App
+
+    App(manifest_path=manifest).mainloop()
+
+
+@wx_qc.command("finalize")
+@click.argument("manifest", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--output", required=True, type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--reviewer", required=True, help="Identity recorded for finalization.")
+@click.option("--overwrite", is_flag=True, help="Replace an existing final HDF5.")
+def wx_qc_finalize(manifest: Path, output: Path, reviewer: str, overwrite: bool) -> None:
+    """Build the final HDF5 after every manifest action is decided."""
+    from .tools.wx_qc.pipeline import finalize_manifest
+
+    try:
+        result = finalize_manifest(manifest, output, reviewer, overwrite=overwrite)
+    except (OSError, TypeError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Final HDF5: {result['artifacts']['final_h5']}")
 
 
 if __name__ == "__main__":

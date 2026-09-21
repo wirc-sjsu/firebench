@@ -9,7 +9,6 @@ from matplotlib.figure import Figure
 from firebench.tools.wx_qc.constants import default_config
 from firebench.tools.wx_qc.tabs.detail import DetailTabMixin
 
-
 matplotlib.use("Agg", force=True)
 
 
@@ -121,6 +120,7 @@ class DetailApp(DetailTabMixin):
         self.detail_nb = FakeNotebook()
         self.btn_ts_compare = FakeWidget()
         self.btn_ts_remove = FakeWidget()
+        self.btn_ts_remove_variable = FakeWidget()
         self.btn_ts_locate = FakeWidget()
         self.lbl_status = FakeWidget()
         self.var_ts_var = FakeVariable("air_temperature")
@@ -247,6 +247,7 @@ def test_detail_station_decisions_navigation_and_tab_state(monkeypatch):
     assert app.btn_ts_compare.options["state"] == "disabled"
     app._set_single_station_tabs_enabled(True)
     assert app.btn_ts_locate.options["state"] == "normal"
+    assert app.btn_ts_remove_variable.options["state"] == "normal"
 
 
 def test_detail_compare_variable_cycles_and_configuration(monkeypatch):
@@ -348,6 +349,47 @@ def test_detail_removal_manifest_overlays_and_dialog_scopes(monkeypatch):
     variables = {entry["var"] for entry in app.removal_list["A"]}
     assert {"wind_speed", "wind_direction"} <= variables
     assert app.lbl_status.options["text"].startswith("Marked 1 record")
+
+
+def test_detail_omit_complete_variable_records_manifest_action(monkeypatch):
+    app = DetailApp()
+    app.qc_manifest_path = "qc.json"
+    app.var_ts_reason.set("  mostly zero  ")
+    recorded = []
+    app._record_manual_qc_action = lambda *args: recorded.append(args) or True
+    monkeypatch.setattr(
+        "firebench.tools.wx_qc.tabs.detail.messagebox.askyesno", lambda *_args, **_kwargs: True
+    )
+
+    app._ts_remove_variable()
+
+    assert recorded == [
+        (
+            "A",
+            "air_temperature",
+            {"scope": "entire_variable", "reason": "mostly zero"},
+            {"kind": "exclude_variable", "variables": ["air_temperature"]},
+            "Manually omit complete variable air_temperature: mostly zero",
+        )
+    ]
+    assert app.lbl_status.options["text"] == "Will omit A/air_temperature from the final HDF5"
+
+
+def test_detail_omit_variable_rejects_synthetic_wind_and_requires_manifest(monkeypatch):
+    app = DetailApp()
+    notices = []
+    monkeypatch.setattr(
+        "firebench.tools.wx_qc.tabs.detail.messagebox.showinfo",
+        lambda *args: notices.append(args),
+    )
+
+    app.var_ts_var.set("wind")
+    app._ts_remove_variable()
+    assert notices[-1][0] == "Select a stored variable"
+
+    app.var_ts_var.set("air_temperature")
+    app._ts_remove_variable()
+    assert notices[-1][0] == "QC manifest required"
 
 
 def test_detail_skip_actions_and_reason_abbreviations(monkeypatch):

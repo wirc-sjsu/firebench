@@ -195,6 +195,13 @@ class DetailTabMixin:
             skip_row, text="Remove records", command=self._ts_remove_records, state="disabled"
         )
         self.btn_ts_remove.pack(side="left", padx=(12, 0))
+        self.btn_ts_remove_variable = ttk.Button(
+            skip_row,
+            text="Omit variable from output",
+            command=self._ts_remove_variable,
+            state="disabled",
+        )
+        self.btn_ts_remove_variable.pack(side="left", padx=(4, 0))
 
     def _build_varstats_subtab(self):
         """Build Variable Stats subtab with statistics table for single-station mode."""
@@ -422,7 +429,7 @@ class DetailTabMixin:
 
         Time Series tab (0) always remains enabled. Multi-station overlay hides
         tabs 1-2 and switches to Time Series if currently viewing those tabs.
-        Also controls Compare and Remove buttons.
+        Also controls Compare and removal buttons.
 
         Args:
             enabled (bool): True for single-station, False for multi-station.
@@ -436,6 +443,7 @@ class DetailTabMixin:
             self.detail_nb.select(0)
         self.btn_ts_compare.config(state=("normal" if enabled else "disabled"))
         self.btn_ts_remove.config(state=("normal" if enabled else "disabled"))
+        self.btn_ts_remove_variable.config(state=("normal" if enabled else "disabled"))
         self.btn_ts_locate.config(state=("normal" if enabled else "disabled"))
 
     def _rebuild_var_tabs(self, avail_vars):
@@ -1622,6 +1630,17 @@ class DetailTabMixin:
         lst = self.removal_list.setdefault(stid, [])
         if entry in lst:
             return
+        record_action = getattr(self, "_record_manual_qc_action", None)
+        if callable(record_action) and not record_action(  # pylint: disable=not-callable
+            stid,
+            var,
+            {"ranges": [{"start": str(t0_iso), "end": str(t1_iso)}]},
+            {"kind": "set_nan_ranges", "variables": [var]},
+            f"Manual range removal: {reason}",
+        ):
+            if not lst:
+                self.removal_list.pop(stid, None)
+            return
         lst.append(entry)
         self._refresh_removals()
         if stid == self._current_stid:
@@ -1698,6 +1717,42 @@ class DetailTabMixin:
             self._add_removal(stid, vname, t0, t1, reason)
         n = i1 - i0 + 1
         self.lbl_status.config(text=f"Marked {n} record{'s' if n != 1 else ''} for removal ({stid})")
+
+    def _ts_remove_variable(self):
+        """Record an audited action that omits one station variable from the final HDF5."""
+        stid = self._current_stid
+        variable = self.var_ts_var.get()
+        if not stid or not variable:
+            messagebox.showinfo("Select a variable", "Select one station and a variable first.")
+            return
+        if variable == "wind":
+            messagebox.showinfo(
+                "Select a stored variable",
+                "Wind is a combined plot. Select wind_speed, wind_direction, or wind_gust first.",
+            )
+            return
+        if not getattr(self, "qc_manifest_path", None):
+            messagebox.showinfo(
+                "QC manifest required",
+                "Open an automated QC manifest before omitting a complete variable.",
+            )
+            return
+        if not messagebox.askyesno(
+            "Omit variable from output",
+            f"Omit {variable} for station {stid} from the final HDF5?\n\n"
+            "The station and its other variables will be retained.",
+        ):
+            return
+        reason = self.var_ts_reason.get().strip() or "manually omitted after data review"
+        if not self._record_manual_qc_action(
+            stid,
+            variable,
+            {"scope": "entire_variable", "reason": reason},
+            {"kind": "exclude_variable", "variables": [variable]},
+            f"Manually omit complete variable {variable}: {reason}",
+        ):
+            return
+        self.lbl_status.config(text=f"Will omit {stid}/{variable} from the final HDF5")
 
     _VAR_SHORT = {
         "wind_direction": "WD",

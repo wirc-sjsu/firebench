@@ -6,7 +6,7 @@ from tkinter import ttk
 from unittest.mock import patch
 
 import matplotlib
-
+import pytest
 
 # The application selects TkAgg at import time. A headless CI runner cannot
 # activate that interactive backend, so suppress only the selection call while
@@ -15,6 +15,8 @@ with patch.object(matplotlib, "use"):
     from firebench.tools.wx_qc import app as app_module
     from firebench.tools.wx_qc import dialogs
     from firebench.tools.wx_qc.app import App
+    from firebench.tools.wx_qc.tabs import actions as actions_module
+    from firebench.tools.wx_qc.tabs.actions import ActionsTabMixin
 
 
 # Keep the non-interactive backend explicit so this test module cannot affect
@@ -174,10 +176,54 @@ def test_app_initializes_all_tabs_and_state_without_a_display(monkeypatch):
     assert application.skip_list == {}
     assert application.green_list == set()
     assert application._pane_header_bg == "#123456"
-    assert len(application.nb.children) == 4
+    assert len(application.nb.children) == 5
+    assert application.nb.children[-1][1]["text"] == "Actions"
     assert application.var_map_basemap.get() is True
     assert application._map_tile_closed is False
     assert application._ts_dragging is False
+    assert application.var_qc_comment.get() == ""
+
+
+def test_action_decision_uses_inline_optional_comment_without_dialog(monkeypatch):
+    recorded = []
+
+    class FakeTree:
+        @staticmethod
+        def selection():
+            return ("WXQC-TEST",)
+
+    class DecisionApp(ActionsTabMixin):
+        def __init__(self):
+            self.tree_actions = FakeTree()
+            self.var_qc_reviewer = FakeVariable("reviewer")
+            self.var_qc_comment = FakeVariable("  supporting evidence  ")
+            self.qc_manifest_path = Path("qc.json")
+            self.qc_manifest = {"summary": {"pending": 1}}
+            self.lbl_status = FakeWidget()
+
+        def _refresh_actions(self):
+            return None
+
+    def fake_decide(manifest_path, action_id, decision, reviewer, comment):
+        recorded.append((manifest_path, action_id, decision, reviewer, comment))
+        return {"summary": {"pending": 0}}
+
+    monkeypatch.setattr(actions_module, "decide_action", fake_decide)
+    monkeypatch.setattr(
+        actions_module.simpledialog,
+        "askstring",
+        lambda *_args, **_kwargs: pytest.fail("decision should not open a comment dialog"),
+    )
+
+    application = DecisionApp()
+    application._decide_selected("accepted")
+
+    assert recorded == [(Path("qc.json"), "WXQC-TEST", "accepted", "reviewer", "supporting evidence")]
+    assert application.var_qc_comment.get() == ""
+
+    application._decide_selected("rejected")
+
+    assert recorded[-1] == (Path("qc.json"), "WXQC-TEST", "rejected", "reviewer", None)
 
 
 def test_small_decision_dialogs_build_and_return_stripped_values(monkeypatch):

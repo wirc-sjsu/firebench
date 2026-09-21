@@ -14,7 +14,7 @@ from .state import resolve_restored_decisions
 
 # Matches firebench's user-local data convention (see get_local_db_path
 # in tools/local_db_management.py) rather than the installed package tree.
-SESSION_VERSION = 2
+SESSION_VERSION = 3
 AUTOSAVE_PATH = Path.home() / ".firebench" / "wx_qc_autosave.json"
 
 _SESSION_FIELDS = {
@@ -29,8 +29,11 @@ _SESSION_FIELDS = {
     "map_color",
     "map_basemap",
     "ov_col_vis",
+    "qc_manifest_path",
+    "qc_reviewer",
 }
-_SESSION_FIELDS_V1 = _SESSION_FIELDS - {"map_basemap"}
+_SESSION_FIELDS_V2 = _SESSION_FIELDS - {"qc_manifest_path", "qc_reviewer"}
+_SESSION_FIELDS_V1 = _SESSION_FIELDS_V2 - {"map_basemap"}
 _CONFIG_FIELDS = set(default_config())
 _ASSERTION_KEYS = {key for key, _label in ASSERTION_CATS}
 
@@ -190,11 +193,14 @@ def validate_session_state(value):
     version = value["version"]
     if isinstance(version, bool) or not isinstance(version, int):
         raise SessionValidationError("session version must be an integer")
-    if version not in (1, SESSION_VERSION):
+    if version not in (1, 2, SESSION_VERSION):
         raise SessionValidationError(
-            f"unsupported session version {version}; expected version 1 or {SESSION_VERSION}"
+            f"unsupported session version {version}; expected version 1, 2, or {SESSION_VERSION}"
         )
-    _field_difference(set(value), _SESSION_FIELDS_V1 if version == 1 else _SESSION_FIELDS, "session")
+    expected_fields = (
+        _SESSION_FIELDS_V1 if version == 1 else _SESSION_FIELDS_V2 if version == 2 else _SESSION_FIELDS
+    )
+    _field_difference(set(value), expected_fields, "session")
 
     saved_at = value["saved_at"]
     if not isinstance(saved_at, str):
@@ -233,6 +239,13 @@ def validate_session_state(value):
     ):
         raise SessionValidationError("ov_col_vis must map column names to true or false")
 
+    qc_manifest_path = value.get("qc_manifest_path")
+    if qc_manifest_path is not None and not isinstance(qc_manifest_path, str):
+        raise SessionValidationError("qc_manifest_path must be a string or null")
+    qc_reviewer = value.get("qc_reviewer", "")
+    if not isinstance(qc_reviewer, str):
+        raise SessionValidationError("qc_reviewer must be a string")
+
     return {
         "version": version,
         "saved_at": saved_at,
@@ -245,6 +258,8 @@ def validate_session_state(value):
         "map_color": map_color,
         "map_basemap": map_basemap,
         "ov_col_vis": dict(ov_col_vis),
+        "qc_manifest_path": qc_manifest_path,
+        "qc_reviewer": qc_reviewer,
     }
 
 
@@ -313,6 +328,12 @@ class SessionMixin:
             "map_color": self.var_map_color.get(),
             "map_basemap": self.var_map_basemap.get(),
             "ov_col_vis": {column: variable.get() for column, variable in self._ov_col_vars.items()},
+            "qc_manifest_path": (
+                str(getattr(self, "qc_manifest_path", None))
+                if getattr(self, "qc_manifest_path", None)
+                else None
+            ),
+            "qc_reviewer": getattr(self, "qc_reviewer", ""),
         }
 
     def _save_session(self, path=None):
@@ -382,6 +403,19 @@ class SessionMixin:
         self.skip_list = session["skip_list"]
         self.green_list = session["green_list"]
         self.removal_list = session["removal_list"]
+        self.qc_manifest_path = Path(session["qc_manifest_path"]) if session["qc_manifest_path"] else None
+        self.qc_reviewer = session["qc_reviewer"]
+        if hasattr(self, "var_qc_reviewer"):
+            self.var_qc_reviewer.set(self.qc_reviewer)
+        self.qc_manifest = None
+        if self.qc_manifest_path and self.qc_manifest_path.is_file():
+            try:
+                from .pipeline import read_manifest
+
+                self.qc_manifest = read_manifest(self.qc_manifest_path)
+                self._refresh_actions()
+            except (OSError, ValueError):
+                self.qc_manifest = None
 
         h5_path = session["h5_path"]
         if h5_path and Path(h5_path).is_file():

@@ -196,10 +196,26 @@ def test_version_one_session_defaults_to_enabled_road_map(tmp_path):
     legacy = SessionApp(h5_path)._session_state()
     legacy["version"] = 1
     del legacy["map_basemap"]
+    del legacy["qc_manifest_path"]
+    del legacy["qc_reviewer"]
 
     validated = validate_session_state(legacy)
 
     assert validated["map_basemap"] is True
+
+
+def test_version_two_session_defaults_automated_qc_fields(tmp_path):
+    h5_path = tmp_path / "source.h5"
+    h5_path.touch()
+    legacy = SessionApp(h5_path)._session_state()
+    legacy["version"] = 2
+    del legacy["qc_manifest_path"]
+    del legacy["qc_reviewer"]
+
+    validated = validate_session_state(legacy)
+
+    assert validated["qc_manifest_path"] is None
+    assert validated["qc_reviewer"] == ""
 
 
 def test_invalid_session_does_not_change_application_state(tmp_path):

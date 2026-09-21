@@ -3,6 +3,195 @@
 Use the weather-station quality-control (QC) GUI to inspect a FireBench HDF5 file, record station
 and observation decisions, and export those decisions without changing the source file.
 
+The same interface also reviews manifests produced by the automatic Synoptic JSON pipeline. The
+pipeline creates a candidate HDF5 containing only strict automatic corrections, a machine-readable
+JSON manifest, and a text audit log. It never treats a candidate as a reviewed final dataset.
+
+## Process Synoptic JSON automatically
+
+Create a versioned TOML policy. Required windows are optional, repeatable tables; timestamps must
+include a UTC offset.
+
+```toml
+version = 1
+
+[output]
+authors = "Weather data maintainers"
+description = "Quality-controlled weather observations."
+compression_level = 3
+
+[thresholds]
+zero_wind_fraction = 0.5
+zero_wind_run_minutes = 1440.0
+temporal_break_factor = 3.0
+
+[gui]
+frozen_min_run = 10
+max_var_outage_min = 1440.0
+full_outage_min = 360.0
+duplicate_timestamp_limit = 2
+
+[bounds]
+air_temperature = [-50.0, 60.0, "C"]
+relative_humidity = [0.0, 100.0, "%"]
+wind_speed = [0.0, 60.0, "m/s"]
+wind_gust = [0.0, 80.0, "m/s"]
+wind_direction = [0.0, 360.0, "deg"]
+solar_radiation = [0.0, 1500.0, "W/m2"]
+fuel_moisture_content_10h = [0.0, 60.0, "%"]
+
+[[required_windows]]
+name = "W1"
+start = "2021-08-17T20:20:00-07:00"
+end = "2021-09-10T23:34:00-07:00"
+```
+
+Run the processor with explicit destinations:
+
+```console
+firebench wx-qc process wx_caldor_fire.json \
+  --policy caldor_qc.toml \
+  --candidate Caldor_weather_candidate.h5 \
+  --manifest Caldor_weather_qc.json \
+  --log Caldor_weather_qc.log
+```
+
+The processor normalizes source timestamps to UTC while retaining the station timezone, converts
+numeric sensor-height strings, removes only rows that are exact duplicates across timestamp and
+all observations, replaces physical-bound violations with NaN, and excludes stations with no
+finite supported observations in a required window. These deterministic actions are
+`auto_accepted`; a reviewer may still override them. Conflicting duplicate timestamps and invalid
+or decreasing time axes are quarantined from the candidate and require a decision.
+
+Source `QC_FLAGGED` metadata, suspicious zero-wind periods, frozen ranges, gaps, dropouts, outages,
+and incomplete required-window coverage require human review. Zero wind is suspicious when at
+least half of known wind-speed values are zero or a gap-aware zero run lasts at least 24 hours by
+default. The proposed action replaces wind speed, gust, and direction with NaN over the affected
+range; rejecting it preserves the observations.
+
+Every operation has a content-derived `WXQC-…` ID. The manifest separates the decision state from
+candidate/final application state and retains decision history, source and policy hashes, linked
+findings, selectors, effects, and artifact paths. The text log repeats the findings and actions in
+a human-readable form and is regenerated after decisions or finalization. Outputs are written
+atomically; use `--overwrite` only when replacing an intentional previous run.
+
+Open the review directly with:
+
+```console
+firebench wx-qc review Caldor_weather_qc.json
+```
+
+The **Actions** tab filters by status or severity, supports multi-selection decisions, navigates to
+the affected station, and can edit an action. Editing creates a new content-derived operation ID
+and marks the old operation superseded. A reviewer identity is mandatory for accept, reject,
+acknowledge, edit, and finalization events. Automatic actions need no confirmation, but remain
+overridable. Non-mutating findings require an explicit no-change acknowledgement. A decision
+comment is optional: type it in the inline comment field before choosing a decision. Accept,
+Reject, Acknowledge, and Reset do not open a comment dialog, and the field is cleared after the
+decision is saved.
+
+## Understand review decisions and data effects
+
+**Accept means apply the proposed operation; it does not mean that the source data is acceptable.**
+For example, accepting a `SRCFLAG` operation excludes the station, while rejecting it keeps the
+station. Always read the Effect and Message columns before deciding an action.
+
+The candidate HDF5 is a fixed preview created during `wx-qc process`. Saving a human decision does
+not rewrite that candidate. In particular, rejecting an automatically applied operation does not
+undo it in the candidate. Finalization instead rebuilds a new HDF5 from the hash-verified source
+JSON and applies the completed decisions.
+
+Control | Decision status | Effect
+--- | --- | ---
+**Accept** | `accepted` | Apply the proposed effect when building the final HDF5.
+**Reject** | `rejected` | Do not apply the proposed effect in the final HDF5. Source observations are preserved unless they are structurally unsafe to standardize.
+**Acknowledge** | `acknowledged` | Resolve a `no_change` action after reviewing its warning. No data are changed. Other effect types cannot be acknowledged.
+**Reset** | `pending` or `auto_accepted` | Undo the review decision. Human-review actions become pending again; automatic actions return to their automatic decision.
+**Edit...** | old action `superseded`; replacement `pending` | Create a new content-derived operation with edited selector/effect JSON. The old operation remains in the audit history.
+**Finalize...** | no action status change | Verify that nothing is pending, verify the source hash, and construct the final HDF5. The button is disabled while actions remain pending.
+
+Automatic operations start as `auto_accepted`. A reviewer can accept or reject most of them, but
+timestamp and numeric sensor-height normalization are required to standardize the file; rejecting
+a `TIME` or `META` operation blocks finalization. A structurally invalid station is quarantined
+from the candidate because it cannot be represented safely. Accepting its `EXCL` action confirms
+the exclusion; if the station is needed, repair the source and rerun the processor rather than
+trying to restore malformed observations with Reject.
+
+### Operation codes
+
+The operation code is the middle component of an ID such as `WXQC-FROZEN-...`.
+
+Code | Default | Typical message | Effect when applied
+--- | --- | --- | ---
+`EXCL` | Review | `Station has no timestamps`, `Observation arrays do not align with timestamps`, `Timestamp axis has N backwards jump(s)`, or `Conflicting records at N duplicate timestamp(s)` | Quarantine and exclude a station whose structure cannot be standardized safely.
+`TIME` | Automatic | `Normalized N timestamps to unambiguous UTC instants` | Convert source timestamps to UTC instants while retaining station-timezone metadata. This does not round, resample, or force timestamps onto an hourly boundary.
+`DUP` | Automatic | `Removed N identical duplicate records` | Remove only later rows whose timestamp and complete observation content exactly match an earlier row.
+`META` | Automatic | `Converted N numeric sensor-height strings to numbers` | Convert finite numeric sensor-height metadata such as `"10.0"` to a number. Observation values are unchanged.
+`BOUND` | Automatic | `Replaced N values outside [low, high] unit with NaN` | Set the named variable to NaN at the listed timestamps. The row and other variables remain present.
+`EMPTY` | Automatic | `Excluded station with no finite supported observations` | Exclude the whole station.
+`WINDOW` | Automatic | `Excluded station with no finite supported observations in NAME` | Exclude the whole station when it has no usable supported variable in a required policy window.
+`SRCFLAG` | Review | `Synoptic source metadata marks this station QC_FLAGGED` | Accept to exclude the whole station; reject to retain it.
+`ZEROWIND` | Review | `Suspicious zero wind: N% of known speed samples are zero` | Accept to set wind speed, gust, and direction to NaN wherever the selector matches; reject to preserve the reported zeros.
+`FROZEN` | Review | `Replace frozen VARIABLE ranges with NaN: VARIABLE frozen run=N pts` | Accept to set the named variable to NaN in every listed range; reject to retain the plateau values.
+`ACK` | Review | `Acknowledge ... without changing data: ...` | Record that an incomplete window, gap, dropout, outage, or other non-mutating finding was reviewed. Use Acknowledge, not Accept, to express this intent.
+`MANUAL` | Accepted when created | `Manually exclude station: ...`, `Manual range removal: ...`, or `Manually omit complete variable ...` | Apply a reviewer-authored station exclusion, set selected variable/range values to NaN, or omit one station variable.
+
+The same station can have several operations. An accepted `exclude_station` effect takes precedence
+over all narrower effects, and an accepted `exclude_variable` effect takes precedence over value-
+or range-level effects for that variable. Every shadowed operation remains in the manifest and log
+for auditability.
+
+### Effect and selector values
+
+Effect kind | Data result
+--- | ---
+`exclude_station` | Omit the complete `station_<ID>` group from the final HDF5.
+`exclude_variable` | Omit the named variable dataset from one station in the final HDF5. The station, time axis, and other variables remain present.
+`normalize_timestamps` | Represent every valid timestamp as an unambiguous UTC instant.
+`remove_identical_duplicates` | Delete the selected duplicate rows while retaining alignment across every observation array.
+`normalize_sensor_height` | Change numeric sensor-height metadata from string to numeric form.
+`set_nan` | Replace values for the listed variables at explicit selector timestamps with NaN.
+`set_nan_ranges` | Replace values for the listed variables wherever a predicate, timestamp, or inclusive time range matches. It does not remove time records.
+`no_change` | Preserve the data and store only the reviewer acknowledgement and comment.
+
+The Selector column defines the exact scope. It can contain raw row indices, timestamps, inclusive
+UTC ranges, a value predicate such as `wind_speed == 0`, a required window, or a station-wide
+reason. For a multi-range action, the table shows the first range and the number of additional
+ranges. Inspect the selector before accepting because the message normally reports only the
+longest or aggregate condition.
+
+The Application column reports what happened in the candidate or final artifact; it is separate
+from the review Decision. The candidate may say `applied` for an automatic action that a reviewer
+later rejects because the rejection takes effect only in the rebuilt final file.
+
+### Other GUI review controls
+
+GUI control | Effect
+--- | ---
+**Mark Greenlit** | Mark a station as reviewed and hide it from the default review lists. It does not alter observations or apply an automated-manifest operation.
+**Un-greenlit** | Return a greenlit station to the active review lists. It does not alter data.
+**Add to Skip List** | Exclude the station from a cleaned export. When a single-station exclusion is added while an automated manifest is open, the GUI records an accepted `MANUAL` `exclude_station` operation with the reviewer and reason.
+**Remove records** | Select one point or inclusive range in Station Detail and set the selected variable values to NaN in the cleaned output. With an automated manifest open, this becomes an accepted `MANUAL` `set_nan_ranges` operation.
+**Omit variable from output** | Select a station and a stored variable in Station Detail, optionally enter a reason, and omit that complete variable dataset from the final HDF5. This creates an accepted `MANUAL` `exclude_variable` operation and requires an open automated manifest. For the combined **wind** plot, select `wind_speed`, `wind_direction`, or `wind_gust` first.
+
+When useful, use the optional inline comment to record why evidence justified a decision. The
+comment is applied to every selected operation. Bulk decisions are appropriate only when the
+selected operations share both the same effect and the same review rationale.
+
+Finalization is disabled while any action is pending. Once review is complete, either use the GUI
+or run:
+
+```console
+firebench wx-qc finalize Caldor_weather_qc.json \
+  --output Caldor_weather_final.h5 \
+  --reviewer "Reviewer Name"
+```
+
+Finalization verifies the source SHA-256 and rebuilds from that immutable JSON rather than copying
+the candidate. Accepted station and variable exclusions dominate narrower range operations;
+shadowed actions remain visible in the audit record. The output records the run, source, policy,
+decision digest, stage, and final reviewer as HDF5 attributes.
+
 ## Install and launch
 
 Install FireBench in a Python environment:
@@ -165,7 +354,8 @@ plots continue to show the original observations until an export applies the rem
 
 **Save Session** writes versioned UTF-8 JSON containing the HDF5 path, QC settings, station
 decisions, record removals, current station, map mode, road-map visibility, and Overview column
-visibility. It contains no station data or cached statistics. On restore, the complete JSON shape
+visibility. Version 3 also records an optional automated-QC manifest reference and reviewer
+identity; versions 1 and 2 remain readable. It contains no station data or cached statistics. On restore, the complete JSON shape
 and field types are validated before application state changes, then the referenced HDF5 file is
 reloaded and all statistics are recomputed. If a restored file somehow marks a station both
 skipped and greenlit, the skip decision wins.

@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action
+  IDs, candidate and final HDF5 stages, JSON manifests, text logs, and CLI process/review/finalize
+  commands.
+- Add a weather-QC GUI Actions tab for reviewer-attributed accept, reject, acknowledge, reset, edit,
+  navigation, filtering, inline optional decision comments, and finalization workflows.
+- Add an audited Station Detail control for omitting a complete station-variable dataset from the
+  finalized weather HDF5 while retaining the station and its other variables.
+
+### Changed
+
+- Store weather-QC manifest references and reviewer identity in version 3 GUI sessions while
+  retaining readers for versions 1 and 2.
+- Let Synoptic standardization bind provenance to an original source hash and write UTC time origins
+  while retaining each station's source timezone.
+
 ## [0.10.0] - 2026 / 08 / 27
 
 ### Added

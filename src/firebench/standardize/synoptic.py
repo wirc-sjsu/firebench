@@ -34,11 +34,14 @@ def standardize_synoptic_raws_from_json(
     overwrite: bool = False,
     fb_var_info: dict = VARIABLE_CONVERSION,
     compression_lvl: int = 3,
+    source_sha256: str | None = None,
+    source_name: str | None = None,
+    time_origin_utc: bool = False,
 ):
     if not skip_stations:
         skip_stations = []
 
-    sha_source_file = calculate_sha256(json_path.resolve())
+    sha_source_file = source_sha256 or calculate_sha256(json_path.resolve())
     with open(json_path.resolve(), "r") as f:
         data = json.load(f)
 
@@ -48,7 +51,7 @@ def standardize_synoptic_raws_from_json(
         probes = h5file.create_group(TIME_SERIES)
 
     sensor_height_resources = load_sensor_height_resources()
-    source_reference = f"{json_path.name}#sha256={sha_source_file}"
+    source_reference = f"{source_name or json_path.name}#sha256={sha_source_file}"
     verification_date = datetime.now().astimezone().date().isoformat()
 
     # for statistics
@@ -124,13 +127,17 @@ def standardize_synoptic_raws_from_json(
                         fmt = "%Y%m%d%H%M%SZ" if t[:-1].isdigit() else "%Y-%m-%dT%H:%M:%SZ"
                         dt_temp = pytz.utc.localize(datetime.strptime(t, fmt)).astimezone(tz)
 
+                    elif "T" in t and ("+" in t[10:] or "-" in t[10:]):
+                        dt_temp = datetime.fromisoformat(t).astimezone(tz)
                     else:  # Assumes local timezone
                         fmt = "%Y%m%d%H%M%S" if t.isdigit() else "%Y-%m-%dT%H:%M:%S"
-                        dt_temp = tz.localize(datetime.strptime(t, fmt))
+                        dt_temp = tz.localize(datetime.strptime(t, fmt), is_dst=None)
 
                     dts.append(dt_temp)
 
                 dt0 = dts[0]
+                if time_origin_utc:
+                    dt0 = dt0.astimezone(pytz.utc)
                 first_time_iso = datetime_to_iso8601(dt0, True)
                 rel_minutes = [(dt - dt0).total_seconds() / 60.0 for dt in dts]
 
