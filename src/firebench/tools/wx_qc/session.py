@@ -14,7 +14,7 @@ from .state import resolve_restored_decisions
 
 # Matches firebench's user-local data convention (see get_local_db_path
 # in tools/local_db_management.py) rather than the installed package tree.
-SESSION_VERSION = 3
+SESSION_VERSION = 5
 AUTOSAVE_PATH = Path.home() / ".firebench" / "wx_qc_autosave.json"
 
 _SESSION_FIELDS = {
@@ -35,6 +35,32 @@ _SESSION_FIELDS = {
 _SESSION_FIELDS_V2 = _SESSION_FIELDS - {"qc_manifest_path", "qc_reviewer"}
 _SESSION_FIELDS_V1 = _SESSION_FIELDS_V2 - {"map_basemap"}
 _CONFIG_FIELDS = set(default_config())
+_V4_FROZEN_CONFIG_FIELDS = {
+    "frozen_min_duration_hours",
+    "frozen_adaptive_percentile",
+    "frozen_neighbor_count",
+    "frozen_neighbor_radius_km",
+    "frozen_required_neighbors",
+    "frozen_min_neighbor_coverage",
+    "frozen_neighbor_change_steps",
+    "frozen_calm_wind_threshold",
+}
+_V5_FROZEN_CONFIG_FIELDS = {
+    "frozen_review_adaptive_percentile",
+    "frozen_review_duration_multiplier",
+    "frozen_automatic_adaptive_percentile",
+    "frozen_automatic_duration_multiplier",
+    "frozen_automatic_required_neighbors",
+    "frozen_automatic_min_neighbor_coverage",
+    "frozen_minimum_reference_runs",
+    "frozen_triage",
+}
+_V4_CONFIG_FIELDS = _CONFIG_FIELDS - _V5_FROZEN_CONFIG_FIELDS
+_LEGACY_CONFIG_FIELDS = (_V4_CONFIG_FIELDS - _V4_FROZEN_CONFIG_FIELDS) | {
+    "frozen_min_run",
+    "frozen_exempt_calm_wind",
+    "frozen_exempt_rh",
+}
 _ASSERTION_KEYS = {key for key, _label in ASSERTION_CATS}
 
 
@@ -97,17 +123,35 @@ def _validate_removal_list(value):
 
 def _validate_config_scalars(config):
     """Validate scalar configuration fields."""
-    for key in ("frozen_min_run", "compare_n_neighbors"):
+    for key in (
+        "frozen_neighbor_count",
+        "frozen_required_neighbors",
+        "frozen_automatic_required_neighbors",
+        "frozen_minimum_reference_runs",
+        "compare_n_neighbors",
+    ):
         if isinstance(config[key], bool) or not isinstance(config[key], int):
             raise SessionValidationError(f"cfg.{key} must be an integer")
-    for key in ("max_var_outage_min", "full_outage_min"):
+    for key in (
+        "frozen_adaptive_percentile",
+        "frozen_review_adaptive_percentile",
+        "frozen_review_duration_multiplier",
+        "frozen_automatic_adaptive_percentile",
+        "frozen_automatic_duration_multiplier",
+        "frozen_neighbor_radius_km",
+        "frozen_min_neighbor_coverage",
+        "frozen_automatic_min_neighbor_coverage",
+        "frozen_neighbor_change_steps",
+        "frozen_calm_wind_threshold",
+        "max_var_outage_min",
+        "full_outage_min",
+    ):
         if isinstance(config[key], bool) or not isinstance(config[key], (int, float)):
             raise SessionValidationError(f"cfg.{key} must be a number")
     for key in (
-        "frozen_exempt_calm_wind",
-        "frozen_exempt_rh",
         "perim_show_all",
         "compare_include_skip_greenlit",
+        "frozen_triage",
     ):
         if not isinstance(config[key], bool):
             raise SessionValidationError(f"cfg.{key} must be true or false")
@@ -163,13 +207,31 @@ def _validate_bounds(config):
     config["bounds"] = normalized_bounds
 
 
-def _validate_config(value):
+def _validate_config(value, version=SESSION_VERSION):
     """Validate JSON field types and return the App-native configuration."""
     if not isinstance(value, dict):
         raise SessionValidationError("cfg must be an object")
-    _field_difference(set(value), _CONFIG_FIELDS, "cfg")
+    uses_legacy_config = version <= 3 and set(value) == _LEGACY_CONFIG_FIELDS
+    uses_v4_config = version <= 4 and set(value) == _V4_CONFIG_FIELDS
+    expected_fields = (
+        _LEGACY_CONFIG_FIELDS
+        if uses_legacy_config
+        else _V4_CONFIG_FIELDS if uses_v4_config else _CONFIG_FIELDS
+    )
+    _field_difference(set(value), expected_fields, "cfg")
 
     config = copy.deepcopy(value)
+    if uses_legacy_config:
+        config.pop("frozen_min_run")
+        config.pop("frozen_exempt_calm_wind")
+        config.pop("frozen_exempt_rh")
+        defaults = default_config()
+        for key in _V4_FROZEN_CONFIG_FIELDS:
+            config[key] = copy.deepcopy(defaults[key])
+    if uses_legacy_config or uses_v4_config:
+        defaults = default_config()
+        for key in _V5_FROZEN_CONFIG_FIELDS:
+            config[key] = copy.deepcopy(defaults[key])
     _validate_config_scalars(config)
     _validate_hidden_assertions(config)
     _validate_bounds(config)
@@ -193,9 +255,9 @@ def validate_session_state(value):
     version = value["version"]
     if isinstance(version, bool) or not isinstance(version, int):
         raise SessionValidationError("session version must be an integer")
-    if version not in (1, 2, SESSION_VERSION):
+    if version not in (1, 2, 3, 4, SESSION_VERSION):
         raise SessionValidationError(
-            f"unsupported session version {version}; expected version 1, 2, or {SESSION_VERSION}"
+            f"unsupported session version {version}; expected version 1 through {SESSION_VERSION}"
         )
     expected_fields = (
         _SESSION_FIELDS_V1 if version == 1 else _SESSION_FIELDS_V2 if version == 2 else _SESSION_FIELDS
@@ -253,7 +315,7 @@ def validate_session_state(value):
         "skip_list": skip_list,
         "green_list": green_list,
         "removal_list": _validate_removal_list(value["removal_list"]),
-        "cfg": _validate_config(value["cfg"]),
+        "cfg": _validate_config(value["cfg"], version),
         "current_stid": current_stid,
         "map_color": map_color,
         "map_basemap": map_basemap,

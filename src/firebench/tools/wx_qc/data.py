@@ -9,11 +9,11 @@ import hdf5plugin  # noqa: F401  # pylint: disable=unused-import
 from .constants import (
     DROPOUT_MIN_PTS,
     GAP_DT_RATIO,
-    FUEL_MOISTURE_FROZEN_MIN_RUN,
     OUTAGE_RUN_FACTOR,
     DEFAULT_MAX_VAR_OUTAGE_MIN,
     DEFAULT_FULL_OUTAGE_MIN,
 )
+from .frozen import analyze_frozen_stations, frozen_finding_message
 from .time_axis import TimeAxisError, parse_h5_time_axis
 
 
@@ -386,23 +386,25 @@ def _apply_severity_overrides(issues, cfg):
 
 
 def run_assertions(st, stats, cfg):
-    """Check station data for quality issues (timing, bounds, frozen runs).
+    """Check station data for single-station quality issues.
 
     Detects invalid/backwards/duplicate timestamps, sustained wind-direction
     dropout while wind speed is known and positive, excessive temporal gaps,
-    physical-bounds violations, and contiguous frozen sensor values. Does not
-    check outage duration; use run_outage_assertions after compute_outage_stats.
+    and physical-bounds violations. Network-aware frozen-sensor detection is
+    performed by :func:`apply_frozen_analysis`. Does not check outage duration;
+    use run_outage_assertions after compute_outage_stats.
 
     Args:
         st (dict): Station dict (from load_h5).
         stats (dict): Stats dict (from compute_stats).
-        cfg (dict): Config dict with keys: frozen_min_run (int, sample count),
-            bounds (dict[vname, (lo, hi, units)]), dup_max (int, optional).
+        cfg (dict): Config dict with bounds (dict[vname, (lo, hi, units)])
+            and dup_max (int, optional). Frozen settings are consumed by the
+            separate network-aware analysis.
 
     Returns:
         list: List of (severity, key, message) tuples. severity is "WARN" or
             "ERROR". key is short assertion-category string (e.g., "time_neg",
-            "dup_ts", "dropout", "gap_dt", "lo:air_temperature", "frozen:wind_speed").
+            "dup_ts", "dropout", "gap_dt", or "lo:air_temperature").
             message is human-readable description string.
     """
     issues = []
@@ -455,7 +457,6 @@ def run_assertions(st, stats, cfg):
                 )
             )
 
-    frz_min = cfg["frozen_min_run"]
     bounds = cfg["bounds"]
     avg_freq = ts.get("avg_freq_min")
     max_dt = ts.get("max_dt_min")
@@ -478,30 +479,35 @@ def run_assertions(st, stats, cfg):
                 issues.append(("ERROR", f"lo:{vname}", f"{vname} min={vs['min']:.2f} below {lo} {u}"))
             if vs["max"] > hi:
                 issues.append(("ERROR", f"hi:{vname}", f"{vname} max={vs['max']:.2f} above {hi} {u}"))
-        # Frozen-run detection varies by variable.
-        # wind_speed/wind_gust: skipped (calm at 0.0 is normal, not stuck).
-        # wind_direction: optionally exempted (frozen_exempt_calm_wind) since it
-        # naturally holds steady during calm periods, not a sensor fault.
-        # relative_humidity: optionally exempted (frozen_exempt_rh) since it can
-        # legitimately hold steady for long stretches.
-        # solar_radiation: allowed only at 0.0 (nighttime).
-        # fuel_moisture_content_10h: uses higher threshold (slow changes normal).
-        if vname in ("wind_speed", "wind_gust"):
-            pass
-        elif vname == "wind_direction" and cfg.get("frozen_exempt_calm_wind", False):
-            pass
-        elif vname == "relative_humidity" and cfg.get("frozen_exempt_rh", False):
-            pass
-        elif vname == "solar_radiation":
-            if vs["longest_frozen"] >= frz_min and vs.get("longest_frozen_val") != 0.0:
-                issues.append(("WARN", f"frozen:{vname}", f"{vname} frozen run={vs['longest_frozen']} pts"))
-        elif vname == "fuel_moisture_content_10h":
-            if vs["longest_frozen"] >= FUEL_MOISTURE_FROZEN_MIN_RUN:
-                issues.append(("WARN", f"frozen:{vname}", f"{vname} frozen run={vs['longest_frozen']} pts"))
-        elif vs["longest_frozen"] >= frz_min:
-            issues.append(("WARN", f"frozen:{vname}", f"{vname} frozen run={vs['longest_frozen']} pts"))
-
     return _apply_severity_overrides(issues, cfg)
+
+
+def apply_frozen_analysis(stations, all_stats, all_issues, cfg):
+    """Attach shared network-aware frozen findings and diagnostics in place."""
+    findings, resolutions = analyze_frozen_stations(stations, cfg)
+    for station_id, station_stats in all_stats.items():
+        for variable, variable_stats in station_stats.items():
+            if variable == "_time":
+                continue
+            resolution = resolutions["station"].get(station_id, {}).get(variable)
+            variable_stats["reporting_resolution"] = resolution
+            variable_stats["quantization_uncertainty"] = resolution / 2.0 if resolution else None
+            variable_stats["longest_suspected_frozen_hours"] = 0.0
+    for station_id, station_findings in findings.items():
+        for finding in station_findings:
+            variable = finding["variable"]
+            stats = all_stats[station_id][variable]
+            stats["longest_suspected_frozen_hours"] = max(
+                stats["longest_suspected_frozen_hours"], finding["duration_hours"]
+            )
+            prefix = (
+                "frozen:"
+                if finding.get("disposition") in ("review", "automatic")
+                else "frozen_unconfirmed:"
+            )
+            issue = ("WARN", f"{prefix}{variable}", frozen_finding_message(finding))
+            all_issues.setdefault(station_id, []).append(_apply_severity_overrides([issue], cfg)[0])
+    return findings, resolutions
 
 
 def run_outage_assertions(stats, cfg):

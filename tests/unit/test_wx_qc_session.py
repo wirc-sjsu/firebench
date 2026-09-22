@@ -218,6 +218,69 @@ def test_version_two_session_defaults_automated_qc_fields(tmp_path):
     assert validated["qc_reviewer"] == ""
 
 
+def test_version_three_legacy_frozen_settings_migrate_to_duration_defaults(tmp_path):
+    h5_path = tmp_path / "source.h5"
+    h5_path.touch()
+    legacy = SessionApp(h5_path)._session_state()
+    legacy["version"] = 3
+    for key in (
+        "frozen_min_duration_hours",
+        "frozen_adaptive_percentile",
+        "frozen_neighbor_count",
+        "frozen_neighbor_radius_km",
+        "frozen_required_neighbors",
+        "frozen_min_neighbor_coverage",
+        "frozen_neighbor_change_steps",
+        "frozen_calm_wind_threshold",
+        "frozen_review_adaptive_percentile",
+        "frozen_review_duration_multiplier",
+        "frozen_automatic_adaptive_percentile",
+        "frozen_automatic_duration_multiplier",
+        "frozen_automatic_required_neighbors",
+        "frozen_automatic_min_neighbor_coverage",
+        "frozen_minimum_reference_runs",
+        "frozen_triage",
+    ):
+        del legacy["cfg"][key]
+    legacy["cfg"].update(
+        {
+            "frozen_min_run": 10,
+            "frozen_exempt_calm_wind": False,
+            "frozen_exempt_rh": False,
+        }
+    )
+
+    validated = validate_session_state(legacy)
+
+    assert "frozen_min_run" not in validated["cfg"]
+    assert validated["cfg"]["frozen_min_duration_hours"]["fuel_moisture_content_10h"] == 24.0
+    assert validated["cfg"]["frozen_required_neighbors"] == 2
+
+
+def test_version_four_session_defaults_review_triage_settings(tmp_path):
+    h5_path = tmp_path / "source.h5"
+    h5_path.touch()
+    legacy = SessionApp(h5_path)._session_state()
+    legacy["version"] = 4
+    for key in (
+        "frozen_review_adaptive_percentile",
+        "frozen_review_duration_multiplier",
+        "frozen_automatic_adaptive_percentile",
+        "frozen_automatic_duration_multiplier",
+        "frozen_automatic_required_neighbors",
+        "frozen_automatic_min_neighbor_coverage",
+        "frozen_minimum_reference_runs",
+        "frozen_triage",
+    ):
+        del legacy["cfg"][key]
+
+    validated = validate_session_state(legacy)
+
+    assert validated["cfg"]["frozen_triage"] is True
+    assert validated["cfg"]["frozen_review_adaptive_percentile"] == 99.9
+    assert validated["cfg"]["frozen_automatic_required_neighbors"] == 3
+
+
 def test_invalid_session_does_not_change_application_state(tmp_path):
     h5_path = tmp_path / "source.h5"
     h5_path.touch()

@@ -907,8 +907,12 @@ def wx_qc_process(
     except (OSError, TypeError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(
-        f"Created {candidate} with {result['summary']['actions']} actions "
-        f"({result['summary']['pending']} pending review)."
+        f"Created {candidate} in {result['policy']['normalized'].get('mode', 'review')} mode "
+        f"with {result['summary']['actions']} actions "
+        f"({result['summary']['pending']} pending of "
+        f"{result['summary'].get('review_actions', result['summary']['actions'])} human-review actions, "
+        f"{result['summary']['pending_fraction']:.1%}; "
+        f"target <{result['summary']['target_pending_fraction']:.1%})."
     )
     click.echo(f"Manifest: {manifest}")
     click.echo(f"Log: {log_path}")

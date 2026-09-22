@@ -184,6 +184,48 @@ class DetailTabMixin:
         self.canvas_ts.mpl_connect("motion_notify_event", self._on_ts_motion)
         self.canvas_ts.mpl_connect("button_release_event", self._on_ts_release)
 
+        review = ttk.LabelFrame(f, text="Manifest review")
+        review.pack(fill="x", padx=4, pady=(2, 2))
+        self.lbl_detail_review = ttk.Label(review, text="No active review item", anchor="w")
+        self.lbl_detail_review.pack(side="top", fill="x", padx=4, pady=(2, 1))
+        review_controls = ttk.Frame(review)
+        review_controls.pack(fill="x", padx=4, pady=(1, 3))
+        self.btn_review_prev_range = ttk.Button(
+            review_controls, text="Previous range", command=self._review_previous_range, state="disabled"
+        )
+        self.btn_review_prev_range.pack(side="left")
+        self.lbl_review_range = ttk.Label(review_controls, text="--", width=9, anchor="center")
+        self.lbl_review_range.pack(side="left", padx=3)
+        self.btn_review_next_range = ttk.Button(
+            review_controls, text="Next range", command=self._review_next_range, state="disabled"
+        )
+        self.btn_review_next_range.pack(side="left")
+        ttk.Label(review_controls, text="Reviewer:").pack(side="left", padx=(12, 2))
+        ttk.Entry(review_controls, textvariable=self.var_qc_reviewer, width=18).pack(side="left")
+        ttk.Label(review_controls, text="Comment:").pack(side="left", padx=(8, 2))
+        ttk.Entry(review_controls, textvariable=self.var_qc_comment).pack(
+            side="left", fill="x", expand=True
+        )
+        self.btn_review_accept = ttk.Button(
+            review_controls, text="Accept", command=lambda: self._decide_active_review("accepted")
+        )
+        self.btn_review_accept.pack(side="left", padx=(8, 2))
+        self.btn_review_reject = ttk.Button(
+            review_controls, text="Reject", command=lambda: self._decide_active_review("rejected")
+        )
+        self.btn_review_reject.pack(side="left", padx=2)
+        self.btn_review_ack = ttk.Button(
+            review_controls,
+            text="Acknowledge",
+            command=lambda: self._decide_active_review("acknowledged"),
+        )
+        self.btn_review_ack.pack(side="left", padx=2)
+        self.btn_review_reset = ttk.Button(
+            review_controls, text="Reset", command=lambda: self._decide_active_review("reset")
+        )
+        self.btn_review_reset.pack(side="left", padx=2)
+        self._configure_review_controls()
+
         skip_row = tk.Frame(f)
         skip_row.pack(fill="x", padx=4, pady=(2, 4))
         tk.Label(skip_row, text="Reason:").pack(side="left")
@@ -213,13 +255,15 @@ class DetailTabMixin:
             "Cumulative Outage %",
             "Avg Freq (min)",
             "Longest Gap (hr)",
-            "Longest Frozen (pts)",
+            "Suspected Frozen (hr)",
+            "Resolution",
+            "Quantization ±",
             "Min",
             "Max",
             "Mean",
         )
         self.tv_vs = ttk.Treeview(f, columns=cols, show="headings", selectmode="browse")
-        widths = (170, 60, 145, 110, 120, 145, 80, 80, 80)
+        widths = (170, 60, 145, 110, 120, 150, 90, 100, 80, 80, 80)
         for c, w in zip(cols, widths):
             self.tv_vs.heading(c, text=c)
             self.tv_vs.column(c, width=w, anchor="center")
@@ -411,6 +455,205 @@ class DetailTabMixin:
         self.detail_panes.select_only(stid)
         self._refresh_detail_view()
 
+    def _open_review_item(self, item, queue=None, *, read_only=False, switch_to_detail=True):
+        """Open a manifest action or audit finding in the detailed time-series view."""
+        station_id = item.get("target", {}).get("station")
+        if station_id not in self.stations:
+            self._active_review_item = {"item": item, "read_only": bool(read_only)}
+            self._active_review_queue = list(queue or [])
+            self._active_review_range = 0
+            self._configure_review_controls()
+            if switch_to_detail:
+                messagebox.showinfo(
+                    "Station unavailable", "The selected station is not in the candidate HDF5."
+                )
+            return
+        self._active_review_item = {"item": item, "read_only": bool(read_only)}
+        self._active_review_queue = list(queue or [])
+        self._active_review_range = 0
+        if switch_to_detail:
+            self._navigate_to_station(station_id)
+        else:
+            self.detail_panes.select_only(station_id)
+            self._refresh_detail_view()
+        self.detail_nb.select(0)
+        variable = item.get("target", {}).get("variable")
+        predicate_variable = item.get("selector", {}).get("predicate", {}).get("variable")
+        variable = predicate_variable or variable
+        available = self.stations[station_id]["variables"]
+        if variable not in available:
+            variable = "wind_speed" if "wind_speed" in available else next(iter(sorted(available)), None)
+        if variable:
+            self.var_ts_var.set(variable)
+            self._plot_timeseries()
+        self._configure_review_controls()
+        self._render_active_review_overlay()
+
+    def _active_review_ranges(self):
+        active = getattr(self, "_active_review_item", None)
+        if not active:
+            return []
+        return active["item"].get("selector", {}).get("ranges", [])
+
+    def _configure_review_controls(self):
+        """Synchronize the detail review strip with the active manifest item."""
+        widgets = [
+            getattr(self, name, None)
+            for name in (
+                "btn_review_accept",
+                "btn_review_reject",
+                "btn_review_ack",
+                "btn_review_reset",
+            )
+        ]
+        active = getattr(self, "_active_review_item", None)
+        if not active:
+            for widget in widgets:
+                if widget is not None:
+                    widget.configure(state="disabled")
+            return
+        item = active["item"]
+        read_only = active["read_only"]
+        decision = item.get("decision", {}).get("status", "audit")
+        effect = item.get("effect", {}).get("kind")
+        queue = getattr(self, "_active_review_queue", [])
+        queue_text = ""
+        if item["id"] in queue:
+            queue_text = f" | queue {queue.index(item['id']) + 1}/{len(queue)}"
+        self.lbl_detail_review.configure(
+            text=(f"[{item['severity']}] {item['code']} | {decision} | " f"{item['message']}{queue_text}")
+        )
+        ranges = self._active_review_ranges()
+        range_index = min(getattr(self, "_active_review_range", 0), max(len(ranges) - 1, 0))
+        self._active_review_range = range_index
+        self.lbl_review_range.configure(text=f"{range_index + 1}/{len(ranges)}" if ranges else "--")
+        self.btn_review_prev_range.configure(
+            state="normal" if len(ranges) > 1 and range_index > 0 else "disabled"
+        )
+        self.btn_review_next_range.configure(
+            state="normal" if len(ranges) > 1 and range_index < len(ranges) - 1 else "disabled"
+        )
+        if read_only:
+            states = ("disabled", "disabled", "disabled", "disabled")
+        else:
+            states = (
+                "normal" if effect != "no_change" else "disabled",
+                "normal",
+                "normal" if effect == "no_change" else "disabled",
+                "normal" if decision != "pending" else "disabled",
+            )
+        for widget, state in zip(widgets, states):
+            if widget is not None:
+                widget.configure(state=state)
+
+    def _clear_review_overlay(self):
+        for name in ("_ts_review_artist", "_ts_review_span"):
+            artist = getattr(self, name, None)
+            if artist is not None:
+                try:
+                    artist.remove()
+                except (AttributeError, NotImplementedError, ValueError):
+                    # ax.clear() can detach an artist's removal callback before
+                    # this bookkeeping reference is reset.
+                    pass
+            setattr(self, name, None)
+
+    def _render_active_review_overlay(self):
+        """Highlight selector evidence and zoom to the active selector range."""
+        self._clear_review_overlay()
+        active = getattr(self, "_active_review_item", None)
+        if not active or self._ts_times is None or self._ts_data is None:
+            return
+        item = active["item"]
+        if item.get("target", {}).get("station") != self._current_stid:
+            return
+        selector = item.get("selector", {})
+        mask = np.ones(len(self._ts_times), dtype=bool)
+        constrained = False
+        ranges = selector.get("ranges", [])
+        if ranges:
+            selected_range = ranges[self._active_review_range]
+            try:
+                start = np.datetime64(selected_range["start"].removesuffix("Z"))
+                end = np.datetime64(selected_range["end"].removesuffix("Z"))
+            except (KeyError, ValueError):
+                start = end = None
+            if start is not None:
+                mask &= (self._ts_times >= start) & (self._ts_times <= end)
+                constrained = True
+                x0, x1 = mdates.date2num([start, end])
+                if x1 <= x0:
+                    spacing = float(np.median(np.diff(self._ts_xnum))) if len(self._ts_xnum) > 1 else 1 / 24
+                    x0, x1 = x0 - spacing / 2, x1 + spacing / 2
+                duration = x1 - x0
+                spacing = float(np.median(np.diff(self._ts_xnum))) if len(self._ts_xnum) > 1 else duration
+                padding = max(duration * 0.1, spacing)
+                self.ax_ts.set_xlim(x0 - padding, x1 + padding)
+                self._ts_review_span = self.ax_ts.axvspan(
+                    x0, x1, color=WARN_FG, alpha=0.16, linewidth=0, zorder=0.7
+                )
+        timestamps = selector.get("timestamps", [])
+        if timestamps:
+            selected = np.asarray([np.datetime64(value.removesuffix("Z")) for value in timestamps])
+            mask &= np.isin(self._ts_times, selected)
+            constrained = True
+        predicate = selector.get("predicate")
+        if predicate and predicate.get("variable") in self.stations[self._current_stid]["variables"]:
+            values = self.stations[self._current_stid]["variables"][predicate["variable"]]
+            if "equals" in predicate:
+                mask &= np.asarray(values) == predicate["equals"]
+                constrained = True
+        if constrained and mask.any():
+            y = np.asarray(self._ts_data, dtype=float)[mask].copy()
+            y[np.isnan(y)] = self.ax_ts.get_ylim()[1]
+            self._ts_review_artist = self.ax_ts.scatter(
+                self._ts_xnum[mask],
+                y,
+                s=34,
+                facecolors="none",
+                edgecolors=ERROR_FG,
+                linewidths=1.4,
+                zorder=6,
+            )
+        self._configure_review_controls()
+        self.canvas_ts.draw_idle()
+
+    def _review_previous_range(self):
+        if self._active_review_range > 0:
+            self._active_review_range -= 1
+            self._render_active_review_overlay()
+
+    def _review_next_range(self):
+        if self._active_review_range + 1 < len(self._active_review_ranges()):
+            self._active_review_range += 1
+            self._render_active_review_overlay()
+
+    def _decide_active_review(self, decision):
+        active = getattr(self, "_active_review_item", None)
+        if not active or active["read_only"]:
+            return
+        self._save_action_decisions([active["item"]["id"]], decision, advance=True)
+
+    def _advance_review_queue(self):
+        """Advance to the next unresolved item in the captured visible pending queue."""
+        active = getattr(self, "_active_review_item", None)
+        if not active or not getattr(self, "qc_manifest", None):
+            return
+        current_id = active["item"]["id"]
+        queue = self._active_review_queue
+        start = queue.index(current_id) + 1 if current_id in queue else 0
+        actions = {item["id"]: item for item in self.qc_manifest["actions"]}
+        ordered_ids = queue[start:] + queue[:start]
+        for action_id in ordered_ids:
+            action = actions.get(action_id)
+            if action is not None and action["decision"]["status"] == "pending":
+                self._open_review_item(action, queue)
+                return
+        self._active_review_item = None
+        self._clear_review_overlay()
+        self.lbl_detail_review.configure(text="Visible pending review queue complete")
+        self._configure_review_controls()
+
     def _detail_locate_on_map(self):
         """Switch to Map tab and select/highlight the currently-displayed station.
 
@@ -530,7 +773,15 @@ class DetailTabMixin:
             for vname in avail_vars:
                 vs = stats[vname]
                 tag = ""
-                if any(key in flagged_keys for key in (f"frozen:{vname}", f"lo:{vname}", f"hi:{vname}")):
+                if any(
+                    key in flagged_keys
+                    for key in (
+                        f"frozen:{vname}",
+                        f"frozen_unconfirmed:{vname}",
+                        f"lo:{vname}",
+                        f"hi:{vname}",
+                    )
+                ):
                     tag = "warn"
                 if any(k in flagged_keys for k in (f"lo:{vname}", f"hi:{vname}")):
                     err_sev = next(
@@ -551,7 +802,17 @@ class DetailTabMixin:
                         f"{vs['outage_pct']:.1f}%" if vs.get("outage_pct") is not None else "--",
                         f"{avg_freq:.0f}" if avg_freq else "--",
                         gap_hr,
-                        str(vs["longest_frozen"]),
+                        f"{vs.get('longest_suspected_frozen_hours', 0.0):.1f}",
+                        (
+                            f"{vs['reporting_resolution']:.6g}"
+                            if vs.get("reporting_resolution") is not None
+                            else "--"
+                        ),
+                        (
+                            f"{vs['quantization_uncertainty']:.6g}"
+                            if vs.get("quantization_uncertainty") is not None
+                            else "--"
+                        ),
                         f"{vs['min']:.3f}" if vs["min"] is not None else "--",
                         f"{vs['max']:.3f}" if vs["max"] is not None else "--",
                         f"{vs['mean']:.3f}" if vs["mean"] is not None else "--",
@@ -776,6 +1037,8 @@ class DetailTabMixin:
         self._ts_sel_artist = None
         self._ts_sel_annot = None
         self._ts_sel_idx = None
+        self._ts_review_artist = None
+        self._ts_review_span = None
         self._ts_times = self._ts_data = self._ts_xnum = None
         self._ts_wd = None
         self._ts_quiver = None
@@ -997,6 +1260,7 @@ class DetailTabMixin:
         self._draw_removal_overlays(ax, (vname,))
         self.canvas_ts.draw_idle()
         self._ts_zoom_apply()
+        self._render_active_review_overlay()
 
     _TS_WIND_ARROW_CAP = 400
     # Manual aggregation-dt picks: label -> bin width in days (matplotlib date units).
@@ -1082,6 +1346,8 @@ class DetailTabMixin:
         self._ts_sel_artist = None
         self._ts_sel_annot = None
         self._ts_sel_idx = None
+        self._ts_review_artist = None
+        self._ts_review_span = None
         self._ts_quiver = None
         self.frm_wind_dt.pack(side="right", padx=4)
         times = st["times"]
@@ -1139,6 +1405,7 @@ class DetailTabMixin:
         self._draw_wind_quiver()
         self.canvas_ts.draw_idle()
         self._ts_zoom_apply()
+        self._render_active_review_overlay()
 
     def _draw_wind_quiver(self):
         """Draw or redraw wind quiver for current x-axis view with adaptive binning.
@@ -1791,11 +2058,11 @@ class DetailTabMixin:
             return "Var outage"
         if key == "full_outage":
             return "Full outage"
-        for prefix in ("frozen:", "lo:", "hi:"):
+        for prefix in ("frozen:", "frozen_unconfirmed:", "lo:", "hi:"):
             if key.startswith(prefix):
                 vname = key[len(prefix) :]
                 short = DetailTabMixin._VAR_SHORT.get(vname, vname)
-                label = {"frozen": "frozen", "lo": "range", "hi": "range"}[prefix.rstrip(":")]
+                label = "frozen" if prefix in ("frozen:", "frozen_unconfirmed:") else "range"
                 return f"{short} {label}"
         return key
 

@@ -13,7 +13,8 @@ Create a versioned TOML policy. Required windows are optional, repeatable tables
 include a UTC offset.
 
 ```toml
-version = 1
+version = 5
+mode = "review"
 
 [output]
 authors = "Weather data maintainers"
@@ -22,14 +23,46 @@ compression_level = 3
 
 [thresholds]
 zero_wind_fraction = 0.5
+zero_wind_exclusion_fraction = 0.8
 zero_wind_run_minutes = 1440.0
+zero_wind_review_run_minutes = 10080.0
+zero_wind_neighbor_noncalm_fraction = 0.25
+zero_wind_required_neighbors = 2
 temporal_break_factor = 3.0
 
+[review]
+target_pending_fraction = 0.05
+required_finding_codes = ["dropout", "gap_dt", "max_var_outage", "full_outage"]
+
 [gui]
-frozen_min_run = 10
 max_var_outage_min = 1440.0
 full_outage_min = 360.0
 duplicate_timestamp_limit = 2
+
+[frozen]
+adaptive_percentile = 99.0
+review_adaptive_percentile = 99.9
+review_duration_multiplier = 2.0
+automatic_adaptive_percentile = 99.99
+automatic_duration_multiplier = 4.0
+neighbor_count = 4
+neighbor_radius_km = 100.0
+required_neighbors = 2
+automatic_required_neighbors = 3
+minimum_neighbor_coverage = 0.5
+automatic_minimum_neighbor_coverage = 0.75
+neighbor_change_steps = 3.0
+calm_wind_threshold = 1.5
+minimum_reference_runs = 100
+
+[frozen.minimum_duration_hours]
+air_temperature = 6.0
+relative_humidity = 6.0
+wind_speed = 3.0
+wind_gust = 3.0
+wind_direction = 3.0
+solar_radiation = 2.0
+fuel_moisture_content_10h = 24.0
 
 [bounds]
 air_temperature = [-50.0, 60.0, "C"]
@@ -45,6 +78,11 @@ name = "W1"
 start = "2021-08-17T20:20:00-07:00"
 end = "2021-09-10T23:34:00-07:00"
 ```
+
+Policy versions 1 through 4 remain readable with their historical behavior so older runs stay
+reproducible. Version 5 adds the explicit `review` and `conservative_auto` modes. `review` retains
+the version-4 risk-based review workflow. `conservative_auto` turns every unresolved review-level
+or audit-only doubt into a narrow automatic exclusion and therefore produces no pending actions.
 
 Run the processor with explicit destinations:
 
@@ -63,11 +101,42 @@ finite supported observations in a required window. These deterministic actions 
 `auto_accepted`; a reviewer may still override them. Conflicting duplicate timestamps and invalid
 or decreasing time axes are quarantined from the candidate and require a decision.
 
-Source `QC_FLAGGED` metadata, suspicious zero-wind periods, frozen ranges, gaps, dropouts, outages,
-and incomplete required-window coverage require human review. Zero wind is suspicious when at
-least half of known wind-speed values are zero or a gap-aware zero run lasts at least 24 hours by
-default. The proposed action replaces wind speed, gust, and direction with NaN over the affected
-range; rejecting it preserves the observations.
+In `conservative_auto` mode, station-wide, source, structural, time-axis, full-outage, incomplete-
+window, and severe zero-wind doubts exclude the complete station. Variable-specific outages,
+dropouts, ambiguous or audit-only frozen sensors, and elevated or audit-only zero wind exclude only
+the affected station-variable dataset. The processor reruns QC after each new exclusion until it
+reaches a fixed point. Use `review` mode when additional coverage is worth human inspection.
+
+Source `QC_FLAGGED` metadata and incomplete required-window coverage require human review. In policy
+version 4, gaps, wind-direction dropouts, longest-variable outages, and full-station outages also
+create required `no_change` acknowledgement actions by default. Remove a code from
+`review.required_finding_codes` only when that condition should remain a read-only audit finding.
+Plausible constant values and low-confidence frozen evidence remain audit-only.
+
+Zero-wind fractions and gap-aware runs of at least 24 hours are audit diagnostics. In policy version
+4, a station with at least 80% zero among its finite wind-speed observations always receives a
+pending whole-station exclusion action; no overlapping automatic zero-wind correction is applied.
+A station from 50% up to 80% zero also always requires review: seven-day ranges propose setting only
+wind speed to NaN, while fragmented or shorter zeros require a `no_change` acknowledgement. Below
+50%, a run becomes actionable only after seven days and retains the conservative version-3 triage:
+all-zero or sufficiently neighbor-corroborated runs may be automatic and ambiguous runs require
+review. Shorter calm periods preserve the reported zeros, and a wind-speed finding never removes
+gust or direction automatically.
+
+Frozen-sensor checks use elapsed time rather than sample count. FireBench estimates each sensor's
+reporting resolution from its finite values, falling back to the dataset-wide estimate for that
+variable, and reports half the inferred step as quantization uncertainty. This is not a claim about
+the sensor's calibration or total measurement accuracy. A plateau must exceed both its variable
+duration floor and a 99th-percentile diagnostic threshold. Review requires a complete plateau longer
+than both twice the variable floor and the station-specific 99.9th percentile; pooled variable
+durations are used until the sensor has 100 completed runs. At least two of the four nearest usable
+stations within 100 km must change by three reporting steps during the interval. Multiple ambiguous
+ranges are grouped into one action per station-variable.
+
+Automatic correction is deliberately harder: the range must exceed four times the duration floor
+and the 99.99th percentile, have known target resolution, have three changing neighbors with at least
+75% temporal coverage, and show activity in another variable at the target station. Other plateaus
+remain audit findings without a proposed data change.
 
 Every operation has a content-derived `WXQC-…` ID. The manifest separates the decision state from
 candidate/final application state and retains decision history, source and policy hashes, linked
@@ -81,14 +150,29 @@ Open the review directly with:
 firebench wx-qc review Caldor_weather_qc.json
 ```
 
-The **Actions** tab filters by status or severity, supports multi-selection decisions, navigates to
-the affected station, and can edit an action. Editing creates a new content-derived operation ID
-and marks the old operation superseded. A reviewer identity is mandatory for accept, reject,
-acknowledge, edit, and finalization events. Automatic actions need no confirmation, but remain
-overridable. Non-mutating findings require an explicit no-change acknowledgement. A decision
-comment is optional: type it in the inline comment field before choosing a decision. Accept,
-Reject, Acknowledge, and Reset do not open a comment dialog, and the field is cleared after the
-decision is saved.
+Opening a version 2, 3, 4, or 5 policy manifest also loads its normalized bounds and QC thresholds into the GUI, so
+the Assertions and Variable Stats tabs use the same frozen-sensor settings as the automatic run.
+
+The **Actions** tab filters by status or severity, supports multi-selection decisions, and includes
+unlinked audit-only findings as read-only rows. Double-click an action or finding to open Station
+Detail on its variable and time range. Matching samples are outlined and the plot is zoomed to the
+active range; use **Previous range** and **Next range** for grouped frozen or zero-wind issues.
+Selecting a different Actions row preloads that issue into the hidden Detail panel without changing
+tabs. Sorting, filtering, or refreshing Actions immediately recalculates the Detail review queue and
+its displayed position; double-click still controls when the interface switches to Detail.
+
+The detail review strip shares the reviewer and comment fields with Actions. It enables **Accept**
+and **Reject** for data-changing operations, **Acknowledge** and **Reject** for `no_change`
+operations, and **Reset** for completed decisions. After a decision, it advances to the next visible
+pending action using the Actions tab's current filter and sort order, wrapping once if the review
+started in the middle of the list. Audit rows show the same evidence but have no decision controls.
+
+Editing creates a new content-derived operation ID and marks the old operation superseded. A
+reviewer identity is mandatory for accept, reject, acknowledge, edit, and finalization events.
+Automatic actions need no confirmation, but remain overridable. The Actions tab reports the pending
+count against human-review actions only; automatic actions no longer dilute the review fraction.
+Exceeding the policy target is diagnostic and does not block processing. A decision comment is
+optional and is cleared after the decision is saved.
 
 ## Understand review decisions and data effects
 
@@ -131,9 +215,10 @@ Code | Default | Typical message | Effect when applied
 `EMPTY` | Automatic | `Excluded station with no finite supported observations` | Exclude the whole station.
 `WINDOW` | Automatic | `Excluded station with no finite supported observations in NAME` | Exclude the whole station when it has no usable supported variable in a required policy window.
 `SRCFLAG` | Review | `Synoptic source metadata marks this station QC_FLAGGED` | Accept to exclude the whole station; reject to retain it.
-`ZEROWIND` | Review | `Suspicious zero wind: N% of known speed samples are zero` | Accept to set wind speed, gust, and direction to NaN wherever the selector matches; reject to preserve the reported zeros.
-`FROZEN` | Review | `Replace frozen VARIABLE ranges with NaN: VARIABLE frozen run=N pts` | Accept to set the named variable to NaN in every listed range; reject to retain the plateau values.
-`ACK` | Review | `Acknowledge ... without changing data: ...` | Record that an incomplete window, gap, dropout, outage, or other non-mutating finding was reviewed. Use Acknowledge, not Accept, to express this intent.
+`ZEROWIND` | Automatic or review | `Exclude station: 80.0% ... is zero`, `Review N zero-wind range(s)`, or `Acknowledge elevated zero wind ...` | At 80% or more zero wind, propose excluding the station. From 50% to 80%, require review of a wind-speed-only range change or a non-mutating acknowledgement. Below 50%, only qualifying seven-day ranges are actionable.
+`FROZEN` | Automatic or review | `Replace N near-certain/ambiguous frozen VARIABLE range(s) with NaN` | Set grouped sensor ranges to NaN. The selector retains range-level duration, thresholds, resolution, quantization uncertainty, neighbor coverage, and same-station activity.
+`ACK` | Review | `Acknowledge ... without changing data: ...` | Record required review of non-mutating conditions. Version 4 defaults to acknowledgement actions for incomplete windows, gaps, dropouts, variable outages, and full-station outages; low-confidence plateaus remain audit-only.
+`SAFEEXCL` | Automatic in conservative mode | `Conservative-auto excluded ... for QC doubt` | Exclude the complete station for station-wide doubt or only the named station-variable dataset for variable-specific doubt. The selector lists every triggering finding and original action.
 `MANUAL` | Accepted when created | `Manually exclude station: ...`, `Manual range removal: ...`, or `Manually omit complete variable ...` | Apply a reviewer-authored station exclusion, set selected variable/range values to NaN, or omit one station variable.
 
 The same station can have several operations. An accepted `exclude_station` effect takes precedence
@@ -190,7 +275,8 @@ firebench wx-qc finalize Caldor_weather_qc.json \
 Finalization verifies the source SHA-256 and rebuilds from that immutable JSON rather than copying
 the candidate. Accepted station and variable exclusions dominate narrower range operations;
 shadowed actions remain visible in the audit record. The output records the run, source, policy,
-decision digest, stage, and final reviewer as HDF5 attributes.
+mode, decision digest, stage, and final reviewer as HDF5 attributes. Conservative-auto finalization
+also reruns QC and fails rather than publishing a file if a new unresolved doubt appears.
 
 ## Install and launch
 
@@ -321,11 +407,11 @@ Duplicate timestamps | Warning for 1–5 duplicates; error above 5.
 Wind-direction dropout | Warning for at least 3 contiguous missing wind-direction samples while wind speed is known and greater than zero.
 Large observation gap | Warning when the largest interval is more than 100 times the median interval.
 Physical bounds | Error when a named variable has a value strictly below its lower bound or above its upper bound.
-Frozen values | Warning at 10 contiguous equal samples by default. NaNs and qualifying time gaps break a run. Wind speed and gust are exempt; zero solar radiation is exempt; 10-hour fuel moisture uses a fixed 15-sample threshold.
+Frozen sensors | A plateau must exceed a variable-specific elapsed-time floor and, when enough reference runs exist, the dataset's 99th-percentile plateau duration. Two changing nearby stations confirm a warning; insufficient neighbors produce a low-confidence warning without a removal proposal; constant neighbors suppress it. NaNs and qualifying time gaps break a plateau. Calm wind and nighttime zero solar radiation are treated as plausible regimes.
 Variable outage | Warning when the longest continuous outage for any variable exceeds 1,440 minutes by default.
 Full-station outage | Warning when the longest continuous period in which all available variables are down exceeds 360 minutes by default.
 
-Run lengths are counts of samples, while outage settings are minutes. A qualifying temporal gap
+Frozen duration is measured in hours, while outage settings are minutes. A qualifying temporal gap
 is at least three times the station's median sampling interval. Leading and trailing gaps relative
 to the full dataset extent are considered as separate outage candidates. Raw NaN counts and
 percentages remain visible for inspection but are not assertion thresholds.
@@ -354,11 +440,13 @@ plots continue to show the original observations until an export applies the rem
 
 **Save Session** writes versioned UTF-8 JSON containing the HDF5 path, QC settings, station
 decisions, record removals, current station, map mode, road-map visibility, and Overview column
-visibility. Version 3 also records an optional automated-QC manifest reference and reviewer
-identity; versions 1 and 2 remain readable. It contains no station data or cached statistics. On restore, the complete JSON shape
-and field types are validated before application state changes, then the referenced HDF5 file is
-reloaded and all statistics are recomputed. If a restored file somehow marks a station both
-skipped and greenlit, the skip decision wins.
+visibility. Version 3 introduced the optional automated-QC manifest reference and reviewer identity;
+version 4 stores resolution-aware frozen-sensor settings, and version 5 stores review-triage settings.
+Versions 1 through 4 remain readable.
+The session contains no station data or cached statistics. On restore, the complete JSON shape and
+field types are validated before application state changes, then the referenced HDF5 file is reloaded
+and all statistics are recomputed. If a restored file somehow marks a station both skipped and
+greenlit, the skip decision wins.
 
 Closing a session with work present writes
 `~/.firebench/wx_qc_autosave.json`; the next launch offers to restore it. Legacy pickle sessions

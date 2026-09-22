@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import tempfile
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,13 @@ from ...tools import calculate_sha256
 from .constants import default_config
 from .data import compute_outage_stats, compute_stats, load_h5, run_assertions, run_outage_assertions
 from .file_io import atomic_write_text, temporary_sibling
+from .frozen import (
+    DEFAULT_FROZEN_DURATION_HOURS,
+    analyze_frozen_stations,
+    analyze_zero_wind_stations,
+    frozen_config_from_policy,
+    frozen_finding_message,
+)
 
 try:
     import tomllib
@@ -31,13 +39,16 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib
 
 
-MANIFEST_VERSION = 1
-POLICY_VERSION = 1
+MANIFEST_VERSION = 2
+SUPPORTED_MANIFEST_VERSIONS = {1, MANIFEST_VERSION}
+POLICY_VERSION = 5
+POLICY_MODES = {"review", "conservative_auto"}
 SUPPORTED_VARIABLES = {value["std_name"] for value in VARIABLE_CONVERSION.values()}
 RAW_TO_STANDARD = {key: value["std_name"] for key, value in VARIABLE_CONVERSION.items()}
 
 DEFAULT_POLICY = {
     "version": POLICY_VERSION,
+    "mode": "review",
     "output": {
         "authors": "FireBench weather QC pipeline",
         "description": "Weather observations standardized and quality controlled by FireBench.",
@@ -45,14 +56,38 @@ DEFAULT_POLICY = {
     },
     "thresholds": {
         "zero_wind_fraction": 0.5,
+        "zero_wind_exclusion_fraction": 0.8,
         "zero_wind_run_minutes": 1440.0,
+        "zero_wind_review_run_minutes": 10080.0,
+        "zero_wind_neighbor_noncalm_fraction": 0.25,
+        "zero_wind_required_neighbors": 2,
         "temporal_break_factor": 3.0,
     },
+    "review": {
+        "target_pending_fraction": 0.05,
+        "required_finding_codes": ["dropout", "gap_dt", "max_var_outage", "full_outage"],
+    },
     "gui": {
-        "frozen_min_run": 10,
         "max_var_outage_min": 1440.0,
         "full_outage_min": 360.0,
         "duplicate_timestamp_limit": 2,
+    },
+    "frozen": {
+        "minimum_duration_hours": dict(DEFAULT_FROZEN_DURATION_HOURS),
+        "adaptive_percentile": 99.0,
+        "review_adaptive_percentile": 99.9,
+        "review_duration_multiplier": 2.0,
+        "automatic_adaptive_percentile": 99.99,
+        "automatic_duration_multiplier": 4.0,
+        "neighbor_count": 4,
+        "neighbor_radius_km": 100.0,
+        "required_neighbors": 2,
+        "automatic_required_neighbors": 3,
+        "minimum_neighbor_coverage": 0.5,
+        "automatic_minimum_neighbor_coverage": 0.75,
+        "neighbor_change_steps": 3.0,
+        "calm_wind_threshold": 1.5,
+        "minimum_reference_runs": 100,
     },
     "bounds": {
         variable: [lower, upper, unit]
@@ -60,6 +95,40 @@ DEFAULT_POLICY = {
     },
     "required_windows": [],
 }
+
+V4_POLICY = copy.deepcopy(DEFAULT_POLICY)
+V4_POLICY["version"] = 4
+V4_POLICY.pop("mode")
+
+V3_POLICY = copy.deepcopy(V4_POLICY)
+V3_POLICY["version"] = 3
+V3_POLICY["thresholds"].pop("zero_wind_exclusion_fraction")
+V3_POLICY["review"].pop("required_finding_codes")
+
+V2_POLICY = copy.deepcopy(V3_POLICY)
+V2_POLICY["version"] = 2
+V2_POLICY.pop("review")
+for key in (
+    "zero_wind_review_run_minutes",
+    "zero_wind_neighbor_noncalm_fraction",
+    "zero_wind_required_neighbors",
+):
+    V2_POLICY["thresholds"].pop(key)
+for key in (
+    "review_adaptive_percentile",
+    "review_duration_multiplier",
+    "automatic_adaptive_percentile",
+    "automatic_duration_multiplier",
+    "automatic_required_neighbors",
+    "automatic_minimum_neighbor_coverage",
+    "minimum_reference_runs",
+):
+    V2_POLICY["frozen"].pop(key)
+
+LEGACY_POLICY = copy.deepcopy(V2_POLICY)
+LEGACY_POLICY["version"] = 1
+LEGACY_POLICY.pop("frozen")
+LEGACY_POLICY["gui"]["frozen_min_run"] = 10
 
 
 class QCError(ValueError):
@@ -99,8 +168,27 @@ def _operation_id(source_sha256: str, code: str, target: dict, selector: dict, e
     return f"WXQC-{code}-{_digest(identity)[:12].upper()}"
 
 
-def _finding_id(source_sha256: str, code: str, target: dict, message: str) -> str:
+def _legacy_finding_id(source_sha256: str, code: str, target: dict, message: str) -> str:
     return f"WXQF-{code}-{_digest([source_sha256, target, message])[:12].upper()}"
+
+
+def _finding_id(
+    source_sha256: str,
+    code: str,
+    target: dict,
+    message: str,
+    selector: dict | None = None,
+    evidence: dict | None = None,
+) -> str:
+    identity = {
+        "source_sha256": source_sha256,
+        "code": code,
+        "target": target,
+        "message": message,
+        "selector": selector or {},
+        "evidence": evidence or {},
+    }
+    return f"WXQF-{code}-{_digest(identity)[:12].upper()}"
 
 
 def _action(
@@ -136,20 +224,33 @@ def _action(
     }
 
 
-def _finding(source_sha256: str, code: str, severity: str, station: str, message: str) -> dict:
-    target = {"station": station}
+def _finding(
+    source_sha256: str,
+    code: str,
+    severity: str,
+    station: str,
+    message: str,
+    *,
+    variable: str | None = None,
+    selector: dict | None = None,
+    evidence: dict | None = None,
+) -> dict:
+    target = {"station": station, "variable": variable}
+    selector = selector or {}
+    evidence = evidence or {}
     return {
-        "id": _finding_id(source_sha256, code, target, message),
+        "id": _finding_id(source_sha256, code, target, message, selector, evidence),
         "code": code,
         "severity": severity,
         "target": target,
         "message": message,
+        "selector": selector,
+        "evidence": evidence,
     }
 
 
-def load_policy(path: str | Path | dict | None) -> dict:
+def load_policy(path: str | Path | dict | None) -> dict:  # pylint: disable=too-many-branches
     """Load and validate a versioned TOML QC policy."""
-    policy = copy.deepcopy(DEFAULT_POLICY)
     if isinstance(path, dict):
         supplied = copy.deepcopy(path)
     elif path is not None:
@@ -157,24 +258,167 @@ def load_policy(path: str | Path | dict | None) -> dict:
             supplied = tomllib.load(stream)
     else:
         supplied = {}
+    requested_version = supplied.get("version", POLICY_VERSION)
+    if requested_version not in (1, 2, 3, 4, POLICY_VERSION):
+        raise QCError(
+            f"unsupported QC policy version {requested_version!r}; "
+            f"expected version 1, 2, 3, 4, or {POLICY_VERSION}"
+        )
+    templates = {
+        1: LEGACY_POLICY,
+        2: V2_POLICY,
+        3: V3_POLICY,
+        4: V4_POLICY,
+        POLICY_VERSION: DEFAULT_POLICY,
+    }
+    policy = copy.deepcopy(templates[requested_version])
     if supplied:
         for section, value in supplied.items():
             if isinstance(value, dict) and isinstance(policy.get(section), dict):
                 policy[section].update(value)
             else:
                 policy[section] = value
-    if policy.get("version") != POLICY_VERSION:
-        raise QCError(f"unsupported QC policy version {policy.get('version')!r}; expected {POLICY_VERSION}")
+    if policy["version"] >= 5 and policy.get("mode") not in POLICY_MODES:
+        raise QCError("mode must be 'review' or 'conservative_auto'")
     output = policy["output"]
     level = output.get("compression_level")
     if isinstance(level, bool) or not isinstance(level, int) or not 1 <= level <= 22:
         raise QCError("output.compression_level must be an integer from 1 through 22")
-    for key in ("zero_wind_fraction", "zero_wind_run_minutes", "temporal_break_factor"):
-        value = policy["thresholds"].get(key)
+    threshold_keys = ["zero_wind_fraction", "zero_wind_run_minutes", "temporal_break_factor"]
+    if policy["version"] >= 3:
+        threshold_keys.extend(
+            (
+                "zero_wind_review_run_minutes",
+                "zero_wind_neighbor_noncalm_fraction",
+            )
+        )
+    for threshold_key in threshold_keys:
+        value = policy["thresholds"].get(threshold_key)
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-            raise QCError(f"thresholds.{key} must be a finite number")
+            raise QCError(f"thresholds.{threshold_key} must be a finite number")
     if not 0 <= policy["thresholds"]["zero_wind_fraction"] <= 1:
         raise QCError("thresholds.zero_wind_fraction must be between zero and one")
+    if policy["version"] >= 3:
+        thresholds = policy["thresholds"]
+        if not 0 <= thresholds["zero_wind_neighbor_noncalm_fraction"] <= 1:
+            raise QCError("thresholds.zero_wind_neighbor_noncalm_fraction must be between zero and one")
+        required = thresholds.get("zero_wind_required_neighbors")
+        if isinstance(required, bool) or not isinstance(required, int) or required <= 0:
+            raise QCError("thresholds.zero_wind_required_neighbors must be a positive integer")
+        if isinstance(policy.get("frozen"), dict) and required > policy["frozen"].get("neighbor_count", 0):
+            raise QCError("thresholds.zero_wind_required_neighbors must not exceed frozen.neighbor_count")
+        if policy["version"] >= 4:
+            exclusion = thresholds.get("zero_wind_exclusion_fraction")
+            if (
+                isinstance(exclusion, bool)
+                or not isinstance(exclusion, (int, float))
+                or not math.isfinite(exclusion)
+                or not thresholds["zero_wind_fraction"] <= exclusion <= 1
+            ):
+                raise QCError("zero_wind_exclusion_fraction must be from zero_wind_fraction through 1")
+            required_codes = policy.get("review", {}).get("required_finding_codes")
+            allowed_codes = {"dropout", "gap_dt", "max_var_outage", "full_outage"}
+            if (
+                not isinstance(required_codes, list)
+                or any(not isinstance(code, str) or code not in allowed_codes for code in required_codes)
+                or len(required_codes) != len(set(required_codes))
+            ):
+                raise QCError(
+                    "review.required_finding_codes must be a unique list of supported finding codes"
+                )
+        target = policy.get("review", {}).get("target_pending_fraction")
+        if (
+            isinstance(target, bool)
+            or not isinstance(target, (int, float))
+            or not math.isfinite(target)
+            or not 0 < target <= 1
+        ):
+            raise QCError("review.target_pending_fraction must be greater than zero and at most one")
+    if policy["version"] == 1:
+        minimum_run = policy["gui"].get("frozen_min_run")
+        if isinstance(minimum_run, bool) or not isinstance(minimum_run, int) or minimum_run <= 0:
+            raise QCError("gui.frozen_min_run must be a positive integer")
+    else:
+        frozen = policy.get("frozen")
+        if not isinstance(frozen, dict):
+            raise QCError("frozen must be a table")
+        durations = frozen.get("minimum_duration_hours")
+        if not isinstance(durations, dict) or set(durations) != set(DEFAULT_FROZEN_DURATION_HOURS):
+            raise QCError("frozen.minimum_duration_hours must name every supported weather variable")
+        numeric_keys = [
+            "adaptive_percentile",
+            "neighbor_radius_km",
+            "minimum_neighbor_coverage",
+            "neighbor_change_steps",
+            "calm_wind_threshold",
+        ]
+        if policy["version"] >= 3:
+            numeric_keys.extend(
+                (
+                    "review_adaptive_percentile",
+                    "review_duration_multiplier",
+                    "automatic_adaptive_percentile",
+                    "automatic_duration_multiplier",
+                    "automatic_minimum_neighbor_coverage",
+                )
+            )
+        for config_key in numeric_keys:
+            value = frozen.get(config_key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise QCError(f"frozen.{config_key} must be a finite number")
+        for variable, value in durations.items():
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+                raise QCError(f"frozen.minimum_duration_hours.{variable} must be greater than zero")
+        integer_keys = ["neighbor_count", "required_neighbors"]
+        if policy["version"] >= 3:
+            integer_keys.extend(("automatic_required_neighbors", "minimum_reference_runs"))
+        for config_key in integer_keys:
+            value = frozen.get(config_key)
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise QCError(f"frozen.{config_key} must be a positive integer")
+        if not 0 <= frozen["adaptive_percentile"] <= 100:
+            raise QCError("frozen.adaptive_percentile must be between zero and 100")
+        if not 0 <= frozen["minimum_neighbor_coverage"] <= 1:
+            raise QCError("frozen.minimum_neighbor_coverage must be between zero and one")
+        if frozen["required_neighbors"] > frozen["neighbor_count"]:
+            raise QCError("frozen.required_neighbors must not exceed frozen.neighbor_count")
+        if policy["version"] >= 3:
+            for config_key in ("review_adaptive_percentile", "automatic_adaptive_percentile"):
+                if not 0 <= frozen[config_key] <= 100:
+                    raise QCError(f"frozen.{config_key} must be between zero and 100")
+            if not 0 <= frozen["automatic_minimum_neighbor_coverage"] <= 1:
+                raise QCError("frozen.automatic_minimum_neighbor_coverage must be between zero and one")
+            if frozen["automatic_required_neighbors"] > frozen["neighbor_count"]:
+                raise QCError("frozen.automatic_required_neighbors must not exceed frozen.neighbor_count")
+            if frozen["automatic_required_neighbors"] < frozen["required_neighbors"]:
+                raise QCError(
+                    "frozen.automatic_required_neighbors must not be less than required_neighbors"
+                )
+            if frozen["automatic_minimum_neighbor_coverage"] < frozen["minimum_neighbor_coverage"]:
+                raise QCError(
+                    "frozen.automatic_minimum_neighbor_coverage must not be less than "
+                    "minimum_neighbor_coverage"
+                )
+            for config_key in ("review_duration_multiplier", "automatic_duration_multiplier"):
+                if frozen[config_key] <= 0:
+                    raise QCError(f"frozen.{config_key} must be greater than zero")
+            if frozen["automatic_duration_multiplier"] < frozen["review_duration_multiplier"]:
+                raise QCError(
+                    "frozen.automatic_duration_multiplier must not be less than "
+                    "review_duration_multiplier"
+                )
+            if frozen["automatic_adaptive_percentile"] < frozen["review_adaptive_percentile"]:
+                raise QCError(
+                    "frozen.automatic_adaptive_percentile must not be less than "
+                    "review_adaptive_percentile"
+                )
+            if policy["thresholds"]["zero_wind_review_run_minutes"] <= 0:
+                raise QCError("thresholds.zero_wind_review_run_minutes must be greater than zero")
+            if (
+                policy["thresholds"]["zero_wind_review_run_minutes"]
+                < policy["thresholds"]["zero_wind_run_minutes"]
+            ):
+                raise QCError("zero_wind_review_run_minutes cannot be below zero_wind_run_minutes")
     normalized_bounds = {}
     for variable, bounds in policy.get("bounds", {}).items():
         if not isinstance(bounds, list) or len(bounds) != 3:
@@ -494,6 +738,7 @@ def _write_base_h5(
             output.attrs["wx_qc_run_id"] = run_id
             output.attrs["wx_qc_source_sha256"] = source_sha256
             output.attrs["wx_qc_policy_sha256"] = _digest(policy)
+            output.attrs["wx_qc_mode"] = policy.get("mode", "review")
             output.attrs["wx_qc_stage"] = stage
         finally:
             output.close()
@@ -751,6 +996,147 @@ def _source_flag_actions(data: dict, source_sha256: str) -> tuple[list[dict], li
 
 
 def _zero_wind_actions(path: Path, source_sha256: str, policy: dict) -> tuple[list[dict], list[dict]]:
+    if policy["version"] >= 3:
+        thresholds = policy["thresholds"]
+        frozen = policy["frozen"]
+        cfg = {
+            "zero_wind_fraction": thresholds["zero_wind_fraction"],
+            "zero_wind_diagnostic_duration_hours": thresholds["zero_wind_run_minutes"] / 60.0,
+            "zero_wind_review_duration_hours": thresholds["zero_wind_review_run_minutes"] / 60.0,
+            "zero_wind_temporal_break_factor": thresholds["temporal_break_factor"],
+            "zero_wind_neighbor_count": frozen["neighbor_count"],
+            "zero_wind_neighbor_radius_km": frozen["neighbor_radius_km"],
+            "zero_wind_min_neighbor_coverage": frozen["automatic_minimum_neighbor_coverage"],
+            "zero_wind_neighbor_noncalm_fraction": thresholds["zero_wind_neighbor_noncalm_fraction"],
+            "zero_wind_required_neighbors": thresholds["zero_wind_required_neighbors"],
+            "zero_wind_calm_threshold": frozen["calm_wind_threshold"],
+        }
+        actions, findings = [], []
+        for station_id, evidence in analyze_zero_wind_stations(load_h5(path), cfg).items():
+            counts = {
+                disposition: sum(item["disposition"] == disposition for item in evidence["ranges"])
+                for disposition in ("automatic", "review", "audit")
+            }
+            message = (
+                f"Zero-wind diagnostic: {evidence['zero_fraction']:.1%} of known speed samples; "
+                f"runs automatic={counts['automatic']}, review={counts['review']}, "
+                f"audit-only={counts['audit']}"
+            )
+            finding_ranges = [
+                {
+                    key: item[key]
+                    for key in ("start", "end", "duration_hours", "records", "neighbors", "disposition")
+                }
+                for item in evidence["ranges"]
+            ]
+            finding_selector = {
+                "predicate": {"variable": "wind_speed", "equals": 0.0},
+                "ranges": finding_ranges,
+            }
+            finding_evidence = {
+                "zero_fraction": evidence["zero_fraction"],
+                "all_observations_zero": evidence["all_observations_zero"],
+            }
+            finding = _finding(
+                source_sha256,
+                "ZEROWIND",
+                "WARN",
+                station_id,
+                message,
+                variable="wind_speed",
+                selector=finding_selector,
+                evidence=finding_evidence,
+            )
+            findings.append(finding)
+            if (
+                policy["version"] >= 4
+                and evidence["zero_fraction"] >= thresholds["zero_wind_exclusion_fraction"]
+            ):
+                actions.append(
+                    _action(
+                        source_sha256,
+                        "ZEROWIND",
+                        "WARN",
+                        station_id,
+                        "wind_speed",
+                        {**finding_selector, "evidence": finding_evidence},
+                        {"kind": "exclude_station"},
+                        f"Exclude station: {evidence['zero_fraction']:.1%} of known wind speed is zero",
+                        automatic=False,
+                        linked_findings=[finding["id"]],
+                    )
+                )
+                continue
+            if policy["version"] >= 4 and evidence["zero_fraction"] >= thresholds["zero_wind_fraction"]:
+                actionable_ranges = [
+                    {key: item[key] for key in ("start", "end", "duration_hours", "records", "neighbors")}
+                    for item in evidence["ranges"]
+                    if item["disposition"] in ("automatic", "review")
+                ]
+                selector = {
+                    "predicate": {"variable": "wind_speed", "equals": 0.0},
+                    "ranges": actionable_ranges,
+                    "evidence": finding_evidence,
+                }
+                if actionable_ranges:
+                    effect = {"kind": "set_nan_ranges", "variables": ["wind_speed"]}
+                    action_message = (
+                        f"Review {len(actionable_ranges)} zero-wind range(s); "
+                        f"overall zero fraction is {evidence['zero_fraction']:.1%}"
+                    )
+                else:
+                    effect = {"kind": "no_change"}
+                    action_message = (
+                        f"Acknowledge elevated zero wind without changing data: "
+                        f"{evidence['zero_fraction']:.1%} of known samples"
+                    )
+                actions.append(
+                    _action(
+                        source_sha256,
+                        "ZEROWIND",
+                        "WARN",
+                        station_id,
+                        "wind_speed",
+                        selector,
+                        effect,
+                        action_message,
+                        automatic=False,
+                        linked_findings=[finding["id"]],
+                    )
+                )
+                continue
+            for disposition, automatic in (("automatic", True), ("review", False)):
+                ranges = [
+                    {key: item[key] for key in ("start", "end", "duration_hours", "records", "neighbors")}
+                    for item in evidence["ranges"]
+                    if item["disposition"] == disposition
+                ]
+                if not ranges:
+                    continue
+                qualifier = "near-certain" if automatic else "ambiguous"
+                actions.append(
+                    _action(
+                        source_sha256,
+                        "ZEROWIND",
+                        "WARN",
+                        station_id,
+                        "wind_speed",
+                        {
+                            "ranges": ranges,
+                            "evidence": {
+                                "classification": qualifier,
+                                "zero_fraction": evidence["zero_fraction"],
+                                "all_observations_zero": evidence["all_observations_zero"],
+                            },
+                        },
+                        {"kind": "set_nan_ranges", "variables": ["wind_speed"]},
+                        f"Replace {len(ranges)} {qualifier} zero-wind range(s) with NaN",
+                        automatic=automatic,
+                        linked_findings=[finding["id"]],
+                    )
+                )
+        return actions, findings
+
     actions, findings = [], []
     thresholds = policy["thresholds"]
     with h5py.File(path, "r") as source:
@@ -832,15 +1218,97 @@ def _frozen_ranges(values: np.ndarray, times: np.ndarray, minimum_run: int) -> l
     return ranges
 
 
-def _h5_qc_findings(path: Path, source_sha256: str, policy: dict) -> tuple[list[dict], list[dict]]:
+def _issue_context(  # pylint: disable=too-many-branches
+    station: dict, stats: dict, code: str
+) -> tuple[str | None, dict]:
+    """Return the most useful plot variable and temporal selector for an assertion."""
+    times = np.asarray(station["times"])
+    if times.size == 0 or not np.issubdtype(times.dtype, np.datetime64):
+        return None, {}
+    if code == "gap_dt" and len(times) > 1:
+        deltas = np.diff(times) / np.timedelta64(1, "m")
+        if len(deltas):
+            index = int(np.nanargmax(deltas))
+            return "time", {"ranges": [{"start": _iso_at(times, index), "end": _iso_at(times, index + 1)}]}
+    if code == "dropout" and {"wind_speed", "wind_direction"} <= set(station["variables"]):
+        speed = np.asarray(station["variables"]["wind_speed"], dtype=float)
+        direction = np.asarray(station["variables"]["wind_direction"], dtype=float)
+        mask = np.isnan(direction) & np.isfinite(speed) & (speed > 0)
+        ranges = []
+        start = None
+        for index in range(len(mask) + 1):
+            selected = index < len(mask) and mask[index]
+            if selected and start is None:
+                start = index
+            elif not selected and start is not None:
+                if index - start >= 3:
+                    ranges.append({"start": _iso_at(times, start), "end": _iso_at(times, index - 1)})
+                start = None
+        return "wind_direction", {"ranges": ranges}
+    if code == "max_var_outage":
+        candidates = [
+            (values.get("longest_outage_min") or 0.0, variable)
+            for variable, values in stats.items()
+            if variable != "_time"
+        ]
+        variable = max(candidates)[1] if candidates else None
+        selector = {"scope": "longest_variable_outage"}
+        if variable is not None:
+            outage_range = _longest_true_range(times, np.isnan(station["variables"][variable]))
+            if outage_range:
+                selector["ranges"] = [outage_range]
+        return variable, selector
+    if code == "full_outage" and station["variables"]:
+        variables = sorted(station["variables"])
+        all_down = np.ones(len(times), dtype=bool)
+        for values in station["variables"].values():
+            all_down &= np.isnan(np.asarray(values, dtype=float))
+        selector = {"scope": "longest_full_station_outage"}
+        outage_range = _longest_true_range(times, all_down)
+        if outage_range:
+            selector["ranges"] = [outage_range]
+        return variables[0], selector
+    return None, {}
+
+
+def _longest_true_range(times: np.ndarray, mask: np.ndarray) -> dict | None:
+    """Return the longest elapsed range whose endpoint samples satisfy a mask."""
+    best_duration = -1.0
+    best_indexes = None
+    start = None
+    for index in range(len(mask) + 1):
+        selected = index < len(mask) and bool(mask[index])
+        if selected and start is None:
+            start = index
+        elif not selected and start is not None:
+            end = index - 1
+            duration = float((times[end] - times[start]) / np.timedelta64(1, "m"))
+            if end > start and duration > best_duration:
+                best_duration = duration
+                best_indexes = (start, end)
+            start = None
+    if best_indexes is None:
+        return None
+    start, end = best_indexes
+    return {
+        "start": _iso_at(times, start),
+        "end": _iso_at(times, end),
+        "duration_minutes": best_duration,
+    }
+
+
+def _h5_qc_findings(  # pylint: disable=too-many-branches
+    path: Path, source_sha256: str, policy: dict
+) -> tuple[list[dict], list[dict]]:
     stations = load_h5(path)
     findings, actions = [], []
     cfg = default_config()
     gui_policy = policy.get("gui", {})
-    cfg["frozen_min_run"] = int(gui_policy.get("frozen_min_run", cfg["frozen_min_run"]))
     cfg["max_var_outage_min"] = float(gui_policy.get("max_var_outage_min", cfg["max_var_outage_min"]))
     cfg["full_outage_min"] = float(gui_policy.get("full_outage_min", cfg["full_outage_min"]))
     cfg["dup_max"] = int(gui_policy.get("duplicate_timestamp_limit", cfg["dup_max"]))
+    if policy["version"] >= 2:
+        cfg.update(frozen_config_from_policy(policy))
     valid_times = [st["times"] for st in stations.values() if len(st["times"])]
     global_start = min(values[0] for values in valid_times) if valid_times else None
     global_end = max(values[-1] for values in valid_times) if valid_times else None
@@ -853,19 +1321,65 @@ def _h5_qc_findings(path: Path, source_sha256: str, policy: dict) -> tuple[list[
             compute_outage_stats(station, stats, leading, trailing, duration)
         issues = run_assertions(station, stats, cfg) + run_outage_assertions(stats, cfg)
         for severity, code, message in issues:
-            finding = _finding(source_sha256, code.replace(":", "_"), severity, station_id, message)
-            findings.append(finding)
-            if code.startswith("frozen:"):
+            variable, selector = _issue_context(station, stats, code)
+            if ":" in code:
                 variable = code.split(":", 1)[1]
-                minimum_run = 15 if variable == "fuel_moisture_content_10h" else cfg["frozen_min_run"]
-                ranges = _frozen_ranges(station["variables"][variable], station["times"], minimum_run)
+            finding = _finding(
+                source_sha256,
+                code.replace(":", "_"),
+                severity,
+                station_id,
+                message,
+                variable=variable,
+                selector=selector,
+            )
+            findings.append(finding)
+            nonmutating_codes = {
+                "dropout",
+                "gap_dt",
+                "max_var_outage",
+                "full_outage",
+            }
+            required_codes = set(policy.get("review", {}).get("required_finding_codes", []))
+            if policy["version"] >= 3 and code in nonmutating_codes and code not in required_codes:
+                continue
+            actions.append(
+                _action(
+                    source_sha256,
+                    "ACK",
+                    severity,
+                    station_id,
+                    variable,
+                    {"finding": finding["id"], **selector},
+                    {"kind": "no_change"},
+                    f"Acknowledge without changing data: {message}",
+                    automatic=False,
+                    linked_findings=[finding["id"]],
+                )
+            )
+    if policy["version"] == 1:
+        minimum_run = int(policy["gui"]["frozen_min_run"])
+        for station_id, station in stations.items():
+            stats = compute_stats(station)
+            for variable, variable_stats in stats.items():
+                if variable == "_time" or variable in ("wind_speed", "wind_gust"):
+                    continue
+                threshold = 15 if variable == "fuel_moisture_content_10h" else minimum_run
+                if variable_stats["longest_frozen"] < threshold:
+                    continue
+                if variable == "solar_radiation" and variable_stats["longest_frozen_val"] == 0.0:
+                    continue
+                ranges = _frozen_ranges(station["variables"][variable], station["times"], threshold)
                 if variable == "solar_radiation":
                     ranges = [item for item in ranges if item["value"] != 0.0]
+                message = f"{variable} frozen run={variable_stats['longest_frozen']} pts"
+                finding = _finding(source_sha256, f"frozen_{variable}", "WARN", station_id, message)
+                findings.append(finding)
                 actions.append(
                     _action(
                         source_sha256,
                         "FROZEN",
-                        severity,
+                        "WARN",
                         station_id,
                         variable,
                         {"ranges": ranges},
@@ -875,21 +1389,160 @@ def _h5_qc_findings(path: Path, source_sha256: str, policy: dict) -> tuple[list[
                         linked_findings=[finding["id"]],
                     )
                 )
-                continue
+        return actions, findings
+
+    frozen_findings, _resolutions = analyze_frozen_stations(stations, cfg)
+    if policy["version"] >= 3:
+        grouped = defaultdict(list)
+        for station_id, station_findings in frozen_findings.items():
+            for evidence in station_findings:
+                variable = evidence["variable"]
+                message = frozen_finding_message(evidence)
+                finding = _finding(
+                    source_sha256,
+                    f"frozen_{variable}",
+                    "WARN",
+                    station_id,
+                    message,
+                    variable=variable,
+                    selector={
+                        "ranges": [
+                            {key: evidence[key] for key in ("start", "end", "duration_hours", "records")}
+                        ]
+                    },
+                    evidence={
+                        key: evidence[key]
+                        for key in (
+                            "confidence",
+                            "resolution",
+                            "quantization_uncertainty",
+                            "threshold_hours",
+                            "review_threshold_hours",
+                            "automatic_threshold_hours",
+                            "neighbors",
+                            "same_station_activity",
+                            "disposition",
+                        )
+                    },
+                )
+                findings.append(finding)
+                if evidence["disposition"] != "audit":
+                    grouped[(station_id, variable, evidence["disposition"])].append((evidence, finding))
+        for (station_id, variable, disposition), entries in grouped.items():
+            ranges = []
+            linked_findings = []
+            for evidence, finding in entries:
+                ranges.append(
+                    {
+                        **{
+                            key: evidence[key]
+                            for key in ("start", "end", "value", "records", "duration_hours")
+                        },
+                        "evidence": {
+                            key: evidence[key]
+                            for key in (
+                                "confidence",
+                                "resolution",
+                                "quantization_uncertainty",
+                                "threshold_hours",
+                                "review_threshold_hours",
+                                "automatic_threshold_hours",
+                                "neighbors",
+                                "same_station_activity",
+                            )
+                        },
+                    }
+                )
+                linked_findings.append(finding["id"])
+            automatic = disposition == "automatic"
+            qualifier = "near-certain" if automatic else "ambiguous"
             actions.append(
                 _action(
                     source_sha256,
-                    "ACK",
-                    severity,
+                    "FROZEN",
+                    "WARN",
                     station_id,
-                    code.split(":", 1)[1] if ":" in code else None,
-                    {"finding": finding["id"]},
-                    {"kind": "no_change"},
-                    f"Acknowledge without changing data: {message}",
-                    automatic=False,
-                    linked_findings=[finding["id"]],
+                    variable,
+                    {
+                        "ranges": ranges,
+                        "evidence": {"classification": qualifier, "range_count": len(ranges)},
+                    },
+                    {"kind": "set_nan_ranges", "variables": [variable]},
+                    f"Replace {len(ranges)} {qualifier} frozen {variable} range(s) with NaN",
+                    automatic=automatic,
+                    linked_findings=linked_findings,
                 )
             )
+        return actions, findings
+
+    for station_id, station_findings in frozen_findings.items():
+        for evidence in station_findings:
+            variable = evidence["variable"]
+            message = frozen_finding_message(evidence)
+            finding = _finding(
+                source_sha256,
+                f"frozen_{variable}",
+                "WARN",
+                station_id,
+                message,
+                variable=variable,
+                selector={
+                    "ranges": [
+                        {key: evidence[key] for key in ("start", "end", "duration_hours", "records")}
+                    ]
+                },
+                evidence={key: evidence[key] for key in ("confidence", "neighbors", "disposition")},
+            )
+            findings.append(finding)
+            if evidence["confidence"] == "high":
+                selector = {
+                    "ranges": [
+                        {
+                            key: evidence[key]
+                            for key in ("start", "end", "value", "records", "duration_hours")
+                        }
+                    ],
+                    "evidence": {
+                        key: evidence[key]
+                        for key in (
+                            "confidence",
+                            "resolution",
+                            "quantization_uncertainty",
+                            "threshold_hours",
+                            "neighbors",
+                        )
+                    },
+                }
+                actions.append(
+                    _action(
+                        source_sha256,
+                        "FROZEN",
+                        "WARN",
+                        station_id,
+                        variable,
+                        selector,
+                        {"kind": "set_nan_ranges", "variables": [variable]},
+                        f"Replace context-confirmed frozen {variable} range with NaN: {message}",
+                        automatic=False,
+                        linked_findings=[finding["id"]],
+                    )
+                )
+            else:
+                actions.append(
+                    _action(
+                        source_sha256,
+                        "ACK",
+                        "WARN",
+                        station_id,
+                        variable,
+                        {"finding": finding["id"], "evidence": evidence},
+                        {"kind": "no_change"},
+                        "Acknowledge low-confidence frozen-sensor finding without changing data: "
+                        f"{message}",
+                        automatic=False,
+                        linked_findings=[finding["id"]],
+                    )
+                )
     return actions, findings
 
 
@@ -913,6 +1566,181 @@ def _validate_destinations(paths: list[Path], overwrite: bool) -> None:
     existing = [path for path in paths if path.exists()]
     if existing and not overwrite:
         raise FileExistsError(f"output already exists: {existing[0]} (use --overwrite to replace it)")
+
+
+def _conservative_exclusion_actions(
+    source_sha256: str, actions: list[dict], findings: list[dict]
+) -> list[dict]:
+    """Group every unresolved doubt into a narrow automatic exclusion."""
+    automatic_links = {
+        finding_id
+        for action in actions
+        if action.get("automatic") and action.get("code") != "SAFEEXCL"
+        for finding_id in action.get("linked_findings", [])
+    }
+    review_actions = [action for action in actions if not action.get("automatic")]
+    review_links = {
+        finding_id for action in review_actions for finding_id in action.get("linked_findings", [])
+    }
+    forced_station = {
+        finding_id
+        for action in review_actions
+        if action.get("effect", {}).get("kind") == "exclude_station"
+        for finding_id in action.get("linked_findings", [])
+    }
+    station_codes = {
+        "COVER",
+        "DUPC",
+        "SRCFLAG",
+        "STRUCT",
+        "TIME",
+        "TIMEORDER",
+        "full_outage",
+        "gap_dt",
+        "no_data",
+    }
+    groups: dict[tuple[str, str, str | None], dict[str, Any]] = {}
+
+    def add_reason(
+        station: str | None,
+        variable: str | None,
+        code: str,
+        severity: str,
+        finding_id: str | None = None,
+        action_id: str | None = None,
+        force_station: bool = False,
+    ) -> None:
+        if not station:
+            return
+        station_scope = force_station or code in station_codes or variable not in SUPPORTED_VARIABLES
+        group_key = ("station", station, None) if station_scope else ("variable", station, variable)
+        group = groups.setdefault(
+            group_key,
+            {"finding_ids": set(), "source_action_ids": set(), "codes": set(), "severities": set()},
+        )
+        if finding_id:
+            group["finding_ids"].add(finding_id)
+        if action_id:
+            group["source_action_ids"].add(action_id)
+        group["codes"].add(code)
+        group["severities"].add(severity)
+
+    for finding in findings:
+        finding_id = finding["id"]
+        if finding_id in automatic_links and finding_id not in review_links:
+            continue
+        target = finding.get("target", {})
+        add_reason(
+            target.get("station"),
+            target.get("variable"),
+            finding["code"],
+            finding["severity"],
+            finding_id=finding_id,
+            force_station=finding_id in forced_station,
+        )
+    linked_finding_ids = {finding["id"] for finding in findings}
+    for action in review_actions:
+        if any(item in linked_finding_ids for item in action.get("linked_findings", [])):
+            continue
+        target = action.get("target", {})
+        add_reason(
+            target.get("station"),
+            target.get("variable"),
+            action["code"],
+            action["severity"],
+            action_id=action["id"],
+            force_station=action.get("effect", {}).get("kind") == "exclude_station",
+        )
+
+    exclusions = []
+    for (scope, station, variable), reasons in sorted(groups.items()):
+        finding_ids = sorted(reasons["finding_ids"])
+        source_action_ids = sorted(reasons["source_action_ids"])
+        codes = sorted(reasons["codes"])
+        selector = {
+            "scope": "conservative_auto",
+            "finding_ids": finding_ids,
+            "source_action_ids": source_action_ids,
+            "reason_codes": codes,
+        }
+        if scope == "station":
+            effect = {"kind": "exclude_station"}
+            message = f"Conservative-auto excluded station for QC doubt: {', '.join(codes)}"
+        else:
+            effect = {"kind": "exclude_variable", "variables": [variable]}
+            message = f"Conservative-auto excluded {variable} for QC doubt: {', '.join(codes)}"
+        exclusions.append(
+            _action(
+                source_sha256,
+                "SAFEEXCL",
+                "ERROR" if "ERROR" in reasons["severities"] else "WARN",
+                station,
+                variable,
+                selector,
+                effect,
+                message,
+                automatic=True,
+                linked_findings=finding_ids,
+            )
+        )
+    return exclusions
+
+
+def _conservative_fixed_point(
+    path: Path,
+    source_sha256: str,
+    policy: dict,
+    actions: list[dict],
+    findings: list[dict],
+) -> tuple[list[dict], list[dict]]:
+    """Apply conservative exclusions until another QC pass adds no exclusion target."""
+    base_actions = [item for item in actions if item.get("automatic")]
+    review_actions = [item for item in actions if not item.get("automatic")]
+    actions_by_id = {item["id"]: item for item in base_actions + review_actions}
+    findings_by_id = {item["id"]: item for item in findings}
+    applied_targets: set[tuple[str, str, str | None]] = set()
+    applied_automatic = {item["id"] for item in base_actions}
+    maximum_iterations = max(2, len(load_h5(path)) * (len(SUPPORTED_VARIABLES) + 1) + 1)
+
+    for _iteration in range(maximum_iterations):
+        current_actions = list(actions_by_id.values())
+        exclusions = _conservative_exclusion_actions(
+            source_sha256, current_actions, list(findings_by_id.values())
+        )
+        exclusions_by_target = {
+            (item["effect"]["kind"], item["target"]["station"], item["target"].get("variable")): item
+            for item in exclusions
+        }
+        new_exclusions = [
+            item for target, item in exclusions_by_target.items() if target not in applied_targets
+        ]
+        new_automatic = [
+            item
+            for item in actions_by_id.values()
+            if item.get("automatic") and item["code"] != "SAFEEXCL" and item["id"] not in applied_automatic
+        ]
+        if not new_exclusions and not new_automatic:
+            return base_actions + exclusions, list(findings_by_id.values())
+
+        _apply_h5_actions(path, new_automatic + new_exclusions, "candidate")
+        applied_targets.update(exclusions_by_target)
+        applied_automatic.update(item["id"] for item in new_automatic)
+
+        qc_actions, qc_findings = _h5_qc_findings(path, source_sha256, policy)
+        zero_actions, zero_findings = _zero_wind_actions(path, source_sha256, policy)
+        new_actions = qc_actions + zero_actions
+        new_findings = qc_findings + zero_findings
+        _add_automatic_findings(new_actions, new_findings, source_sha256)
+        for item in new_actions:
+            if item["id"] not in actions_by_id:
+                actions_by_id[item["id"]] = item
+                if item.get("automatic"):
+                    base_actions.append(item)
+                else:
+                    review_actions.append(item)
+        for item in new_findings:
+            findings_by_id.setdefault(item["id"], item)
+    raise QCError("conservative-auto QC did not reach a fixed point")
 
 
 def process_synoptic_json(
@@ -949,6 +1777,7 @@ def process_synoptic_json(
         zero_actions, zero_findings = _zero_wind_actions(temporary_candidate, source_sha256, policy)
         actions.extend(zero_actions)
         findings.extend(zero_findings)
+        _apply_h5_actions(temporary_candidate, zero_actions, "candidate")
         empty_actions, window_findings = _window_and_empty_actions(
             temporary_candidate, source_sha256, policy
         )
@@ -958,7 +1787,12 @@ def process_synoptic_json(
         qc_actions, qc_findings = _h5_qc_findings(temporary_candidate, source_sha256, policy)
         actions.extend(qc_actions)
         findings.extend(qc_findings)
+        _apply_h5_actions(temporary_candidate, qc_actions, "candidate")
         _add_automatic_findings(actions, findings, source_sha256)
+        if policy.get("mode") == "conservative_auto":
+            actions, findings = _conservative_fixed_point(
+                temporary_candidate, source_sha256, policy, actions, findings
+            )
         with h5py.File(temporary_candidate, "r+") as output:
             validate_h5_std(output)
             output.attrs["wx_qc_decision_sha256"] = _decision_digest(actions)
@@ -1023,19 +1857,36 @@ def _refresh_summary(manifest: dict) -> None:
     for finding in manifest["findings"]:
         severity = finding["severity"]
         severities[severity] = severities.get(severity, 0) + 1
+    pending = statuses.get("pending", 0)
+    action_count = len(manifest["actions"])
+    review_actions = sum(
+        not item.get("automatic", False) and item["decision"]["status"] != "superseded"
+        for item in manifest["actions"]
+    )
+    target = (
+        manifest.get("policy", {})
+        .get("normalized", {})
+        .get("review", {})
+        .get("target_pending_fraction", 0.05)
+    )
+    pending_fraction = pending / review_actions if review_actions else 0.0
     manifest["summary"] = {
         "findings": len(manifest["findings"]),
-        "actions": len(manifest["actions"]),
+        "actions": action_count,
+        "review_actions": review_actions,
         "action_statuses": statuses,
         "finding_severities": severities,
-        "pending": statuses.get("pending", 0),
+        "pending": pending,
+        "pending_fraction": pending_fraction,
+        "target_pending_fraction": target,
+        "review_target_met": pending_fraction < target,
     }
 
 
 def validate_manifest(manifest: dict) -> dict:
     """Validate the top-level manifest schema and operation ID uniqueness."""
-    if not isinstance(manifest, dict) or manifest.get("schema_version") != MANIFEST_VERSION:
-        raise QCError(f"unsupported QC manifest; expected schema version {MANIFEST_VERSION}")
+    if not isinstance(manifest, dict) or manifest.get("schema_version") not in SUPPORTED_MANIFEST_VERSIONS:
+        raise QCError(f"unsupported QC manifest; expected schema version 1 or {MANIFEST_VERSION}")
     required = {"run_id", "source", "policy", "artifacts", "findings", "actions", "history"}
     missing = sorted(required - set(manifest))
     if missing:
@@ -1095,12 +1946,19 @@ def validate_manifest(manifest: dict) -> dict:
                 )
     for index, finding in enumerate(manifest["findings"]):
         try:
-            expected_id = _finding_id(
-                source["sha256"],
-                finding["code"],
-                finding["target"],
-                finding["message"],
-            )
+            if manifest["schema_version"] == 1:
+                expected_id = _legacy_finding_id(
+                    source["sha256"], finding["code"], finding["target"], finding["message"]
+                )
+            else:
+                expected_id = _finding_id(
+                    source["sha256"],
+                    finding["code"],
+                    finding["target"],
+                    finding["message"],
+                    finding.get("selector", {}),
+                    finding.get("evidence", {}),
+                )
         except (KeyError, TypeError) as exc:
             raise QCError(f"QC manifest finding {index} is malformed") from exc
         if finding.get("id") != expected_id:
@@ -1130,6 +1988,7 @@ def write_log(manifest: dict, path: str | Path | None = None) -> None:
         f"source: {manifest['source']['path']}",
         f"source sha256: {manifest['source']['sha256']}",
         f"policy sha256: {manifest['policy']['sha256']}",
+        f"mode: {manifest['policy']['normalized'].get('mode', 'review')}",
         f"updated: {manifest.get('updated_at', '--')}",
         "",
         "FINDINGS",
@@ -1183,7 +2042,12 @@ def write_log(manifest: dict, path: str | Path | None = None) -> None:
         [
             "",
             "SUMMARY",
-            f"findings={summary['findings']} actions={summary['actions']} pending={summary['pending']}",
+            f"findings={summary['findings']} actions={summary['actions']} "
+            f"review_actions={summary.get('review_actions', summary['actions'])} "
+            f"pending={summary['pending']}",
+            f"pending_fraction={summary['pending_fraction']:.2%} "
+            f"target=<{summary['target_pending_fraction']:.2%} "
+            f"target_met={summary['review_target_met']}",
         ]
     )
     atomic_write_text(path, "\n".join(lines) + "\n")
@@ -1395,6 +2259,20 @@ def finalize_manifest(
             validate_h5_std(output)
             output.attrs["wx_qc_decision_sha256"] = _decision_digest(manifest["actions"])
             output.attrs["wx_qc_finalized_by"] = reviewer.strip()
+        post_actions, final_findings = _h5_qc_findings(
+            temporary_output, manifest["source"]["sha256"], manifest["policy"]["normalized"]
+        )
+        zero_actions, final_zero_findings = _zero_wind_actions(
+            temporary_output, manifest["source"]["sha256"], manifest["policy"]["normalized"]
+        )
+        final_findings.extend(final_zero_findings)
+        if manifest["policy"]["normalized"].get("mode") == "conservative_auto" and (
+            post_actions or zero_actions or final_findings
+        ):
+            raise QCError(
+                "conservative-auto finalization found new QC doubts; rerun processing with the "
+                "same source and policy"
+            )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_output.replace(output_path)
     finally:
@@ -1410,9 +2288,6 @@ def finalize_manifest(
             action["application"]["final"] = "acknowledged"
         elif _decision_applies(action):
             action["application"]["final"] = "applied"
-    _post_actions, final_findings = _h5_qc_findings(
-        output_path, manifest["source"]["sha256"], manifest["policy"]["normalized"]
-    )
     manifest["final_findings"] = final_findings
     manifest["history"].append({"at": _now(), "event": "finalized", "reviewer": reviewer.strip()})
     write_manifest(manifest_path, manifest)

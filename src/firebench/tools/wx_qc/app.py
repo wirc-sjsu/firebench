@@ -9,7 +9,7 @@ import numpy as np
 from pathlib import Path
 
 from .constants import default_config
-from .data import run_assertions, run_outage_assertions
+from .data import apply_frozen_analysis, run_assertions, run_outage_assertions
 from .state import mark_stations_skipped
 from .theme import setup_style, FONT_MONO
 from .widgets import TimeNavigator
@@ -58,6 +58,11 @@ class App(
         self.qc_manifest_path = None
         self.qc_manifest = None
         self.qc_reviewer = ""
+        self.var_qc_reviewer = tk.StringVar(value="")
+        self.var_qc_comment = tk.StringVar(value="")
+        self._active_review_item = None
+        self._active_review_queue = []
+        self._active_review_range = 0
         self.stids = []
         self._map_stids = []
         self._map_cbar = None
@@ -128,6 +133,8 @@ class App(
         self._ts_sel_idx = None
         self._ts_sel_artist = None
         self._ts_sel_annot = None
+        self._ts_review_artist = None
+        self._ts_review_span = None
         self._ts_dragging = False
         # Removal QC: Shift+drag range selection (idx0, idx1) on single-station plot.
         # Cleared by plain click or plot refresh (station/var change).
@@ -378,9 +385,22 @@ class App(
             rerun = any(
                 key in dlg.result and dlg.result[key] != self.cfg.get(key)
                 for key in (
-                    "frozen_min_run",
-                    "frozen_exempt_calm_wind",
-                    "frozen_exempt_rh",
+                    "frozen_min_duration_hours",
+                    "frozen_adaptive_percentile",
+                    "frozen_review_adaptive_percentile",
+                    "frozen_review_duration_multiplier",
+                    "frozen_automatic_adaptive_percentile",
+                    "frozen_automatic_duration_multiplier",
+                    "frozen_neighbor_count",
+                    "frozen_neighbor_radius_km",
+                    "frozen_required_neighbors",
+                    "frozen_automatic_required_neighbors",
+                    "frozen_min_neighbor_coverage",
+                    "frozen_automatic_min_neighbor_coverage",
+                    "frozen_neighbor_change_steps",
+                    "frozen_calm_wind_threshold",
+                    "frozen_minimum_reference_runs",
+                    "frozen_triage",
                     "max_var_outage_min",
                     "full_outage_min",
                     "dup_max",
@@ -478,6 +498,7 @@ class App(
             self.after(1, lambda: self._rerun_chunk(gen))
             return
         self.all_issues = self._rerun_new_issues
+        apply_frozen_analysis(self.stations, self.all_stats, self.all_issues, self.cfg)
         self.pb_load.pack_forget()
         self.lbl_status.config(text=f"Re-checked {n} stations")
         on_complete = self._rerun_on_complete

@@ -9,12 +9,14 @@ from firebench.tools.wx_qc.constants import (
     validate_gui_config,
 )
 from firebench.tools.wx_qc.data import (
+    apply_frozen_analysis,
     compute_outage_stats,
     compute_stats,
     run_assertions,
     run_outage_assertions,
 )
 from firebench.tools.wx_qc.loader import LoaderMixin
+from firebench.tools.wx_qc.frozen import _finite_temporal_coverage, infer_reporting_resolution
 
 
 def _station(relative_minutes, **variables):
@@ -97,7 +99,7 @@ def test_assertion_severity_override_replaces_default_severity():
     assert any(sev == "WARN" and key == "hi:air_temperature" for sev, key, _ in overridden_issues)
 
 
-def test_frozen_run_exemptions_skip_wind_direction_and_humidity():
+def test_single_station_assertions_defer_frozen_detection_to_network_analysis():
     cfg = default_config()
     station = _station(
         [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
@@ -105,15 +107,8 @@ def test_frozen_run_exemptions_skip_wind_direction_and_humidity():
         relative_humidity=[50.0] * 11,
     )
     stats = compute_stats(station)
-    default_issues = run_assertions(station, stats, cfg)
-    assert any(key == "frozen:wind_direction" for _, key, _ in default_issues)
-    assert any(key == "frozen:relative_humidity" for _, key, _ in default_issues)
-
-    cfg["frozen_exempt_calm_wind"] = True
-    cfg["frozen_exempt_rh"] = True
-    exempt_issues = run_assertions(station, stats, cfg)
-    assert not any(key == "frozen:wind_direction" for _, key, _ in exempt_issues)
-    assert not any(key == "frozen:relative_humidity" for _, key, _ in exempt_issues)
+    issues = run_assertions(station, stats, cfg)
+    assert not any(key.startswith("frozen:") for _, key, _ in issues)
 
 
 def test_calm_wind_breaks_dropout_and_wind_outage_runs():
@@ -233,11 +228,118 @@ def test_parser_error_disables_derivatives_and_creates_time_axis_issue():
     assert any(key == "time_axis" for _, key, _ in issues)
 
 
+def test_frozen_analysis_requires_neighbor_change_and_reports_quantization():
+    minutes = np.arange(0, 390, 30)
+    stations = {
+        "TARGET": _station(minutes, air_temperature=[4.0] + [5.0] * 11 + [6.0]),
+        "N1": _station(minutes, air_temperature=np.arange(len(minutes), dtype=float)),
+        "N2": _station(minutes, air_temperature=np.arange(len(minutes), dtype=float) + 10.0),
+    }
+    for index, station in enumerate(stations.values()):
+        station.update({"lat": 38.0, "lon": -120.0 + index * 0.01})
+    cfg = default_config()
+    cfg["frozen_min_duration_hours"]["air_temperature"] = 1.0
+    stats = {station_id: compute_stats(station) for station_id, station in stations.items()}
+    issues = {station_id: [] for station_id in stations}
+
+    findings, resolutions = apply_frozen_analysis(stations, stats, issues, cfg)
+
+    target = findings["TARGET"][0]
+    assert target["confidence"] == "ambiguous"
+    assert target["disposition"] == "review"
+    assert target["resolution"] == pytest.approx(1.0)
+    assert target["quantization_uncertainty"] == pytest.approx(0.5)
+    assert sum(item["changed"] for item in target["neighbors"]) == 2
+    assert any(key == "frozen:air_temperature" for _, key, _ in issues["TARGET"])
+    assert resolutions["pooled"]["air_temperature"] == pytest.approx(1.0)
+
+
+def test_frozen_analysis_keeps_plausible_constant_neighbors_as_audit_findings():
+    minutes = np.arange(0, 390, 30)
+    target = _station(minutes, relative_humidity=[50.0] * len(minutes))
+    target.update({"lat": 38.0, "lon": -120.0})
+    cfg = default_config()
+    cfg["frozen_min_duration_hours"]["relative_humidity"] = 1.0
+
+    stats = {"TARGET": compute_stats(target)}
+    issues = {"TARGET": []}
+    findings, _resolutions = apply_frozen_analysis({"TARGET": target}, stats, issues, cfg)
+    assert findings["TARGET"][0]["confidence"] == "low"
+    assert any(key == "frozen_unconfirmed:relative_humidity" for _, key, _ in issues["TARGET"])
+
+    stations = {"TARGET": target}
+    for index, station_id in enumerate(("N1", "N2"), 1):
+        neighbor = _station(minutes, relative_humidity=[50.0] * len(minutes))
+        neighbor.update({"lat": 38.0, "lon": -120.0 + index * 0.01})
+        stations[station_id] = neighbor
+    stats = {station_id: compute_stats(station) for station_id, station in stations.items()}
+    issues = {station_id: [] for station_id in stations}
+    findings, _resolutions = apply_frozen_analysis(stations, stats, issues, cfg)
+    assert findings["TARGET"][0]["disposition"] == "audit"
+    assert any(key == "frozen_unconfirmed:relative_humidity" for _, key, _ in issues["TARGET"])
+
+
+def test_reporting_resolution_tolerates_float_noise_and_slow_quantized_change_is_not_frozen():
+    values = np.tile(np.arange(10, dtype=float) / 10.0, 3)
+    values[7] += 1e-13
+    assert infer_reporting_resolution(values) == pytest.approx(0.1)
+
+    minutes = np.arange(0, 360, 30)
+    station = _station(minutes, air_temperature=np.repeat([5.0, 5.1, 5.2, 5.3], 3))
+    station.update({"lat": 38.0, "lon": -120.0})
+    cfg = default_config()
+    cfg["frozen_min_duration_hours"]["air_temperature"] = 2.0
+    stats = {"TARGET": compute_stats(station)}
+    issues = {"TARGET": []}
+
+    findings, _resolutions = apply_frozen_analysis({"TARGET": station}, stats, issues, cfg)
+
+    assert "TARGET" not in findings
+
+
+def test_calm_wind_and_nighttime_zero_solar_are_plausible_constant_regimes():
+    minutes = np.arange(0, 180, 30)
+    station = _station(
+        minutes,
+        wind_speed=np.zeros(len(minutes)),
+        wind_direction=np.full(len(minutes), 180.0),
+        solar_radiation=np.zeros(len(minutes)),
+    )
+    station["times"] = np.datetime64("2021-01-01T08:00:00") + minutes.astype("timedelta64[m]")
+    station.update({"lat": 38.0, "lon": -120.0})
+    cfg = default_config()
+    for variable in ("wind_speed", "wind_direction", "solar_radiation"):
+        cfg["frozen_min_duration_hours"][variable] = 0.5
+    stats = {"TARGET": compute_stats(station)}
+    issues = {"TARGET": []}
+
+    findings, _resolutions = apply_frozen_analysis({"TARGET": station}, stats, issues, cfg)
+
+    assert "TARGET" not in findings
+
+
+def test_neighbor_coverage_does_not_bridge_large_internal_gaps():
+    times = np.array(
+        ["2021-01-01T00:00", "2021-01-01T01:00", "2021-01-07T23:00", "2021-01-08T00:00"],
+        dtype="datetime64[m]",
+    )
+    values = np.ones(len(times))
+
+    coverage = _finite_temporal_coverage(
+        times,
+        values,
+        np.datetime64("2021-01-01T00:00"),
+        np.datetime64("2021-01-08T00:00"),
+    )
+
+    assert coverage == pytest.approx(2 / (7 * 24))
+
+
 @pytest.mark.parametrize(
     ("key", "value"),
     [
-        ("frozen_min_run", 0),
-        ("frozen_min_run", 2.5),
+        ("frozen_neighbor_count", 0),
+        ("frozen_neighbor_count", 2.5),
         ("compare_n_neighbors", -1),
         ("compare_n_neighbors", 1.5),
         ("max_var_outage_min", -1),
