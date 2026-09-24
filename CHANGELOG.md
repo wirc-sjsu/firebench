@@ -39,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Penalize a missing model `wind_direction` value as the observed direction rotated 180 degrees
+  instead of a fixed out-of-range constant, which wrapped modulo 360 and could land close to the
+  true direction instead of maximizing the circular error used by the wind-direction KPI.
 - Interpret all Synoptic timestamp clock values as UTC regardless of station timezone or explicit
   timestamp offset, preventing station-timezone shifts during standardization and weather QC.
 - Prevent Detail review advancement from failing when Matplotlib has already detached the previous

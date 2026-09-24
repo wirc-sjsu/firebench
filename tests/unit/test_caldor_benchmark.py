@@ -726,6 +726,52 @@ def test_weather_benchmark_excludes_tso_model_height_mismatch(caplog, tmp_path):
     assert "does not match" in caplog.text
 
 
+def test_weather_benchmark_penalizes_wind_direction_nan_as_opposite_direction(tmp_path):
+    """A model nan for wind_direction must be penalized as the worst-case circular error
+    (180 degrees off the observed direction), not a fixed constant that wraps modulo 360 and
+    can land close to the true direction instead of far from it."""
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    period = c001_caldor._target_period("H013")
+
+    obs_values = [10.0, 350.0]
+    model_values = [20.0, np.nan]
+
+    for h5_path, values in ((obs_path, obs_values), (model_path, model_values)):
+        with h5py.File(h5_path, "w") as h5:
+            station = h5.create_group("time_series/station_WIND")
+            time = station.create_dataset("time", data=[0, 1])
+            time.attrs["time_origin"] = period[0].isoformat()
+            time.attrs["time_units"] = "hour"
+            variable = station.create_dataset("wind_direction", data=values)
+            variable.attrs["units"] = "degree"
+
+    captured = {}
+
+    def capture_metric(model, obs):
+        captured["model"] = np.array(model)
+        captured["obs"] = np.array(obs)
+        return 0.0
+
+    with h5py.File(model_path, "r") as model_h5, h5py.File(obs_path, "r") as obs_h5:
+        c001_caldor.bench_wx_generic_index(
+            model_h5,
+            obs_h5,
+            {},
+            kpi_name_custom="Wind direction nan penalty",
+            period=period,
+            wx_variable_name="wind_direction",
+            common_unit="degree",
+            metric_func=capture_metric,
+            stat_func=lambda values: float(np.mean(values)),
+            value_norm_param_m=45,
+            station_set=c001_caldor.fs.WeatherStationSet.ALL_SOURCES,
+        )
+
+    assert captured["model"][0] == pytest.approx(20.0)
+    assert captured["model"][1] == pytest.approx((350.0 + 180.0) % 360.0)
+
+
 def test_weather_requirement_records_ignored_empty_station_set(monkeypatch):
     monkeypatch.setattr(
         c001_caldor.fs,
