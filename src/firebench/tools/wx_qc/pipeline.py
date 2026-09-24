@@ -14,11 +14,12 @@ from typing import Any
 
 import h5py
 import numpy as np
-import pytz
-from pytz.exceptions import AmbiguousTimeError, NonExistentTimeError
 
 from ...standardize.files import new_std_file
-from ...standardize.synoptic import standardize_synoptic_raws_from_json
+from ...standardize.synoptic import (
+    parse_synoptic_timestamp_utc,
+    standardize_synoptic_raws_from_json,
+)
 from ...standardize.synoptic_data import VARIABLE_CONVERSION
 from ...standardize.tools import validate_h5_std
 from ...tools import calculate_sha256
@@ -465,17 +466,10 @@ def _parse_aware_iso(value: str, label: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def _parse_source_time(value: Any, timezone_name: str) -> datetime:
+def _parse_source_time(value: Any) -> datetime:
     if not isinstance(value, str):
         raise QCError(f"timestamp must be a string, got {type(value).__name__}")
-    tz = pytz.timezone(timezone_name)
-    if value.endswith("Z"):
-        fmt = "%Y%m%d%H%M%SZ" if value[:-1].isdigit() else "%Y-%m-%dT%H:%M:%SZ"
-        return pytz.utc.localize(datetime.strptime(value, fmt))
-    if "T" in value and ("+" in value[10:] or "-" in value[10:]):
-        return datetime.fromisoformat(value).astimezone(timezone.utc)
-    fmt = "%Y%m%d%H%M%S" if value.isdigit() else "%Y-%m-%dT%H:%M:%S"
-    return tz.localize(datetime.strptime(value, fmt), is_dst=None).astimezone(pytz.utc)
+    return parse_synoptic_timestamp_utc(value)
 
 
 def _row_signature(observations: dict, index: int) -> str:
@@ -533,8 +527,10 @@ def _normalize_source(source_path: Path, source_sha256: str) -> tuple[dict, list
             station["_WXQC_QUARANTINED"] = True
             continue
         try:
-            parsed_times = [_parse_source_time(value, station["TIMEZONE"]) for value in raw_times]
-        except (KeyError, ValueError, AmbiguousTimeError, NonExistentTimeError, QCError) as exc:
+            if "TIMEZONE" not in station:
+                raise KeyError("TIMEZONE")
+            parsed_times = [_parse_source_time(value) for value in raw_times]
+        except (KeyError, ValueError, QCError) as exc:
             finding = _finding(source_sha256, "TIME", "ERROR", station_id, f"Invalid timestamp: {exc}")
             findings.append(finding)
             actions.append(
@@ -564,7 +560,7 @@ def _normalize_source(source_path: Path, source_sha256: str) -> tuple[dict, list
                     "time",
                     {"records": len(raw_times)},
                     {"kind": "normalize_timestamps", "timezone": "UTC"},
-                    f"Normalized {len(raw_times)} timestamps to unambiguous UTC instants",
+                    f"Interpreted {len(raw_times)} Synoptic timestamps as UTC wall-clock values",
                     automatic=True,
                 )
             )

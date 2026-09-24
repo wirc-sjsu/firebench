@@ -8,6 +8,7 @@ import hdf5plugin  # noqa: F401
 import numpy as np
 import pytest
 
+from firebench.standardize.synoptic import standardize_synoptic_raws_from_json
 from firebench.tools.wx_qc.pipeline import (
     QCError,
     add_manual_action,
@@ -74,7 +75,7 @@ def test_pipeline_creates_deterministic_actions_candidate_and_log(tmp_path):
         station = output["time_series/station_TEST1"]
         assert len(station["time"]) == 3
         assert np.isnan(station["air_temperature"][:]).sum() == 1
-        assert station["time"].attrs["time_origin"].endswith("+00:00")
+        assert station["time"].attrs["time_origin"] == "2021-08-17T00:00:00+00:00"
         assert station.attrs["timezone"] == "America/Los_Angeles"
         assert output.attrs["wx_qc_stage"] == "candidate"
 
@@ -90,6 +91,43 @@ def test_pipeline_creates_deterministic_actions_candidate_and_log(tmp_path):
     assert [item["id"] for item in read_manifest(second_manifest)["actions"]] == [
         item["id"] for item in manifest["actions"]
     ]
+
+
+def test_synoptic_offsets_are_ignored_and_clock_values_are_utc(tmp_path):
+    station = _station()
+    station["SENSOR_VARIABLES"]["air_temperature"]["air_temp_set_1"]["position"] = 2.0
+    station["OBSERVATIONS"] = {
+        "date_time": ["2021-08-17T00:00:00-07:00", "2021-08-17T00:01:00+03:00"],
+        "air_temp_set_1": [10.0, 11.0],
+        "wind_speed_set_1": [1.0, 2.0],
+    }
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"STATION": [station]}), encoding="utf-8")
+
+    direct_output = tmp_path / "direct.h5"
+    with h5py.File(direct_output, "w") as output:
+        standardize_synoptic_raws_from_json(source, output, time_origin_utc=False)
+    with h5py.File(direct_output, "r") as output:
+        direct_station = output["time_series/station_TEST1"]
+        assert direct_station["time"].attrs["time_origin"] == "2021-08-17T00:00:00+00:00"
+        assert direct_station["time"][:].tolist() == [0.0, 1.0]
+        assert direct_station.attrs["timezone"] == "America/Los_Angeles"
+
+    candidate = tmp_path / "candidate.h5"
+    manifest = process_synoptic_json(
+        source,
+        None,
+        candidate,
+        tmp_path / "manifest.json",
+        tmp_path / "audit.log",
+    )
+    time_action = next(item for item in manifest["actions"] if item["code"] == "TIME")
+    assert time_action["message"] == "Interpreted 2 Synoptic timestamps as UTC wall-clock values"
+    with h5py.File(candidate, "r") as output:
+        qc_station = output["time_series/station_TEST1"]
+        assert qc_station["time"].attrs["time_origin"] == "2021-08-17T00:00:00+00:00"
+        assert qc_station["time"][:].tolist() == [0.0, 1.0]
+        assert qc_station.attrs["timezone"] == "America/Los_Angeles"
 
 
 def test_policy_versions_preserve_legacy_frozen_rules_and_validate_v5_modes():
@@ -283,7 +321,7 @@ def test_review_edit_and_finalize_lifecycle(tmp_path):
         manifest_path,
         station="TEST1",
         variable="air_temperature",
-        selector={"ranges": [{"start": "2021-08-17T07:02:00Z", "end": "2021-08-17T07:02:00Z"}]},
+        selector={"ranges": [{"start": "2021-08-17T00:02:00Z", "end": "2021-08-17T00:02:00Z"}]},
         effect={"kind": "set_nan_ranges", "variables": ["air_temperature"]},
         message="Manual test range",
         reviewer="reviewer",

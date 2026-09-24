@@ -94,9 +94,11 @@ firebench wx-qc process wx_caldor_fire.json \
   --log Caldor_weather_qc.log
 ```
 
-The processor normalizes source timestamps to UTC while retaining the station timezone, converts
-numeric sensor-height strings, removes only rows that are exact duplicates across timestamp and
-all observations, replaces physical-bound violations with NaN, and excludes stations with no
+The processor interprets every Synoptic timestamp as a UTC wall-clock value while retaining the
+station timezone as descriptive metadata. A timestamp's explicit `Z` or numeric offset does not
+shift its displayed clock time. The processor also converts numeric sensor-height strings, removes
+only rows that are exact duplicates across the timestamp and all observations, replaces
+physical-bound violations with NaN, and excludes stations with no
 finite supported observations in a required window. These deterministic actions are
 `auto_accepted`; a reviewer may still override them. Conflicting duplicate timestamps and invalid
 or decreasing time axes are quarantined from the candidate and require a decision.
@@ -208,7 +210,7 @@ The operation code is the middle component of an ID such as `WXQC-FROZEN-...`.
 Code | Default | Typical message | Effect when applied
 --- | --- | --- | ---
 `EXCL` | Review | `Station has no timestamps`, `Observation arrays do not align with timestamps`, `Timestamp axis has N backwards jump(s)`, or `Conflicting records at N duplicate timestamp(s)` | Quarantine and exclude a station whose structure cannot be standardized safely.
-`TIME` | Automatic | `Normalized N timestamps to unambiguous UTC instants` | Convert source timestamps to UTC instants while retaining station-timezone metadata. This does not round, resample, or force timestamps onto an hourly boundary.
+`TIME` | Automatic | `Interpreted N Synoptic timestamps as UTC wall-clock values` | Treat every displayed source clock value as UTC while retaining station-timezone metadata. Explicit offsets are ignored; timestamps are not rounded, resampled, or forced onto an hourly boundary.
 `DUP` | Automatic | `Removed N identical duplicate records` | Remove only later rows whose timestamp and complete observation content exactly match an earlier row.
 `META` | Automatic | `Converted N numeric sensor-height strings to numbers` | Convert finite numeric sensor-height metadata such as `"10.0"` to a number. Observation values are unchanged.
 `BOUND` | Automatic | `Replaced N values outside [low, high] unit with NaN` | Set the named variable to NaN at the listed timestamps. The row and other variables remain present.
@@ -232,7 +234,7 @@ Effect kind | Data result
 --- | ---
 `exclude_station` | Omit the complete `station_<ID>` group from the final HDF5.
 `exclude_variable` | Omit the named variable dataset from one station in the final HDF5. The station, time axis, and other variables remain present.
-`normalize_timestamps` | Represent every valid timestamp as an unambiguous UTC instant.
+`normalize_timestamps` | Interpret every valid Synoptic timestamp's displayed clock value as UTC.
 `remove_identical_duplicates` | Delete the selected duplicate rows while retaining alignment across every observation array.
 `normalize_sensor_height` | Change numeric sensor-height metadata from string to numeric form.
 `set_nan` | Replace values for the listed variables at explicit selector timestamps with NaN.
@@ -462,10 +464,10 @@ use in another workflow. When an HDF5 file is loaded, it also writes a sibling `
 session snapshot. The Python file records decisions but does not apply them by itself.
 
 **Export Script** writes a standalone processing script for a Synoptic JSON source. The script
-normalizes ISO timestamps to UTC, removes rows that duplicate both timestamp and every sensor
-value, standardizes the JSON into a new FireBench HDF5 file, omits skip-listed stations, and sets
-selected floating-point record ranges to NaN. Its JSON and output paths are the values entered in
-the export dialog; review them before running the script. The script creates or replaces its
+interprets ISO timestamp clock values as UTC, removes rows that duplicate both timestamp and every
+sensor value, standardizes the JSON into a new FireBench HDF5 file, omits skip-listed stations, and
+sets selected floating-point record ranges to NaN. Its JSON and output paths are the values entered
+in the export dialog; review them before running the script. The script creates or replaces its
 output, not the HDF5 currently open in the GUI.
 
 **Export cleaned H5** makes a copy of the currently open HDF5, deletes skip-listed station groups,

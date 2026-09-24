@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Interpret all Synoptic timestamp clock values as UTC regardless of station timezone or explicit
+  timestamp offset, preventing station-timezone shifts during standardization and weather QC.
 - Prevent Detail review advancement from failing when Matplotlib has already detached the previous
   issue highlight during a time-series redraw.
 - Let Synoptic standardization bind provenance to an original source hash and write UTC time origins
