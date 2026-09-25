@@ -130,17 +130,36 @@ def test_synoptic_offsets_are_ignored_and_clock_values_are_utc(tmp_path):
         assert qc_station.attrs["timezone"] == "America/Los_Angeles"
 
 
-def test_policy_versions_preserve_legacy_frozen_rules_and_validate_v5_modes():
+def test_policy_versions_preserve_legacy_rules_and_validate_v8_jump_scope():
     legacy = load_policy({"version": 1, "gui": {"frozen_min_run": 12}})
     assert legacy["version"] == 1
     assert legacy["gui"]["frozen_min_run"] == 12
     assert "frozen" not in legacy
 
     current = load_policy(None)
-    assert current["version"] == 5
+    assert current["version"] == 8
     assert current["mode"] == "review"
     assert current["frozen"]["minimum_duration_hours"]["air_temperature"] == 6.0
     assert current["review"]["target_pending_fraction"] == 0.05
+    assert current["conservative"] == {
+        "audit_only_finding_codes": ["COVER", "gap_dt", "max_var_outage", "full_outage"],
+        "variable_groups": [["wind_speed", "wind_direction", "wind_gust"]],
+    }
+    assert current["jumps"]["thresholds"]["air_temperature"] == {
+        "minimum_change": 10.0,
+        "minimum_rate_per_hour": 60.0,
+        "minimum_deviation": 10.0,
+    }
+    assert current["jumps"]["thresholds"]["relative_humidity"] == {
+        "minimum_change": 35.0,
+        "minimum_rate_per_hour": 240.0,
+        "minimum_deviation": 25.0,
+    }
+    assert current["jumps"]["thresholds"]["fuel_moisture_content_10h"] == {
+        "minimum_change": 15.0,
+        "minimum_rate_per_hour": 60.0,
+        "minimum_deviation": 15.0,
+    }
 
     version_four = load_policy({"version": 4})
     assert version_four["version"] == 4
@@ -148,6 +167,11 @@ def test_policy_versions_preserve_legacy_frozen_rules_and_validate_v5_modes():
 
     conservative = load_policy({"version": 5, "mode": "conservative_auto"})
     assert conservative["mode"] == "conservative_auto"
+    assert "conservative" not in conservative
+    version_six = load_policy({"version": 6, "mode": "conservative_auto"})
+    assert "jumps" not in version_six
+    version_seven = load_policy({"version": 7, "mode": "conservative_auto"})
+    assert set(version_seven["jumps"]["thresholds"]) == {"air_temperature"}
 
     version_two = load_policy({"version": 2})
     assert version_two["version"] == 2
@@ -169,6 +193,34 @@ def test_policy_versions_preserve_legacy_frozen_rules_and_validate_v5_modes():
         load_policy({"version": 4, "thresholds": {"zero_wind_exclusion_fraction": 0.4}})
     with pytest.raises(QCError, match="mode"):
         load_policy({"version": 5, "mode": "accept_everything"})
+    with pytest.raises(QCError, match="audit_only_finding_codes"):
+        load_policy({"version": 6, "conservative": {"audit_only_finding_codes": ["ZEROWIND"]}})
+    with pytest.raises(QCError, match="must not overlap"):
+        load_policy(
+            {
+                "version": 6,
+                "conservative": {
+                    "variable_groups": [
+                        ["wind_speed", "wind_direction"],
+                        ["wind_direction", "wind_gust"],
+                    ]
+                },
+            }
+        )
+    with pytest.raises(QCError, match="minimum_rate_per_hour"):
+        load_policy(
+            {
+                "version": 7,
+                "jumps": {
+                    "thresholds": {
+                        "air_temperature": {
+                            "minimum_change": 10.0,
+                            "minimum_deviation": 10.0,
+                        }
+                    }
+                },
+            }
+        )
 
 
 def test_conservative_auto_excludes_source_flag_without_pending_review(tmp_path):
@@ -226,6 +278,247 @@ def test_conservative_auto_reaches_fixed_point_after_variable_exclusion(tmp_path
     assert "exclude_station" in safe_effects
     assert any(item["code"] == "no_data" for item in manifest["findings"])
     assert manifest["summary"]["pending"] == 0
+
+
+def test_conservative_v6_excludes_the_wind_group_and_retains_other_variables(tmp_path):
+    station = _station()
+    station["QC_FLAGGED"] = False
+    station["SENSOR_VARIABLES"]["wind"] = {
+        "wind_speed_set_1": {"position": 10.0},
+        "wind_direction_set_1": {"position": 10.0},
+        "wind_gust_set_1": {"position": 10.0},
+    }
+    station["OBSERVATIONS"] = {
+        "date_time": [f"202108170{i}0000Z" for i in range(10)],
+        "air_temp_set_1": list(range(10, 20)),
+        "wind_speed_set_1": [0.0] * 9 + [1.0],
+        "wind_direction_set_1": list(range(180, 190)),
+        "wind_gust_set_1": list(range(1, 11)),
+    }
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"STATION": [station]}), encoding="utf-8")
+    candidate = tmp_path / "candidate.h5"
+
+    version_five = process_synoptic_json(
+        source,
+        {"version": 5, "mode": "conservative_auto"},
+        tmp_path / "version-five-candidate.h5",
+        tmp_path / "version-five-manifest.json",
+        tmp_path / "version-five-audit.log",
+    )
+    version_five_exclusion = next(
+        item
+        for item in version_five["actions"]
+        if item["code"] == "SAFEEXCL" and "ZEROWIND" in item["selector"]["reason_codes"]
+    )
+    assert version_five_exclusion["effect"] == {"kind": "exclude_station"}
+
+    manifest = process_synoptic_json(
+        source,
+        {"version": 6, "mode": "conservative_auto"},
+        candidate,
+        tmp_path / "manifest.json",
+        tmp_path / "audit.log",
+    )
+
+    exclusion = next(
+        item
+        for item in manifest["actions"]
+        if item["code"] == "SAFEEXCL" and "ZEROWIND" in item["selector"]["reason_codes"]
+    )
+    assert exclusion["effect"] == {
+        "kind": "exclude_variable",
+        "variables": ["wind_speed", "wind_direction", "wind_gust"],
+    }
+    with h5py.File(candidate, "r") as output:
+        group = output["time_series/station_TEST1"]
+        assert "air_temperature" in group
+        assert not {"wind_speed", "wind_direction", "wind_gust"} & set(group)
+
+
+def test_conservative_v6_groups_a_wind_direction_failure(tmp_path):
+    station = _station()
+    station["QC_FLAGGED"] = False
+    station["SENSOR_VARIABLES"]["wind"] = {
+        "wind_speed_set_1": {"position": 10.0},
+        "wind_direction_set_1": {"position": 10.0},
+        "wind_gust_set_1": {"position": 10.0},
+    }
+    station["OBSERVATIONS"] = {
+        "date_time": [f"20210817000{i}00Z" for i in range(4)],
+        "air_temp_set_1": [10.0, 11.0, 12.0, 13.0],
+        "wind_speed_set_1": [1.0, 1.0, 1.0, 1.0],
+        "wind_direction_set_1": [None, None, None, None],
+        "wind_gust_set_1": [2.0, 3.0, 4.0, 5.0],
+    }
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"STATION": [station]}), encoding="utf-8")
+
+    manifest = process_synoptic_json(
+        source,
+        {"version": 6, "mode": "conservative_auto"},
+        tmp_path / "candidate.h5",
+        tmp_path / "manifest.json",
+        tmp_path / "audit.log",
+    )
+
+    exclusion = next(
+        item
+        for item in manifest["actions"]
+        if item["code"] == "SAFEEXCL" and "dropout" in item["selector"]["reason_codes"]
+    )
+    assert exclusion["effect"]["variables"] == ["wind_speed", "wind_direction", "wind_gust"]
+
+
+def test_conservative_v6_keeps_availability_findings_as_audit_only(tmp_path):
+    station = _station()
+    station["QC_FLAGGED"] = False
+    station["OBSERVATIONS"] = {
+        "date_time": [
+            "20210817000000Z",
+            "20210817000100Z",
+            "20210817000200Z",
+            "20210817120000Z",
+        ],
+        "air_temp_set_1": [10.0, 11.0, 12.0, 13.0],
+        "wind_speed_set_1": [1.0, 2.0, 3.0, 4.0],
+    }
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"STATION": [station]}), encoding="utf-8")
+    candidate = tmp_path / "candidate.h5"
+    manifest_path = tmp_path / "manifest.json"
+
+    manifest = process_synoptic_json(
+        source,
+        {"version": 6, "mode": "conservative_auto"},
+        candidate,
+        manifest_path,
+        tmp_path / "audit.log",
+    )
+
+    assert any(item["code"] == "gap_dt" for item in manifest["findings"])
+    assert not any(item["code"] == "SAFEEXCL" for item in manifest["actions"])
+    assert manifest["summary"]["pending"] == 0
+    with h5py.File(candidate, "r") as output:
+        assert "station_TEST1" in output["time_series"]
+
+    finalized = finalize_manifest(manifest_path, tmp_path / "final.h5", "automated workflow")
+    assert any(item["code"] == "gap_dt" for item in finalized["final_findings"])
+
+
+def test_jump_excursions_are_pending_in_review_and_automatic_in_conservative_mode(tmp_path):
+    station = _station()
+    station["QC_FLAGGED"] = False
+    count = 11
+    station["OBSERVATIONS"] = {
+        "date_time": [
+            (datetime(2021, 8, 17, tzinfo=timezone.utc) + timedelta(minutes=5 * index)).strftime(
+                "%Y%m%d%H%M%SZ"
+            )
+            for index in range(count)
+        ],
+        "air_temp_set_1": [5.0, 5.2, 5.1, 4.9, 5.0, -18.0, -17.9, -18.1, 5.1, 5.2, 5.0],
+        "wind_speed_set_1": list(range(1, count + 1)),
+    }
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"STATION": [station]}), encoding="utf-8")
+
+    review_candidate = tmp_path / "review-candidate.h5"
+    review = process_synoptic_json(
+        source,
+        {"version": 7, "mode": "review"},
+        review_candidate,
+        tmp_path / "review-manifest.json",
+        tmp_path / "review.log",
+    )
+    review_jump = next(item for item in review["actions"] if item["code"] == "JUMP")
+    assert review_jump["decision"]["status"] == "pending"
+    with h5py.File(review_candidate, "r") as output:
+        assert np.isfinite(output["time_series/station_TEST1/air_temperature"][:]).all()
+
+    conservative_candidate = tmp_path / "conservative-candidate.h5"
+    conservative = process_synoptic_json(
+        source,
+        {"version": 7, "mode": "conservative_auto"},
+        conservative_candidate,
+        tmp_path / "conservative-manifest.json",
+        tmp_path / "conservative.log",
+    )
+    jump = next(item for item in conservative["actions"] if item["code"] == "JUMP")
+    assert jump["decision"]["status"] == "auto_accepted"
+    assert jump["effect"] == {"kind": "set_nan_ranges", "variables": ["air_temperature"]}
+    assert jump["selector"]["ranges"][0]["records"] == 3
+    assert not any(
+        item["code"] == "SAFEEXCL" and item["target"]["variable"] == "air_temperature"
+        for item in conservative["actions"]
+    )
+    with h5py.File(conservative_candidate, "r") as output:
+        group = output["time_series/station_TEST1"]
+        assert "air_temperature" in group
+        assert np.flatnonzero(np.isnan(group["air_temperature"][:])).tolist() == [5, 6, 7]
+
+
+def test_policy_v8_applies_variable_specific_jump_ranges_without_excluding_variables(tmp_path):
+    station = _station()
+    station["QC_FLAGGED"] = False
+    count = 11
+    station["SENSOR_VARIABLES"] = {
+        "air_temperature": {"air_temp_set_1": {"position": 2.0}},
+        "relative_humidity": {"relative_humidity_set_1": {"position": 2.0}},
+        "fuel_moisture": {"fuel_moisture_set_1": {"position": 0.3}},
+    }
+    station["OBSERVATIONS"] = {
+        "date_time": [
+            (datetime(2021, 8, 17, tzinfo=timezone.utc) + timedelta(minutes=5 * index)).strftime(
+                "%Y%m%d%H%M%SZ"
+            )
+            for index in range(count)
+        ],
+        "air_temp_set_1": [5.0, 5.2, 5.1, 4.9, 5.0, -18.0, -17.9, -18.1, 5.1, 5.2, 5.0],
+        "relative_humidity_set_1": [
+            40.0,
+            41.0,
+            40.0,
+            39.0,
+            40.0,
+            90.0,
+            89.0,
+            90.0,
+            40.0,
+            41.0,
+            40.0,
+        ],
+        "fuel_moisture_set_1": [5.0, 5.1, 5.0, 4.9, 5.0, 25.0, 24.0, 25.0, 5.0, 5.1, 5.0],
+    }
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"STATION": [station]}), encoding="utf-8")
+    candidate = tmp_path / "candidate.h5"
+
+    manifest = process_synoptic_json(
+        source,
+        {"version": 8, "mode": "conservative_auto"},
+        candidate,
+        tmp_path / "manifest.json",
+        tmp_path / "audit.log",
+    )
+
+    jumps = [item for item in manifest["actions"] if item["code"] == "JUMP"]
+    assert {item["target"]["variable"] for item in jumps} == {
+        "air_temperature",
+        "relative_humidity",
+        "fuel_moisture_content_10h",
+    }
+    assert all(item["decision"]["status"] == "auto_accepted" for item in jumps)
+    assert not any(item["code"] == "SAFEEXCL" for item in manifest["actions"])
+    with h5py.File(candidate, "r") as output:
+        group = output["time_series/station_TEST1"]
+        for variable in (
+            "air_temperature",
+            "relative_humidity",
+            "fuel_moisture_content_10h",
+        ):
+            assert variable in group
+            assert np.flatnonzero(np.isnan(group[variable][:])).tolist() == [5, 6, 7]
 
 
 def test_conservative_auto_finalization_rejects_new_post_build_doubt(tmp_path, monkeypatch):

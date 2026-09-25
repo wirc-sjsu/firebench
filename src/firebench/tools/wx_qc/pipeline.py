@@ -33,6 +33,7 @@ from .frozen import (
     frozen_config_from_policy,
     frozen_finding_message,
 )
+from .jumps import analyze_jump_excursions, jump_config_from_policy, validate_jump_policy
 
 try:
     import tomllib
@@ -42,7 +43,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 MANIFEST_VERSION = 2
 SUPPORTED_MANIFEST_VERSIONS = {1, MANIFEST_VERSION}
-POLICY_VERSION = 5
+POLICY_VERSION = 8
 POLICY_MODES = {"review", "conservative_auto"}
 SUPPORTED_VARIABLES = {value["std_name"] for value in VARIABLE_CONVERSION.values()}
 RAW_TO_STANDARD = {key: value["std_name"] for key, value in VARIABLE_CONVERSION.items()}
@@ -67,6 +68,31 @@ DEFAULT_POLICY = {
     "review": {
         "target_pending_fraction": 0.05,
         "required_finding_codes": ["dropout", "gap_dt", "max_var_outage", "full_outage"],
+    },
+    "conservative": {
+        "audit_only_finding_codes": ["COVER", "gap_dt", "max_var_outage", "full_outage"],
+        "variable_groups": [["wind_speed", "wind_direction", "wind_gust"]],
+    },
+    "jumps": {
+        "context_hours": 6.0,
+        "minimum_context_points": 5,
+        "thresholds": {
+            "air_temperature": {
+                "minimum_change": 10.0,
+                "minimum_rate_per_hour": 60.0,
+                "minimum_deviation": 10.0,
+            },
+            "relative_humidity": {
+                "minimum_change": 35.0,
+                "minimum_rate_per_hour": 240.0,
+                "minimum_deviation": 25.0,
+            },
+            "fuel_moisture_content_10h": {
+                "minimum_change": 15.0,
+                "minimum_rate_per_hour": 60.0,
+                "minimum_deviation": 15.0,
+            },
+        },
     },
     "gui": {
         "max_var_outage_min": 1440.0,
@@ -97,7 +123,21 @@ DEFAULT_POLICY = {
     "required_windows": [],
 }
 
-V4_POLICY = copy.deepcopy(DEFAULT_POLICY)
+V7_POLICY = copy.deepcopy(DEFAULT_POLICY)
+V7_POLICY["version"] = 7
+V7_POLICY["jumps"]["thresholds"] = {
+    "air_temperature": copy.deepcopy(DEFAULT_POLICY["jumps"]["thresholds"]["air_temperature"])
+}
+
+V6_POLICY = copy.deepcopy(V7_POLICY)
+V6_POLICY["version"] = 6
+V6_POLICY.pop("jumps")
+
+V5_POLICY = copy.deepcopy(V6_POLICY)
+V5_POLICY["version"] = 5
+V5_POLICY.pop("conservative")
+
+V4_POLICY = copy.deepcopy(V5_POLICY)
 V4_POLICY["version"] = 4
 V4_POLICY.pop("mode")
 
@@ -260,16 +300,19 @@ def load_policy(path: str | Path | dict | None) -> dict:  # pylint: disable=too-
     else:
         supplied = {}
     requested_version = supplied.get("version", POLICY_VERSION)
-    if requested_version not in (1, 2, 3, 4, POLICY_VERSION):
+    if requested_version not in (1, 2, 3, 4, 5, 6, 7, POLICY_VERSION):
         raise QCError(
             f"unsupported QC policy version {requested_version!r}; "
-            f"expected version 1, 2, 3, 4, or {POLICY_VERSION}"
+            f"expected version 1, 2, 3, 4, 5, 6, 7, or {POLICY_VERSION}"
         )
     templates = {
         1: LEGACY_POLICY,
         2: V2_POLICY,
         3: V3_POLICY,
         4: V4_POLICY,
+        5: V5_POLICY,
+        6: V6_POLICY,
+        7: V7_POLICY,
         POLICY_VERSION: DEFAULT_POLICY,
     }
     policy = copy.deepcopy(templates[requested_version])
@@ -281,6 +324,41 @@ def load_policy(path: str | Path | dict | None) -> dict:  # pylint: disable=too-
                 policy[section] = value
     if policy["version"] >= 5 and policy.get("mode") not in POLICY_MODES:
         raise QCError("mode must be 'review' or 'conservative_auto'")
+    if policy["version"] >= 6:
+        conservative = policy.get("conservative")
+        if not isinstance(conservative, dict):
+            raise QCError("conservative must be a table")
+        audit_codes = conservative.get("audit_only_finding_codes")
+        allowed_audit_codes = {"COVER", "gap_dt", "max_var_outage", "full_outage"}
+        if (
+            not isinstance(audit_codes, list)
+            or any(not isinstance(code, str) or code not in allowed_audit_codes for code in audit_codes)
+            or len(audit_codes) != len(set(audit_codes))
+        ):
+            raise QCError("conservative.audit_only_finding_codes must be a unique list of supported codes")
+        variable_groups = conservative.get("variable_groups")
+        if not isinstance(variable_groups, list):
+            raise QCError("conservative.variable_groups must be an array of variable arrays")
+        grouped_variables = []
+        for group in variable_groups:
+            if (
+                not isinstance(group, list)
+                or len(group) < 2
+                or len(group) != len(set(group))
+                or any(variable not in SUPPORTED_VARIABLES for variable in group)
+            ):
+                raise QCError(
+                    "each conservative.variable_groups entry must contain at least two unique "
+                    "supported variables"
+                )
+            grouped_variables.extend(group)
+        if len(grouped_variables) != len(set(grouped_variables)):
+            raise QCError("conservative.variable_groups entries must not overlap")
+    if policy["version"] >= 7:
+        try:
+            validate_jump_policy(policy.get("jumps"), SUPPORTED_VARIABLES)
+        except ValueError as exc:
+            raise QCError(str(exc)) from exc
     output = policy["output"]
     level = output.get("compression_level")
     if isinstance(level, bool) or not isinstance(level, int) or not 1 <= level <= 22:
@@ -1293,6 +1371,64 @@ def _longest_true_range(times: np.ndarray, mask: np.ndarray) -> dict | None:
     }
 
 
+def _jump_excursion_actions(
+    stations: dict[str, dict], source_sha256: str, policy: dict
+) -> tuple[list[dict], list[dict]]:
+    """Build range corrections for locally implausible variable excursions."""
+    if policy["version"] < 7:
+        return [], []
+    actions, findings = [], []
+    config = jump_config_from_policy(policy)
+    automatic = policy.get("mode") == "conservative_auto"
+    for station_id, station_findings in analyze_jump_excursions(stations, config).items():
+        for evidence in station_findings:
+            variable = evidence["variable"]
+            thresholds = config["thresholds"][variable]
+            message = (
+                f"Detected {len(evidence['ranges'])} locally implausible {variable} excursion(s) "
+                f"covering {evidence['records']} record(s); maximum deviation "
+                f"{evidence['maximum_deviation']:.1f}"
+            )
+            selector = {
+                "ranges": evidence["ranges"],
+                "evidence": {
+                    "context_hours": config["context_hours"],
+                    "minimum_context_points": config["minimum_context_points"],
+                    **thresholds,
+                },
+            }
+            finding = _finding(
+                source_sha256,
+                f"jump_{variable}",
+                "WARN",
+                station_id,
+                message,
+                variable=variable,
+                selector=selector,
+                evidence={
+                    "range_count": len(evidence["ranges"]),
+                    "records": evidence["records"],
+                    "maximum_deviation": evidence["maximum_deviation"],
+                },
+            )
+            findings.append(finding)
+            actions.append(
+                _action(
+                    source_sha256,
+                    "JUMP",
+                    "WARN",
+                    station_id,
+                    variable,
+                    selector,
+                    {"kind": "set_nan_ranges", "variables": [variable]},
+                    f"Replace implausible {variable} excursion ranges with NaN: {message}",
+                    automatic=automatic,
+                    linked_findings=[finding["id"]],
+                )
+            )
+    return actions, findings
+
+
 def _h5_qc_findings(  # pylint: disable=too-many-branches
     path: Path, source_sha256: str, policy: dict
 ) -> tuple[list[dict], list[dict]]:
@@ -1353,6 +1489,9 @@ def _h5_qc_findings(  # pylint: disable=too-many-branches
                     linked_findings=[finding["id"]],
                 )
             )
+    jump_actions, jump_findings = _jump_excursion_actions(stations, source_sha256, policy)
+    actions.extend(jump_actions)
+    findings.extend(jump_findings)
     if policy["version"] == 1:
         minimum_run = int(policy["gui"]["frozen_min_run"])
         for station_id, station in stations.items():
@@ -1565,9 +1704,15 @@ def _validate_destinations(paths: list[Path], overwrite: bool) -> None:
 
 
 def _conservative_exclusion_actions(
-    source_sha256: str, actions: list[dict], findings: list[dict]
+    source_sha256: str, policy: dict, actions: list[dict], findings: list[dict]
 ) -> list[dict]:
     """Group every unresolved doubt into a narrow automatic exclusion."""
+    version_six = policy["version"] >= 6
+    conservative = policy.get("conservative", {})
+    audit_only_codes = set(conservative.get("audit_only_finding_codes", []))
+    variable_groups = {
+        variable: tuple(group) for group in conservative.get("variable_groups", []) for variable in group
+    }
     automatic_links = {
         finding_id
         for action in actions
@@ -1595,7 +1740,7 @@ def _conservative_exclusion_actions(
         "gap_dt",
         "no_data",
     }
-    groups: dict[tuple[str, str, str | None], dict[str, Any]] = {}
+    groups: dict[tuple[str, str, tuple[str, ...] | None], dict[str, Any]] = {}
 
     def add_reason(
         station: str | None,
@@ -1606,10 +1751,17 @@ def _conservative_exclusion_actions(
         action_id: str | None = None,
         force_station: bool = False,
     ) -> None:
-        if not station:
+        if not station or (version_six and code in audit_only_codes):
             return
-        station_scope = force_station or code in station_codes or variable not in SUPPORTED_VARIABLES
-        group_key = ("station", station, None) if station_scope else ("variable", station, variable)
+        if version_six:
+            variables = (
+                variable_groups.get(variable, (variable,)) if variable in SUPPORTED_VARIABLES else None
+            )
+            group_key = ("variable", station, variables) if variables else ("station", station, None)
+        else:
+            station_scope = force_station or code in station_codes or variable not in SUPPORTED_VARIABLES
+            variables = (variable,) if not station_scope else None
+            group_key = ("station", station, None) if station_scope else ("variable", station, variables)
         group = groups.setdefault(
             group_key,
             {"finding_ids": set(), "source_action_ids": set(), "codes": set(), "severities": set()},
@@ -1632,7 +1784,7 @@ def _conservative_exclusion_actions(
             finding["code"],
             finding["severity"],
             finding_id=finding_id,
-            force_station=finding_id in forced_station,
+            force_station=not version_six and finding_id in forced_station,
         )
     linked_finding_ids = {finding["id"] for finding in findings}
     for action in review_actions:
@@ -1645,11 +1797,11 @@ def _conservative_exclusion_actions(
             action["code"],
             action["severity"],
             action_id=action["id"],
-            force_station=action.get("effect", {}).get("kind") == "exclude_station",
+            force_station=(not version_six and action.get("effect", {}).get("kind") == "exclude_station"),
         )
 
     exclusions = []
-    for (scope, station, variable), reasons in sorted(groups.items()):
+    for (scope, station, variables), reasons in sorted(groups.items()):
         finding_ids = sorted(reasons["finding_ids"])
         source_action_ids = sorted(reasons["source_action_ids"])
         codes = sorted(reasons["codes"])
@@ -1661,10 +1813,16 @@ def _conservative_exclusion_actions(
         }
         if scope == "station":
             effect = {"kind": "exclude_station"}
+            variable = None
             message = f"Conservative-auto excluded station for QC doubt: {', '.join(codes)}"
         else:
-            effect = {"kind": "exclude_variable", "variables": [variable]}
-            message = f"Conservative-auto excluded {variable} for QC doubt: {', '.join(codes)}"
+            variable_names = list(variables)
+            variable = variable_names[0]
+            effect = {"kind": "exclude_variable", "variables": variable_names}
+            message = (
+                f"Conservative-auto excluded {', '.join(variable_names)} for QC doubt: "
+                f"{', '.join(codes)}"
+            )
         exclusions.append(
             _action(
                 source_sha256,
@@ -1694,17 +1852,21 @@ def _conservative_fixed_point(
     review_actions = [item for item in actions if not item.get("automatic")]
     actions_by_id = {item["id"]: item for item in base_actions + review_actions}
     findings_by_id = {item["id"]: item for item in findings}
-    applied_targets: set[tuple[str, str, str | None]] = set()
+    applied_targets: set[tuple[str, str, tuple[str, ...]]] = set()
     applied_automatic = {item["id"] for item in base_actions}
     maximum_iterations = max(2, len(load_h5(path)) * (len(SUPPORTED_VARIABLES) + 1) + 1)
 
     for _iteration in range(maximum_iterations):
         current_actions = list(actions_by_id.values())
         exclusions = _conservative_exclusion_actions(
-            source_sha256, current_actions, list(findings_by_id.values())
+            source_sha256, policy, current_actions, list(findings_by_id.values())
         )
         exclusions_by_target = {
-            (item["effect"]["kind"], item["target"]["station"], item["target"].get("variable")): item
+            (
+                item["effect"]["kind"],
+                item["target"]["station"],
+                tuple(item["effect"].get("variables", [])),
+            ): item
             for item in exclusions
         }
         new_exclusions = [
@@ -2262,13 +2424,21 @@ def finalize_manifest(
             temporary_output, manifest["source"]["sha256"], manifest["policy"]["normalized"]
         )
         final_findings.extend(final_zero_findings)
-        if manifest["policy"]["normalized"].get("mode") == "conservative_auto" and (
-            post_actions or zero_actions or final_findings
-        ):
-            raise QCError(
-                "conservative-auto finalization found new QC doubts; rerun processing with the "
-                "same source and policy"
+        normalized_policy = manifest["policy"]["normalized"]
+        if normalized_policy.get("mode") == "conservative_auto":
+            final_actions = post_actions + zero_actions
+            new_automatic_actions = [item for item in final_actions if item.get("automatic")]
+            new_exclusions = _conservative_exclusion_actions(
+                manifest["source"]["sha256"],
+                normalized_policy,
+                final_actions,
+                final_findings,
             )
+            if new_automatic_actions or new_exclusions:
+                raise QCError(
+                    "conservative-auto finalization found new QC doubts; rerun processing with the "
+                    "same source and policy"
+                )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_output.replace(output_path)
     finally:

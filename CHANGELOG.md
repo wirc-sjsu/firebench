@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   of gap, dropout, and outage findings, with structured selectors in manifest schema version 2.
 - Add policy version 5 review and conservative-auto modes, with fixed-point station or variable
   exclusions that leave no doubtful datasets pending in unattended workflows.
+- Add policy version 6 conservative scoping, with configurable variable groups and audit-only
+  availability findings that preserve otherwise usable station measurements.
+- Add policy version 7 local-context jump detection, with configurable change, rate, and deviation
+  thresholds and range-level corrections for implausible sensor excursions.
+- Extend policy version 8 jump detection to high-confidence relative-humidity and 10-hour
+  fuel-moisture excursions while rejecting non-finite boundary evidence.
 - Add an Actions-to-Detail review queue with issue-period zoom, highlighted samples, grouped-range
   navigation, in-place decisions, automatic advancement, live selection/sort synchronization, and
   read-only audit findings.
@@ -38,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Compute the pending fraction from human-review actions instead of all automatic operations, use
   contiguous finite-data coverage for neighbor evidence, and rerun zero-wind diagnostics after
   finalization.
+- Group wind speed, direction, and gust exclusions in policy version 6 while reserving complete
+  station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
 

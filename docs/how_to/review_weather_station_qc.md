@@ -13,7 +13,7 @@ Create a versioned TOML policy. Required windows are optional, repeatable tables
 include a UTC offset.
 
 ```toml
-version = 5
+version = 8
 mode = "review"
 
 [output]
@@ -33,6 +33,29 @@ temporal_break_factor = 3.0
 [review]
 target_pending_fraction = 0.05
 required_finding_codes = ["dropout", "gap_dt", "max_var_outage", "full_outage"]
+
+[conservative]
+audit_only_finding_codes = ["COVER", "gap_dt", "max_var_outage", "full_outage"]
+variable_groups = [["wind_speed", "wind_direction", "wind_gust"]]
+
+[jumps]
+context_hours = 6.0
+minimum_context_points = 5
+
+[jumps.thresholds.air_temperature]
+minimum_change = 10.0
+minimum_rate_per_hour = 60.0
+minimum_deviation = 10.0
+
+[jumps.thresholds.relative_humidity]
+minimum_change = 35.0
+minimum_rate_per_hour = 240.0
+minimum_deviation = 25.0
+
+[jumps.thresholds.fuel_moisture_content_10h]
+minimum_change = 15.0
+minimum_rate_per_hour = 60.0
+minimum_deviation = 15.0
 
 [gui]
 max_var_outage_min = 1440.0
@@ -79,10 +102,14 @@ start = "2021-08-17T20:20:00-07:00"
 end = "2021-09-10T23:34:00-07:00"
 ```
 
-Policy versions 1 through 4 remain readable with their historical behavior so older runs stay
+Policy versions 1 through 7 remain readable with their historical behavior so older runs stay
 reproducible. Version 5 adds the explicit `review` and `conservative_auto` modes. `review` retains
-the version-4 risk-based review workflow. `conservative_auto` turns every unresolved review-level
-or audit-only doubt into a narrow automatic exclusion and therefore produces no pending actions.
+the version-4 risk-based review workflow. Version 6 refines conservative mode so availability-only
+findings remain in the audit record without removing usable measurements, while sensor-quality
+doubts exclude the affected variable or configured variable group. Conservative mode produces no
+pending actions. Version 7 detects locally implausible variable excursions and proposes replacing
+only their confirmed ranges with NaN for air temperature. Version 8 extends the same range-level
+method to high-confidence relative-humidity and 10-hour fuel-moisture excursions.
 
 Run the processor with explicit destinations:
 
@@ -103,11 +130,26 @@ finite supported observations in a required window. These deterministic actions 
 `auto_accepted`; a reviewer may still override them. Conflicting duplicate timestamps and invalid
 or decreasing time axes are quarantined from the candidate and require a decision.
 
-In `conservative_auto` mode, station-wide, source, structural, time-axis, full-outage, incomplete-
-window, and severe zero-wind doubts exclude the complete station. Variable-specific outages,
-dropouts, ambiguous or audit-only frozen sensors, and elevated or audit-only zero wind exclude only
-the affected station-variable dataset. The processor reruns QC after each new exclusion until it
-reaches a fixed point. Use `review` mode when additional coverage is worth human inspection.
+In policy version 6 `conservative_auto` mode, source-wide, structural, and unsafe time-axis doubts
+exclude the complete station. Sensor-quality doubts exclude only the affected station-variable
+dataset or configured variable group; by default, a doubt targeting wind speed, direction, or gust
+removes all three wind datasets while retaining unrelated variables. Incomplete coverage, timestamp
+gaps, longest-variable outages, and full-station outages remain visible audit findings because they
+describe availability rather than the validity of finite measurements. Stations with no finite
+supported observations, including within a configured required window, are still excluded. The
+processor reruns QC after each new exclusion until it reaches a fixed point. Policy version 5 keeps
+its original broader station-exclusion behavior for reproducibility.
+
+Policy version 7 adds a centered local-median excursion test. A sample must exceed the configured
+local deviation, and at least one edge of its contiguous range must exceed both the absolute-change
+and per-hour rate thresholds. Ranges split across abnormal timestamp gaps. The defaults use a
+six-hour context. Air temperature requires a 10 °C local deviation, a 10 °C boundary change, and a
+rate of at least 60 °C/hour. Version 8 additionally requires 25, 35, and 240 percentage points/hour
+for relative-humidity deviation, change, and rate, respectively; the corresponding strict 10-hour
+fuel-moisture thresholds are 15, 15, and 60. Missing or non-finite values cannot confirm an
+excursion boundary. These gates catch abrupt sensor spikes without imposing fixed value cutoffs.
+Conservative mode automatically replaces confirmed ranges with NaN; review mode leaves the same
+range operation pending.
 
 Source `QC_FLAGGED` metadata and incomplete required-window coverage require human review. In policy
 version 4, gaps, wind-direction dropouts, longest-variable outages, and full-station outages also
@@ -219,8 +261,9 @@ Code | Default | Typical message | Effect when applied
 `SRCFLAG` | Review | `Synoptic source metadata marks this station QC_FLAGGED` | Accept to exclude the whole station; reject to retain it.
 `ZEROWIND` | Automatic or review | `Exclude station: 80.0% ... is zero`, `Review N zero-wind range(s)`, or `Acknowledge elevated zero wind ...` | At 80% or more zero wind, propose excluding the station. From 50% to 80%, require review of a wind-speed-only range change or a non-mutating acknowledgement. Below 50%, only qualifying seven-day ranges are actionable.
 `FROZEN` | Automatic or review | `Replace N near-certain/ambiguous frozen VARIABLE range(s) with NaN` | Set grouped sensor ranges to NaN. The selector retains range-level duration, thresholds, resolution, quantization uncertainty, neighbor coverage, and same-station activity.
+`JUMP` | Automatic in conservative mode; review otherwise | `Replace implausible VARIABLE excursion ranges with NaN` | Set only locally inconsistent ranges with a qualifying high-rate boundary to NaN. The selector records context and threshold evidence plus entry and exit transitions.
 `ACK` | Review | `Acknowledge ... without changing data: ...` | Record required review of non-mutating conditions. Version 4 defaults to acknowledgement actions for incomplete windows, gaps, dropouts, variable outages, and full-station outages; low-confidence plateaus remain audit-only.
-`SAFEEXCL` | Automatic in conservative mode | `Conservative-auto excluded ... for QC doubt` | Exclude the complete station for station-wide doubt or only the named station-variable dataset for variable-specific doubt. The selector lists every triggering finding and original action.
+`SAFEEXCL` | Automatic in conservative mode | `Conservative-auto excluded ... for QC doubt` | Exclude the complete station for station-wide doubt or the named station-variable dataset or configured variable group for sensor-specific doubt. The selector lists every triggering finding and original action.
 `MANUAL` | Accepted when created | `Manually exclude station: ...`, `Manual range removal: ...`, or `Manually omit complete variable ...` | Apply a reviewer-authored station exclusion, set selected variable/range values to NaN, or omit one station variable.
 
 The same station can have several operations. An accepted `exclude_station` effect takes precedence
@@ -233,7 +276,7 @@ for auditability.
 Effect kind | Data result
 --- | ---
 `exclude_station` | Omit the complete `station_<ID>` group from the final HDF5.
-`exclude_variable` | Omit the named variable dataset from one station in the final HDF5. The station, time axis, and other variables remain present.
+`exclude_variable` | Omit the named variable dataset or datasets from one station in the final HDF5. The station, time axis, and other variables remain present.
 `normalize_timestamps` | Interpret every valid Synoptic timestamp's displayed clock value as UTC.
 `remove_identical_duplicates` | Delete the selected duplicate rows while retaining alignment across every observation array.
 `normalize_sensor_height` | Change numeric sensor-height metadata from string to numeric form.
