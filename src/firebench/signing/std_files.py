@@ -97,53 +97,58 @@ def verify_certificates_in_h5(
         certs = f[f"/{CERTIFICATES}"]
         for cert_id in sorted(certs.keys()):
             grp = certs[cert_id]
-            payload_txt = (
-                grp["payload"][()].decode("utf-8")
-                if isinstance(grp["payload"][()], (bytes, np.bytes_))
-                else str(grp["payload"][()])
-            )
-            sig_txt = (
-                grp["signature"][()].decode("utf-8")
-                if isinstance(grp["signature"][()], (bytes, np.bytes_))
-                else str(grp["signature"][()])
-            )
-
-            public_key_armor = get_public_key(str(grp.attrs.get("key_id")))
-
-            payload = json.loads(payload_txt)
-            payload_bytes = canonical_json_bytes(payload)
-
-            # Check certificate_id matches payload hash prefix
-            payload_sha = sha256_hex(payload_bytes)
-            expected_id = short_hex(payload_sha, 32)
-
-            ok = True
+            certificate_name = str(grp.attrs.get("cert_name", cert_id))
+            payload = None
+            ok = False
             err = None
 
-            if expected_id != cert_id:
-                ok = False
-                err = f"certificate_id mismatch: expected {expected_id}, found {cert_id}"
+            try:
+                payload_value = grp["payload"][()]
+                payload_txt = (
+                    payload_value.decode("utf-8")
+                    if isinstance(payload_value, (bytes, np.bytes_))
+                    else str(payload_value)
+                )
+                signature_value = grp["signature"][()]
+                sig_txt = (
+                    signature_value.decode("utf-8")
+                    if isinstance(signature_value, (bytes, np.bytes_))
+                    else str(signature_value)
+                )
 
-            # Check subject digest binding
-            if ok and payload.get("subject_digest_sha256") != subject_digest:
-                ok = False
-                err = "subject_digest mismatch: HDF5 content changed (excluding certificates) or wrong file"
+                payload = json.loads(payload_txt)
+                certificate_name = payload["cert_name"]
+                payload_bytes = canonical_json_bytes(payload)
 
-            # Verify signature
-            if ok:
-                try:
-                    gpg_verify_detached_with_pubkey(payload_bytes, sig_txt, public_key_armor)
-                except GPGNotAvailable as e:
-                    ok = False
-                    err = f"verification unavailable: {e}"
-                except SignatureInvalid as e:
-                    ok = False
-                    err = f"signature invalid: {e}"
-                except SignatureVerificationError as e:
-                    ok = False
-                    err = f"verification error: {e}"
+                payload_sha = sha256_hex(payload_bytes)
+                expected_id = short_hex(payload_sha, 32)
+                if expected_id != cert_id:
+                    raise SignatureInvalid(
+                        f"certificate_id mismatch: expected {expected_id}, found {cert_id}"
+                    )
 
-            results[payload["cert_name"]] = {
+                if payload.get("subject_digest_sha256") != subject_digest:
+                    raise SignatureInvalid(
+                        "subject_digest mismatch: HDF5 content changed "
+                        "(excluding certificates) or wrong file"
+                    )
+
+                key_id = payload.get("key_id")
+                if not key_id:
+                    raise SignatureVerificationError("missing key_id in payload")
+                public_key_armor = get_public_key(key_id)
+                gpg_verify_detached_with_pubkey(payload_bytes, sig_txt, public_key_armor)
+                ok = True
+            except GPGNotAvailable as exc:
+                err = f"verification unavailable: {exc}"
+            except SignatureInvalid as exc:
+                err = f"signature invalid: {exc}"
+            except SignatureVerificationError as exc:
+                err = f"verification error: {exc}"
+            except (KeyError, TypeError, ValueError, UnicodeError) as exc:
+                err = f"certificate invalid: {exc}"
+
+            results[certificate_name] = {
                 "cert_id": cert_id,
                 "valid": ok,
                 "error": err,

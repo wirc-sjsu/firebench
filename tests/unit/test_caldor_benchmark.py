@@ -1164,3 +1164,89 @@ def test_weather_benchmark_skips_missing_model_station_outside_period(tmp_path):
         )
 
     assert result["Air temp test"] == 0.0
+
+
+@pytest.mark.parametrize(
+    "observation_verification,expected_level,warning_text",
+    [
+        (None, "VL-D", "certificate is missing"),
+        (
+            {"valid": False, "error": "verification unavailable: gpg is unavailable"},
+            "VL-D",
+            "verification unavailable: gpg is unavailable",
+        ),
+        (
+            {"valid": False, "error": "signature invalid: bad signature"},
+            "VL-D",
+            "signature invalid: bad signature",
+        ),
+        ({"valid": True, "error": None}, "VL-C", None),
+    ],
+)
+def test_run_records_observation_verification_level_and_warning(
+    monkeypatch,
+    caplog,
+    tmp_path,
+    observation_verification,
+    expected_level,
+    warning_text,
+):
+    obs_path = tmp_path / "observations.h5"
+    model_path = tmp_path / "model.h5"
+    output_path = tmp_path / "result.json"
+    scorecard_path = tmp_path / "scorecard.pdf"
+    for path in (obs_path, model_path):
+        with h5py.File(path, "w") as h5:
+            h5.attrs["version"] = "test"
+
+    obs_certificates = {}
+    if observation_verification is not None:
+        obs_certificates[c001_caldor.fsi.Certificates.FB_VERIFIED_OBS_DATASET.value] = (
+            observation_verification
+        )
+    certificate_inputs = {"from_obs_std_file": obs_certificates}
+
+    monkeypatch.setattr(
+        c001_caldor.fsi,
+        "retrieve_h5_certificates",
+        lambda _obs_path, _model_path=None: certificate_inputs,
+    )
+    monkeypatch.setattr(c001_caldor, "build_registries", lambda: None)
+    monkeypatch.setattr(c001_caldor, "resolve_benchmark_target", lambda target: target)
+    monkeypatch.setattr(c001_caldor, "get_list_benchmark_with_agg", lambda *_args: [])
+    monkeypatch.setattr(
+        c001_caldor,
+        "run_all_benchmarks",
+        lambda *_args: {
+            "benchmarks": {},
+            "score_card": {
+                "Scheme": {},
+                "Score Total": 100.0,
+                "aggregation_scheme_name": "test",
+            },
+        },
+    )
+
+    def save_scorecard(filename, *_args, **_kwargs):
+        Path(filename).write_bytes(b"scorecard")
+
+    monkeypatch.setattr(c001_caldor.fm, "save_as_table", save_scorecard)
+
+    with caplog.at_level("WARNING", logger="firebench"):
+        result = c001_caldor.run_caldor_benchmark(
+            model_path,
+            benchmark_target="test",
+            obs_data=obs_path,
+            output_json=output_path,
+            score_card_report=scorecard_path,
+        )
+
+    assert result["certificates_input"] == certificate_inputs
+    assert result["verification_lvl"] == expected_level
+    if warning_text is None:
+        assert "forcing verification level" not in caplog.text
+    else:
+        assert warning_text in caplog.text
+        assert str(obs_path) in caplog.text
+        assert "fb-verified-obs-dataset" in caplog.text
+        assert "forcing verification level VL-D" in caplog.text

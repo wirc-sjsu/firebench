@@ -4,6 +4,9 @@ from .benchmarks import (
     certify_benchmark_run,
     verify_certificate_in_dict,
     add_certificate_to_dict,
+    compute_input_verification_lvl,
+    compute_verification_lvl,
+    get_observation_certificate_verification,
     DEFAULT_VL,
     VERIFICATION_LEVEL_COLORS,
 )

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add verification level D for benchmark runs whose observational dataset lacks a valid
+  `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
 - Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action
   IDs, candidate and final HDF5 stages, JSON manifests, text logs, and CLI process/review/finalize
   commands.

@@ -2659,6 +2659,30 @@ def run_caldor_benchmark(
         output_dict["evaluated_model_name"] = str(name)
     output_dict = ft.merge_dictionaries(output_dict, get_files_hash(model_output, obs_data))
 
+    output_dict["certificates_input"] = fsi.retrieve_h5_certificates(
+        obs_data,
+        model_output if sign else None,
+    )
+    observation_verification = fsi.get_observation_certificate_verification(
+        output_dict["certificates_input"]
+    )
+    if observation_verification is None:
+        certificate_error = "certificate is missing"
+    elif not observation_verification.get("valid", False):
+        certificate_error = observation_verification.get("error") or "certificate is invalid"
+    else:
+        certificate_error = None
+    if certificate_error is not None:
+        ft.logger.warning(
+            "Observational dataset %s does not have a valid %s certificate (%s); "
+            "forcing verification level %s.",
+            obs_data,
+            fsi.Certificates.FB_VERIFIED_OBS_DATASET.value,
+            certificate_error,
+            fsi.DEFAULT_VL,
+        )
+    output_dict["verification_lvl"] = fsi.compute_input_verification_lvl(output_dict["certificates_input"])
+
     build_registries()
     aggregation_scheme = resolve_benchmark_target(benchmark_target)
     list_bench = get_list_benchmark_with_agg(AGGREGATION, aggregation_scheme)
@@ -2670,7 +2694,6 @@ def run_caldor_benchmark(
     signed = False
     if sign:
         key, signer = sign
-        output_dict["certificates_input"] = fsi.retrieve_h5_certificates(obs_data, model_output)
         output_dict = fsi.certify_benchmark_run(output_dict, key, signer)
         signed = True
 

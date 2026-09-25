@@ -81,7 +81,7 @@ def gpg_verify_detached_with_pubkey(message: bytes, signature_armor: str, public
             gpg_path = shutil.which("gpg")
 
             if gpg_path is None or gpg_path not in _ALLOWED_GPG_PATHS:
-                raise RuntimeError("Approved gpg executable not found")
+                raise GPGNotAvailable("approved gpg executable not found")
 
             imp = subprocess.run(
                 [gpg_path, "--batch", "--yes", "--import"],

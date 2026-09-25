@@ -91,6 +91,39 @@ def test_save_as_table_paginates_large_scorecard(tmp_path):
     assert len(page_objects) > 1
 
 
+def test_unsigned_scorecard_uses_recorded_verification_level(monkeypatch, tmp_path):
+    data = {
+        "case_id": "FB001",
+        "benchmark_short_name": "2021_Caldor",
+        "evaluated_model_name": "test-model",
+        "firebench_version": "test",
+        "case_version": "test",
+        "verification_lvl": "VL-D",
+        "benchmarks": {},
+        "score_card": {
+            "Scheme": {},
+            "Score Total": 50.0,
+            "aggregation_scheme_name": "test",
+        },
+    }
+    captured_levels = []
+
+    def capture_title(_data, _scheme_name, verification_level, _score):
+        captured_levels.append(verification_level)
+        return ["title", "", verification_level, "50.00"]
+
+    monkeypatch.setattr("firebench.metrics.table._scorecard_title", capture_title)
+
+    save_as_table(
+        tmp_path / "scorecard.pdf",
+        data,
+        signed=False,
+        certificate_name="certificate_verif_lvl",
+    )
+
+    assert captured_levels == ["VL-D"]
+
+
 def _scorecard_data(benchmarks: dict, score_card: dict) -> dict:
     return {
         "case_id": "FB001",

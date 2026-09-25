@@ -23,3 +23,10 @@ for certificate_name, result in results.items():
 the packaged public key for its key ID, and verifies the detached signature. An empty dictionary
 means no certificates are embedded. A changed subject, unknown key ID, unavailable GPG executable,
 or invalid signature is reported as a failed verification. Never commit private keys.
+
+Every benchmark run verifies the observational file's `fb-verified-obs-dataset` certificate. A
+valid observation certificate permits verification level C for an unsigned run and levels B, A,
+or A+ when the corresponding signed benchmark and model certificates are also valid. If the
+observation certificate is missing, invalid, or cannot be checked because GPG is unavailable, the
+benchmark continues at verification level D and emits a warning explaining the downgrade. The JSON
+result records both the selected level and the observation certificate verification result.
