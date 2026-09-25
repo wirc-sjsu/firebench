@@ -6,6 +6,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Add verification level D for benchmark runs whose observational dataset lacks a valid
+  `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
+- Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action
+  IDs, candidate and final HDF5 stages, JSON manifests, text logs, and CLI process/review/finalize
+  commands.
+- Add a weather-QC GUI Actions tab for reviewer-attributed accept, reject, acknowledge, reset, edit,
+  navigation, filtering, inline optional decision comments, and finalization workflows.
+- Add an audited Station Detail control for omitting a complete station-variable dataset from the
+  finalized weather HDF5 while retaining the station and its other variables.
+- Add resolution-aware, elapsed-time frozen-sensor checks that require changing-neighbor evidence,
+  report quantization uncertainty, and retain low-confidence findings without proposing removal.
+- Add policy version 3 frozen-sensor triage, grouped sensor reviews, conservative near-certain
+  automatic corrections, contextual zero-wind handling, and a visible review-queue target.
+- Add policy version 4 risk gates for extreme and elevated zero-wind stations and required review
+  of gap, dropout, and outage findings, with structured selectors in manifest schema version 2.
+- Add policy version 5 review and conservative-auto modes, with fixed-point station or variable
+  exclusions that leave no doubtful datasets pending in unattended workflows.
+- Add policy version 6 conservative scoping, with configurable variable groups and audit-only
+  availability findings that preserve otherwise usable station measurements.
+- Add policy version 7 local-context jump detection, with configurable change, rate, and deviation
+  thresholds and range-level corrections for implausible sensor excursions.
+- Extend policy version 8 jump detection to high-confidence relative-humidity and 10-hour
+  fuel-moisture excursions while rejecting non-finite boundary evidence.
+- Add an Actions-to-Detail review queue with issue-period zoom, highlighted samples, grouped-range
+  navigation, in-place decisions, automatic advancement, live selection/sort synchronization, and
+  read-only audit findings.
+
+### Changed
+
+- Store weather-QC manifest references and reviewer identity in version 3 GUI sessions, add
+  version 4 frozen-sensor settings, and add version 5 triage settings while retaining older readers.
+- Keep policy-v3 weather outages, gaps, and dropouts as audit-only diagnostics for reproducibility;
+  policy v4 requires their review by default. Zero-wind range corrections affect only wind speed.
+- Compute the pending fraction from human-review actions instead of all automatic operations, use
+  contiguous finite-data coverage for neighbor evidence, and rerun zero-wind diagnostics after
+  finalization.
+- Group wind speed, direction, and gust exclusions in policy version 6 while reserving complete
+  station exclusion for source-wide, structural, time-axis, and empty-data failures.
+
+### Fixed
+
+- Penalize a missing model `wind_direction` value as the observed direction rotated 180 degrees
+  instead of a fixed out-of-range constant, which wrapped modulo 360 and could land close to the
+  true direction instead of maximizing the circular error used by the wind-direction KPI.
+- Interpret all Synoptic timestamp clock values as UTC regardless of station timezone or explicit
+  timestamp offset, preventing station-timezone shifts during standardization and weather QC.
+- Prevent Detail review advancement from failing when Matplotlib has already detached the previous
+  issue highlight during a time-series redraw.
+- Let Synoptic standardization bind provenance to an original source hash and write UTC time origins
+  while retaining each station's source timezone.
+
 ## [0.10.0] - 2026 / 08 / 27
 
 ### Added
