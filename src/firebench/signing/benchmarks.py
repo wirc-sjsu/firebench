@@ -3,7 +3,6 @@ import json
 from .std_files import verify_certificates_in_h5
 from .utils import (
     _canonical_json_dumps,
-    _canonical_json_dumps,
     canonical_json_bytes,
     gpg_detached_sign_armor,
     gpg_verify_detached_with_pubkey,
@@ -22,9 +21,11 @@ class Verification_lvl(Enum):
     A = "VL-A"
     B = "VL-B"
     C = "VL-C"
+    D = "VL-D"
 
 
 VERIFICATION_LEVEL_COLORS = {
+    Verification_lvl.D.value: "#7F1D1D",
     Verification_lvl.C.value: "#B03A2E",
     Verification_lvl.B.value: "#D4AC0D",
     Verification_lvl.A.value: "#2E86C1",
@@ -46,16 +47,38 @@ RULES = [
         Verification_lvl.A.value,
     ),
     ({"fb-benchmark-run-internal", "obs-fb-verified-obs-dataset"}, Verification_lvl.B.value),
+    ({"obs-fb-verified-obs-dataset"}, Verification_lvl.C.value),
 ]
 
-DEFAULT_VL = Verification_lvl.C.value
+DEFAULT_VL = Verification_lvl.D.value
 
 
-def retrieve_h5_certificates(obs_file_path, model_file_path):
+def retrieve_h5_certificates(obs_file_path, model_file_path=None):
     certificates = {}
     certificates["from_obs_std_file"] = verify_certificates_in_h5(obs_file_path)
-    certificates["from_model_std_file"] = verify_certificates_in_h5(model_file_path)
+    if model_file_path is not None:
+        certificates["from_model_std_file"] = verify_certificates_in_h5(model_file_path)
     return certificates
+
+
+def get_observation_certificate_verification(certificates_input: dict) -> dict | None:
+    """Return verification details for the required observational dataset certificate."""
+    return certificates_input.get("from_obs_std_file", {}).get(Certificates.FB_VERIFIED_OBS_DATASET.value)
+
+
+def compute_input_verification_lvl(
+    certificates_input: dict,
+    benchmark_run_verified: bool = False,
+) -> str:
+    """Compute a level from verified input certificates and an optional signed benchmark run."""
+    found = {"fb-benchmark-run-internal": benchmark_run_verified}
+    for source, prefix in (
+        ("from_model_std_file", "model"),
+        ("from_obs_std_file", "obs"),
+    ):
+        for certificate_name, verification in certificates_input.get(source, {}).items():
+            found[f"{prefix}-{certificate_name}"] = bool(verification.get("valid", False))
+    return compute_verification_lvl(found)
 
 
 def write_case_results(path: str, output_dict: dict):
@@ -211,24 +234,8 @@ def certify_benchmark_run(
         data, "certificate", Certificates.FB_BENCHMARK_RUN_INTERNAL.value, key_id, signer, spec
     )
     verif = verify_certificate_in_dict(data, "certificate")
-    found = {"fb-benchmark-run-internal": verif["valid"]}
-
     input_verif: dict = data.get("certificates_input", {})
-    from_model: dict = input_verif.get("from_model_std_file", {})
-    for key, value in from_model.items():
-        try:
-            found[f"model-{key}"] = value["valid"]
-        except KeyError as exc:
-            raise KeyError(f"Invalid key in certificates_input/from_model_std_file") from exc
-
-    from_obs: dict = input_verif.get("from_obs_std_file", {})
-    for key, value in from_obs.items():
-        try:
-            found[f"obs-{key}"] = value["valid"]
-        except KeyError as exc:
-            raise KeyError(f"Invalid key in certificates_input/from_model_std_file") from exc
-
-    data["verification_lvl"] = compute_verification_lvl(found)
+    data["verification_lvl"] = compute_input_verification_lvl(input_verif, verif["valid"])
 
     data, _ = add_certificate_to_dict(
         data, "certificate_verif_lvl", Certificates.FB_VERIFICATION_LVL.value, key_id, signer, spec
@@ -237,9 +244,10 @@ def certify_benchmark_run(
     return data
 
 
-def compute_verification_lvl(present: set[str]) -> int:
+def compute_verification_lvl(present: set[str] | dict[str, bool]) -> str:
+    if isinstance(present, dict):
+        present = {certificate for certificate, valid in present.items() if valid}
     for required, value in RULES:
         if required.issubset(present):
-            print(value)
             return value
     return DEFAULT_VL

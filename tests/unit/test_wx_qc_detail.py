@@ -3,12 +3,12 @@
 from types import SimpleNamespace
 
 import matplotlib
+import matplotlib.dates as mdates
 import numpy as np
 from matplotlib.figure import Figure
 
 from firebench.tools.wx_qc.constants import default_config
 from firebench.tools.wx_qc.tabs.detail import DetailTabMixin
-
 
 matplotlib.use("Agg", force=True)
 
@@ -34,6 +34,8 @@ class FakeWidget:
 
     def config(self, **kwargs):
         self.options.update(kwargs)
+
+    configure = config
 
     def selection(self):
         return self.selected
@@ -121,6 +123,7 @@ class DetailApp(DetailTabMixin):
         self.detail_nb = FakeNotebook()
         self.btn_ts_compare = FakeWidget()
         self.btn_ts_remove = FakeWidget()
+        self.btn_ts_remove_variable = FakeWidget()
         self.btn_ts_locate = FakeWidget()
         self.lbl_status = FakeWidget()
         self.var_ts_var = FakeVariable("air_temperature")
@@ -247,6 +250,7 @@ def test_detail_station_decisions_navigation_and_tab_state(monkeypatch):
     assert app.btn_ts_compare.options["state"] == "disabled"
     app._set_single_station_tabs_enabled(True)
     assert app.btn_ts_locate.options["state"] == "normal"
+    assert app.btn_ts_remove_variable.options["state"] == "normal"
 
 
 def test_detail_compare_variable_cycles_and_configuration(monkeypatch):
@@ -317,8 +321,139 @@ def test_detail_point_and_range_selection_interactions():
     app._ts_update_selection()
     assert app._ts_sel_artist is not None
     assert app.canvas_ts.draws > 0
+
+
+def _add_review_widgets(app):
+    app.lbl_detail_review = FakeWidget()
+    app.lbl_review_range = FakeWidget()
+    app.btn_review_prev_range = FakeWidget()
+    app.btn_review_next_range = FakeWidget()
+    app.btn_review_accept = FakeWidget()
+    app.btn_review_reject = FakeWidget()
+    app.btn_review_ack = FakeWidget()
+    app.btn_review_reset = FakeWidget()
+    app._ts_review_artist = None
+    app._ts_review_span = None
+
+
+def test_detail_review_overlay_highlights_active_range_and_navigates_ranges():
+    app = DetailApp()
+    _add_review_widgets(app)
+    app._ts_times = np.array(
+        ["2020-01-01T00:00", "2020-01-01T01:00", "2020-01-01T02:00"], dtype="datetime64[m]"
+    )
+    app._ts_xnum = mdates.date2num(app._ts_times)
+    app._ts_data = np.array([10.0, 11.0, 12.0])
+    app._active_review_item = {
+        "read_only": False,
+        "item": {
+            "id": "WXQC-FROZEN-TEST",
+            "code": "FROZEN",
+            "severity": "WARN",
+            "message": "two ranges",
+            "target": {"station": "A", "variable": "air_temperature"},
+            "selector": {
+                "ranges": [
+                    {"start": "2020-01-01T00:00:00Z", "end": "2020-01-01T01:00:00Z"},
+                    {"start": "2020-01-01T02:00:00Z", "end": "2020-01-01T02:00:00Z"},
+                ]
+            },
+            "effect": {"kind": "set_nan_ranges"},
+            "decision": {"status": "pending"},
+        },
+    }
+    app._active_review_queue = ["WXQC-FROZEN-TEST"]
+    app._active_review_range = 0
+
+    app._render_active_review_overlay()
+    assert app._ts_review_artist is not None
+    assert len(app._ts_review_artist.get_offsets()) == 2
+    assert app.lbl_review_range.options["text"] == "1/2"
+
+    app._review_next_range()
+    assert app._active_review_range == 1
+    assert len(app._ts_review_artist.get_offsets()) == 1
+    assert app.lbl_review_range.options["text"] == "2/2"
+
+
+def test_detail_review_overlay_cleanup_tolerates_artist_detached_by_axes_clear():
+    class DetachedArtist:
+        @staticmethod
+        def remove():
+            raise NotImplementedError("cannot remove artist")
+
+    app = DetailApp()
+    app._ts_review_artist = DetachedArtist()
+    app._ts_review_span = DetachedArtist()
+
+    app._clear_review_overlay()
+
+    assert app._ts_review_artist is None
+    assert app._ts_review_span is None
+
+
+def test_detail_review_queue_advances_to_next_still_pending_action():
+    app = DetailApp()
+    _add_review_widgets(app)
+    current = {
+        "id": "A1",
+        "decision": {"status": "accepted"},
+        "target": {"station": "A"},
+    }
+    next_action = {
+        "id": "A2",
+        "decision": {"status": "pending"},
+        "target": {"station": "B"},
+    }
+    app._active_review_item = {"item": current, "read_only": False}
+    app._active_review_queue = ["A1", "A2"]
+    app.qc_manifest = {"actions": [current, next_action]}
+    opened = []
+    app._open_review_item = lambda item, queue, read_only=False: opened.append((item["id"], queue))
+
+    app._advance_review_queue()
+
+    assert opened == [("A2", ["A1", "A2"])]
     app._ts_clear_range_sel()
     assert app._ts_range_sel is None
+
+
+def test_detail_review_queue_wraps_to_an_earlier_pending_action():
+    app = DetailApp()
+    _add_review_widgets(app)
+    earlier = {"id": "A1", "decision": {"status": "pending"}, "target": {"station": "A"}}
+    current = {"id": "A2", "decision": {"status": "accepted"}, "target": {"station": "B"}}
+    app._active_review_item = {"item": current, "read_only": False}
+    app._active_review_queue = ["A1", "A2"]
+    app.qc_manifest = {"actions": [earlier, current]}
+    opened = []
+    app._open_review_item = lambda item, queue, read_only=False: opened.append(item["id"])
+
+    app._advance_review_queue()
+
+    assert opened == ["A1"]
+
+
+def test_action_selection_preloads_detail_without_switching_main_tab():
+    app = DetailApp()
+    _add_review_widgets(app)
+    item = {
+        "id": "A2",
+        "code": "FROZEN",
+        "severity": "WARN",
+        "message": "selected issue",
+        "target": {"station": "B", "variable": "air_temperature"},
+        "selector": {},
+        "effect": {"kind": "set_nan_ranges"},
+        "decision": {"status": "pending"},
+    }
+
+    app._open_review_item(item, ["A1", "A2"], switch_to_detail=False)
+
+    assert app.nb.selected is None
+    assert app.detail_panes.selected == {"B"}
+    assert app._active_review_item["item"] is item
+    assert "selected issue" in app.lbl_detail_review.options["text"]
 
 
 def test_detail_removal_manifest_overlays_and_dialog_scopes(monkeypatch):
@@ -350,6 +485,47 @@ def test_detail_removal_manifest_overlays_and_dialog_scopes(monkeypatch):
     assert app.lbl_status.options["text"].startswith("Marked 1 record")
 
 
+def test_detail_omit_complete_variable_records_manifest_action(monkeypatch):
+    app = DetailApp()
+    app.qc_manifest_path = "qc.json"
+    app.var_ts_reason.set("  mostly zero  ")
+    recorded = []
+    app._record_manual_qc_action = lambda *args: recorded.append(args) or True
+    monkeypatch.setattr(
+        "firebench.tools.wx_qc.tabs.detail.messagebox.askyesno", lambda *_args, **_kwargs: True
+    )
+
+    app._ts_remove_variable()
+
+    assert recorded == [
+        (
+            "A",
+            "air_temperature",
+            {"scope": "entire_variable", "reason": "mostly zero"},
+            {"kind": "exclude_variable", "variables": ["air_temperature"]},
+            "Manually omit complete variable air_temperature: mostly zero",
+        )
+    ]
+    assert app.lbl_status.options["text"] == "Will omit A/air_temperature from the final HDF5"
+
+
+def test_detail_omit_variable_rejects_synthetic_wind_and_requires_manifest(monkeypatch):
+    app = DetailApp()
+    notices = []
+    monkeypatch.setattr(
+        "firebench.tools.wx_qc.tabs.detail.messagebox.showinfo",
+        lambda *args: notices.append(args),
+    )
+
+    app.var_ts_var.set("wind")
+    app._ts_remove_variable()
+    assert notices[-1][0] == "Select a stored variable"
+
+    app.var_ts_var.set("air_temperature")
+    app._ts_remove_variable()
+    assert notices[-1][0] == "QC manifest required"
+
+
 def test_detail_skip_actions_and_reason_abbreviations(monkeypatch):
     app = DetailApp()
     notices = []
@@ -378,4 +554,5 @@ def test_detail_skip_actions_and_reason_abbreviations(monkeypatch):
     assert app._short_reason("max_var_outage") == "Var outage"
     assert app._short_reason("full_outage") == "Full outage"
     assert app._short_reason("frozen:wind_speed") == "WS frozen"
+    assert app._short_reason("frozen_unconfirmed:relative_humidity") == "RH frozen"
     assert app._short_reason("custom") == "custom"

@@ -83,7 +83,6 @@ def build_processing_script_text(skip_list: dict, removal_list: dict, fields: di
         Full script text as a string.
     """
     skip_block = _format_skip_stations_block(skip_list)
-    remove_block = _format_remove_records_block(removal_list)
     json_filename = repr(fields["json_filename"])
     output_h5_filename = repr(fields["output_h5_filename"])
     contributors = repr(fields["contributors"])
@@ -91,158 +90,41 @@ def build_processing_script_text(skip_list: dict, removal_list: dict, fields: di
     compression_lvl = int(fields["compression_lvl"])
     logging_lvl = int(fields["logging_lvl"])
 
-    script = f'''import firebench.standardize as fs
+    script = f"""from firebench.tools.wx_qc.pipeline import process_synoptic_json
+from firebench.tools.wx_qc.tabs.skiplist import write_cleaned_h5
 from pathlib import Path
 import firebench.tools as ft
-import json
-import tempfile
-import numpy as np
-from datetime import datetime
-from firebench.tools.wx_qc.time_axis import TimeAxisError, parse_h5_time_axis
-
-def _dedup_obs(obs: dict) -> None:
-    """Drop rows where timestamp AND all variable values are identical to a prior row.
-    Rows with the same timestamp but different data are kept (genuine conflict)."""
-    times = obs.get("date_time", [])
-    if not times:
-        return
-    var_keys = [k for k, v in obs.items()
-                if k != "date_time" and isinstance(v, list) and len(v) == len(times)]
-    seen: dict = {{}}  # ts -> first index
-    drop: set = set()
-    for i, t in enumerate(times):
-        if t not in seen:
-            seen[t] = i
-        else:
-            first = seen[t]
-            if all(obs[k][first] == obs[k][i] for k in var_keys):
-                drop.add(i)
-    if not drop:
-        return
-    keep = [i for i in range(len(times)) if i not in drop]
-    obs["date_time"] = [times[i] for i in keep]
-    for k in var_keys:
-        obs[k] = [obs[k][i] for i in keep]
-
-
-def preprocess_timestamps(json_path: Path) -> Path:
-    """Normalise timestamps to UTC naive format expected by firebench.
-    UTC avoids DST fall-back ambiguity where two distinct UTC instants
-    map to the same local naive string."""
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    for station in data["STATION"]:
-        station["TIMEZONE"] = "UTC"  # timestamps stored as UTC; tell firebench
-        obs = station.get("OBSERVATIONS", {{}})
-        if "date_time" in obs:
-            converted = []
-            for t in obs["date_time"]:
-                if "T" in t:
-                    dt = datetime.fromisoformat(t.replace("Z", "+00:00"))
-                    converted.append(dt.strftime("%Y%m%d%H%M%S"))
-                else:
-                    converted.append(t)
-            obs["date_time"] = converted
-        _dedup_obs(obs)
-    tmp = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False)
-    json.dump(data, tmp, ensure_ascii=False)
-    tmp.close()
-    return Path(tmp.name)
-
-
-def apply_record_removals(h5file, remove_records: dict) -> None:
-    """NaN out per-station/variable time ranges flagged in the wx_qc GUI's
-    skip-list export (`remove_records`: {{stid: [(var_or_*, t0_iso, t1_iso,
-    reason), ...]}}). Runs directly against the just-built standardized H5,
-    after `standardize_synoptic_raws_from_json` has created the station
-    groups (time_series/station_<stid>/{{time, <var>...}})."""
-    ts_grp = h5file.get("time_series")
-    if ts_grp is None:
-        return
-    for stid, entries in remove_records.items():
-        if not entries:
-            continue
-        grp = ts_grp.get(f"station_{{stid}}")
-        if grp is None or "time" not in grp:
-            continue
-        try:
-            times, _ = parse_h5_time_axis(grp["time"])
-        except TimeAxisError as exc:
-            print(f"Skipping removals for {{stid}}: {{exc}}")
-            continue
-
-        for var, t0_iso, t1_iso, reason in entries:
-            try:
-                t0m, t1m = np.datetime64(t0_iso), np.datetime64(t1_iso)
-            except (TypeError, ValueError):
-                continue
-            if t1m < t0m:
-                t0m, t1m = t1m, t0m
-            mask = (times >= t0m) & (times <= t1m)
-            if not mask.any():
-                continue
-            if var == "*":
-                targets = [ds for ds in grp if ds != "time"]
-            else:
-                targets = [var] if var in grp else []
-            for vname in targets:
-                ds = grp[vname]
-                if not np.issubdtype(ds.dtype, np.floating):
-                    continue  # non-float dataset: NaN isn't representable, skip
-                arr = ds[:]
-                arr[mask] = np.nan
-                ds[...] = arr
-
-
 data_source_path = Path({json_filename})
 output_path = Path({output_h5_filename})
 compression_lvl = {compression_lvl}  # 1 = no compression, 22 = max compression
 logging_lvl = {logging_lvl}  # 0 NOTSET, 10 DEBUG, 20 INFO, 30 WARNING, 40 ERROR, 50 CRITICAL
 {skip_block}
-
-# Per-station/variable time ranges to NaN out (not whole-station skips).
-# Paste the `remove_records` dict from a wx_qc GUI skip-list export here,
-# same shape: {{stid: [(var_or_"*", t0_iso, t1_iso, reason), ...]}}.
-{remove_block}
+remove_records = {removal_list!r}
 
 ft.set_logging_level(logging_lvl)
-prepared_source_path = preprocess_timestamps(data_source_path)
 output_path.parent.mkdir(parents=True, exist_ok=True)
-temporary_output = tempfile.NamedTemporaryFile(
-    dir=output_path.parent,
-    prefix=f".{{output_path.name}}.",
-    suffix=".tmp",
-    delete=False,
+candidate_path = output_path.with_name(f"{{output_path.stem}}_candidate{{output_path.suffix}}")
+manifest_path = output_path.with_name(f"{{output_path.stem}}_qc.json")
+log_path = output_path.with_name(f"{{output_path.stem}}_qc.log")
+policy = {{
+    "version": 1,
+    "output": {{
+        "authors": {contributors},
+        "description": {description},
+        "compression_level": compression_lvl,
+    }},
+}}
+process_synoptic_json(
+    data_source_path,
+    policy,
+    candidate_path,
+    manifest_path,
+    log_path,
+    overwrite=True,
 )
-temporary_output_path = Path(temporary_output.name)
-temporary_output.close()
-h5 = None
-try:
-    h5 = fs.new_std_file(
-        str(temporary_output_path),
-        {contributors},
-        overwrite=True,
-    )
-    h5.attrs["description"] = {description}
-
-    # See firebench.standardize for the full list of variables this converts.
-    fs.standardize_synoptic_raws_from_json(
-        prepared_source_path,
-        h5,
-        skip_stations=skip_stations,
-        overwrite=True,
-        compression_lvl=compression_lvl,
-    )
-    apply_record_removals(h5, remove_records)
-    h5.close()
-    h5 = None
-    temporary_output_path.replace(output_path)
-finally:
-    if h5 is not None:
-        h5.close()
-    temporary_output_path.unlink(missing_ok=True)
-    prepared_source_path.unlink(missing_ok=True)
-'''
+write_cleaned_h5(candidate_path, output_path, skip_reasons, remove_records)
+print(f"Automated QC manifest requiring review: {{manifest_path}}")
+"""
     return script
 
 

@@ -679,6 +679,7 @@ def bench_wx_generic_index(
     station_set: fs.WeatherStationSet,
 ):
     PENALTY_VALUE = -1e6
+    CIRCULAR_PENALTY_OFFSET_DEG = 180.0
     metric_rslt = []
     selection = _model_height_compatible_selection(
         model_dataset,
@@ -711,14 +712,22 @@ def bench_wx_generic_index(
             fs.read_quantity_from_fb_dataset(data_path, model_dataset).to(common_unit).magnitude[mask_model]
         )
 
-        # replace nan values in model by unrealistic value to severely penalize nans in model
+        # Replace nan values in model to severely penalize nans in model. A fixed out-of-range
+        # value works for bounded/linear variables, but wind_direction is circular: an arbitrary
+        # constant wraps modulo 360 degree and can land close to the true direction instead of far
+        # from it. Penalize wind_direction nans as the worst-case circular error instead: exactly
+        # opposite the observed direction at that same timestamp.
         if any(np.isnan(var_model)):
             ft.logger.warning(
                 "Nans found in model dataset for station %s and variable %s. Nans replaced by unrealistic value.",
                 station,
                 wx_variable_name,
             )
-            var_model[np.isnan(var_model)] = PENALTY_VALUE
+            nan_mask = np.isnan(var_model)
+            if wx_variable_name == "wind_direction":
+                var_model[nan_mask] = (var_obs[nan_mask] + CIRCULAR_PENALTY_OFFSET_DEG) % 360.0
+            else:
+                var_model[nan_mask] = PENALTY_VALUE
 
         metric_rslt.append(metric_func(var_model, var_obs))
 
@@ -2650,6 +2659,30 @@ def run_caldor_benchmark(
         output_dict["evaluated_model_name"] = str(name)
     output_dict = ft.merge_dictionaries(output_dict, get_files_hash(model_output, obs_data))
 
+    output_dict["certificates_input"] = fsi.retrieve_h5_certificates(
+        obs_data,
+        model_output if sign else None,
+    )
+    observation_verification = fsi.get_observation_certificate_verification(
+        output_dict["certificates_input"]
+    )
+    if observation_verification is None:
+        certificate_error = "certificate is missing"
+    elif not observation_verification.get("valid", False):
+        certificate_error = observation_verification.get("error") or "certificate is invalid"
+    else:
+        certificate_error = None
+    if certificate_error is not None:
+        ft.logger.warning(
+            "Observational dataset %s does not have a valid %s certificate (%s); "
+            "forcing verification level %s.",
+            obs_data,
+            fsi.Certificates.FB_VERIFIED_OBS_DATASET.value,
+            certificate_error,
+            fsi.DEFAULT_VL,
+        )
+    output_dict["verification_lvl"] = fsi.compute_input_verification_lvl(output_dict["certificates_input"])
+
     build_registries()
     aggregation_scheme = resolve_benchmark_target(benchmark_target)
     list_bench = get_list_benchmark_with_agg(AGGREGATION, aggregation_scheme)
@@ -2661,7 +2694,6 @@ def run_caldor_benchmark(
     signed = False
     if sign:
         key, signer = sign
-        output_dict["certificates_input"] = fsi.retrieve_h5_certificates(obs_data, model_output)
         output_dict = fsi.certify_benchmark_run(output_dict, key, signer)
         signed = True
 

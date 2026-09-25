@@ -98,7 +98,7 @@ class AddRemovalDialog(tk.Toplevel):
 
 
 class SettingsDialog(tk.Toplevel):
-    """Edit application configuration (bounds, thresholds, assertions, columns, fire perimeter, colorbars).
+    """Edit bounds, thresholds, assertions, columns, perimeter, and colorbars.
 
     Result holds validated physical bounds, thresholds, assertion visibility
     and severities, column visibility, perimeter settings, station-comparison
@@ -106,7 +106,7 @@ class SettingsDialog(tk.Toplevel):
     """
 
     def __init__(self, parent, cfg, bounds, base_cols, var_col_map, col_visibility, var_short):
-        """Build settings notebook dialog with Bounds, Thresholds, Assertions, Columns, Fire Perimeter, Colorbars tabs."""
+        """Build the settings notebook and its category-specific tabs."""
         super().__init__(parent)
         self.title("Settings")
         self.resizable(False, False)
@@ -133,56 +133,78 @@ class SettingsDialog(tk.Toplevel):
 
         tf = ttk.Frame(nb)
         nb.add(tf, text="Thresholds")
-        tk.Label(tf, text="Frozen run >=:", anchor="w").grid(
-            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
-        )
-        self.e_frz = ttk.Entry(tf, width=10)
-        self.e_frz.insert(0, str(cfg["frozen_min_run"]))
-        self.e_frz.grid(row=0, column=1, padx=PAD_LG, pady=PAD)
-        self.v_frz_exempt_calm = tk.BooleanVar(value=cfg.get("frozen_exempt_calm_wind", False))
-        ttk.Checkbutton(
-            tf,
-            text="Exempt wind direction (calm-wind repetition)",
-            variable=self.v_frz_exempt_calm,
-        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
-        self.v_frz_exempt_rh = tk.BooleanVar(value=cfg.get("frozen_exempt_rh", False))
-        ttk.Checkbutton(tf, text="Exempt relative humidity", variable=self.v_frz_exempt_rh).grid(
-            row=2, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
-        )
         tk.Label(tf, text="Duplicate-timestamp threshold:", anchor="w").grid(
-            row=3, column=0, sticky="w", padx=PAD_LG, pady=PAD
+            row=0, column=0, sticky="w", padx=PAD_LG, pady=PAD
         )
         self.e_dup_max = ttk.Entry(tf, width=10)
         self.e_dup_max.insert(0, str(cfg.get("dup_max", 2)))
-        self.e_dup_max.grid(row=3, column=1, padx=PAD_LG, pady=PAD)
+        self.e_dup_max.grid(row=0, column=1, padx=PAD_LG, pady=PAD)
         tk.Label(tf, text="Longest variable outage warning (min):", anchor="w").grid(
-            row=4, column=0, sticky="w", padx=PAD_LG, pady=PAD
+            row=1, column=0, sticky="w", padx=PAD_LG, pady=PAD
         )
         self.e_max_var_outage = ttk.Entry(tf, width=10)
         self.e_max_var_outage.insert(0, str(cfg.get("max_var_outage_min", DEFAULT_MAX_VAR_OUTAGE_MIN)))
-        self.e_max_var_outage.grid(row=4, column=1, padx=PAD_LG, pady=PAD)
+        self.e_max_var_outage.grid(row=1, column=1, padx=PAD_LG, pady=PAD)
         tk.Label(tf, text="Longest full-station outage warning (min):", anchor="w").grid(
-            row=5, column=0, sticky="w", padx=PAD_LG, pady=PAD
+            row=2, column=0, sticky="w", padx=PAD_LG, pady=PAD
         )
         self.e_full_outage = ttk.Entry(tf, width=10)
         self.e_full_outage.insert(0, str(cfg.get("full_outage_min", DEFAULT_FULL_OUTAGE_MIN)))
-        self.e_full_outage.grid(row=5, column=1, padx=PAD_LG, pady=PAD)
+        self.e_full_outage.grid(row=2, column=1, padx=PAD_LG, pady=PAD)
 
         ttk.Separator(tf, orient="horizontal").grid(
-            row=6, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD
+            row=3, column=0, columnspan=2, sticky="ew", padx=PAD_LG, pady=PAD
         )
         tk.Label(tf, text="Compare -> nearest neighbors N:", anchor="w").grid(
-            row=7, column=0, sticky="w", padx=PAD_LG, pady=PAD
+            row=4, column=0, sticky="w", padx=PAD_LG, pady=PAD
         )
         self.e_compare_n = ttk.Entry(tf, width=10)
         self.e_compare_n.insert(0, str(cfg.get("compare_n_neighbors", 4)))
-        self.e_compare_n.grid(row=7, column=1, padx=PAD_LG, pady=PAD)
+        self.e_compare_n.grid(row=4, column=1, padx=PAD_LG, pady=PAD)
         self.v_compare_pool = tk.BooleanVar(value=cfg.get("compare_include_skip_greenlit", False))
         ttk.Checkbutton(
             tf,
             text="Include skip-listed/greenlit stations as neighbor candidates",
             variable=self.v_compare_pool,
-        ).grid(row=8, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+        ).grid(row=5, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD)
+
+        ff = ttk.Frame(nb)
+        nb.add(ff, text="Frozen sensors")
+        ttk.Label(ff, text="Minimum duration (hours)", style="Section.TLabel").grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=PAD_LG, pady=PAD
+        )
+        self._frozen_duration_entries = {}
+        for row, (variable, duration) in enumerate(cfg["frozen_min_duration_hours"].items(), 1):
+            ttk.Label(ff, text=variable).grid(row=row, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+            entry = ttk.Entry(ff, width=10)
+            entry.insert(0, str(duration))
+            entry.grid(row=row, column=1, padx=PAD_LG, pady=PAD)
+            self._frozen_duration_entries[variable] = entry
+        row = len(self._frozen_duration_entries) + 1
+        frozen_fields = (
+            ("Diagnostic percentile", "frozen_adaptive_percentile"),
+            ("Review percentile", "frozen_review_adaptive_percentile"),
+            ("Review duration multiplier", "frozen_review_duration_multiplier"),
+            ("Automatic percentile", "frozen_automatic_adaptive_percentile"),
+            ("Automatic duration multiplier", "frozen_automatic_duration_multiplier"),
+            ("Nearest stations", "frozen_neighbor_count"),
+            ("Radius (km)", "frozen_neighbor_radius_km"),
+            ("Required changing stations", "frozen_required_neighbors"),
+            ("Automatic changing stations", "frozen_automatic_required_neighbors"),
+            ("Minimum temporal coverage", "frozen_min_neighbor_coverage"),
+            ("Automatic temporal coverage", "frozen_automatic_min_neighbor_coverage"),
+            ("Meaningful change (resolution steps)", "frozen_neighbor_change_steps"),
+            ("Calm wind threshold (m/s)", "frozen_calm_wind_threshold"),
+            ("Minimum reference runs", "frozen_minimum_reference_runs"),
+        )
+        self._frozen_triage = bool(cfg.get("frozen_triage", True))
+        self._frozen_setting_entries = {}
+        for offset, (label, key) in enumerate(frozen_fields):
+            ttk.Label(ff, text=label).grid(row=row + offset, column=0, sticky="w", padx=PAD_LG, pady=PAD)
+            entry = ttk.Entry(ff, width=10)
+            entry.insert(0, str(cfg[key]))
+            entry.grid(row=row + offset, column=1, padx=PAD_LG, pady=PAD)
+            self._frozen_setting_entries[key] = entry
 
         af = ttk.Frame(nb)
         nb.add(af, text="Assertions")
@@ -198,7 +220,7 @@ class SettingsDialog(tk.Toplevel):
         self._acat_severity_vars = {}
         for i, (key, label) in enumerate(ASSERTION_CATS):
             row = 2 + i
-            v = tk.BooleanVar(value=(key not in hidden))
+            v = tk.BooleanVar(value=key not in hidden)
             self._acat_vars[key] = v
             ttk.Checkbutton(af, text=label, variable=v).grid(
                 row=row, column=0, sticky="w", padx=PAD_LG, pady=PAD
@@ -366,9 +388,51 @@ class SettingsDialog(tk.Toplevel):
                     "vmax": float(vmax_str) if vmax_str else None,
                 }
             result = {
-                "frozen_min_run": int(self.e_frz.get()),
-                "frozen_exempt_calm_wind": self.v_frz_exempt_calm.get(),
-                "frozen_exempt_rh": self.v_frz_exempt_rh.get(),
+                "frozen_min_duration_hours": {
+                    variable: float(entry.get())
+                    for variable, entry in self._frozen_duration_entries.items()
+                },
+                "frozen_adaptive_percentile": float(
+                    self._frozen_setting_entries["frozen_adaptive_percentile"].get()
+                ),
+                "frozen_review_adaptive_percentile": float(
+                    self._frozen_setting_entries["frozen_review_adaptive_percentile"].get()
+                ),
+                "frozen_review_duration_multiplier": float(
+                    self._frozen_setting_entries["frozen_review_duration_multiplier"].get()
+                ),
+                "frozen_automatic_adaptive_percentile": float(
+                    self._frozen_setting_entries["frozen_automatic_adaptive_percentile"].get()
+                ),
+                "frozen_automatic_duration_multiplier": float(
+                    self._frozen_setting_entries["frozen_automatic_duration_multiplier"].get()
+                ),
+                "frozen_neighbor_count": int(self._frozen_setting_entries["frozen_neighbor_count"].get()),
+                "frozen_neighbor_radius_km": float(
+                    self._frozen_setting_entries["frozen_neighbor_radius_km"].get()
+                ),
+                "frozen_required_neighbors": int(
+                    self._frozen_setting_entries["frozen_required_neighbors"].get()
+                ),
+                "frozen_automatic_required_neighbors": int(
+                    self._frozen_setting_entries["frozen_automatic_required_neighbors"].get()
+                ),
+                "frozen_min_neighbor_coverage": float(
+                    self._frozen_setting_entries["frozen_min_neighbor_coverage"].get()
+                ),
+                "frozen_automatic_min_neighbor_coverage": float(
+                    self._frozen_setting_entries["frozen_automatic_min_neighbor_coverage"].get()
+                ),
+                "frozen_neighbor_change_steps": float(
+                    self._frozen_setting_entries["frozen_neighbor_change_steps"].get()
+                ),
+                "frozen_calm_wind_threshold": float(
+                    self._frozen_setting_entries["frozen_calm_wind_threshold"].get()
+                ),
+                "frozen_minimum_reference_runs": int(
+                    self._frozen_setting_entries["frozen_minimum_reference_runs"].get()
+                ),
+                "frozen_triage": self._frozen_triage,
                 "dup_max": int(self.e_dup_max.get()),
                 "max_var_outage_min": float(self.e_max_var_outage.get()),
                 "full_outage_min": float(self.e_full_outage.get()),
@@ -440,7 +504,10 @@ class ExportScriptDialog(tk.Toplevel):
             f"FireBench data for {fire_name_guess} fire. Contains: Weather station datasets, "
             f"fire perimeters from NIFC, burn severity from MTBS."
             if fire_name_guess
-            else "FireBench data for  fire. Contains: Weather station datasets, fire perimeters from NIFC, burn severity from MTBS."
+            else (
+                "FireBench data for  fire. Contains: Weather station datasets, "
+                "fire perimeters from NIFC, burn severity from MTBS."
+            )
         )
         self.e_description.insert(0, default_desc)
         self.e_description.pack(padx=14, pady=4)

@@ -1,12 +1,11 @@
 from pathlib import Path
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from tempfile import NamedTemporaryFile
 
 import numpy as np
 import hdf5plugin
 import h5py
-import pytz
 
 from ..tools import StandardVariableNames as svn
 from ..tools import logger, calculate_sha256
@@ -27,6 +26,19 @@ from .sensor_height_resources import (
 )
 
 
+def parse_synoptic_timestamp_utc(value: str) -> datetime:
+    """Interpret a Synoptic timestamp's displayed clock time as UTC."""
+    if value.endswith("Z"):
+        fmt = "%Y%m%d%H%M%S" if value[:-1].isdigit() else "%Y-%m-%dT%H:%M:%S"
+        parsed = datetime.strptime(value[:-1], fmt)
+    elif "T" in value and ("+" in value[10:] or "-" in value[10:]):
+        parsed = datetime.fromisoformat(value).replace(tzinfo=None)
+    else:
+        fmt = "%Y%m%d%H%M%S" if value.isdigit() else "%Y-%m-%dT%H:%M:%S"
+        parsed = datetime.strptime(value, fmt)
+    return parsed.replace(tzinfo=timezone.utc)
+
+
 def standardize_synoptic_raws_from_json(
     json_path: Path,
     h5file: h5py.File,
@@ -34,11 +46,16 @@ def standardize_synoptic_raws_from_json(
     overwrite: bool = False,
     fb_var_info: dict = VARIABLE_CONVERSION,
     compression_lvl: int = 3,
+    source_sha256: str | None = None,
+    source_name: str | None = None,
+    time_origin_utc: bool = False,
 ):
+    # Retained for caller compatibility; Synoptic time origins are now always UTC.
+    _ = time_origin_utc
     if not skip_stations:
         skip_stations = []
 
-    sha_source_file = calculate_sha256(json_path.resolve())
+    sha_source_file = source_sha256 or calculate_sha256(json_path.resolve())
     with open(json_path.resolve(), "r") as f:
         data = json.load(f)
 
@@ -48,7 +65,7 @@ def standardize_synoptic_raws_from_json(
         probes = h5file.create_group(TIME_SERIES)
 
     sensor_height_resources = load_sensor_height_resources()
-    source_reference = f"{json_path.name}#sha256={sha_source_file}"
+    source_reference = f"{source_name or json_path.name}#sha256={sha_source_file}"
     verification_date = datetime.now().astimezone().date().isoformat()
 
     # for statistics
@@ -115,20 +132,10 @@ def standardize_synoptic_raws_from_json(
         fully_processed = True
         for var in station_dict["OBSERVATIONS"]:
             if var == "date_time":
-                tz = pytz.timezone(station_dict["TIMEZONE"])
-                dts = []
-
-                for t in station_dict["OBSERVATIONS"]["date_time"]:
-                    # differentiates between YYYYMMDDHHMMSS or extended ISO 8601
-                    if t.endswith("Z"):  # Detects if format in UTC timezone
-                        fmt = "%Y%m%d%H%M%SZ" if t[:-1].isdigit() else "%Y-%m-%dT%H:%M:%SZ"
-                        dt_temp = pytz.utc.localize(datetime.strptime(t, fmt)).astimezone(tz)
-
-                    else:  # Assumes local timezone
-                        fmt = "%Y%m%d%H%M%S" if t.isdigit() else "%Y-%m-%dT%H:%M:%S"
-                        dt_temp = tz.localize(datetime.strptime(t, fmt))
-
-                    dts.append(dt_temp)
+                dts = [
+                    parse_synoptic_timestamp_utc(value)
+                    for value in station_dict["OBSERVATIONS"]["date_time"]
+                ]
 
                 dt0 = dts[0]
                 first_time_iso = datetime_to_iso8601(dt0, True)

@@ -13,6 +13,7 @@ from .data import (
     run_outage_assertions,
     _ws_gated_nan_pct,
     _deltas_minutes,
+    apply_frozen_analysis,
 )
 
 
@@ -263,6 +264,7 @@ class LoaderMixin:
             # Global extent and separate edge gaps must exist before final refresh
             # (_refresh_all reads both from Overview and detail nav).
             self._compute_global_time_extent()
+            apply_frozen_analysis(self.stations, self.all_stats, self.all_issues, self.cfg)
         if ready:
             if done:
                 self._refresh_all()

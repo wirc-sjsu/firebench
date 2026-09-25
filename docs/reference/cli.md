@@ -87,10 +87,19 @@ nonzero. See [Generate Plots from TOML](../how_to/plot_from_toml.md).
 
 ```text
 firebench wx-qc
+firebench wx-qc process INPUT_JSON --candidate FILE --manifest FILE --log FILE [--policy FILE]
+firebench wx-qc review MANIFEST
+firebench wx-qc finalize MANIFEST --output FILE --reviewer TEXT
 ```
 
-Launch the Tk weather-station QC application. It accepts no command-line options beyond
-`--help`; files and sessions are selected in the application. A graphical desktop and a Python
-installation with Tk support are required. See
+With no subcommand, launch the Tk weather-station QC application. `process` creates an automatic
+candidate HDF5, versioned decision manifest, and human-readable audit log from Synoptic JSON.
+`review` opens that manifest and candidate in the GUI. `finalize` verifies the source digest and
+rebuilds the final HDF5 after every nonautomatic action has a reviewer-attributed decision. The
+three output paths passed to `process` must differ; existing artifacts are protected unless
+`--overwrite` is supplied.
+
+The bare command and `review` require a graphical desktop and a Python installation with Tk
+support. Processing and finalization work without a display. See
 [Review Weather-Station Data with the QC GUI](../how_to/review_weather_station_qc.md) for the input
-schema, assertion semantics, review workflow, sessions, and exports.
+schema, policy, automatic-action rules, manifest lifecycle, review workflow, sessions, and exports.

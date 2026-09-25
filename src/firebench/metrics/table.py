@@ -338,15 +338,13 @@ def save_as_table(
         SCORECARD_COLORS["row_odd"],
     ]
 
-    # Default Verification lvl
-    verif_lvl = DEFAULT_VL
+    verif_lvl = data.get("verification_lvl", DEFAULT_VL)
 
     if signed:
         # Check validity of signature
         verif = verify_certificate_in_dict(data, certificate_name)
         if not verif["valid"]:
             raise ValueError("Certificate verification failed")
-        verif_lvl = data.get("verification_lvl", DEFAULT_VL)
 
     # ------------------------------------------------------------------
     # 1) Create PDF

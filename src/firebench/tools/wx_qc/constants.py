@@ -6,6 +6,8 @@ and tuning parameters for dropout/outage/frozen-value detection.
 
 import math
 
+from .frozen import DEFAULT_FROZEN_DURATION_HOURS
+
 # Sensor variable name -> (min, max, unit) bounds.
 # Maps each weather sensor variable to its valid physical range and unit string.
 # Temperature in Celsius, wind speeds in m/s, direction in degrees (0-360),
@@ -19,11 +21,9 @@ PHYS_BOUNDS = {
     "solar_radiation": (0.0, 1500.0, "W/m2"),
     "fuel_moisture_content_10h": (0.0, 60.0, "%"),
 }
-DEFAULT_FROZEN_RUN = 10
 DEFAULT_CALM_WIND_THRESHOLD = 1.5
 DROPOUT_MIN_PTS = 3
 GAP_DT_RATIO = 100.0
-FUEL_MOISTURE_FROZEN_MIN_RUN = 15
 # A NaN/missing-row run only counts as "outage" once its span reaches
 # OUTAGE_RUN_FACTOR multiples of the station's median timestep.
 # wind_direction/wind_gust additionally only count as outage when
@@ -45,7 +45,8 @@ ASSERTION_CATS = [
     ("no_data", "No sensor variables recorded"),
     ("lo:", "Below physical bounds"),
     ("hi:", "Above physical bounds"),
-    ("frozen:", "Frozen value runs (excl. calm wind)"),
+    ("frozen:", "Context-confirmed frozen sensors"),
+    ("frozen_unconfirmed:", "Unconfirmed frozen-sensor plateaus"),
     ("max_var_outage", "Longest variable outage exceeds threshold"),
     ("full_outage", "Longest full-station outage exceeds threshold"),
 ]
@@ -63,6 +64,7 @@ ASSERTION_DEFAULT_SEVERITY = {
     "lo:": "ERROR",
     "hi:": "ERROR",
     "frozen:": "WARN",
+    "frozen_unconfirmed:": "WARN",
     "max_var_outage": "WARN",
     "full_outage": "WARN",
 }
@@ -81,9 +83,22 @@ MAP_COLOR_MODES = (
 def default_config() -> dict:
     """Return an independent copy of the default GUI configuration."""
     return {
-        "frozen_min_run": DEFAULT_FROZEN_RUN,
-        "frozen_exempt_calm_wind": False,
-        "frozen_exempt_rh": False,
+        "frozen_min_duration_hours": dict(DEFAULT_FROZEN_DURATION_HOURS),
+        "frozen_adaptive_percentile": 99.0,
+        "frozen_review_adaptive_percentile": 99.9,
+        "frozen_review_duration_multiplier": 2.0,
+        "frozen_automatic_adaptive_percentile": 99.99,
+        "frozen_automatic_duration_multiplier": 4.0,
+        "frozen_neighbor_count": 4,
+        "frozen_neighbor_radius_km": 100.0,
+        "frozen_required_neighbors": 2,
+        "frozen_automatic_required_neighbors": 3,
+        "frozen_min_neighbor_coverage": 0.5,
+        "frozen_automatic_min_neighbor_coverage": 0.75,
+        "frozen_neighbor_change_steps": 3.0,
+        "frozen_calm_wind_threshold": DEFAULT_CALM_WIND_THRESHOLD,
+        "frozen_minimum_reference_runs": 100,
+        "frozen_triage": True,
         "max_var_outage_min": DEFAULT_MAX_VAR_OUTAGE_MIN,
         "full_outage_min": DEFAULT_FULL_OUTAGE_MIN,
         "dup_max": 2,
@@ -112,10 +127,13 @@ def parse_nonnegative_finite(value, label: str) -> float:
     return parsed
 
 
-def validate_gui_config(config: dict) -> None:
+def validate_gui_config(config: dict) -> None:  # pylint: disable=too-many-branches
     """Validate user-editable QC settings before they replace App state."""
     for key, label in (
-        ("frozen_min_run", "Frozen run length"),
+        ("frozen_neighbor_count", "Frozen neighbor count"),
+        ("frozen_required_neighbors", "Required frozen neighbors"),
+        ("frozen_automatic_required_neighbors", "Automatic frozen neighbors"),
+        ("frozen_minimum_reference_runs", "Minimum frozen reference runs"),
         ("compare_n_neighbors", "Neighbor count"),
         ("dup_max", "Duplicate-timestamp threshold"),
     ):
@@ -124,10 +142,62 @@ def validate_gui_config(config: dict) -> None:
             raise ValueError(f"{label} must be a positive integer")
 
     for key, label in (
+        ("frozen_neighbor_radius_km", "Frozen neighbor radius"),
+        ("frozen_min_neighbor_coverage", "Minimum frozen neighbor coverage"),
+        ("frozen_automatic_min_neighbor_coverage", "Automatic frozen neighbor coverage"),
+        ("frozen_neighbor_change_steps", "Frozen neighbor change steps"),
+        ("frozen_calm_wind_threshold", "Calm-wind threshold"),
+        ("frozen_review_duration_multiplier", "Frozen review duration multiplier"),
+        ("frozen_automatic_duration_multiplier", "Frozen automatic duration multiplier"),
         ("max_var_outage_min", "Maximum variable outage threshold"),
         ("full_outage_min", "Full-station outage threshold"),
     ):
         parse_nonnegative_finite(config.get(key), label)
+
+    percentile = parse_nonnegative_finite(
+        config.get("frozen_adaptive_percentile"), "Frozen adaptive percentile"
+    )
+    if percentile > 100:
+        raise ValueError("Frozen adaptive percentile must not exceed 100")
+    for key, label in (
+        ("frozen_review_adaptive_percentile", "Frozen review adaptive percentile"),
+        ("frozen_automatic_adaptive_percentile", "Frozen automatic adaptive percentile"),
+    ):
+        if parse_nonnegative_finite(config.get(key), label) > 100:
+            raise ValueError(f"{label} must not exceed 100")
+    coverage = config.get("frozen_min_neighbor_coverage")
+    if coverage > 1:
+        raise ValueError("Minimum frozen neighbor coverage must not exceed one")
+    automatic_coverage = config.get("frozen_automatic_min_neighbor_coverage")
+    if automatic_coverage > 1:
+        raise ValueError("Automatic frozen neighbor coverage must not exceed one")
+    if config["frozen_required_neighbors"] > config["frozen_neighbor_count"]:
+        raise ValueError("Required frozen neighbors must not exceed frozen neighbor count")
+    if config["frozen_automatic_required_neighbors"] > config["frozen_neighbor_count"]:
+        raise ValueError("Automatic frozen neighbors must not exceed frozen neighbor count")
+    if config["frozen_automatic_required_neighbors"] < config["frozen_required_neighbors"]:
+        raise ValueError("Automatic frozen neighbors must not be less than required frozen neighbors")
+    if automatic_coverage < coverage:
+        raise ValueError("Automatic frozen coverage must not be less than minimum frozen coverage")
+    for key, label in (
+        ("frozen_review_duration_multiplier", "Frozen review duration multiplier"),
+        ("frozen_automatic_duration_multiplier", "Frozen automatic duration multiplier"),
+    ):
+        if parse_nonnegative_finite(config.get(key), label) <= 0:
+            raise ValueError(f"{label} must be greater than zero")
+    if config["frozen_automatic_duration_multiplier"] < config["frozen_review_duration_multiplier"]:
+        raise ValueError("Automatic frozen duration must not be less than review duration")
+    if config["frozen_automatic_adaptive_percentile"] < config["frozen_review_adaptive_percentile"]:
+        raise ValueError("Automatic frozen percentile must not be less than review percentile")
+    if not isinstance(config.get("frozen_triage"), bool):
+        raise ValueError("Frozen triage must be true or false")
+
+    durations = config.get("frozen_min_duration_hours")
+    if not isinstance(durations, dict) or set(durations) != set(DEFAULT_FROZEN_DURATION_HOURS):
+        raise ValueError("Frozen minimum durations must name every supported weather variable")
+    for variable, value in durations.items():
+        if parse_nonnegative_finite(value, f"Frozen minimum duration for {variable}") <= 0:
+            raise ValueError(f"Frozen minimum duration for {variable} must be greater than zero")
 
     marker_size = config.get("map_marker_size", 1.0)
     if isinstance(marker_size, bool) or not isinstance(marker_size, (int, float)):
