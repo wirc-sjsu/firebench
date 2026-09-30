@@ -117,7 +117,7 @@ written at its native hourly valid times and scored through this cadence join.
 
 ## 5. Registry / config fan-out
 
-- [ ] Generic weather-forecast case (`firebench.benchmarks.wx_forecast`). Its axes are variable ×
+- [x] Generic weather-forecast case (`firebench.benchmarks.wx_forecast`). Its axes are variable ×
       metric × station set × stat × cadence × lead bin. It has one registry per cycle and no module
       globals.
 - [x] Shared weather machinery extracted to `firebench.benchmarks.wx_common`, with Caldor wrappers
@@ -141,7 +141,7 @@ written at its native hourly valid times and scored through this cadence join.
 ## 7. Tests
 
 - [x] `tests/unit`: matching utility, cadence join, wind-direction penalty.
-- [ ] `tests/unit`: ID generation of the generic case.
+- [x] `tests/unit`: ID generation of the generic case (`tests/unit/test_wx_forecast.py`).
 - [ ] `tests/func`: end-to-end offline `firebench wx` workflow with an hourly model and 10-min
       observations.
 - [x] `tests/regression`: the Caldor weather registry pin is unchanged after the extraction.

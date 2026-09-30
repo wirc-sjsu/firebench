@@ -61,6 +61,16 @@ def _scorecard_title(data: dict, scheme_name: str, verif_lvl: str, score: str) -
     ]
 
 
+def _scorecard_footer(data: dict) -> str:
+    footer = (
+        f"FireBench version: {data['firebench_version']}   "
+        f"Reference dataset version: {data['case_version']}"
+    )
+    if data.get("data_tier"):
+        footer = f"{footer}   Data tier: {data['data_tier']}"
+    return footer
+
+
 def _scorecard_group_name(data: dict, group_name: str) -> str:
     return data.get("score_card", {}).get("group_display_names", {}).get(group_name, group_name)
 
@@ -435,15 +445,7 @@ def save_as_table(
             )
 
     # footer
-    text_table.append(
-        [
-            f"FireBench version: {data['firebench_version']}   "
-            f"Reference dataset version: {data['case_version']}",
-            "",
-            "",
-            "",
-        ]
-    )
+    text_table.append([_scorecard_footer(data), "", "", ""])
 
     nb_rows = len(text_table)
 

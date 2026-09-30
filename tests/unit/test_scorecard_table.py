@@ -8,6 +8,7 @@ from firebench.metrics.table import (
     _fit_font_size,
     _scorecard_comparison_cell_colors,
     _scorecard_comparison_rows,
+    _scorecard_footer,
     _scorecard_group_name,
     _scorecard_kpi_name,
     _scorecard_title,
@@ -29,6 +30,13 @@ def test_scorecard_title_uses_benchmark_short_name_without_agg_label():
         "VL0",
         "60.27",
     ]
+
+
+def test_scorecard_footer_states_the_data_tier_when_known():
+    data = {"firebench_version": "0.11", "case_version": "Unofficial"}
+
+    assert _scorecard_footer(data) == "FireBench version: 0.11   Reference dataset version: Unofficial"
+    assert _scorecard_footer({**data, "data_tier": "provisional"}).endswith("   Data tier: provisional")
 
 
 def test_scorecard_group_name_uses_display_name_mapping():

@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   cycle at HRRR's native hourly valid times, rotates grid-relative winds to earth, brings 10 m wind
   to each station's sensor height with the neutral log law and HRRR roughness, declares every
   sensor height, and records the per-station terrain-height difference.
+- Add a generic weather-forecast benchmark (`firebench.benchmarks.wx_forecast`) that scores one
+  forecast cycle on cadence tiers and lead-time bins with semantic benchmark IDs such as
+  `WX-AT-MAE-MEAN-TSO-1H-F0148`, keeps the analysis hour in a weight-0 informational group, and
+  reports variables without model data or observations as excluded instead of scoring them.
+- Show the observation `data_tier` in the score-card footer when the dataset records one.
 - Add verification level D for benchmark runs whose observational dataset lacks a valid
   `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
 - Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action
