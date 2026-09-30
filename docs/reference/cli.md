@@ -103,3 +103,46 @@ The bare command and `review` require a graphical desktop and a Python installat
 support. Processing and finalization work without a display. See
 [Review Weather-Station Data with the QC GUI](../how_to/review_weather_station_qc.md) for the input
 schema, policy, automatic-action rules, manifest lifecycle, review workflow, sessions, and exports.
+
+## `wx`
+
+```text
+firebench wx init SETUP [--case ID --period H###|P##] [--bbox LON_MIN,LAT_MIN,LON_MAX,LAT_MAX]
+                        [--start ISO --end ISO] [--synoptic-json FILE] [--overwrite]
+firebench wx plan SETUP
+firebench wx run SETUP [--steps obs,hrrr,adapt,score] [--force] [-v LEVEL]
+firebench wx score SETUP MODEL_OUTPUT --cycle ISO --name TEXT
+```
+
+Automated weather-forecast benchmark driven by a YAML setup (see
+[Weather Benchmark Setup File](wx_setup_file.md)). `init` writes a commented template, `plan`
+describes the run without network access, and `run` executes the stages: observations
+(Synoptic + QC), HRRR download, HRRR adapter, and scoring. Unchanged stages are skipped. `score`
+scores another model file of one cycle against the observations of a workspace. An invalid setup
+fails with the list of every problem found. See
+[Benchmark HRRR Forecasts Against Weather Stations](../tutorials/wx_hrrr_benchmark.md).
+
+## `keys`
+
+```text
+firebench keys set SERVICE [--stdin]
+firebench keys list
+firebench keys check [SERVICE] [--online]
+firebench keys remove SERVICE
+```
+
+Manage data-provider API keys. A key is looked up in an explicit key file, then in the service
+environment variable (`SYNOPTIC_TOKEN` for `synoptic`), then in the key stored by `set` under
+`~/.config/firebench/credentials/` (mode `0600`). Values are never printed, only a fingerprint.
+`check --online` validates the Synoptic token with one tiny request. See
+[Download Synoptic Observations with an API Token](../tutorials/synoptic_api_token.md).
+
+## `cache`
+
+```text
+firebench cache info
+firebench cache clean [--source hrrr|synoptic] [--yes]
+```
+
+Show or delete the download cache (`FIREBENCH_CACHE_DIR`, else `~/.cache/firebench` on Linux).
+`clean` deletes only the known data-source directories.

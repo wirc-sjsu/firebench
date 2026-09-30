@@ -10,6 +10,7 @@ dataset descriptions, package inventories, and API details.
 
 ../standard_format.md
 weather_sensor_height.md
+wx_setup_file.md
 ../namespace.md
 ```
 

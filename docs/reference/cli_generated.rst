@@ -39,3 +39,24 @@ Weather-Station QC
 
 .. click:: firebench.cli:wx_qc
    :prog: firebench wx-qc
+
+Weather Forecast Benchmark
+--------------------------
+
+.. click:: firebench.cli:wx
+   :prog: firebench wx
+   :nested: full
+
+API Keys
+--------
+
+.. click:: firebench.cli:keys
+   :prog: firebench keys
+   :nested: full
+
+Download Cache
+--------------
+
+.. click:: firebench.cli:cache
+   :prog: firebench cache
+   :nested: full

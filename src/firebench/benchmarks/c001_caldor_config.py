@@ -19,6 +19,8 @@ DEFAULT_OUTPUT_PATH_JSON = Path(f"{CASE_SHORT_NAME}_rslt.json")
 DEFAULT_SCORE_CARD_REPORT_PATH = Path(f"{CASE_SHORT_NAME}.pdf")
 
 TZ_REF = pytz.timezone("US/Pacific")
+# Synoptic weather-station bounding box of the case: lon_min, lat_min, lon_max, lat_max (degrees)
+WX_DOMAIN_BBOX = (-120.8, 38.4, -119.7, 39.0)
 FORECAST_HOURS = 48
 HRRR_CYCLE_HOURS = (0, 6, 12, 18)
 

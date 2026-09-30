@@ -1903,7 +1903,7 @@ def _conservative_fixed_point(
 
 def process_synoptic_json(
     source: str | Path,
-    policy_path: str | Path | None,
+    policy_path: str | Path | dict | None,
     candidate: str | Path,
     manifest_path: str | Path,
     log_path: str | Path,

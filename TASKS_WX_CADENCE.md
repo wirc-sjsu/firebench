@@ -130,9 +130,9 @@ written at its native hourly valid times and scored through this cadence join.
 
 ## 6. Docs
 
-- [ ] `docs/benchmarks/weather_forecast.md`: cadence, tolerance, lead bins, IDs, penalty, heights,
+- [x] `docs/benchmarks/weather_forecast.md`: cadence, tolerance, lead bins, IDs, penalty, heights,
       exclusions.
-- [ ] `docs/tutorials/wx_hrrr_benchmark.md` and `docs/reference/wx_setup_file.md`: the
+- [x] `docs/tutorials/wx_hrrr_benchmark.md` and `docs/reference/wx_setup_file.md`: the
       `benchmark.cadences` / `obs_tolerance_min` / `lead_bins` keys.
 - [x] `CHANGELOG.md` entry (cadence scoring and the shared helpers).
 - [ ] `docs/benchmarks/California/01_Caldor.md` R08-R12: relaxed requirement text once the Caldor
@@ -142,7 +142,7 @@ written at its native hourly valid times and scored through this cadence join.
 
 - [x] `tests/unit`: matching utility, cadence join, wind-direction penalty.
 - [x] `tests/unit`: ID generation of the generic case (`tests/unit/test_wx_forecast.py`).
-- [ ] `tests/func`: end-to-end offline `firebench wx` workflow with an hourly model and 10-min
+- [x] `tests/func`: end-to-end offline `firebench wx` workflow with an hourly model and 10-min
       observations.
 - [x] `tests/regression`: the Caldor weather registry pin is unchanged after the extraction.
 

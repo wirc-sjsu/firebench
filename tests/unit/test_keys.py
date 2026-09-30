@@ -7,6 +7,15 @@ from click.testing import CliRunner
 
 from firebench.acquisition import keys
 from firebench.cli import main
+from firebench.tools.logging_config import configure_logging
+
+
+@pytest.fixture(autouse=True)
+def reset_firebench_logger():
+    # other CLI tests leave console handlers bound to closed CliRunner streams
+    configure_logging(2, use_console=False)
+    yield
+    configure_logging(2, use_console=False)
 
 
 @pytest.fixture(autouse=True)

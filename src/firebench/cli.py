@@ -1052,6 +1052,159 @@ def keys_remove(service: str) -> None:
     click.echo(f"Removed stored {service} key." if removed else f"No stored {service} key.")
 
 
+@main.group()
+def wx() -> None:
+    """
+    Automated weather-forecast benchmark from a YAML setup.
+
+    A setup gives a bounding box and a UTC window (or a case preset such as
+    2021_Caldor H012). 'firebench wx run' fetches and QCs the weather-station
+    observations, downloads HRRR forecasts in parallel, samples them at the
+    stations, and scores every forecast cycle on an hourly cadence.
+    """
+
+
+def _wx_setup_module():
+    return import_module(".workflows.wx_setup", __package__)
+
+
+def _load_wx_setup(setup_path: Path):
+    setup_module = _wx_setup_module()
+    try:
+        return setup_module.load_setup(setup_path)
+    except setup_module.SetupError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+def _parse_bbox_option(value: str | None):
+    if value is None:
+        return None
+    try:
+        bbox = tuple(float(item) for item in value.split(","))
+    except ValueError:
+        bbox = ()
+    if len(bbox) != 4:
+        raise click.UsageError("--bbox must be lon_min,lat_min,lon_max,lat_max")
+    return bbox
+
+
+@wx.command("init")
+@click.argument("setup_path", type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--case", default=None, help="Case preset, e.g. 2021_Caldor.")
+@click.option("--period", default=None, help="Preset period, e.g. H012 (HRRR cycle window) or P02.")
+@click.option("--bbox", default=None, help="Domain as lon_min,lat_min,lon_max,lat_max (degrees).")
+@click.option(
+    "--start", default=None, help="Window start, ISO 8601 with time zone (e.g. 2026-09-25T00:00Z)."
+)
+@click.option("--end", default=None, help="Window end, ISO 8601 with time zone.")
+@click.option("--synoptic-json", default=None, help="Saved Synoptic JSON to use instead of downloading.")
+@click.option("--overwrite", is_flag=True, help="Replace an existing setup file.")
+def wx_init(
+    setup_path: Path,
+    case: str | None,
+    period: str | None,
+    bbox: str | None,
+    start: str | None,
+    end: str | None,
+    synoptic_json: str | None,
+    overwrite: bool,
+) -> None:
+    """Write a commented setup template to SETUP_PATH."""
+    if setup_path.exists() and not overwrite:
+        raise click.UsageError(f"{setup_path} already exists; use --overwrite to replace it")
+    text = _wx_setup_module().setup_template(
+        setup_path.stem,
+        case=case,
+        period=period,
+        bbox=_parse_bbox_option(bbox),
+        start=start,
+        end=end,
+        synoptic_json=synoptic_json,
+    )
+    setup_path.parent.mkdir(parents=True, exist_ok=True)
+    setup_path.write_text(text)
+    _load_wx_setup(setup_path)
+    click.echo(f"Wrote {setup_path}. Review it, then run: firebench wx plan {setup_path}")
+
+
+@wx.command("plan")
+@click.argument("setup_path", type=click.Path(dir_okay=False, path_type=Path))
+def wx_plan(setup_path: Path) -> None:
+    """Show what 'firebench wx run' would do, without touching the network."""
+    workflow_module = import_module(".workflows.wx_forecast", __package__)
+    workflow = workflow_module.WxForecastWorkflow(_load_wx_setup(setup_path))
+    for line in workflow.plan_lines():
+        click.echo(line)
+
+
+@wx.command("run")
+@click.argument("setup_path", type=click.Path(dir_okay=False, path_type=Path))
+@click.option(
+    "--steps",
+    default="obs,hrrr,adapt,score",
+    show_default=True,
+    help="Comma-separated stages to run: obs, hrrr, adapt, score.",
+)
+@click.option("--force", is_flag=True, help="Re-run the selected stages even if they are up to date.")
+@click.option(
+    "-v",
+    "--verbose",
+    default=3,
+    show_default=True,
+    type=int,
+    help="Verbosity 0: critical, 1: error, 2: warning, 3: info, 4+: debug.",
+)
+def wx_run(setup_path: Path, steps: str, force: bool, verbose: int) -> None:
+    """Run the weather-forecast benchmark of SETUP_PATH (cached stages are skipped)."""
+    workflow_module = import_module(".workflows.wx_forecast", __package__)
+    requested = tuple(step.strip() for step in steps.split(",") if step.strip())
+    unknown = sorted(set(requested) - set(workflow_module.STAGES))
+    if unknown:
+        raise click.UsageError(
+            f"unknown stage(s): {', '.join(unknown)} (expected: obs, hrrr, adapt, score)"
+        )
+    setup = _load_wx_setup(setup_path)
+    setup.output_dir.mkdir(parents=True, exist_ok=True)
+    configure_logging(verbose, log_path=setup.output_dir / "wx_workflow.log", file_level=logging.INFO)
+    workflow = workflow_module.WxForecastWorkflow(setup, force=force)
+    try:
+        result = workflow.run(requested)
+    except (workflow_module.WorkflowError, OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    for record in result.records:
+        click.echo(f"{record.name:<16} {record.status:<8} {record.detail}")
+    if result.summary_path is not None:
+        click.echo(f"Summary: {result.summary_path}")
+
+
+@wx.command("score")
+@click.argument("setup_path", type=click.Path(dir_okay=False, path_type=Path))
+@click.argument("model_output", type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--cycle", "cycle", required=True, help="Forecast cycle, e.g. 2021-08-20T00:00Z.")
+@click.option("-n", "--name", required=True, help="Name of the evaluated model.")
+def wx_score(setup_path: Path, model_output: Path, cycle: str, name: str) -> None:
+    """Score another model file of one cycle against the observations of SETUP_PATH."""
+    workflow_module = import_module(".workflows.wx_forecast", __package__)
+    setup = _load_wx_setup(setup_path)
+    try:
+        cycle_time = _wx_setup_module().parse_utc(cycle, "--cycle")
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+    if not model_output.is_file():
+        raise click.UsageError(f"Model output file does not exist: {model_output}")
+    configure_logging(3, log_path=setup.output_dir / "wx_workflow.log")
+    workflow = workflow_module.WxForecastWorkflow(setup)
+    try:
+        result = workflow.score_model(model_output, f"{cycle_time:%Y%m%d%H}", name)
+    except (workflow_module.WorkflowError, OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    total = result.get("score_card", {}).get("Score Total")
+    click.echo(
+        f"{name} {cycle_time:%Y-%m-%d %HZ}: total score "
+        + ("not scored" if total is None else f"{total:.2f}")
+    )
+
+
 CACHE_SOURCES = ("hrrr", "synoptic")
 
 

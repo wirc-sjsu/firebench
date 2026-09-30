@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `WX-AT-MAE-MEAN-TSO-1H-F0148`, keeps the analysis hour in a weight-0 informational group, and
   reports variables without model data or observations as excluded instead of scoring them.
 - Show the observation `data_tier` in the score-card footer when the dataset records one.
+- Add `firebench wx init/plan/run/score`, an automated weather-forecast benchmark driven by a YAML
+  setup (bounding box and window, or a case preset such as `2021_Caldor` `H012`): Synoptic
+  observations are fetched or read from a saved payload, quality controlled in `conservative_auto`
+  mode and tagged `data_tier: provisional`, HRRR forecasts are downloaded in parallel, adapted to
+  the stations and scored per cycle, and every stage is cached so an unchanged re-run does nothing.
 - Add verification level D for benchmark runs whose observational dataset lacks a valid
   `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
 - Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action

@@ -10,6 +10,14 @@ California/01_Caldor.md
 
 ```
 
+## Generated benchmarks
+
+```{toctree}
+:maxdepth: 1
+
+weather_forecast.md
+```
+
 
 ## Fire submodels
 

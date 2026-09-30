@@ -143,6 +143,11 @@ def test_documented_cli_commands_have_help():
         ["cache"],
         ["cache", "info"],
         ["cache", "clean"],
+        ["wx"],
+        ["wx", "init"],
+        ["wx", "plan"],
+        ["wx", "run"],
+        ["wx", "score"],
     ]
     for command in commands:
         result = runner.invoke(main, [*command, "--help"])

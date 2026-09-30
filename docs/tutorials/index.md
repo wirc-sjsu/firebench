@@ -12,6 +12,8 @@ prepare_model_output.md
 targets_and_scores.md
 compare_runs.md
 plot_and_report.md
+wx_hrrr_benchmark.md
+synoptic_api_token.md
 new_ros_model.md
 ```
 
