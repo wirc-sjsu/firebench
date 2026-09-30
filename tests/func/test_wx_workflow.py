@@ -183,6 +183,20 @@ def test_force_reruns_the_stages(tmp_path, fake_hrrr):
     assert "skipped" not in {record.status for record in result.records}
 
 
+def test_force_on_one_stage_reuses_the_other_stages(tmp_path, fake_hrrr):
+    setup_path = _write_setup(tmp_path)
+    WxForecastWorkflow(load_setup(setup_path), read_fields=_fake_read).run()
+    downloads = list(fake_hrrr)
+
+    result = WxForecastWorkflow(load_setup(setup_path), force=True, read_fields=_fake_read).run(("score",))
+
+    assert fake_hrrr == downloads
+    assert [(record.name, record.status) for record in result.records] == [
+        ("obs", "skipped"),
+        ("score 2021082000", "done"),
+    ]
+
+
 def test_cycle_with_hours_missing_from_the_archive_is_dropped(tmp_path, monkeypatch, fake_hrrr):
     original = hrrr_forecast.fetch_file
 

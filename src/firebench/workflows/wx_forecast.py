@@ -79,6 +79,7 @@ class WxForecastWorkflow:
     ) -> None:
         self.setup = setup
         self.force = force
+        self.forced_stages: tuple[str, ...] = STAGES if force else ()
         self.cache_root = cache_root
         self.synoptic_opener = synoptic_opener
         self.read_fields = read_fields
@@ -105,6 +106,8 @@ class WxForecastWorkflow:
     def run(self, steps=STAGES) -> WorkflowResult:
         """Run the selected stages in order and return what was done."""
         steps = tuple(step for step in STAGES if step in steps)
+        # --force re-runs the selected stages only; the others stay reusable
+        self.forced_stages = steps if self.force else ()
         result = WorkflowResult()
         self.out.mkdir(parents=True, exist_ok=True)
 
@@ -590,9 +593,10 @@ class WxForecastWorkflow:
 
     def _is_current(self, key: str, identity: dict | None) -> bool:
         record = self._stage(key)
+        forced = key.split(":", 1)[0] in self.forced_stages
         return bool(
             identity is not None
-            and not self.force
+            and not forced
             and record
             and record.get("identity") == _canonical(identity)
         )
