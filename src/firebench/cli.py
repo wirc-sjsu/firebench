@@ -1007,7 +1007,12 @@ def keys_list() -> None:
 
 @keys.command("check")
 @click.argument("service", required=False)
-def keys_check(service: str | None) -> None:
+@click.option(
+    "--online",
+    is_flag=True,
+    help="Also validate the Synoptic token with one tiny request to the Synoptic API.",
+)
+def keys_check(service: str | None, online: bool) -> None:
     """Show where the key of SERVICE (default: all known services) is looked up."""
     keys_module = _keys_module()
     try:
@@ -1026,6 +1031,13 @@ def keys_check(service: str | None) -> None:
             for line in keys_module.missing_key_message(resolution).splitlines():
                 if line.startswith(("Add one", "Get a key")):
                     click.echo(f"  {line}")
+        if online and resolution.service == "synoptic" and resolution.value is not None:
+            synoptic = import_module(".acquisition.synoptic", __package__)
+            try:
+                message = synoptic.SynopticTimeseriesClient(resolution.value).check_token()
+            except synoptic.SynopticError as exc:
+                raise click.ClickException(f"Synoptic rejected the token: {exc}") from exc
+            click.echo(f"  online check: OK ({message})")
 
 
 @keys.command("remove")

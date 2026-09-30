@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add a cached HRRR surface-forecast downloader (`firebench.acquisition.hrrr`) that fetches only the
   needed GRIB2 messages from the NOAA Open Data bucket through `.idx` byte ranges, knows each HRRR
   version's forecast horizon, and decodes files with the optional `firebench[hrrr]` extra.
+- Add a Synoptic station time-series client that sizes time chunks under the 100,000 station-hour
+  request cap, merges and caches them, drops stations the standardizer cannot read, never logs the
+  token, and a `firebench keys check synoptic --online` token test.
 - Add verification level D for benchmark runs whose observational dataset lacks a valid
   `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
 - Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action

@@ -195,3 +195,45 @@ def test_cli_cache_info_and_clean(monkeypatch, tmp_path):
     assert cleaned.exit_code == 0, cleaned.output
     assert not (tmp_path / "cache" / "hrrr").exists()
     assert (tmp_path / "cache" / "unrelated").is_dir()
+
+
+def test_cli_keys_check_online_validates_the_synoptic_token(monkeypatch):
+    from firebench.acquisition import synoptic
+
+    calls = []
+
+    class _Client:
+        def __init__(self, token):
+            calls.append(token)
+
+        def check_token(self):
+            return "OK"
+
+    monkeypatch.setattr(synoptic, "SynopticTimeseriesClient", _Client)
+    keys.set_key("synoptic", "tok")
+
+    result = CliRunner().invoke(main, ["keys", "check", "synoptic", "--online"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == ["tok"]
+    assert "online check: OK" in result.output
+
+
+def test_cli_keys_check_online_reports_a_rejected_token(monkeypatch):
+    from firebench.acquisition import synoptic
+
+    class _Client:
+        def __init__(self, token):
+            pass
+
+        def check_token(self):
+            raise synoptic.SynopticError(2, "Invalid token. (HTTP 401)")
+
+    monkeypatch.setattr(synoptic, "SynopticTimeseriesClient", _Client)
+    keys.set_key("synoptic", "tok")
+
+    result = CliRunner().invoke(main, ["keys", "check", "synoptic", "--online"])
+
+    assert result.exit_code != 0
+    assert "Synoptic rejected the token" in result.output
+    assert "Invalid token" in result.output
