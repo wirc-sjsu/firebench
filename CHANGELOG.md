@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add a Synoptic station time-series client that sizes time chunks under the 100,000 station-hour
   request cap, merges and caches them, drops stations the standardizer cannot read, never logs the
   token, and a `firebench keys check synoptic --online` token test.
+- Add hourly and 3-hourly cadence weather scoring (`firebench.benchmarks.wx_cadence`) that joins
+  model and observations on mandatory UTC top-of-hour marks, matching the nearest finite
+  observation within a tolerance, penalizing missing model marks, and excluding stations below an
+  observation-coverage floor.
 - Add verification level D for benchmark runs whose observational dataset lacks a valid
   `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
 - Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action
@@ -46,6 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Move the weather-station selection, requirement, run-loop, and aggregation helpers of the Caldor
+  benchmark to `firebench.benchmarks.wx_common` so other cases can reuse them; Caldor benchmark IDs
+  and results are unchanged.
 - Store weather-QC manifest references and reviewer identity in version 3 GUI sessions, add
   version 4 frozen-sensor settings, and add version 5 triage settings while retaining older readers.
 - Keep policy-v3 weather outages, gaps, and dropouts as audit-only diagnostics for reproducibility;
