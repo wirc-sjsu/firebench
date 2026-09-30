@@ -611,8 +611,10 @@ The current version of knowledge about sensor heights for the case weather stati
 
 Therefore, 81 datasets are considered trusted and will be used in the Trusted Sources Only (TSO)
 station set. All 399 datasets are used in the all-sources station set. All sources includes the TSO
-population; FireBench does not define an untrusted-only station set. TSO is the authoritative
-scored mode and every TSO KPI has weight 1, while all-sources KPIs are zero-weight diagnostics.
+population; FireBench does not define an untrusted-only station set. Fuel-moisture sensors are the
+exception to the confidence rule: every FMC 10h station is in TSO, since its reading does not depend
+on sensor height. TSO is the authoritative scored mode and every TSO KPI has weight 1, while
+all-sources KPIs are zero-weight diagnostics.
 These weights express confidence that model values were prepared and verified at the trusted
 observational sensor height; they are not a rating of the observed station-data quality. An empty
 TSO KPI is ignored and does not enter its group or the total-score denominator. See

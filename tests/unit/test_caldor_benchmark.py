@@ -726,6 +726,64 @@ def test_weather_benchmark_excludes_tso_model_height_mismatch(caplog, tmp_path):
     assert "does not match" in caplog.text
 
 
+def test_weather_benchmark_treats_every_fuel_moisture_sensor_as_tso(tmp_path):
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    period = c001_caldor._target_period("H013")
+    variable_name = "fuel_moisture_content_10h"
+
+    for h5_path, observational in ((obs_path, True), (model_path, False)):
+        with h5py.File(h5_path, "w") as h5:
+            for station_name, confidence, values in (
+                ("station_UNKNOWN", 0, [8.0, 9.0]),
+                ("station_PROVIDER", 1, [10.0, 11.0]),
+            ):
+                station = h5.create_group(f"time_series/{station_name}")
+                time = station.create_dataset("time", data=[0, 1])
+                time.attrs["time_origin"] = period[0].isoformat()
+                time.attrs["time_units"] = "hour"
+                variable = station.create_dataset(variable_name, data=values)
+                variable.attrs["units"] = "percent"
+                if observational:
+                    variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_ATTRIBUTE] = 0.3
+                    variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_UNITS_ATTRIBUTE] = "m"
+                    variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE] = confidence
+                elif station_name == "station_PROVIDER":
+                    # Mismatched model height; the other station declares none at all.
+                    variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_ATTRIBUTE] = 2
+                    variable.attrs[c001_caldor.fs.SENSOR_HEIGHT_UNITS_ATTRIBUTE] = "m"
+
+    with h5py.File(model_path, "r") as model_h5, h5py.File(obs_path, "r") as obs_h5:
+        selection = c001_caldor._model_height_compatible_selection(
+            model_h5,
+            obs_h5,
+            variable_name,
+            period,
+            c001_caldor.fs.WeatherStationSet.TSO,
+            {},
+        )
+        result = c001_caldor.bench_wx_generic_index(
+            model_h5,
+            obs_h5,
+            {},
+            kpi_name_custom="FMC 10h TSO",
+            period=period,
+            wx_variable_name=variable_name,
+            common_unit="percent",
+            metric_func=lambda model, obs: 1.0,
+            stat_func=len,
+            value_norm_param_m=5,
+            station_set=c001_caldor.fs.WeatherStationSet.TSO,
+        )
+
+    assert {item["station"] for item in selection["included"]} == {
+        "station_UNKNOWN",
+        "station_PROVIDER",
+    }
+    assert selection["excluded"] == []
+    assert result["FMC 10h TSO"] == 2
+
+
 def test_weather_benchmark_penalizes_wind_direction_nan_as_opposite_direction(tmp_path):
     """A model nan for wind_direction must be penalized as the worst-case circular error
     (180 degrees off the observed direction), not a fixed constant that wraps modulo 360 and

@@ -32,6 +32,11 @@ class WeatherStationSet(str, Enum):
     ALL_SOURCES = "all sources"
 
 
+# Variables whose observation does not depend on sensor height (fuel-bed state, not a vertical
+# profile). Their sensors are sparse and rarely report a height, so every one of them is TSO.
+TSO_HEIGHT_EXEMPT_VARIABLES = frozenset({"fuel_moisture_content_10h"})
+
+
 SENSOR_HEIGHT_CONFIDENCE_DESCRIPTIONS = {
     SensorHeightConfidence.UNKNOWN: "unknown (guessed or missing metadata)",
     SensorHeightConfidence.PROVIDER_DEFAULT: "provider default (not verified)",
@@ -111,11 +116,22 @@ def sensor_height_confidence_description(confidence: SensorHeightConfidence | in
     return SENSOR_HEIGHT_CONFIDENCE_DESCRIPTIONS[canonical]
 
 
-def station_set_includes(station_set: WeatherStationSet, confidence: SensorHeightConfidence) -> bool:
-    """Return whether a confidence level belongs to the requested station set."""
+def tso_requires_sensor_height(variable: str) -> bool:
+    """Return whether TSO membership of ``variable`` depends on a trusted, matching sensor height."""
+    return variable not in TSO_HEIGHT_EXEMPT_VARIABLES
+
+
+def station_set_includes(
+    station_set: WeatherStationSet,
+    confidence: SensorHeightConfidence,
+    variable: str | None = None,
+) -> bool:
+    """Return whether a confidence level of ``variable`` belongs to the requested station set."""
     if station_set is WeatherStationSet.ALL_SOURCES:
         return True
     if station_set is WeatherStationSet.TSO:
+        if variable is not None and not tso_requires_sensor_height(variable):
+            return True
         return confidence is SensorHeightConfidence.VERIFIED
     raise ValueError(f"Unsupported weather station set: {station_set!r}")
 

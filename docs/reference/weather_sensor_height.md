@@ -33,6 +33,9 @@ Confidence level
 Trusted Sources Only (TSO)
 : The authoritative, scored station set. It includes only observational variables with confidence
   level 2. Model values used by TSO must be prepared at the trusted observational sensor height.
+  Fuel-moisture sensors (`fuel_moisture_content_10h`) are the exception: their reading does not
+  depend on sensor height and they are sparse, so every one of them is in TSO whatever its
+  confidence level, and no model height match is required.
 
 All sources
 : An informational station set containing confidence levels 0, 1, and 2. It therefore overlaps
@@ -54,6 +57,9 @@ Level | Meaning | TSO | All sources
 0 | Unknown, guessed, or missing source metadata | Excluded | Included
 1 | Provider default, not verified for the station | Excluded | Included
 2 | Verified measurement or accepted trusted record | Included | Included
+
+The TSO column applies to height-dependent variables; fuel-moisture sensors are included at every
+level.
 
 A reader treats a missing, malformed, or unknown confidence value as level 0 and reports a warning
 with the affected station and variable. Newly standardized files must write a valid value instead
@@ -181,7 +187,7 @@ For TSO, FireBench requires both the observational and model variable datasets t
 accepts an absolute difference of at most 0.01 m. A station with missing attributes, incompatible
 units, or a larger mismatch is excluded from that TSO KPI with the reason in the log. Other
 eligible stations continue to run, and validation is limited to the variables, periods, and
-stations selected by the target.
+stations selected by the target. Fuel-moisture variables skip this height check.
 
 The one compatibility exception is a smoke test that opens the same physical observation HDF5 file
 as both model and observation input. In that case FireBench accepts the legacy decimal-string

@@ -401,7 +401,7 @@ def select_weather_stations(
             "station": station,
             "confidence": int(confidence),
         }
-        if fs.station_set_includes(station_set, confidence):
+        if fs.station_set_includes(station_set, confidence, variable):
             selection["included"].append(station_info)
         else:
             selection["excluded"].append(
@@ -454,7 +454,7 @@ def model_height_compatible_selection(
     station_set: fs.WeatherStationSet,
     ctx: dict,
 ) -> dict[str, list[dict]]:
-    """Station selection restricted, for TSO, to stations whose model sensor height matches the obs."""
+    """Station selection restricted, for height-dependent TSO, to matching model/obs sensor heights."""
     observation_selection = select_weather_stations(
         obs_dataset,
         variable,
@@ -462,7 +462,7 @@ def model_height_compatible_selection(
         station_set,
         ctx,
     )
-    if station_set is not fs.WeatherStationSet.TSO:
+    if station_set is not fs.WeatherStationSet.TSO or not fs.tso_requires_sensor_height(variable):
         return observation_selection
 
     validation_cache = ctx.setdefault("weather_model_height_selections", {})

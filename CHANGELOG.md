@@ -67,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Treat every fuel-moisture sensor as a trusted source: 10 h FMC stations enter the TSO station set
+  regardless of their sensor-height confidence and skip the model/observation height match.
 - Move the weather-station selection, requirement, run-loop, and aggregation helpers of the Caldor
   benchmark to `firebench.benchmarks.wx_common` so other cases can reuse them; Caldor benchmark IDs
   and results are unchanged.

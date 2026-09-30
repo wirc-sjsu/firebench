@@ -54,7 +54,7 @@ For each variable, cadence, and lead bin:
 - **Summaries.** Each metric is computed per station, then summarized over stations by its minimum,
   mean and maximum.
 - **Station sets.** Trusted-source stations (TSO) have weight 1; all stations have weight 0
-  (diagnostic).
+  (diagnostic). Every fuel-moisture sensor is in TSO, whatever its sensor-height confidence.
 - **Score.** Each KPI value is turned into a score with `100 exp(-ln 2 |x| / m)`.
 - **Groups and total.** Groups (for example `Air Temp 1h F01-48`) average their KPI scores, and the
   total averages the weighted groups.

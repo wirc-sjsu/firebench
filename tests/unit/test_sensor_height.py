@@ -240,6 +240,22 @@ def test_station_set_membership_is_explicit():
     )
 
 
+def test_fuel_moisture_sensors_are_always_tso():
+    for confidence in fs.SensorHeightConfidence:
+        assert fs.station_set_includes(
+            fs.WeatherStationSet.TSO,
+            confidence,
+            "fuel_moisture_content_10h",
+        )
+    assert not fs.station_set_includes(
+        fs.WeatherStationSet.TSO,
+        fs.SensorHeightConfidence.PROVIDER_DEFAULT,
+        "air_temperature",
+    )
+    assert not fs.tso_requires_sensor_height("fuel_moisture_content_10h")
+    assert fs.tso_requires_sensor_height("wind_speed")
+
+
 def test_synoptic_writer_uses_numeric_confidence_and_separate_description(tmp_path):
     h5_path = tmp_path / "weather.h5"
     variable_info = {

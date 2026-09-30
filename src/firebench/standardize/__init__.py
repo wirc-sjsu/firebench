@@ -51,6 +51,7 @@ from .sensor_height import (
     SENSOR_HEIGHT_CONFIDENCE_ATTRIBUTE,
     SENSOR_HEIGHT_CONFIDENCE_DESCRIPTION_ATTRIBUTE,
     SENSOR_HEIGHT_MATCH_TOLERANCE_METERS,
+    TSO_HEIGHT_EXEMPT_VARIABLES,
     SensorHeightConfidence,
     SensorHeightValidation,
     WeatherStationSet,
@@ -58,6 +59,7 @@ from .sensor_height import (
     read_sensor_height,
     sensor_height_confidence_description,
     station_set_includes,
+    tso_requires_sensor_height,
     validate_weather_sensor_heights,
 )
 from .synoptic_data import SH_TRUST_HIGHEST
