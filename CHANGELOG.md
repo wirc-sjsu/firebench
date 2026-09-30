@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `firebench keys` to store, list, check, and remove data-provider API keys (for example the
+  Synoptic token) with private file permissions, an explicit lookup order, and fingerprints instead
+  of printed values, plus `firebench cache info/clean` for the local download cache.
 - Add verification level D for benchmark runs whose observational dataset lacks a valid
   `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
 - Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action

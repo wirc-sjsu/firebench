@@ -135,6 +135,14 @@ def test_documented_cli_commands_have_help():
         ["run"],
         ["multirun"],
         ["plot"],
+        ["keys"],
+        ["keys", "set"],
+        ["keys", "list"],
+        ["keys", "check"],
+        ["keys", "remove"],
+        ["cache"],
+        ["cache", "info"],
+        ["cache", "clean"],
     ]
     for command in commands:
         result = runner.invoke(main, [*command, "--help"])

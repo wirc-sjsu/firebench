@@ -45,6 +45,8 @@ def test_cli_import_does_not_load_heavy_runtime_dependencies():
         ["list", "001"],
         ["data", "list"],
         ["data", "versions", "001"],
+        ["keys", "list"],
+        ["cache", "info"],
     ),
 )
 def test_static_list_commands_start_quickly_without_heavy_runtime_dependencies(args):

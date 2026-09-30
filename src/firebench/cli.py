@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from collections.abc import Iterator, Mapping
 from importlib import import_module
@@ -51,9 +52,7 @@ def plot_from_config(*args, **kwargs):
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
 
-FIREBENCH_BANNER = (
-    "\b"
-    + r"""
+FIREBENCH_BANNER = "\b" + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -63,7 +62,6 @@ FIREBENCH_BANNER = (
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
-)
 
 
 @click.group(help=FIREBENCH_BANNER)
@@ -944,6 +942,154 @@ def wx_qc_finalize(manifest: Path, output: Path, reviewer: str, overwrite: bool)
     except (OSError, TypeError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"Final HDF5: {result['artifacts']['final_h5']}")
+
+
+@main.group()
+def keys() -> None:
+    """
+    Manage API keys for data providers (for example the Synoptic token).
+
+    A key is looked up in an explicit key file, then in the service environment
+    variable (SYNOPTIC_TOKEN), then in the key stored by 'firebench keys set'.
+    Key values are never printed, only a fingerprint.
+    """
+
+
+def _keys_module():
+    return import_module(".acquisition.keys", __package__)
+
+
+def _key_status(resolution) -> tuple[str, str]:
+    keys_module = _keys_module()
+    if resolution.value is not None:
+        return "set", keys_module.fingerprint(resolution.value)
+    if resolution.anonymous:
+        return "not needed", ""
+    return "missing", ""
+
+
+@keys.command("set")
+@click.argument("service")
+@click.option("--stdin", "from_stdin", is_flag=True, help="Read the key from standard input.")
+def keys_set(service: str, from_stdin: bool) -> None:
+    """Store the API key of SERVICE (file mode 0600)."""
+    keys_module = _keys_module()
+    try:
+        info = keys_module.service_info(service)
+    except keys_module.KeyConfigError as exc:
+        raise click.UsageError(str(exc)) from exc
+    if info.anonymous:
+        raise click.UsageError(f"'{info.name}' needs no key: {info.description}.")
+    if from_stdin:
+        value = click.get_text_stream("stdin").readline()
+    else:
+        value = click.prompt(f"{info.name} key", hide_input=True, confirmation_prompt=True)
+    try:
+        path = keys_module.set_key(info.name, value)
+    except keys_module.KeyConfigError as exc:
+        raise click.UsageError(str(exc)) from exc
+    click.echo(f"Stored {info.name} key in {path} ({keys_module.fingerprint(value.strip())}).")
+    if info.env_var and os.environ.get(info.env_var):
+        click.echo(f"Note: {info.env_var} is set and takes precedence over the stored key.")
+
+
+@keys.command("list")
+def keys_list() -> None:
+    """List known services and the status of their keys."""
+    rows = [("SERVICE", "STATUS", "SOURCE", "FINGERPRINT")]
+    for resolution in _keys_module().list_keys():
+        status, key_fingerprint = _key_status(resolution)
+        rows.append((resolution.service, status, resolution.source or "", key_fingerprint))
+    widths = [max(len(row[column]) for row in rows) for column in range(3)]
+    for row in rows:
+        click.echo("  ".join(value.ljust(width) for value, width in zip(row, widths)) + "  " + row[3])
+
+
+@keys.command("check")
+@click.argument("service", required=False)
+def keys_check(service: str | None) -> None:
+    """Show where the key of SERVICE (default: all known services) is looked up."""
+    keys_module = _keys_module()
+    try:
+        resolutions = [keys_module.resolve_key(service)] if service else keys_module.list_keys()
+    except keys_module.KeyConfigError as exc:
+        raise click.UsageError(str(exc)) from exc
+    for resolution in resolutions:
+        status, key_fingerprint = _key_status(resolution)
+        click.echo(f"{resolution.service}: {status}" + (f" ({key_fingerprint})" if key_fingerprint else ""))
+        for place in resolution.searched:
+            marker = "->" if place == resolution.source else "  "
+            click.echo(f"  {marker} {place}")
+        if resolution.anonymous:
+            click.echo("  -> anonymous access")
+        elif resolution.value is None:
+            for line in keys_module.missing_key_message(resolution).splitlines():
+                if line.startswith(("Add one", "Get a key")):
+                    click.echo(f"  {line}")
+
+
+@keys.command("remove")
+@click.argument("service")
+def keys_remove(service: str) -> None:
+    """Delete the stored key of SERVICE."""
+    keys_module = _keys_module()
+    try:
+        removed = keys_module.remove_key(service)
+    except keys_module.KeyConfigError as exc:
+        raise click.UsageError(str(exc)) from exc
+    click.echo(f"Removed stored {service} key." if removed else f"No stored {service} key.")
+
+
+CACHE_SOURCES = ("hrrr", "synoptic")
+
+
+@main.group()
+def cache() -> None:
+    """
+    Inspect or clean the FireBench download cache.
+
+    The cache lives in FIREBENCH_CACHE_DIR when set, otherwise in the platform
+    cache directory (~/.cache/firebench on Linux).
+    """
+
+
+@cache.command("info")
+def cache_info() -> None:
+    """Show the cache location and its size per data source."""
+    cache_module = import_module(".acquisition.cache", __package__)
+    cache_dir = cache_module.get_cache_dir(create=False)
+    click.echo(f"Cache directory: {cache_dir} ({cache_module.cache_dir_source()})")
+    for source in CACHE_SOURCES:
+        n_files, n_bytes = cache_module.directory_usage(cache_dir / source)
+        click.echo(f"  {source:<10} {n_files:>7} files  {cache_module.format_bytes(n_bytes):>10}")
+
+
+@cache.command("clean")
+@click.option(
+    "--source",
+    type=click.Choice(CACHE_SOURCES),
+    multiple=True,
+    help="Data source to clean (repeatable). Default: all sources.",
+)
+@click.option("--yes", is_flag=True, help="Do not ask for confirmation.")
+def cache_clean(source: tuple[str, ...], yes: bool) -> None:
+    """Delete cached downloads."""
+    import shutil
+
+    cache_module = import_module(".acquisition.cache", __package__)
+    cache_dir = cache_module.get_cache_dir(create=False)
+    targets = [cache_dir / name for name in (source or CACHE_SOURCES) if (cache_dir / name).is_dir()]
+    if not targets:
+        click.echo("Nothing to clean.")
+        return
+    for target in targets:
+        n_files, n_bytes = cache_module.directory_usage(target)
+        click.echo(f"{target}: {n_files} files, {cache_module.format_bytes(n_bytes)}")
+    if not yes:
+        click.confirm("Delete these cached files?", abort=True)
+    for target in targets:
+        shutil.rmtree(target)
+    click.echo("Cache cleaned.")
 
 
 if __name__ == "__main__":
