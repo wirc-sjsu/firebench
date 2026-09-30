@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   thresholds and range-level corrections for implausible sensor excursions.
 - Extend policy version 8 jump detection to high-confidence relative-humidity and 10-hour
   fuel-moisture excursions while rejecting non-finite boundary evidence.
+- Add a policy version 9 neighbour-consistency check that excludes air temperature from stations
+  whose hour-paired, lapse-adjusted median bias against stations within 20 km reaches 10 °C,
+  catching biased sensors that pass bounds, frozen, and jump checks in short evaluation windows.
 - Add an Actions-to-Detail review queue with issue-period zoom, highlighted samples, grouped-range
   navigation, in-place decisions, automatic advancement, live selection/sort synchronization, and
   read-only audit findings.

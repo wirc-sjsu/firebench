@@ -13,7 +13,7 @@ Create a versioned TOML policy. Required windows are optional, repeatable tables
 include a UTC offset.
 
 ```toml
-version = 8
+version = 9
 mode = "review"
 
 [output]
@@ -56,6 +56,14 @@ minimum_deviation = 25.0
 minimum_change = 15.0
 minimum_rate_per_hour = 60.0
 minimum_deviation = 15.0
+
+[neighbor_consistency]
+radius_km = 20.0
+neighbor_count = 8
+minimum_neighbors = 3
+minimum_paired_hours = 12
+lapse_rate_c_per_km = 6.5
+maximum_bias = 10.0
 
 [gui]
 max_var_outage_min = 1440.0
@@ -102,14 +110,16 @@ start = "2021-08-17T20:20:00-07:00"
 end = "2021-09-10T23:34:00-07:00"
 ```
 
-Policy versions 1 through 7 remain readable with their historical behavior so older runs stay
+Policy versions 1 through 8 remain readable with their historical behavior so older runs stay
 reproducible. Version 5 adds the explicit `review` and `conservative_auto` modes. `review` retains
 the version-4 risk-based review workflow. Version 6 refines conservative mode so availability-only
 findings remain in the audit record without removing usable measurements, while sensor-quality
 doubts exclude the affected variable or configured variable group. Conservative mode produces no
 pending actions. Version 7 detects locally implausible variable excursions and proposes replacing
 only their confirmed ranges with NaN for air temperature. Version 8 extends the same range-level
-method to high-confidence relative-humidity and 10-hour fuel-moisture excursions.
+method to high-confidence relative-humidity and 10-hour fuel-moisture excursions. Version 9 adds
+a neighbour-consistency check that excludes air temperature from stations biased against nearby
+stations.
 
 Run the processor with explicit destinations:
 
@@ -150,6 +160,22 @@ fuel-moisture thresholds are 15, 15, and 60. Missing or non-finite values cannot
 excursion boundary. These gates catch abrupt sensor spikes without imposing fixed value cutoffs.
 Conservative mode automatically replaces confirmed ranges with NaN; review mode leaves the same
 range operation pending.
+
+Policy version 9 compares each station's air temperature with its nearest neighbours, so a sensor
+that is consistently wrong but smooth, plausible, and never frozen is still caught. Up to
+`neighbor_count` stations within `radius_km` form the neighbourhood. Values are averaged into UTC
+hours, and each neighbour value is moved to the station elevation with `lapse_rate_c_per_km`
+(elevations recorded in feet or metres; stations with another or missing elevation unit are not
+used). For every hour with at least `minimum_neighbors` reporting neighbours, the difference
+between the station and the neighbours' median is kept. With at least `minimum_paired_hours`
+differences, their median is the station bias; a bias of `maximum_bias` or more in either
+direction flags the station. Pairing by hour keeps stations that report only at a fixed time of
+day, such as daily cooperative observers, from being compared with an all-day median. Medians keep
+one faulty station from shifting its neighbours' references. The defaults, 20 km, 8 neighbours, 3
+required neighbours, 12 paired hours, 6.5 °C/km, and 10 °C, leave a wide margin for inversions and
+valley-ridge contrasts. Stations with too few neighbours or paired hours are not tested.
+Conservative mode automatically excludes the flagged air-temperature dataset; review mode leaves
+the exclusion pending.
 
 Source `QC_FLAGGED` metadata and incomplete required-window coverage require human review. In policy
 version 4, gaps, wind-direction dropouts, longest-variable outages, and full-station outages also
@@ -262,6 +288,7 @@ Code | Default | Typical message | Effect when applied
 `ZEROWIND` | Automatic or review | `Exclude station: 80.0% ... is zero`, `Review N zero-wind range(s)`, or `Acknowledge elevated zero wind ...` | At 80% or more zero wind, propose excluding the station. From 50% to 80%, require review of a wind-speed-only range change or a non-mutating acknowledgement. Below 50%, only qualifying seven-day ranges are actionable.
 `FROZEN` | Automatic or review | `Replace N near-certain/ambiguous frozen VARIABLE range(s) with NaN` | Set grouped sensor ranges to NaN. The selector retains range-level duration, thresholds, resolution, quantization uncertainty, neighbor coverage, and same-station activity.
 `JUMP` | Automatic in conservative mode; review otherwise | `Replace implausible VARIABLE excursion ranges with NaN` | Set only locally inconsistent ranges with a qualifying high-rate boundary to NaN. The selector records context and threshold evidence plus entry and exit transitions.
+`NEIGHBOR` | Automatic in conservative mode; review otherwise | `Exclude air_temperature inconsistent with neighbouring stations: ...` | Omit the station air-temperature dataset when its median lapse-adjusted bias against nearby stations reaches the policy limit. The selector records the policy settings, bias, spread, paired hours, station elevation, and neighbour IDs.
 `ACK` | Review | `Acknowledge ... without changing data: ...` | Record required review of non-mutating conditions. Version 4 defaults to acknowledgement actions for incomplete windows, gaps, dropouts, variable outages, and full-station outages; low-confidence plateaus remain audit-only.
 `SAFEEXCL` | Automatic in conservative mode | `Conservative-auto excluded ... for QC doubt` | Exclude the complete station for station-wide doubt or the named station-variable dataset or configured variable group for sensor-specific doubt. The selector lists every triggering finding and original action.
 `MANUAL` | Accepted when created | `Manually exclude station: ...`, `Manual range removal: ...`, or `Manually omit complete variable ...` | Apply a reviewer-authored station exclusion, set selected variable/range values to NaN, or omit one station variable.

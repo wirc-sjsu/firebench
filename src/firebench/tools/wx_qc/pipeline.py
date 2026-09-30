@@ -34,6 +34,7 @@ from .frozen import (
     frozen_finding_message,
 )
 from .jumps import analyze_jump_excursions, jump_config_from_policy, validate_jump_policy
+from .neighbors import analyze_neighbor_bias, neighbor_config_from_policy, validate_neighbor_policy
 
 try:
     import tomllib
@@ -43,7 +44,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 MANIFEST_VERSION = 2
 SUPPORTED_MANIFEST_VERSIONS = {1, MANIFEST_VERSION}
-POLICY_VERSION = 8
+POLICY_VERSION = 9
 POLICY_MODES = {"review", "conservative_auto"}
 SUPPORTED_VARIABLES = {value["std_name"] for value in VARIABLE_CONVERSION.values()}
 RAW_TO_STANDARD = {key: value["std_name"] for key, value in VARIABLE_CONVERSION.items()}
@@ -94,6 +95,14 @@ DEFAULT_POLICY = {
             },
         },
     },
+    "neighbor_consistency": {
+        "radius_km": 20.0,
+        "neighbor_count": 8,
+        "minimum_neighbors": 3,
+        "minimum_paired_hours": 12,
+        "lapse_rate_c_per_km": 6.5,
+        "maximum_bias": 10.0,
+    },
     "gui": {
         "max_var_outage_min": 1440.0,
         "full_outage_min": 360.0,
@@ -123,7 +132,11 @@ DEFAULT_POLICY = {
     "required_windows": [],
 }
 
-V7_POLICY = copy.deepcopy(DEFAULT_POLICY)
+V8_POLICY = copy.deepcopy(DEFAULT_POLICY)
+V8_POLICY["version"] = 8
+V8_POLICY.pop("neighbor_consistency")
+
+V7_POLICY = copy.deepcopy(V8_POLICY)
 V7_POLICY["version"] = 7
 V7_POLICY["jumps"]["thresholds"] = {
     "air_temperature": copy.deepcopy(DEFAULT_POLICY["jumps"]["thresholds"]["air_temperature"])
@@ -300,10 +313,10 @@ def load_policy(path: str | Path | dict | None) -> dict:  # pylint: disable=too-
     else:
         supplied = {}
     requested_version = supplied.get("version", POLICY_VERSION)
-    if requested_version not in (1, 2, 3, 4, 5, 6, 7, POLICY_VERSION):
+    if requested_version not in (1, 2, 3, 4, 5, 6, 7, 8, POLICY_VERSION):
         raise QCError(
             f"unsupported QC policy version {requested_version!r}; "
-            f"expected version 1, 2, 3, 4, 5, 6, 7, or {POLICY_VERSION}"
+            f"expected version 1, 2, 3, 4, 5, 6, 7, 8, or {POLICY_VERSION}"
         )
     templates = {
         1: LEGACY_POLICY,
@@ -313,6 +326,7 @@ def load_policy(path: str | Path | dict | None) -> dict:  # pylint: disable=too-
         5: V5_POLICY,
         6: V6_POLICY,
         7: V7_POLICY,
+        8: V8_POLICY,
         POLICY_VERSION: DEFAULT_POLICY,
     }
     policy = copy.deepcopy(templates[requested_version])
@@ -357,6 +371,11 @@ def load_policy(path: str | Path | dict | None) -> dict:  # pylint: disable=too-
     if policy["version"] >= 7:
         try:
             validate_jump_policy(policy.get("jumps"), SUPPORTED_VARIABLES)
+        except ValueError as exc:
+            raise QCError(str(exc)) from exc
+    if policy["version"] >= 9:
+        try:
+            validate_neighbor_policy(policy.get("neighbor_consistency"))
         except ValueError as exc:
             raise QCError(str(exc)) from exc
     output = policy["output"]
@@ -1429,6 +1448,50 @@ def _jump_excursion_actions(
     return actions, findings
 
 
+def _neighbor_bias_actions(
+    stations: dict[str, dict], source_sha256: str, policy: dict
+) -> tuple[list[dict], list[dict]]:
+    """Build variable exclusions for sensors biased against their lapse-adjusted neighbours."""
+    if policy["version"] < 9:
+        return [], []
+    actions, findings = [], []
+    config = neighbor_config_from_policy(policy)
+    automatic = policy.get("mode") == "conservative_auto"
+    for station_id, evidence in analyze_neighbor_bias(stations, config).items():
+        variable = evidence["variable"]
+        message = (
+            f"Median {variable} bias of {evidence['bias']:+.1f} against {len(evidence['neighbors'])} "
+            f"lapse-adjusted neighbour(s) over {evidence['paired_hours']} paired hour(s)"
+        )
+        selector = {"evidence": {**config, **evidence}}
+        finding = _finding(
+            source_sha256,
+            f"neighbor_{variable}",
+            "WARN",
+            station_id,
+            message,
+            variable=variable,
+            selector=selector,
+            evidence={key: evidence[key] for key in ("bias", "spread", "paired_hours", "neighbors")},
+        )
+        findings.append(finding)
+        actions.append(
+            _action(
+                source_sha256,
+                "NEIGHBOR",
+                "WARN",
+                station_id,
+                variable,
+                selector,
+                {"kind": "exclude_variable", "variables": [variable]},
+                f"Exclude {variable} inconsistent with neighbouring stations: {message}",
+                automatic=automatic,
+                linked_findings=[finding["id"]],
+            )
+        )
+    return actions, findings
+
+
 def _h5_qc_findings(  # pylint: disable=too-many-branches
     path: Path, source_sha256: str, policy: dict
 ) -> tuple[list[dict], list[dict]]:
@@ -1492,6 +1555,9 @@ def _h5_qc_findings(  # pylint: disable=too-many-branches
     jump_actions, jump_findings = _jump_excursion_actions(stations, source_sha256, policy)
     actions.extend(jump_actions)
     findings.extend(jump_findings)
+    neighbor_actions, neighbor_findings = _neighbor_bias_actions(stations, source_sha256, policy)
+    actions.extend(neighbor_actions)
+    findings.extend(neighbor_findings)
     if policy["version"] == 1:
         minimum_run = int(policy["gui"]["frozen_min_run"])
         for station_id, station in stations.items():

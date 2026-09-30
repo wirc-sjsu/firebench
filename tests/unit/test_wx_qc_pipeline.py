@@ -137,7 +137,15 @@ def test_policy_versions_preserve_legacy_rules_and_validate_v8_jump_scope():
     assert "frozen" not in legacy
 
     current = load_policy(None)
-    assert current["version"] == 8
+    assert current["version"] == 9
+    assert current["neighbor_consistency"] == {
+        "radius_km": 20.0,
+        "neighbor_count": 8,
+        "minimum_neighbors": 3,
+        "minimum_paired_hours": 12,
+        "lapse_rate_c_per_km": 6.5,
+        "maximum_bias": 10.0,
+    }
     assert current["mode"] == "review"
     assert current["frozen"]["minimum_duration_hours"]["air_temperature"] == 6.0
     assert current["review"]["target_pending_fraction"] == 0.05
@@ -172,6 +180,11 @@ def test_policy_versions_preserve_legacy_rules_and_validate_v8_jump_scope():
     assert "jumps" not in version_six
     version_seven = load_policy({"version": 7, "mode": "conservative_auto"})
     assert set(version_seven["jumps"]["thresholds"]) == {"air_temperature"}
+    assert "neighbor_consistency" not in version_seven
+    version_eight = load_policy({"version": 8})
+    assert version_eight["version"] == 8
+    assert "neighbor_consistency" not in version_eight
+    assert set(version_eight["jumps"]["thresholds"]) == set(current["jumps"]["thresholds"])
 
     version_two = load_policy({"version": 2})
     assert version_two["version"] == 2
@@ -519,6 +532,85 @@ def test_policy_v8_applies_variable_specific_jump_ranges_without_excluding_varia
         ):
             assert variable in group
             assert np.flatnonzero(np.isnan(group[variable][:])).tolist() == [5, 6, 7]
+
+
+def _neighbor_source(tmp_path):
+    """Write five nearby stations, one reading 40 degrees C too cold."""
+    stations = []
+    for index, stid in enumerate(("N1", "N2", "N3", "N4", "BAD")):
+        station = _station()
+        station.update(
+            {
+                "STID": stid,
+                "ID": index + 1,
+                "QC_FLAGGED": False,
+                "LATITUDE": 38.0 + 0.02 * index,
+                "ELEVATION": 3280.84,
+                "UNITS": {"elevation": "ft"},
+            }
+        )
+        station["SENSOR_VARIABLES"] = {"air_temperature": {"air_temp_set_1": {"position": 2.0}}}
+        offset = -40.0 if stid == "BAD" else 0.0
+        station["OBSERVATIONS"] = {
+            "date_time": [
+                (datetime(2021, 8, 20, tzinfo=timezone.utc) + timedelta(hours=hour)).strftime(
+                    "%Y%m%d%H%M%SZ"
+                )
+                for hour in range(24)
+            ],
+            "air_temp_set_1": [
+                round(20.0 + 8.0 * np.sin(2 * np.pi * hour / 24.0) + 0.1 * index + offset, 2)
+                for hour in range(24)
+            ],
+        }
+        stations.append(station)
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps({"STATION": stations}), encoding="utf-8")
+    return source
+
+
+def test_neighbor_bias_is_pending_in_review_and_excluded_in_conservative_mode(tmp_path):
+    source = _neighbor_source(tmp_path)
+
+    review = process_synoptic_json(
+        source,
+        {"mode": "review"},
+        tmp_path / "review-candidate.h5",
+        tmp_path / "review-manifest.json",
+        tmp_path / "review.log",
+    )
+    review_neighbors = [item for item in review["actions"] if item["code"] == "NEIGHBOR"]
+    assert [item["target"] for item in review_neighbors] == [
+        {"station": "BAD", "variable": "air_temperature"}
+    ]
+    assert review_neighbors[0]["decision"]["status"] == "pending"
+    assert review_neighbors[0]["selector"]["evidence"]["bias"] == pytest.approx(-39.75)
+
+    candidate = tmp_path / "conservative-candidate.h5"
+    conservative = process_synoptic_json(
+        source,
+        {"mode": "conservative_auto"},
+        candidate,
+        tmp_path / "conservative-manifest.json",
+        tmp_path / "conservative.log",
+    )
+    neighbor = next(item for item in conservative["actions"] if item["code"] == "NEIGHBOR")
+    assert neighbor["decision"]["status"] == "auto_accepted"
+    assert neighbor["effect"] == {"kind": "exclude_variable", "variables": ["air_temperature"]}
+    assert not any(item["decision"]["status"] == "pending" for item in conservative["actions"])
+    with h5py.File(candidate, "r") as output:
+        assert "air_temperature" not in output["time_series/station_BAD"]
+        for stid in ("N1", "N2", "N3", "N4"):
+            assert "air_temperature" in output[f"time_series/station_{stid}"]
+
+    version_eight = process_synoptic_json(
+        source,
+        {"version": 8, "mode": "review"},
+        tmp_path / "v8-candidate.h5",
+        tmp_path / "v8-manifest.json",
+        tmp_path / "v8.log",
+    )
+    assert not any(item["code"] == "NEIGHBOR" for item in version_eight["actions"])
 
 
 def test_conservative_auto_finalization_rejects_new_post_build_doubt(tmp_path, monkeypatch):

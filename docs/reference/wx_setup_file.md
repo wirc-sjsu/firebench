@@ -65,7 +65,7 @@ Secrets (`token`, `api_key`, ...) are rejected in every section.
 | Key | Default | Description |
 |---|---|---|
 | `reviewer` | `firebench wx (conservative_auto)` | Identity recorded by the QC finalization |
-| `overrides` | `{}` | Tables of the weather QC policy (version 8), e.g. `{bounds: {air_temperature: [-40, 55, C]}}`. A table replaces the whole default table. `mode` is fixed to `conservative_auto` |
+| `overrides` | `{}` | Tables of the weather QC policy (version 9), e.g. `{bounds: {air_temperature: [-40, 55, C]}}`. A table replaces the whole default table. `mode` is fixed to `conservative_auto` |
 | `require_window` | `true` | Adds the evaluation window as a QC `required_windows` entry: stations with no finite observation in it are excluded |
 
 ## `model`

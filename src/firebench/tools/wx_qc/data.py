@@ -59,6 +59,7 @@ def _parse_station_group(grp, stid):
         "lat": float(attrs.get("position_lat", 0.0)),
         "lon": float(attrs.get("position_lon", 0.0)),
         "alt": float(attrs.get("position_alt", 0.0)),
+        "alt_units": attrs.get("position_alt_units"),
         "state": attrs.get("state", ""),
         "timezone": attrs.get("timezone", ""),
         "provider": attrs.get("providers", ""),
