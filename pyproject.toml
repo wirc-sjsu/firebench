@@ -70,6 +70,9 @@ dev = [
     "pytest-mock",
     "shapely",
 ]
+hrrr = [
+    "eccodes>=2.37",
+]
 docs = [
     "myst-parser",
     "pytest",
