@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   model and observations on mandatory UTC top-of-hour marks, matching the nearest finite
   observation within a tolerance, penalizing missing model marks, and excluding stations below an
   observation-coverage floor.
+- Add an embedded HRRR weather-station adapter that writes one standard model file per forecast
+  cycle at HRRR's native hourly valid times, rotates grid-relative winds to earth, brings 10 m wind
+  to each station's sensor height with the neutral log law and HRRR roughness, declares every
+  sensor height, and records the per-station terrain-height difference.
 - Add verification level D for benchmark runs whose observational dataset lacks a valid
   `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
 - Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action
