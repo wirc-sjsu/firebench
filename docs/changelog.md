@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `firebench keys` to store, list, check, and remove data-provider API keys (for example the
+  Synoptic token) with private file permissions, an explicit lookup order, and fingerprints instead
+  of printed values, plus `firebench cache info/clean` for the local download cache.
+- Add a cached HRRR surface-forecast downloader (`firebench.acquisition.hrrr`) that fetches only the
+  needed GRIB2 messages from the NOAA Open Data bucket through `.idx` byte ranges, knows each HRRR
+  version's forecast horizon, and decodes files with the optional `firebench[hrrr]` extra.
+- Add a Synoptic station time-series client that sizes time chunks under the 100,000 station-hour
+  request cap, merges and caches them, drops stations the standardizer cannot read, never logs the
+  token, and a `firebench keys check synoptic --online` token test.
+- Add hourly and 3-hourly cadence weather scoring (`firebench.benchmarks.wx_cadence`) that joins
+  model and observations on mandatory UTC top-of-hour marks, matching the nearest finite
+  observation within a tolerance, penalizing missing model marks, and excluding stations below an
+  observation-coverage floor.
+- Add an embedded HRRR weather-station adapter that writes one standard model file per forecast
+  cycle at HRRR's native hourly valid times, rotates grid-relative winds to earth, brings 10 m wind
+  to each station's sensor height with the neutral log law and HRRR roughness, declares every
+  sensor height, and records the per-station terrain-height difference.
+- Add a generic weather-forecast benchmark (`firebench.benchmarks.wx_forecast`) that scores one
+  forecast cycle on cadence tiers and lead-time bins with semantic benchmark IDs such as
+  `WX-AT-MAE-MEAN-TSO-1H-F0148`, keeps the analysis hour in a weight-0 informational group, and
+  reports variables without model data or observations as excluded instead of scoring them.
+- Show the observation `data_tier` in the score-card footer when the dataset records one.
+- Add `firebench wx init/plan/run/score`, an automated weather-forecast benchmark driven by a YAML
+  setup (bounding box and window, or a case preset such as `2021_Caldor` `H012`): Synoptic
+  observations are fetched or read from a saved payload, quality controlled in `conservative_auto`
+  mode and tagged `data_tier: provisional`, HRRR forecasts are downloaded in parallel, adapted to
+  the stations and scored per cycle, and every stage is cached so an unchanged re-run does nothing.
 - Add verification level D for benchmark runs whose observational dataset lacks a valid
   `fb-verified-obs-dataset` certificate or cannot be verified with GPG.
 - Add an auditable Synoptic weather-QC pipeline with versioned TOML policies, deterministic action
@@ -31,12 +58,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   thresholds and range-level corrections for implausible sensor excursions.
 - Extend policy version 8 jump detection to high-confidence relative-humidity and 10-hour
   fuel-moisture excursions while rejecting non-finite boundary evidence.
+- Add a policy version 9 neighbour-consistency check that excludes air temperature from stations
+  whose hour-paired, lapse-adjusted median bias against stations within 20 km reaches 10 °C,
+  catching biased sensors that pass bounds, frozen, and jump checks in short evaluation windows.
 - Add an Actions-to-Detail review queue with issue-period zoom, highlighted samples, grouped-range
   navigation, in-place decisions, automatic advancement, live selection/sort synchronization, and
   read-only audit findings.
 
 ### Changed
 
+- Treat every fuel-moisture sensor as a trusted source: 10 h FMC stations enter the TSO station set
+  regardless of their sensor-height confidence and skip the model/observation height match.
+- Move the weather-station selection, requirement, run-loop, and aggregation helpers of the Caldor
+  benchmark to `firebench.benchmarks.wx_common` so other cases can reuse them; Caldor benchmark IDs
+  and results are unchanged.
 - Store weather-QC manifest references and reviewer identity in version 3 GUI sessions, add
   version 4 frozen-sensor settings, and add version 5 triage settings while retaining older readers.
 - Keep policy-v3 weather outages, gaps, and dropouts as audit-only diagnostics for reproducibility;

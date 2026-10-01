@@ -13,8 +13,8 @@ except ModuleNotFoundError:
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 # Last tagged release, which CITATION.cff describes. pyproject.toml carries the working version,
 # bumped to the next dev release right after tagging, so it may be ahead of this one.
-RELEASE_VERSION = "0.11dev1"
-RELEASE_DATE = date(2026, 9, 25)
+RELEASE_VERSION = "0.11dev2"
+RELEASE_DATE = date(2026, 9, 30)
 ZENODO_CONCEPT_DOI = "10.5281/zenodo.15477459"
 
 
