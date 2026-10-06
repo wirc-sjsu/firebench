@@ -57,6 +57,7 @@ class ObservationOptions:
     synoptic_json: Path | None = None
     h5: Path | None = None
     token_file: Path | None = None
+    origin: str | None = None
     networks: tuple[str, ...] = ()
     context_hours: float = 24.0
     bbox_margin_deg: float = 0.0
@@ -331,6 +332,7 @@ def _parse_observations(value: dict, base: Path, problems: list[str]) -> Observa
         "synoptic_json",
         "h5",
         "token_file",
+        "origin",
         "networks",
         "context_hours",
         "bbox_margin_deg",
@@ -347,6 +349,13 @@ def _parse_observations(value: dict, base: Path, problems: list[str]) -> Observa
         path = getattr(options, key)
         if path is not None and not path.is_file():
             problems.append(f"observations.{key} does not exist: {path}")
+    if "origin" in value:
+        from firebench.acquisition.keys import KeyConfigError, normalize_origin
+
+        try:
+            options.origin = normalize_origin(value["origin"])
+        except KeyConfigError as error:
+            problems.append(f"observations.origin: {error}")
     networks = value.get("networks") or ()
     options.networks = tuple(str(item) for item in (networks if isinstance(networks, list) else [networks]))
     for key in ("context_hours", "bbox_margin_deg", "max_chunk_days"):
@@ -601,6 +610,7 @@ output_dir: runs/{name}                  # workspace (relative to this file)
 observations:
 {observations}  # h5: path/to/obs.h5                   # or an existing FireBench observation file
   # token_file: ~/secrets/synoptic.txt   # default: firebench keys set synoptic / SYNOPTIC_TOKEN
+  # origin: https://your-allowed-domain.example  # override token-linked origins
   # networks: [RAWS]                     # optional Synoptic network filter
   context_hours: 24                      # QC context before and after the window
   bbox_margin_deg: 0.0                   # grow the station search box

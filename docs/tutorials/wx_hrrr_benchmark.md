@@ -131,3 +131,19 @@ firebench wx score caldor_h12.yml my_model_2021082000.h5 --cycle 2021-08-20T00:0
     elevation, which is a first-order temperature bias in mountains.
 
 The full KPI specification is in [Weather forecast benchmark](../benchmarks/weather_forecast.md).
+
+## Downloading with an origin-restricted token
+
+Store your token with `firebench keys set synoptic`, answer Yes to the HTTP Origin question,
+and enter each origin already allowed in the Synoptic customer console. To update an existing token:
+
+```bash
+firebench keys origins add synoptic https://first.example https://second.example
+firebench keys check synoptic --online
+firebench wx plan small_bbox.yml
+```
+
+Saved origins are tried in order on 403 errors; a successful origin is reused for subsequent
+requests. Set `observations.origin` in the setup to select one explicitly, or use `SYNOPTIC_ORIGIN`
+as an environment override. See [the token tutorial](synoptic_api_token.md#tokens-with-http-origin-restrictions)
+for scripted setup, precedence, and troubleshooting. Saved JSON and HDF5 inputs do not need origins.

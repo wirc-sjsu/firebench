@@ -15,6 +15,8 @@ their :func:`fingerprint` is shown.
 """
 
 import hashlib
+import json
+import urllib.parse
 import logging
 import os
 import re
@@ -160,6 +162,7 @@ def set_key(service: str, value: str) -> Path:
     if "\n" in value or "\r" in value:
         raise KeyConfigError("a key must be a single line")
 
+    old_value = _read_key_file(key_path(service)) if key_path(service).is_file() else None
     directory = credentials_dir()
     directory.mkdir(parents=True, exist_ok=True)
     if sys.platform != "win32":
@@ -175,6 +178,8 @@ def set_key(service: str, value: str) -> Path:
     except BaseException:
         Path(tmp_name).unlink(missing_ok=True)
         raise
+    if old_value != value and info.name == "synoptic":
+        origins_path().unlink(missing_ok=True)
     logger.info("[keys] stored key for %s in %s (%s)", info.name, path, fingerprint(value))
     return path
 
@@ -185,6 +190,8 @@ def remove_key(service: str) -> bool:
     if not path.is_file():
         return False
     path.unlink()
+    if service_info(service).name == "synoptic":
+        origins_path().unlink(missing_ok=True)
     return True
 
 
@@ -233,3 +240,106 @@ def _warn_if_readable_by_others(path: Path) -> None:
             mode,
             path,
         )
+
+
+def normalize_origin(value: str) -> str:
+    """Validate a concrete HTTP origin and normalize a trailing slash."""
+    if not isinstance(value, str) or not value or any(c.isspace() for c in value):
+        raise KeyConfigError("an HTTP origin must be a nonempty URL without whitespace")
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        port = parsed.port
+        valid = (
+            parsed.scheme in ("http", "https")
+            and parsed.hostname
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.path in ("", "/")
+            and not parsed.query
+            and not parsed.fragment
+            and "*" not in value
+            and not any(ord(c) < 32 or ord(c) == 127 for c in value)
+            and "\\" not in value
+            and "?" not in value
+            and "#" not in value
+            and not parsed.netloc.endswith(":")
+        )
+    except ValueError:
+        valid = False
+    if not valid:
+        raise KeyConfigError(
+            "an HTTP origin must be http(s)://hostname[:port], without credentials or paths"
+        )
+    host = parsed.hostname.lower()
+    if ":" in host:
+        host = f"[{host}]"
+    return f"{parsed.scheme}://{host}" + (f":{port}" if port is not None else "")
+
+
+def normalize_origins(values) -> tuple[str, ...]:
+    """Validate and deduplicate origins while preserving their order."""
+    if isinstance(values, str):
+        values = [values]
+    return tuple(dict.fromkeys(normalize_origin(value) for value in values))
+
+
+def origins_path() -> Path:
+    """Private metadata for the stored Synoptic token."""
+    return credentials_dir() / "synoptic.origins.json"
+
+
+def stored_origins(token: str) -> tuple[str, ...]:
+    """Return saved origins only when they belong to this exact token."""
+    path = origins_path()
+    if not path.is_file():
+        return ()
+    try:
+        _warn_if_readable_by_others(path)
+        data = json.loads(path.read_text())
+        if not isinstance(data, dict) or data.get("version") != 1:
+            raise ValueError("unsupported metadata version")
+        if not isinstance(data.get("token_sha256"), str) or not isinstance(data.get("origins"), list):
+            raise ValueError("invalid metadata fields")
+        origins = normalize_origins(data["origins"])
+        if data["token_sha256"] != hashlib.sha256(token.encode()).hexdigest():
+            return ()
+        return origins
+    except (OSError, ValueError, TypeError) as error:
+        raise KeyConfigError(
+            f"invalid Synoptic origin metadata in {path}; remove this sidecar and re-add origins"
+        ) from error
+
+
+def set_origins(values) -> tuple[str, ...]:
+    """Replace origins associated with the stored Synoptic token."""
+    path = key_path("synoptic")
+    token = _read_key_file(path) if path.is_file() else None
+    if not token:
+        raise KeyConfigError("no stored Synoptic token; run: firebench keys set synoptic")
+    origins = normalize_origins(values)
+    data = {"version": 1, "token_sha256": hashlib.sha256(token.encode()).hexdigest(), "origins": origins}
+    directory = credentials_dir()
+    if sys.platform != "win32":
+        os.chmod(directory, 0o700)
+    fd, tmp_name = tempfile.mkstemp(prefix=".synoptic.origins.", suffix=".part", dir=directory)
+    try:
+        if sys.platform != "win32":
+            os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w") as stream:
+            json.dump(data, stream)
+            stream.write("\n")
+        os.replace(tmp_name, origins_path())
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
+    return origins
+
+
+def resolve_origins(token: str, explicit=None) -> tuple[tuple[str, ...], str]:
+    """Resolve explicit, environment, then token-linked saved origins."""
+    if explicit is not None:
+        return normalize_origins(explicit), "explicit setting"
+    if "SYNOPTIC_ORIGIN" in os.environ:
+        return normalize_origins([os.environ["SYNOPTIC_ORIGIN"]]), "SYNOPTIC_ORIGIN"
+    origins = stored_origins(token)
+    return origins, "saved token origins" if origins else "no Origin header"

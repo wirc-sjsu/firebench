@@ -53,6 +53,7 @@ inside them; list `model.cycles` explicitly when you use one.
 | `synoptic_json` | none | Saved Synoptic time-series payload, clipped to the window and domain. No download and no token |
 | `h5` | none | Existing FireBench observation file used as is (no fetch, no QC). Mutually exclusive with `synoptic_json` |
 | `token_file` | none | File holding the Synoptic token (otherwise `SYNOPTIC_TOKEN`, then `firebench keys set synoptic`) |
+| `origin` | none | One concrete HTTP(S) origin; overrides `SYNOPTIC_ORIGIN` and token-linked saved origins |
 | `networks` | all | Synoptic network filter, e.g. `[RAWS]` |
 | `context_hours` | `24` | Observations fetched before and after the window, so the QC sees context |
 | `bbox_margin_deg` | `0` | Growth of the station search box |

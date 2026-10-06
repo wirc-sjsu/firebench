@@ -146,3 +146,16 @@ firebench cache clean [--source hrrr|synoptic] [--yes]
 
 Show or delete the download cache (`FIREBENCH_CACHE_DIR`, else `~/.cache/firebench` on Linux).
 `clean` deletes only the known data-source directories.
+
+### Synoptic HTTP origins
+
+`firebench keys set synoptic` prompts for optional HTTP origins after token confirmation.
+Repeat `--origin URL` to supply them explicitly; `--stdin` never prompts.
+Use `firebench keys origins list synoptic`, `firebench keys origins add synoptic URL [URL ...]`,
+and `firebench keys origins remove synoptic URL [URL ...]` to manage an existing stored token.
+These commands record local metadata and do not modify Synoptic's settings.
+
+`firebench keys check synoptic --online --origin URL` selects one origin for a check.
+Explicit options override `SYNOPTIC_ORIGIN`, which overrides saved token-linked origins.
+Saved origins are tried in order on 403 responses, with one header per request.
+See [the Synoptic token tutorial](../tutorials/synoptic_api_token.md).

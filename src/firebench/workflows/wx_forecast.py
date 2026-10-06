@@ -236,6 +236,8 @@ class WxForecastWorkflow:
             lines += ["  " + line for line in fb_keys.missing_key_message(resolution).splitlines()]
         else:
             lines.append(f"  Synoptic key: {resolution.source} ({fb_keys.fingerprint(resolution.value)})")
+            origins, origin_source = fb_keys.resolve_origins(resolution.value, setup.observations.origin)
+            lines.append(f"  HTTP origins ({origin_source}): {', '.join(origins) or 'none'}")
         return lines
 
     # ------------------------------------------------------------ obs stage
@@ -259,6 +261,11 @@ class WxForecastWorkflow:
             identity["synoptic_json_sha256"] = _sha256(options.synoptic_json)
         else:
             identity["networks"] = list(options.networks)
+            token = self._synoptic_key(raise_missing=False).value
+            if token is not None:
+                origins, _ = fb_keys.resolve_origins(token, options.origin)
+                if origins:
+                    identity["origins"] = list(origins)
         return identity
 
     def _run_obs(self, identity: dict, current: bool, requested: bool, result: WorkflowResult) -> Path:
@@ -305,7 +312,9 @@ class WxForecastWorkflow:
         else:
             token = self._synoptic_key(raise_missing=True).value
             client = synoptic.SynopticTimeseriesClient(
-                token, **({"opener": self.synoptic_opener} if self.synoptic_opener else {})
+                token,
+                origins=fb_keys.resolve_origins(token, setup.observations.origin)[0],
+                **({"opener": self.synoptic_opener} if self.synoptic_opener else {}),
             )
             payload = client.fetch(
                 setup.fetch_bbox,

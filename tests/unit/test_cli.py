@@ -1158,3 +1158,64 @@ def test_data_get_unknown_version_fails(monkeypatch, tmp_path):
     assert result.exit_code != 0
     assert "Unknown data version 'missing'" in result.output
     assert "latest, 2026.1" in result.output
+
+
+@pytest.fixture
+def origin_config(monkeypatch, tmp_path):
+    monkeypatch.setenv("FIREBENCH_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.delenv("SYNOPTIC_TOKEN", raising=False)
+    monkeypatch.delenv("SYNOPTIC_ORIGIN", raising=False)
+    from firebench.acquisition import keys
+
+    return keys
+
+
+def test_cli_interactive_multiple_origins(origin_config):
+    result = CliRunner().invoke(
+        main,
+        ["keys", "set", "synoptic"],
+        input="token\ntoken\ny\nhttps://one.example\nhttps://two.example\n\n",
+    )
+    assert result.exit_code == 0, result.output
+    assert origin_config.stored_origins("token") == ("https://one.example", "https://two.example")
+
+
+def test_cli_add_remove_origins_without_reentering_token(origin_config):
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["keys", "set", "synoptic", "--stdin", "--origin", "https://one.example"], input="token\n"
+    )
+    assert result.exit_code == 0, result.output
+    assert "HTTP Origin restrictions?" not in result.output
+    result = runner.invoke(
+        main, ["keys", "origins", "add", "synoptic", "https://two.example", "https://one.example/"]
+    )
+    assert result.exit_code == 0, result.output
+    assert origin_config.stored_origins("token") == ("https://one.example", "https://two.example")
+    result = runner.invoke(main, ["keys", "origins", "remove", "synoptic", "https://one.example"])
+    assert result.exit_code == 0, result.output
+    assert origin_config.resolve_key("synoptic").value == "token"
+    result = runner.invoke(main, ["keys", "origins", "list", "synoptic"])
+    assert result.exit_code == 0 and "https://two.example" in result.output
+
+
+def test_cli_check_origin_override(origin_config, monkeypatch):
+    from firebench.acquisition import synoptic
+
+    origin_config.set_key("synoptic", "token")
+    origin_config.set_origins(["https://saved.example"])
+    calls = []
+
+    class Client:
+        def __init__(self, token, **kwargs):
+            calls.append(kwargs["origins"])
+
+        def check_token(self):
+            return "OK"
+
+    monkeypatch.setattr(synoptic, "SynopticTimeseriesClient", Client)
+    result = CliRunner().invoke(
+        main, ["keys", "check", "synoptic", "--online", "--origin", "https://explicit.example"]
+    )
+    assert result.exit_code == 0, result.output
+    assert calls == [("https://explicit.example",)]

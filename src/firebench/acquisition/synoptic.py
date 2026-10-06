@@ -24,7 +24,7 @@ from pathlib import Path
 
 from .cache import atomic_write_json, cache_subdir
 from .http import HTTPStatusError, http_get
-from .keys import fingerprint, redact
+from .keys import fingerprint, redact, resolve_origins
 
 logger = logging.getLogger(__name__)
 
@@ -74,10 +74,11 @@ METRIC_UNITS = {
 class SynopticError(RuntimeError):
     """The Synoptic API rejected a request; the message never contains the token."""
 
-    def __init__(self, code, message: str) -> None:
+    def __init__(self, code, message: str, http_code: int | None = None) -> None:
         super().__init__(f"Synoptic API error {code}: {message}")
         self.code = code
         self.message = message
+        self.http_code = http_code
 
 
 def format_bbox(bbox: Sequence[float]) -> str:
@@ -131,11 +132,14 @@ class SynopticTimeseriesClient:
         self,
         token: str,
         *,
+        origins: Sequence[str] | None = None,
         timeout: float = 60.0,
         opener: Callable = urllib.request.urlopen,
     ) -> None:
         if not token:
             raise ValueError("a Synoptic API token is required (see: firebench keys set synoptic)")
+        self.origins, self.origin_source = resolve_origins(token, origins)
+        self._preferred_origin = None
         self._token = token
         self.timeout = timeout
         self.opener = opener
@@ -240,9 +244,37 @@ class SynopticTimeseriesClient:
 
     def _request_key(self, params: dict) -> str:
         identity = json.dumps({"params": params, "token": fingerprint(self._token)}, sort_keys=True)
+        if self.origins:
+            identity += json.dumps(self.origins)
         return hashlib.sha256(identity.encode()).hexdigest()[:16]
 
     def _request(self, url: str, params: dict) -> dict | None:
+        candidates = list(self.origins) or [None]
+        if self._preferred_origin in candidates:
+            candidates.remove(self._preferred_origin)
+            candidates.insert(0, self._preferred_origin)
+        attempted = []
+        for origin in candidates:
+            attempted.append(origin)
+            try:
+                payload = self._request_with_origin(url, params, origin)
+            except SynopticError as error:
+                if str(error.code) != "403" and error.http_code != 403:
+                    raise
+                if origin == candidates[-1]:
+                    if self.origins:
+                        raise SynopticError(
+                            error.code,
+                            f"{error.message}; attempted origins: {', '.join(attempted)}",
+                            error.http_code,
+                        ) from None
+                    raise
+            else:
+                self._preferred_origin = origin
+                return payload
+        return None
+
+    def _request_with_origin(self, url: str, params: dict, origin: str | None) -> dict | None:
         """GET ``url`` with ``params``; returns the payload, or ``None`` when no station matches."""
         query = urllib.parse.urlencode({"token": self._token, **params})
         full_url = f"{url}?{query}"
@@ -255,7 +287,7 @@ class SynopticTimeseriesClient:
                 timeout=self.timeout,
                 not_found_codes=(),
                 display_url=shown_url,
-                extra_headers={"Accept": "application/json"},
+                extra_headers={"Accept": "application/json", **({"Origin": origin} if origin else {})},
             )
         except HTTPStatusError as error:
             payload = _json_or_none(error.body)
@@ -279,10 +311,10 @@ class SynopticTimeseriesClient:
         message = redact(str(summary.get("RESPONSE_MESSAGE", "")), (self._token,))
         if code == 1 and http_code is None:
             return payload
-        if code == 2 and "no stations found" in message.lower():
+        if code == 2 and http_code is None and "no stations found" in message.lower():
             return None
         suffix = f" (HTTP {http_code})" if http_code is not None else ""
-        raise SynopticError(code, f"{message or 'request rejected'}{suffix}")
+        raise SynopticError(code, f"{message or 'request rejected'}{suffix}", http_code)
 
 
 def merge_payloads(payloads: Sequence[dict]) -> dict:

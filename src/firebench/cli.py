@@ -971,7 +971,10 @@ def _key_status(resolution) -> tuple[str, str]:
 @keys.command("set")
 @click.argument("service")
 @click.option("--stdin", "from_stdin", is_flag=True, help="Read the key from standard input.")
-def keys_set(service: str, from_stdin: bool) -> None:
+@click.option(
+    "--origin", "origins", multiple=True, help="Allowed HTTP origin; repeat for multiple origins."
+)
+def keys_set(service: str, from_stdin: bool, origins: tuple[str, ...]) -> None:
     """Store the API key of SERVICE (file mode 0600)."""
     keys_module = _keys_module()
     try:
@@ -980,17 +983,85 @@ def keys_set(service: str, from_stdin: bool) -> None:
         raise click.UsageError(str(exc)) from exc
     if info.anonymous:
         raise click.UsageError(f"'{info.name}' needs no key: {info.description}.")
+    if origins and info.name != "synoptic":
+        raise click.UsageError("--origin is only supported for synoptic")
     if from_stdin:
         value = click.get_text_stream("stdin").readline()
     else:
         value = click.prompt(f"{info.name} key", hide_input=True, confirmation_prompt=True)
     try:
+        origin_values = keys_module.normalize_origins(origins) if origins else None
+        if info.name == "synoptic" and not from_stdin and not origins:
+            if click.confirm("Does this token have HTTP Origin restrictions?", default=False):
+                entered = []
+                while True:
+                    origin = click.prompt("HTTP Origin (empty to finish)", default="", show_default=False)
+                    if not origin:
+                        if entered:
+                            break
+                        click.echo("Enter at least one origin.")
+                        continue
+                    try:
+                        entered.append(keys_module.normalize_origin(origin))
+                    except keys_module.KeyConfigError as exc:
+                        click.echo(str(exc))
+                origin_values = keys_module.normalize_origins(entered)
         path = keys_module.set_key(info.name, value)
+        if origin_values is not None:
+            keys_module.set_origins(origin_values)
     except keys_module.KeyConfigError as exc:
         raise click.UsageError(str(exc)) from exc
     click.echo(f"Stored {info.name} key in {path} ({keys_module.fingerprint(value.strip())}).")
     if info.env_var and os.environ.get(info.env_var):
         click.echo(f"Note: {info.env_var} is set and takes precedence over the stored key.")
+
+
+@keys.group("origins")
+def keys_origins() -> None:
+    """Manage HTTP origins linked locally to a stored Synoptic token."""
+
+
+def _manage_origins(service: str, action: str, values=()) -> None:
+    module = _keys_module()
+    try:
+        if module.service_info(service).name != "synoptic":
+            raise module.KeyConfigError("HTTP origins are only supported for synoptic")
+        path = module.key_path("synoptic")
+        resolution = module.resolve_key("synoptic", explicit_file=path)
+        current = module.stored_origins(resolution.value)
+        if action == "add":
+            current = module.set_origins((*current, *module.normalize_origins(values)))
+        elif action == "remove":
+            removed = module.normalize_origins(values)
+            current = module.set_origins([value for value in current if value not in removed])
+    except module.KeyConfigError as exc:
+        raise click.UsageError(str(exc)) from exc
+    click.echo("Saved Synoptic origins: " + (", ".join(current) or "none"))
+    if module.service_info("synoptic").env_var in os.environ:
+        click.echo("Note: SYNOPTIC_TOKEN takes precedence; these origins belong to the stored token.")
+
+
+@keys_origins.command("list")
+@click.argument("service")
+def keys_origins_list(service: str) -> None:
+    """List the stored token's origins."""
+    _manage_origins(service, "list")
+
+
+@keys_origins.command("add")
+@click.argument("service")
+@click.argument("origins", nargs=-1, required=True)
+def keys_origins_add(service: str, origins: tuple[str, ...]) -> None:
+    """Append origins without re-entering the stored token."""
+    _manage_origins(service, "add", origins)
+
+
+@keys_origins.command("remove")
+@click.argument("service")
+@click.argument("origins", nargs=-1, required=True)
+def keys_origins_remove(service: str, origins: tuple[str, ...]) -> None:
+    """Remove origins from the stored token."""
+    _manage_origins(service, "remove", origins)
 
 
 @keys.command("list")
@@ -1012,9 +1083,12 @@ def keys_list() -> None:
     is_flag=True,
     help="Also validate the Synoptic token with one tiny request to the Synoptic API.",
 )
-def keys_check(service: str | None, online: bool) -> None:
+@click.option("--origin", default=None, help="HTTP origin override for Synoptic checks.")
+def keys_check(service: str | None, online: bool, origin: str | None) -> None:
     """Show where the key of SERVICE (default: all known services) is looked up."""
     keys_module = _keys_module()
+    if origin is not None and service not in (None, "synoptic"):
+        raise click.UsageError("--origin is only supported for synoptic")
     try:
         resolutions = [keys_module.resolve_key(service)] if service else keys_module.list_keys()
     except keys_module.KeyConfigError as exc:
@@ -1031,10 +1105,22 @@ def keys_check(service: str | None, online: bool) -> None:
             for line in keys_module.missing_key_message(resolution).splitlines():
                 if line.startswith(("Add one", "Get a key")):
                     click.echo(f"  {line}")
+        resolved_origins = ()
+        if resolution.service == "synoptic" and resolution.value is not None:
+            try:
+                resolved_origins, origin_source = keys_module.resolve_origins(resolution.value, origin)
+                saved = keys_module.stored_origins(resolution.value)
+            except keys_module.KeyConfigError as exc:
+                raise click.UsageError(str(exc)) from exc
+            if saved:
+                click.echo(f"  saved origins: {', '.join(saved)}")
+            click.echo(f"  HTTP origins ({origin_source}): {', '.join(resolved_origins) or 'none'}")
         if online and resolution.service == "synoptic" and resolution.value is not None:
             synoptic = import_module(".acquisition.synoptic", __package__)
             try:
-                message = synoptic.SynopticTimeseriesClient(resolution.value).check_token()
+                message = synoptic.SynopticTimeseriesClient(
+                    resolution.value, **({"origins": resolved_origins} if resolved_origins else {})
+                ).check_token()
             except synoptic.SynopticError as exc:
                 raise click.ClickException(f"Synoptic rejected the token: {exc}") from exc
             click.echo(f"  online check: OK ({message})")

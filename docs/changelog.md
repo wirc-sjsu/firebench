@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Support token-linked Synoptic HTTP origins, interactive setup, origin management commands,
+  explicit overrides, and ordered fallback on authorization errors.
 - Add `firebench keys` to store, list, check, and remove data-provider API keys (for example the
   Synoptic token) with private file permissions, an explicit lookup order, and fingerprints instead
   of printed values, plus `firebench cache info/clean` for the local download cache.

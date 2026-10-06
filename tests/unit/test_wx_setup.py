@@ -195,3 +195,18 @@ def test_setup_template_is_a_valid_setup(kwargs):
     setup = _parse(wx_setup.setup_template("demo", **kwargs))
 
     assert setup.cycles
+
+
+def test_observation_origin_is_normalized():
+    setup = _parse("case: {id: 2021_Caldor, period: H012}\nobservations: {origin: 'https://EXAMPLE.com/'}")
+    assert setup.observations.origin == "https://example.com"
+
+
+@pytest.mark.parametrize("origin", ["https://example.com/path", "", "https://*.example.com"])
+def test_invalid_observation_origin_is_setup_error(origin):
+    assert any(
+        "observations.origin" in problem
+        for problem in _problems(
+            f"case: {{id: 2021_Caldor, period: H012}}\nobservations: {{origin: '{origin}'}}"
+        )
+    )

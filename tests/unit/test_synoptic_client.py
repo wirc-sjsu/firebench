@@ -302,3 +302,108 @@ def test_clip_payload_keeps_the_window_and_the_bbox():
 def test_client_requires_a_token():
     with pytest.raises(ValueError, match="firebench keys set synoptic"):
         synoptic.SynopticTimeseriesClient("")
+
+
+@pytest.mark.parametrize("http_status", [True, False])
+def test_origins_fallback_and_reuse_for_metadata_and_timeseries(tmp_path, http_status):
+    attempts = []
+    fake = _FakeSynoptic()
+
+    def opener(request, timeout):
+        origin = request.get_header("Origin")
+        attempts.append((urllib.parse.urlsplit(request.full_url).path, origin))
+        if origin == "https://first.example":
+            body = {"SUMMARY": {"RESPONSE_CODE": 403, "RESPONSE_MESSAGE": "Origin rejected"}}
+            if http_status:
+                raise urllib.error.HTTPError(
+                    request.full_url, 403, "Forbidden", {}, io.BytesIO(json.dumps(body).encode())
+                )
+            return _Response(body)
+        return fake(request, timeout)
+
+    client = synoptic.SynopticTimeseriesClient(
+        TOKEN, origins=["https://first.example", "https://second.example"], opener=opener
+    )
+    client.check_token()
+    client.fetch(BBOX, START, END, cache_root=tmp_path)
+    assert [origin for _, origin in attempts] == [
+        "https://first.example",
+        "https://second.example",
+        "https://second.example",
+        "https://second.example",
+    ]
+    assert attempts[-1][0].endswith("/timeseries")
+
+
+def test_all_origins_rejected_reports_attempts():
+    attempts = []
+
+    def opener(request, timeout):
+        attempts.append(request.get_header("Origin"))
+        raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, io.BytesIO(b""))
+
+    client = synoptic.SynopticTimeseriesClient(
+        TOKEN, origins=["https://one.example", "https://two.example"], opener=opener
+    )
+    with pytest.raises(synoptic.SynopticError, match="attempted origins") as error:
+        client.check_token()
+    assert attempts == ["https://one.example", "https://two.example"]
+    assert TOKEN not in str(error.value)
+
+
+def test_other_errors_do_not_try_next_origin():
+    attempts = []
+
+    def opener(request, timeout):
+        attempts.append(request.get_header("Origin"))
+        raise urllib.error.HTTPError(request.full_url, 401, "Unauthorized", {}, io.BytesIO(b""))
+
+    client = synoptic.SynopticTimeseriesClient(
+        TOKEN, origins=["https://one.example", "https://two.example"], opener=opener
+    )
+    with pytest.raises(synoptic.SynopticError):
+        client.check_token()
+    assert attempts == ["https://one.example"]
+
+
+def test_no_origin_header_and_cache_identity():
+    captured = []
+
+    def opener(request, timeout):
+        captured.append(request.get_header("Origin"))
+        return _Response({"SUMMARY": {"RESPONSE_CODE": 1}})
+
+    plain = synoptic.SynopticTimeseriesClient(TOKEN, origins=[], opener=opener)
+    plain.check_token()
+    assert captured == [None]
+    restricted = synoptic.SynopticTimeseriesClient(TOKEN, origins=["https://one.example"])
+    assert restricted._request_key({}) != plain._request_key({})
+
+
+def test_preferred_origin_can_fail_and_fallback_again():
+    attempts = []
+    accepted = "https://two.example"
+
+    def opener(request, timeout):
+        origin = request.get_header("Origin")
+        attempts.append(origin)
+        if origin != accepted:
+            # The HTTP status must take precedence over a different API summary code.
+            body = {"SUMMARY": {"RESPONSE_CODE": 2, "RESPONSE_MESSAGE": "no stations found"}}
+            raise urllib.error.HTTPError(
+                request.full_url, 403, "Forbidden", {}, io.BytesIO(json.dumps(body).encode())
+            )
+        return _Response({"SUMMARY": {"RESPONSE_CODE": 1}})
+
+    client = synoptic.SynopticTimeseriesClient(
+        TOKEN, origins=["https://one.example", "https://two.example"], opener=opener
+    )
+    client.check_token()
+    accepted = "https://one.example"
+    client.check_token()
+    assert attempts == [
+        "https://one.example",
+        "https://two.example",
+        "https://two.example",
+        "https://one.example",
+    ]

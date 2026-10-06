@@ -167,7 +167,7 @@ def test_cli_keys_set_from_stdin_list_check_and_remove():
 def test_cli_keys_set_with_hidden_prompt_requires_confirmation():
     runner = CliRunner()
 
-    result = runner.invoke(main, ["keys", "set", "synoptic"], input="tok\ntok\n")
+    result = runner.invoke(main, ["keys", "set", "synoptic"], input="tok\ntok\nn\n")
 
     assert result.exit_code == 0, result.output
     assert keys.resolve_key("synoptic").value == "tok"
@@ -246,3 +246,68 @@ def test_cli_keys_check_online_reports_a_rejected_token(monkeypatch):
     assert result.exit_code != 0
     assert "Synoptic rejected the token" in result.output
     assert "Invalid token" in result.output
+
+
+def test_origins_are_private_ordered_and_bound_to_token(monkeypatch):
+    monkeypatch.delenv("SYNOPTIC_ORIGIN", raising=False)
+    keys.set_key("synoptic", "first-token")
+    keys.set_origins(["https://FIRST.example/", "https://second.example", "https://first.example"])
+    expected = ("https://first.example", "https://second.example")
+    assert keys.resolve_origins("first-token") == (expected, "saved token origins")
+    assert keys.stored_origins("another-token") == ()
+    if sys.platform != "win32":
+        assert stat.S_IMODE(keys.origins_path().stat().st_mode) == 0o600
+    keys.set_key("synoptic", "first-token")
+    assert keys.stored_origins("first-token") == expected
+    keys.set_key("synoptic", "new-token")
+    assert not keys.origins_path().exists()
+    keys.set_origins(expected)
+    keys.remove_key("synoptic")
+    assert not keys.origins_path().exists()
+
+
+def test_origin_resolution_precedence(monkeypatch, tmp_path):
+    keys.set_key("synoptic", "token")
+    keys.set_origins(["https://saved.example"])
+    monkeypatch.setenv("SYNOPTIC_ORIGIN", "https://environment.example")
+    assert keys.resolve_origins("token")[0] == ("https://environment.example",)
+    assert keys.resolve_origins("token", "https://explicit.example")[0] == ("https://explicit.example",)
+    monkeypatch.delenv("SYNOPTIC_ORIGIN")
+    monkeypatch.setenv("SYNOPTIC_TOKEN", "token")
+    assert keys.stored_origins(keys.resolve_key("synoptic").value) == ("https://saved.example",)
+    token_file = tmp_path / "token.txt"
+    token_file.write_text("different-token")
+    assert keys.stored_origins(keys.resolve_key("synoptic", token_file).value) == ()
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "",
+        "ftp://example.com",
+        "https://u:p@example.com",
+        "https://example.com/path",
+        "https://*.example.com",
+        "https://example.com?",
+        "https://example.com#",
+        "https://example.com:bad",
+        "https:// example.com",
+        None,
+        7,
+    ],
+)
+def test_invalid_origins(origin):
+    with pytest.raises(keys.KeyConfigError):
+        keys.normalize_origin(origin)
+
+
+def test_corrupt_origin_metadata_is_actionable():
+    keys.set_key("synoptic", "token")
+    keys.origins_path().write_text("{}")
+    with pytest.raises(keys.KeyConfigError, match="re-add origins"):
+        keys.stored_origins("token")
+
+
+def test_origins_require_a_stored_token():
+    with pytest.raises(keys.KeyConfigError, match="no stored"):
+        keys.set_origins(["https://first.example"])

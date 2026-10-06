@@ -271,3 +271,55 @@ def test_cli_run_reports_an_invalid_setup_without_traceback(tmp_path):
     assert "unknown top-level key 'token'" in result.output
     assert "has no time zone" in result.output
     assert "Traceback" not in result.output
+
+
+def test_origin_identity_plan_and_saved_source_isolation(tmp_path, monkeypatch):
+    from firebench.acquisition import keys
+
+    monkeypatch.setenv("FIREBENCH_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.delenv("SYNOPTIC_TOKEN", raising=False)
+    monkeypatch.delenv("SYNOPTIC_ORIGIN", raising=False)
+    keys.set_key("synoptic", "token")
+    keys.set_origins(["https://one.example", "https://two.example"])
+    setup = load_setup(_write_setup(tmp_path))
+    saved = WxForecastWorkflow(setup)._obs_identity()
+    monkeypatch.setenv("SYNOPTIC_ORIGIN", "not-a-url")
+    assert WxForecastWorkflow(setup)._obs_identity() == saved
+    monkeypatch.delenv("SYNOPTIC_ORIGIN")
+    setup.observations.synoptic_json = None
+    workflow = WxForecastWorkflow(setup)
+    assert workflow._obs_identity()["origins"] == ["https://one.example", "https://two.example"]
+    assert any("saved token origins" in line for line in workflow._plan_observations())
+    monkeypatch.setenv("SYNOPTIC_ORIGIN", "https://env.example")
+    assert workflow._obs_identity()["origins"] == ["https://env.example"]
+    setup.observations.origin = "https://explicit.example"
+    assert workflow._obs_identity()["origins"] == ["https://explicit.example"]
+
+
+def test_observation_download_uses_saved_origins(tmp_path, monkeypatch):
+    import io
+    import urllib.error
+    from firebench.acquisition import keys
+
+    monkeypatch.setenv("FIREBENCH_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.delenv("SYNOPTIC_TOKEN", raising=False)
+    monkeypatch.delenv("SYNOPTIC_ORIGIN", raising=False)
+    keys.set_key("synoptic", "token")
+    keys.set_origins(["https://one.example", "https://two.example"])
+    setup = load_setup(_write_setup(tmp_path))
+    setup.observations.synoptic_json = None
+    attempts = []
+
+    def opener(request, timeout):
+        origin = request.get_header("Origin")
+        attempts.append(origin)
+        if origin == "https://one.example":
+            raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, io.BytesIO(b""))
+        payload = _synoptic_payload()
+        payload["SUMMARY"] = {"RESPONSE_CODE": 1, "NUMBER_OF_OBJECTS": len(STATIONS)}
+        return io.BytesIO(json.dumps(payload).encode())
+
+    workflow = WxForecastWorkflow(setup, synoptic_opener=opener, cache_root=tmp_path / "cache")
+    result = workflow.run(steps=("obs",))
+    assert result.obs_h5.is_file()
+    assert attempts == ["https://one.example", "https://two.example", "https://two.example"]
