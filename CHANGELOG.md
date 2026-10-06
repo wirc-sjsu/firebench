@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `list_dins_incidents` and `standardize_dins_building_damage` to `firebench.standardize`, to
+  match the building damage of a CAL FIRE DINS incident to building footprints and write the
+  buildings under `/points`. An incident is a name and an incident number: a name that covers
+  several incident numbers is refused until the numbers are given.
 - Add `list_kml_layers` and `standardize_perimeter_from_kml` to `firebench.standardize`, to list
   the layers of a KML or KMZ file and register one fire perimeter under `/polygons` with its KML
   file, checksum, time, and burnt area. Every hole of a polygon is kept, also in files that put

@@ -22,3 +22,6 @@ Public standard-file creation and validation API.
 
 .. automodule:: firebench.standardize.perimeters
    :members:
+
+.. automodule:: firebench.standardize.building_damage
+   :members:
