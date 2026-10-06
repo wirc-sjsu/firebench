@@ -19,3 +19,6 @@ Public standard-file creation and validation API.
 
 .. automodule:: firebench.standardize.sensor_height_resources
    :members:
+
+.. automodule:: firebench.standardize.perimeters
+   :members:

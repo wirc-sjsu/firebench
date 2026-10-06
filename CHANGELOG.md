@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `list_kml_layers` and `standardize_perimeter_from_kml` to `firebench.standardize`, to list
+  the layers of a KML or KMZ file and register one fire perimeter under `/polygons` with its KML
+  file, checksum, time, and burnt area. Every hole of a polygon is kept, also in files that put
+  several rings in one inner boundary.
 - Add the `fbf-reviewed-obs-dataset` certificate name, export `hdf5_subject_digest_sha256` from
   `firebench.signing`, and document the certificate format so another signer can write a
   certificate that FireBench verifies. A registered key whose public key file is missing is now
