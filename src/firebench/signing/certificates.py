@@ -10,6 +10,7 @@ class Certificates(Enum):
     FB_MODEL_RUN_INTERNAL = "fb-model-run-internal"
     FB_VERIFICATION_LVL = "fb-verification-lvl"
     FB_SCORE_CARD = "fb-score-card"
+    FBF_REVIEWED_OBS_DATASET = "fbf-reviewed-obs-dataset"
 
 
 class KeyId(Enum):
@@ -29,6 +30,11 @@ def get_public_key(key_name):
         raise PublicKeyImportError(f"Public key import failed for key {key_name}") from exc
 
     path = files("firebench").joinpath(_DEFAULT_KEY_PATH, key_file)
-    with open(path, "r", encoding="utf-8") as f:
-        pubkey_armor = f.read()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            pubkey_armor = f.read()
+    except FileNotFoundError as exc:
+        raise PublicKeyImportError(
+            f"Public key import failed for key {key_name}: file {key_file} not found"
+        ) from exc
     return pubkey_armor

@@ -1,13 +1,21 @@
+import hashlib
 import json
+import os
+import shutil
+import subprocess
+import tempfile
 
 import h5py
 import numpy as np
 import pytest
 
-from firebench.signing import benchmarks, std_files, utils
+from firebench import signing
+from firebench.signing import benchmarks, certificates, std_files, utils
 from firebench.signing.certificates import Certificates
 
 OBS_CERTIFICATE = Certificates.FB_VERIFIED_OBS_DATASET.value
+FBF_CERTIFICATE = Certificates.FBF_REVIEWED_OBS_DATASET.value
+TEST_SIGNER = "FireBench Test Signer <signer@firebench.invalid>"
 
 
 def _verification(valid: bool, error: str | None = None) -> dict:
@@ -166,3 +174,145 @@ def test_gpg_verification_reports_unavailable_executable(monkeypatch):
 
     with pytest.raises(utils.GPGNotAvailable, match="approved gpg executable not found"):
         utils.gpg_verify_detached_with_pubkey(b"message", "signature", "public key")
+
+
+@pytest.fixture(scope="module")
+def gpg_test_key():
+    """A throwaway signing key in its own GNUPGHOME: the armored public key and a signing function."""
+    gpg_path = shutil.which("gpg")
+    if gpg_path is None or gpg_path not in utils._ALLOWED_GPG_PATHS:
+        pytest.skip("approved gpg executable not found")
+
+    # gpg-agent refuses long socket paths, which pytest's tmp_path can exceed
+    gnupghome = tempfile.mkdtemp(prefix="fbgpg")
+    env = {**os.environ, "GNUPGHOME": gnupghome}
+
+    def gpg(*args, message=None):
+        command = [gpg_path, "--batch", *args]
+        return subprocess.run(command, input=message, capture_output=True, env=env, check=True).stdout
+
+    def sign(message):
+        return gpg(
+            "--yes", "--armor", "--detach-sign", "-u", TEST_SIGNER, "--output", "-", "--", message=message
+        )
+
+    try:
+        gpg(
+            *("--pinentry-mode", "loopback", "--passphrase", ""),
+            *("--quick-generate-key", TEST_SIGNER, "ed25519", "sign", "never"),
+        )
+        yield gpg("--armor", "--export", TEST_SIGNER).decode("utf-8"), sign
+    finally:
+        gpgconf_path = shutil.which("gpgconf")
+        if gpgconf_path is not None:
+            subprocess.run([gpgconf_path, "--kill", "gpg-agent"], capture_output=True, env=env, check=False)
+        shutil.rmtree(gnupghome, ignore_errors=True)
+
+
+def _new_dataset_file(path):
+    with h5py.File(path, "w") as h5:
+        h5.create_dataset("observations", data=[1.0, 2.0])
+
+
+def _add_external_certificate(path, sign, *, key_id="fbf-test-key", certificate_id=None):
+    """Write a certificate from the documented format, without FireBench's signing helpers."""
+    payload = {
+        "v": 1,
+        "cert_name": FBF_CERTIFICATE,
+        "spec": "fb-cert-v1",
+        "signed_at": "2026-10-06T00:00:00+00:00",
+        "key_id": key_id,
+        "subject_digest_sha256": signing.hdf5_subject_digest_sha256(path),
+    }
+    payload_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    if certificate_id is None:
+        certificate_id = hashlib.sha256(payload_bytes).hexdigest()[:32]
+
+    with h5py.File(path, "a") as h5:
+        certificate = h5.create_group(f"certificates/{certificate_id}")
+        certificate.create_dataset("payload", data=np.bytes_(payload_bytes))
+        certificate.create_dataset("signature", data=np.bytes_(sign(payload_bytes)))
+        for name in ("cert_name", "spec", "signed_at", "key_id", "subject_digest_sha256"):
+            certificate.attrs[name] = payload[name]
+
+
+def test_external_certificate_is_verified(monkeypatch, tmp_path, gpg_test_key):
+    public_key, sign = gpg_test_key
+    path = tmp_path / "dataset.h5"
+    _new_dataset_file(path)
+    _add_external_certificate(path, sign)
+    monkeypatch.setattr(std_files, "get_public_key", lambda _key_id: public_key)
+
+    result = signing.verify_certificates_in_h5(path)[FBF_CERTIFICATE]
+
+    assert result["valid"] is True
+    assert result["error"] is None
+    assert result["payload"]["key_id"] == "fbf-test-key"
+
+
+def test_external_certificate_is_invalid_after_dataset_change(monkeypatch, tmp_path, gpg_test_key):
+    public_key, sign = gpg_test_key
+    path = tmp_path / "dataset.h5"
+    _new_dataset_file(path)
+    _add_external_certificate(path, sign)
+    monkeypatch.setattr(std_files, "get_public_key", lambda _key_id: public_key)
+    with h5py.File(path, "a") as h5:
+        h5["observations"][0] = 3.0
+
+    result = signing.verify_certificates_in_h5(path)[FBF_CERTIFICATE]
+
+    assert result["valid"] is False
+    assert "subject_digest mismatch" in result["error"]
+
+
+def test_external_certificate_id_must_be_payload_digest(monkeypatch, tmp_path, gpg_test_key):
+    public_key, sign = gpg_test_key
+    path = tmp_path / "dataset.h5"
+    _new_dataset_file(path)
+    _add_external_certificate(path, sign, certificate_id="0" * 32)
+    monkeypatch.setattr(std_files, "get_public_key", lambda _key_id: public_key)
+
+    result = signing.verify_certificates_in_h5(path)[FBF_CERTIFICATE]
+
+    assert result["valid"] is False
+    assert "certificate_id mismatch" in result["error"]
+
+
+def test_external_certificate_with_unknown_key_is_not_verified(tmp_path):
+    path = tmp_path / "dataset.h5"
+    _new_dataset_file(path)
+    _add_external_certificate(path, lambda _message: b"signature", key_id="fbf-virtual-2026-01")
+
+    result = signing.verify_certificates_in_h5(path)[FBF_CERTIFICATE]
+
+    assert result["valid"] is False
+    assert "Public key import failed" in result["error"]
+
+
+def test_registered_key_with_missing_file_raises_public_key_import_error(monkeypatch):
+    monkeypatch.setitem(certificates._FB_PUBLIC_KEYS, "ghost-key", "missing.asc")
+
+    with pytest.raises(utils.PublicKeyImportError, match="missing.asc"):
+        certificates.get_public_key("ghost-key")
+
+
+def test_registered_key_with_missing_file_is_reported_as_not_verified(monkeypatch, tmp_path):
+    monkeypatch.setitem(certificates._FB_PUBLIC_KEYS, "ghost-key", "missing.asc")
+    path = tmp_path / "dataset.h5"
+    _new_dataset_file(path)
+    _add_external_certificate(path, lambda _message: b"signature", key_id="ghost-key")
+
+    result = signing.verify_certificates_in_h5(path)[FBF_CERTIFICATE]
+
+    assert result["valid"] is False
+    assert "Public key import failed" in result["error"]
+
+
+def test_subject_digest_is_public_and_ignores_certificates(tmp_path):
+    path = tmp_path / "dataset.h5"
+    _new_dataset_file(path)
+    digest = signing.hdf5_subject_digest_sha256(path)
+
+    _add_external_certificate(path, lambda _message: b"signature")
+
+    assert signing.hdf5_subject_digest_sha256(path) == digest

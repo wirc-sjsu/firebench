@@ -162,6 +162,12 @@ def verify_certificates_in_h5(
 def hdf5_subject_digest_sha256(path: str, exclude_prefixes: list[str] = EXCLUDE_PREFIXES_DEFAULT) -> str:
     """
     Deterministic logical digest of an HDF5 file excluding some prefixes.
+
+    It covers the name, attributes, shape, dtype, and data of every group and dataset, and not the
+    excluded prefixes (``/certificates`` by default), so adding a certificate does not change it.
+
+    Signers outside FireBench compute this value and sign it. The digest of a given file is
+    therefore a contract: it must stay the same across FireBench versions.
     """
     h = hashlib.sha256()
     with h5py.File(path, "r") as f:

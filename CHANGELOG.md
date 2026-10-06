@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add the `fbf-reviewed-obs-dataset` certificate name, export `hdf5_subject_digest_sha256` from
+  `firebench.signing`, and document the certificate format so another signer can write a
+  certificate that FireBench verifies. A registered key whose public key file is missing is now
+  reported as a failed verification instead of raising `FileNotFoundError`.
 - Support token-linked Synoptic HTTP origins, interactive setup, origin management commands,
   explicit overrides, and ordered fallback on authorization errors.
 - Add `firebench keys` to store, list, check, and remove data-provider API keys (for example the

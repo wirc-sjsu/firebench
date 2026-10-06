@@ -10,5 +10,5 @@ from .benchmarks import (
     DEFAULT_VL,
     VERIFICATION_LEVEL_COLORS,
 )
-from .std_files import add_certificate_to_h5, verify_certificates_in_h5
+from .std_files import add_certificate_to_h5, hdf5_subject_digest_sha256, verify_certificates_in_h5
 from .certificates import Certificates, KeyId
