@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `exclude_boxes` to the RAVG standardization functions, to set the cells inside geographic
+  boxes to the fill value and record the boxes in the group attribute `excluded_boxes`.
 - Add `list_dins_incidents` and `standardize_dins_building_damage` to `firebench.standardize`, to
   match the building damage of a CAL FIRE DINS incident to building footprints and write the
   buildings under `/points`. An incident is a name and an incident number: a name that covers
