@@ -100,6 +100,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Store the positions of gridded data standardized from a GeoTIFF (RAVG, MTBS, LANDFIRE) at the
+  center of each pixel. They were at its upper-left corner, half a pixel off on both axes (15 m
+  for 30 m pixels). The RAVG `exclude_boxes` option tests the corrected positions.
 - Penalize a missing model `wind_direction` value as the observed direction rotated 180 degrees
   instead of a fixed out-of-range constant, which wrapped modulo 360 and could land close to the
   true direction instead of maximizing the circular error used by the wind-direction KPI.
