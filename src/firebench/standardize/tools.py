@@ -626,6 +626,36 @@ def merge_trees(
     )
 
 
+def _pixel_centers(transform, rows: int, cols: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Coordinates of the pixel centers of a raster, in the CRS of the raster.
+
+    An affine transform maps the pixel indices (col, row) to the upper-left corner of the pixel. The
+    center is half a pixel further on both axes.
+
+    Parameters
+    ----------
+    transform : affine.Affine
+        Affine transform of the raster, or of a window of it.
+    rows : int
+        Number of rows.
+    cols : int
+        Number of columns.
+
+    Returns
+    -------
+    x : np.ndarray
+        2-D array (rows, cols) of the x coordinate of each pixel center.
+    y : np.ndarray
+        2-D array (rows, cols) of the y coordinate of each pixel center.
+    """
+    jj = np.arange(cols) + 0.5
+    ii = np.arange(rows) + 0.5
+    x = transform.a * jj[None, :] + transform.b * ii[:, None] + transform.c
+    y = transform.d * jj[None, :] + transform.e * ii[:, None] + transform.f
+    return x, y
+
+
 def import_tif_with_rect_box(
     geotiff_path: Path,
     lower_left_corner: tuple[float, float],
@@ -720,15 +750,7 @@ def import_tif_with_rect_box(
             window,
         )
 
-    rows, cols = data_dict["data"].shape
-
-    jj = np.arange(cols)
-    ii = np.arange(rows)
-
-    # center coordinates in source CRS (projected)
-    T = data_dict["transform"]
-    x = T.a * jj[None, :] + T.b * ii[:, None] + T.c
-    y = T.d * jj[None, :] + T.e * ii[:, None] + T.f
+    x, y = _pixel_centers(data_dict["transform"], *data_dict["data"].shape)
 
     tgt_crs = CRS(projection)
     transformer = Transformer.from_crs(data_dict["crs"], tgt_crs, always_xy=True)
@@ -775,12 +797,7 @@ def import_tif(
         data_dict = {"data": data, "transform": src.transform, "crs": src.crs, "nodata": src.nodata}
         logger.info("Loaded %s: shape=%s, CRS=%s", geotiff_path, data.shape, src.crs)
 
-    rows, cols = data.shape
-    jj = np.arange(cols)
-    ii = np.arange(rows)
-    T = data_dict["transform"]
-    x = T.a * jj[None, :] + T.b * ii[:, None] + T.c
-    y = T.d * jj[None, :] + T.e * ii[:, None] + T.f
+    x, y = _pixel_centers(data_dict["transform"], *data.shape)
 
     if projection is None:
         projection = data_dict["crs"]

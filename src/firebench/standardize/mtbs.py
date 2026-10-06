@@ -7,7 +7,7 @@ import rasterio
 from pyproj import CRS, Transformer
 
 from ..tools import StandardVariableNames as svn
-from .tools import check_std_version
+from .tools import check_std_version, _pixel_centers
 from ..tools.logging_config import logger
 from .std_file_info import SPATIAL_2D
 
@@ -51,24 +51,8 @@ def standardize_mtbs_from_geotiff(
         severity_raw = {"data": data, "transform": src.transform, "crs": src.crs, "nodata": src.nodata}
         logger.info("Loaded %s: shape=%s, CRS=%s", geotiff_path, data.shape, src.crs)
 
-    rows, cols = data.shape
-
-    # Build pixel center coordinates (projected)
-    # col indices (x-direction), row indices (y-direction)
-    jj = np.arange(cols)
-    ii = np.arange(rows)
-    # vectorized center coordinates from affine:
-    # x = a*col + b*row + c ; y = d*col + e*row + f
-    x = (
-        severity_raw["transform"].a * jj[None, :]
-        + severity_raw["transform"].b * ii[:, None]
-        + severity_raw["transform"].c
-    )
-    y = (
-        severity_raw["transform"].d * jj[None, :]
-        + severity_raw["transform"].e * ii[:, None]
-        + severity_raw["transform"].f
-    )
+    # Pixel center coordinates (projected)
+    x, y = _pixel_centers(severity_raw["transform"], *data.shape)
 
     # Reproject to geographic lat/lon
     if projection is None:

@@ -12,10 +12,10 @@ from firebench.tools import StandardVariableNames as svn
 GRID = np.arange(1, 49, dtype=np.uint8).reshape(6, 8)
 LOWER_LEFT = (38.5, -120.5)
 UPPER_RIGHT = (39.25, -119.75)
-# the 3 x 3 cells the corners cut out, and their stored positions
+# the 3 x 3 cells the corners cut out, and their stored positions: the centers of the cells
 CUT = GRID[1:4, 2:5]
-CUT_LAT = [39.25, 39.0, 38.75]
-CUT_LON = [-120.5, -120.25, -120.0]
+CUT_LAT = [39.125, 38.875, 38.625]
+CUT_LON = [-120.375, -120.125, -119.875]
 VARIABLE = svn.RAVG_CANOPY_COVER_LOSS.value
 
 
@@ -73,14 +73,14 @@ def test_without_boxes_the_grid_is_cut_to_the_corners(inputs):
     ],
 )
 def test_one_box_blanks_the_cells_inside_and_no_other(inputs, function, variable):
-    box = ((38.9, -120.3), (39.1, -120.1))
+    box = ((38.8, -120.2), (38.95, -120.05))
 
     group = _standardize(inputs, function, exclude_boxes=[box])
 
     expected = CUT.copy()
     expected[1, 1] = 0
     np.testing.assert_array_equal(group[variable][:], expected)
-    assert json.loads(group.attrs["excluded_boxes"]) == [[[38.9, -120.3], [39.1, -120.1]]]
+    assert json.loads(group.attrs["excluded_boxes"]) == [[[38.8, -120.2], [38.95, -120.05]]]
     np.testing.assert_allclose(group["position_lat"][:, 0], CUT_LAT, atol=1e-12)
     np.testing.assert_allclose(group["position_lon"][0, :], CUT_LON, atol=1e-12)
 
@@ -90,7 +90,7 @@ def test_cell_on_the_edge_of_a_box_is_not_blanked(inputs):
     lat_edge = float(stored["position_lat"][1, 0])
     lon_edge = float(stored["position_lon"][0, 1])
 
-    # the box starts exactly on the middle row and the middle column
+    # the box starts exactly on the centers of the middle row and of the middle column
     group = _standardize(inputs, exclude_boxes=[((lat_edge, lon_edge), (40.0, -119.0))])
 
     expected = CUT.copy()
@@ -99,16 +99,16 @@ def test_cell_on_the_edge_of_a_box_is_not_blanked(inputs):
 
 
 def test_infinite_bound_blanks_to_the_edge_of_the_grid(inputs):
-    group = _standardize(inputs, exclude_boxes=[((38.9, -120.3), (np.inf, np.inf))])
+    group = _standardize(inputs, exclude_boxes=[((38.8, -120.2), (np.inf, np.inf))])
 
     expected = CUT.copy()
     expected[:2, 1:] = 0
     np.testing.assert_array_equal(group[VARIABLE][:], expected)
-    assert group.attrs["excluded_boxes"] == "[[[38.9, -120.3], [null, null]]]"
+    assert group.attrs["excluded_boxes"] == "[[[38.8, -120.2], [null, null]]]"
 
 
 def test_several_boxes_are_all_blanked(inputs):
-    boxes = [((39.1, -np.inf), (np.inf, -120.4)), ((-np.inf, -120.1), (38.9, np.inf))]
+    boxes = [((39.0, -np.inf), (np.inf, -120.2)), ((-np.inf, -120.0), (38.7, np.inf))]
 
     group = _standardize(inputs, exclude_boxes=boxes, invert_y=True)
 
@@ -117,8 +117,8 @@ def test_several_boxes_are_all_blanked(inputs):
     expected[0, 2] = 0
     np.testing.assert_array_equal(group[VARIABLE][:], expected)
     assert json.loads(group.attrs["excluded_boxes"]) == [
-        [[39.1, None], [None, -120.4]],
-        [[None, -120.1], [38.9, None]],
+        [[39.0, None], [None, -120.2]],
+        [[None, -120.0], [38.7, None]],
     ]
 
 
@@ -131,7 +131,7 @@ def test_empty_list_of_boxes_writes_what_no_box_writes(inputs):
 
 def test_projected_output_with_boxes_is_refused(inputs, tmp_path):
     geotiff_path, h5 = inputs
-    box = ((38.9, -120.3), (39.1, -120.1))
+    box = ((38.8, -120.2), (38.95, -120.05))
 
     with pytest.raises(ValueError, match="exclude_boxes are geographic"):
         _standardize(inputs, projection="EPSG:3310", exclude_boxes=[box])
