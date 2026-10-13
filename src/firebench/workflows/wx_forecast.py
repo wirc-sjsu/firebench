@@ -516,6 +516,7 @@ class WxForecastWorkflow:
             obs_tolerance_s=bench.obs_tolerance_min * 60.0,
             model_tolerance_s=bench.model_tolerance_s,
             min_coverage=bench.min_coverage,
+            diagnostics=bench.diagnostics,
         )
         return run_wx_forecast_benchmark(
             model_path,

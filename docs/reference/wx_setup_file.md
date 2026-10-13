@@ -90,6 +90,7 @@ Secrets (`token`, `api_key`, ...) are rejected in every section.
 | `min_coverage` | `0.5` | Minimum share of the hours of a lead bin a station must observe to be scored |
 | `lead_bins` | `[[1, 48]]` | Scored lead-time bins, in hours after the cycle |
 | `informational_lead_bins` | `[[0, 0]]` | Lead bins scored in weight-0 groups (displayed, not in the total) |
+| `diagnostics` | `[]` | Fire-weather diagnostics to add, in weight-0 groups: `fire_weather_index` and/or `event_threshold` |
 | `target` | `ALL` | `ALL`, or one cadence tier such as `1H` |
 | `full_name` | `false` | Show benchmark IDs in the score card |
 

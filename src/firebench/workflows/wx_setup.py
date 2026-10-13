@@ -102,6 +102,7 @@ class BenchmarkOptions:
     min_coverage: float = 0.5
     lead_bins: tuple[tuple[int, int], ...] = ((1, 48),)
     informational_lead_bins: tuple[tuple[int, int], ...] = ((0, 0),)
+    diagnostics: tuple[str, ...] = ()
     target: str = "ALL"
     full_name: bool = False
 
@@ -436,6 +437,7 @@ def _parse_benchmark(value: dict, problems: list[str]) -> BenchmarkOptions:
         "min_coverage",
         "lead_bins",
         "informational_lead_bins",
+        "diagnostics",
         "target",
         "full_name",
     }
@@ -459,11 +461,26 @@ def _parse_benchmark(value: dict, problems: list[str]) -> BenchmarkOptions:
             bins = _parse_bins(value[key], f"benchmark.{key}", problems)
             if bins is not None:
                 setattr(options, key, bins)
+    if "diagnostics" in value:
+        options.diagnostics = _parse_diagnostics(value["diagnostics"], problems)
     if "target" in value:
         options.target = str(value["target"]).upper()
     if "full_name" in value:
         options.full_name = bool(value["full_name"])
     return options
+
+
+def _parse_diagnostics(value, problems: list[str]) -> tuple[str, ...]:
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.benchmarks.wx_forecast import DIAGNOSTIC_FAMILIES
+
+    if value in (None, []):
+        return ()
+    if not isinstance(value, list) or not all(item in DIAGNOSTIC_FAMILIES for item in value):
+        problems.append(f"benchmark.diagnostics must be a list among: {', '.join(DIAGNOSTIC_FAMILIES)}")
+        return ()
+    # In the order of the score card, whatever the order of the list.
+    return tuple(family for family in DIAGNOSTIC_FAMILIES if family in value)
 
 
 def _parse_cadences(value, problems: list[str]) -> tuple[int, ...] | None:

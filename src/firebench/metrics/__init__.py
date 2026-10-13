@@ -1,4 +1,4 @@
-from . import perimeter, stats, mtbs, confusion_matrix
+from . import perimeter, stats, mtbs, confusion_matrix, fire_weather
 from .kpi_normalization import (
     kpi_norm_bounded_linear,
     kpi_norm_half_open_linear,

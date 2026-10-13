@@ -2,6 +2,8 @@ import pytest
 import numpy as np
 from firebench.metrics.confusion_matrix import (
     binary_accuracy,
+    binary_critical_success_index,
+    binary_false_alarm_ratio,
     binary_precision,
     binary_false_positive_rate,
     binary_negative_predicted_value,
@@ -157,3 +159,33 @@ def test_binary_f_score(bcm, expected_f1):
 def test_binary_cm(y_true, y_pred, expected_cm):
     result = binary_cm(y_true, y_pred)
     assert np.array_equal(result, expected_cm)
+
+
+# binary_false_alarm_ratio
+# ------------------------
+@pytest.mark.parametrize(
+    "bcm, expected_far",
+    [
+        (np.array([[5, 0], [0, 5]]), 0.0),  # No false alarm
+        (np.array([[5, 5], [0, 0]]), 1.0),  # Every predicted event is a false alarm
+        (np.array([[3, 2], [1, 4]]), 2.0 / 6.0),  # General case
+        (np.array([[10, 0], [5, 0]]), 0.0),  # fp + tp = 0 edge case
+    ],
+)
+def test_binary_false_alarm_ratio(bcm, expected_far):
+    assert binary_false_alarm_ratio(bcm) == pytest.approx(expected_far, abs=1e-12)
+
+
+# binary_critical_success_index
+# -----------------------------
+@pytest.mark.parametrize(
+    "bcm, expected_csi",
+    [
+        (np.array([[5, 0], [0, 5]]), 1.0),  # Every event is a hit
+        (np.array([[5, 5], [5, 0]]), 0.0),  # No hit
+        (np.array([[3, 2], [1, 4]]), 4.0 / 7.0),  # General case: correct negatives do not count
+        (np.array([[10, 0], [0, 0]]), 0.0),  # tp + fp + fn = 0 edge case
+    ],
+)
+def test_binary_critical_success_index(bcm, expected_csi):
+    assert binary_critical_success_index(bcm) == pytest.approx(expected_csi, abs=1e-12)

@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add optional fire-weather diagnostics to the weather-forecast benchmark (`benchmark.diagnostics` in
+  the setup file, `WxForecastSpec.diagnostics`): the vapour pressure deficit and the Fosberg fire
+  weather index, scored like a variable, and the events low RH, strong wind, and critical fire
+  weather, scored with POD, FAR, and CSI counted over every station and hour of a lead bin. Their
+  groups have weight 0, so the total score is unchanged. `wx_forecast.kpi_table` lists every KPI of
+  a cycle with its variable, metric, station set, lead bin, group, and family.
+- Add `firebench.metrics.fire_weather` (saturation vapour pressure, vapour pressure deficit,
+  equilibrium moisture content, Fosberg fire weather index) and the confusion-matrix metrics
+  `binary_false_alarm_ratio` and `binary_critical_success_index`.
 - Add `exclude_boxes` to the RAVG standardization functions, to set the cells inside geographic
   boxes to the fill value and record the boxes in the group attribute `excluded_boxes`.
 - Add `list_dins_incidents` and `standardize_dins_building_damage` to `firebench.standardize`, to

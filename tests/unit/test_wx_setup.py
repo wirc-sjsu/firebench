@@ -142,6 +142,17 @@ def test_tolerance_must_stay_below_half_the_cadence():
     assert any("below half the shortest cadence" in problem for problem in problems)
 
 
+def test_diagnostics_are_off_by_default_and_listed_in_score_card_order():
+    preset = "case: {id: 2021_Caldor, period: H012}"
+    setup = _parse(f"{preset}\nbenchmark: {{diagnostics: [event_threshold, fire_weather_index]}}")
+
+    assert _parse(preset).benchmark.diagnostics == ()
+    assert setup.benchmark.diagnostics == ("fire_weather_index", "event_threshold")
+    assert _problems(f"{preset}\nbenchmark: {{diagnostics: [indices]}}") == [
+        "benchmark.diagnostics must be a list among: fire_weather_index, event_threshold"
+    ]
+
+
 def test_qc_mode_cannot_be_overridden():
     problems = _problems("case: {id: 2021_Caldor, period: H012}\nqc: {overrides: {mode: review}}")
 

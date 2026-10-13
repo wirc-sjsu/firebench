@@ -63,6 +63,52 @@ A variable absent from the model or from the observations is **excluded** with i
 model data` or `no observation`) and never scored as empty. HRRR, for example, has no 10-hour fuel
 moisture.
 
+## Fire-weather diagnostics
+
+Two families of KPIs evaluate what matters for fire, beyond the mean error of each variable. They
+are optional: list them in `benchmark.diagnostics` of the setup file. Their groups have weight 0,
+like the analysis: they are displayed, and the total keeps its definition.
+
+**Fire-weather indices** (`fire_weather_index`). An index is computed from the station variables,
+the same way for the model and for the observations, at each hour where every input is observed.
+It is then scored like a variable: MAE, RMSE, and bias per station, summarized over stations.
+
+| Index | Inputs | Unit | Normalization parameter m |
+|---|---|---|---|
+| Vapour pressure deficit (VPD) | air temperature, relative humidity | hPa | 10 |
+| Fosberg fire weather index | air temperature, relative humidity, wind speed | - | 10 |
+
+- The saturation vapour pressure is Bolton's (1980). The Fosberg index (1978) uses the equilibrium
+  moisture content of Simard (1968) and is not capped at 100.
+- The Fosberg index is defined with the 20 ft wind. Here the wind is the one at each station's
+  sensor height, to which the model wind was brought, so both sides use the same height.
+
+**Threshold events** (`event_threshold`). An event occurs at an hour of a station when its
+condition holds. Hits, misses, and false alarms are counted over every station of the set and
+every hour of the lead bin at once (the `pooled` summary): a ratio per station would rest on too
+few events.
+
+| Event | Condition |
+|---|---|
+| Low RH | relative humidity ≤ 20 % |
+| Strong wind | wind speed ≥ 4.5 m/s |
+| Critical fire weather | both at the same hour |
+
+| Metric | Definition | Score |
+|---|---|---|
+| POD, probability of detection | hits / (hits + misses) | 100 × POD |
+| FAR, false alarm ratio | false alarms / (hits + false alarms) | 100 × (1 − FAR) |
+| CSI, critical success index | hits / (hits + misses + false alarms) | 100 × CSI |
+
+- A ratio without a denominator is not computed: an event that was not observed has no detection
+  rate. The KPI is listed in `ignored_benchmarks` and its reason in `ignored_reasons`.
+- A station is in a set when the set includes it for every input. A station observing fewer than
+  `min_coverage` of the hours, with every input, is excluded.
+- An hour where the model misses an input is penalized: `-1e6` for an index, and a wrong forecast
+  for an event (a miss when the event was observed, a false alarm otherwise).
+- A diagnostic whose input the model or the observations lack is excluded with its reason, for
+  example `no model data for wind_speed`.
+
 ## Benchmark IDs
 
 Benchmark IDs are semantic and do not depend on the order of the setup lists:
@@ -75,6 +121,10 @@ hourly, for lead hours 1 to 48.
 | `AT`, `RH`, `WS`, `WD`, `FM10` | air temperature, relative humidity, wind speed, wind direction, 10-hour fuel moisture |
 | `MAE`, `RMSE`, `BIAS`, `CBIAS` | metrics (`CBIAS` is the circular bias) |
 | `MIN`, `MEAN`, `MAX` | summary over stations |
+| `VPD`, `FFWI` | vapour pressure deficit, Fosberg fire weather index |
+| `RHLOW`, `WSHIGH`, `CFW` | events: low RH, strong wind, critical fire weather |
+| `POD`, `FAR`, `CSI` | event metrics |
+| `POOLED` | counted over every station and hour at once |
 | `TSO`, `ALL` | trusted-source stations, all stations |
 
 ## HRRR adapter
