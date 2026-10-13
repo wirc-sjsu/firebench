@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   weather, scored with POD, FAR, and CSI counted over every station and hour of a lead bin. Their
   groups have weight 0, so the total score is unchanged. `wx_forecast.kpi_table` lists every KPI of
   a cycle with its variable, metric, station set, lead bin, group, and family.
+- Move every parameter of the weather-forecast benchmark to one file of the package,
+  `resources/benchmarks/wx_forecast.toml`, read by `firebench.benchmarks.wx_parameters`: setup
+  defaults, the penalty for missing model data, station-set and family weights, the unit and
+  normalization of each variable and index, and the event thresholds. The file is read from the
+  installed package only, so a FireBench version identifies the parameters of a result, and a
+  result records the SHA-256 of the file as `benchmark_parameters`. Scores are unchanged.
 - Add `firebench.metrics.fire_weather` (saturation vapour pressure, vapour pressure deficit,
   equilibrium moisture content, Fosberg fire weather index) and the confusion-matrix metrics
   `binary_false_alarm_ratio` and `binary_critical_success_index`.

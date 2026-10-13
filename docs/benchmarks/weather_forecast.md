@@ -39,6 +39,30 @@ Operational analyses such as HRRR's assimilate surface observations, so hour 0 i
 against its own inputs. It is therefore scored in **informational** groups of weight 0: displayed on
 the score card, but excluded from both the numerator and the denominator of the total.
 
+## Parameters
+
+Every number the benchmark scores with is in one file of the package,
+`src/firebench/resources/benchmarks/wx_forecast.toml`:
+
+| Table of the file | Content |
+|---|---|
+| `setup_defaults` | Values of the setup options a setup file leaves out: horizon, cadences, lead bins, matching tolerances, minimum coverage |
+| `missing_model_data` | The penalty for a value the model lacks |
+| `station_set_weights` | Weight of a KPI in its group, by station set |
+| `group_weights` | Weight of a group in the total, by metric family |
+| `variables`, `indices` | Unit of comparison and normalization parameter `m` of each quantity |
+| `events` | Thresholds of the events |
+
+FireBench reads the file from the installed package and from nowhere else: no option, setup key, or
+environment variable replaces it. The FireBench version (or commit) of a result therefore identifies
+the parameters it was computed with. A result also records the SHA-256 of the file as
+`benchmark_parameters`, next to the checksum of the benchmark module (`benchmark_script`).
+
+To change a parameter, edit the file in a FireBench commit. Every key is required, and a missing
+key, an unknown key, or a value out of range is refused when FireBench is imported, with the name of
+the key. The values in the tables of this page are those of the file at this version; the file is
+the reference.
+
 ## KPIs
 
 For each variable, cadence, and lead bin:
@@ -66,8 +90,9 @@ moisture.
 ## Fire-weather diagnostics
 
 Two families of KPIs evaluate what matters for fire, beyond the mean error of each variable. They
-are optional: list them in `benchmark.diagnostics` of the setup file. Their groups have weight 0,
-like the analysis: they are displayed, and the total keeps its definition.
+are optional: list them in `benchmark.diagnostics` of the setup file. Their groups have the weight
+of their family in the parameter file (`group_weights`), which is 0: like the analysis, they are
+displayed, and the total keeps its definition.
 
 **Fire-weather indices** (`fire_weather_index`). An index is computed from the station variables,
 the same way for the model and for the observations, at each hour where every input is observed.

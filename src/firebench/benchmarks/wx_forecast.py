@@ -5,20 +5,24 @@ The case is not tied to a fire: it is configured by a forecast cycle, lead-time 
 tiers, and scores any model file with ``/time_series/station_<STID>`` groups (for example the
 output of the embedded HRRR adapter) against a standard observation file.
 
-KPI axes: variable x metric x station set x summary statistic x cadence x lead-time bin. Variables,
-metrics and normalization parameters are those of the Caldor weather benchmark
-(``c001_caldor_config.WX_VARIABLE_SPECS``); trusted-source (TSO) KPIs have weight 1 and all-source
-KPIs weight 0, as in Caldor. Lead bins marked informational (by default ``F00``, the analysis, which
-assimilates surface observations) form weight-0 groups that are displayed but move neither the
-numerator nor the denominator of the total.
+KPI axes: variable x metric x station set x summary statistic x cadence x lead-time bin. Lead bins
+marked informational (by default ``F00``, the analysis, which assimilates surface observations) form
+weight-0 groups that are displayed but move neither the numerator nor the denominator of the total.
+
+Every number the benchmark scores with (normalizations, weights, thresholds, matching tolerances,
+defaults of a setup) is in ``resources/benchmarks/wx_forecast.toml``, read by ``wx_parameters``.
+This module holds what a number cannot change: the variables, their metrics, labels and ID codes.
+With the file FireBench ships, variables and normalizations are those of the Caldor weather
+benchmark, and trusted-source (TSO) KPIs have weight 1 and all-source KPIs weight 0, as in Caldor.
 
 Benchmark IDs are semantic and order-independent, e.g. ``WX-AT-MAE-MEAN-TSO-1H-F0148``.
 A variable that the model or the observations do not provide is reported as excluded, with its
 reason, instead of being scored as empty.
 
-Fire-weather diagnostics are optional (``WxForecastSpec.diagnostics``) and never move the total:
-compound indices computed from the station variables (``fire_weather_index``) and contingency
-metrics of threshold events (``event_threshold``). Their groups have weight 0.
+Fire-weather diagnostics are optional (``WxForecastSpec.diagnostics``): compound indices computed
+from the station variables (``fire_weather_index``) and contingency metrics of threshold events
+(``event_threshold``). Their groups have the weight of their family in the parameter file, 0 as
+shipped, so they do not move the total.
 """
 
 import json
@@ -39,21 +43,25 @@ from firebench import tools as ft
 
 from . import wx_cadence
 from . import wx_common as wxc
-from .c001_caldor_config import WX_VARIABLE_SPECS
+from .wx_parameters import check_names, load_parameters
 
 CASE_ID = "WXF"
 BENCHMARK_SHORT_NAME = "WX_Forecast"
 DEFAULT_TARGET = "ALL"
 
-# Metric families: what a KPI evaluates. Only direct weather accuracy counts in the total.
+# Every number below comes from ``resources/benchmarks/wx_forecast.toml``.
+PARAMETERS = load_parameters()
+
+# Metric families: what a KPI evaluates. The weight of a family in the total is a parameter.
 FAMILY_ACCURACY = "weather_accuracy"
 FAMILY_INDEX = "fire_weather_index"
 FAMILY_EVENT = "event_threshold"
 DIAGNOSTIC_FAMILIES = (FAMILY_INDEX, FAMILY_EVENT)
+check_names("group_weights", PARAMETERS.group_weights, (FAMILY_ACCURACY, *DIAGNOSTIC_FAMILIES))
 
 # Thresholds of the events, on the hourly values at the sensor height of each station.
-LOW_RELATIVE_HUMIDITY_PERCENT = 20.0
-STRONG_WIND_SPEED_MS = 4.5
+LOW_RELATIVE_HUMIDITY_PERCENT = PARAMETERS.low_relative_humidity_max_percent
+STRONG_WIND_SPEED_MS = PARAMETERS.strong_wind_speed_min_ms
 
 VARIABLE_CODES = {
     "air_temperature": "AT",
@@ -109,9 +117,32 @@ METRICS = {
 SUMMARY_STATS = (("min", np.nanmin), ("mean", np.nanmean), ("max", np.nanmax))
 # An event is counted over every station and timestamp at once: a ratio per station has too few events.
 POOLED_STATS = (("pooled", None),)
+check_names("station_set_weights", PARAMETERS.station_set_weights, ("TSO", "ALL"))
+# Label, ID code, station set, weight of its KPIs in a group.
 STATION_SETS = (
-    ("TSO", "TSO", fs.WeatherStationSet.TSO, 1),
-    ("All sources", "ALL", fs.WeatherStationSet.ALL_SOURCES, 0),
+    ("TSO", "TSO", fs.WeatherStationSet.TSO, PARAMETERS.station_set_weights["TSO"]),
+    ("All sources", "ALL", fs.WeatherStationSet.ALL_SOURCES, PARAMETERS.station_set_weights["ALL"]),
+)
+
+# Station variables in score-card order: variable, label, group label, metric set.
+_STATION_VARIABLES = (
+    ("air_temperature", "Air temp", "Air Temp", "standard"),
+    ("relative_humidity", "RH", "RH", "standard"),
+    ("wind_speed", "Wind Speed", "Wind Speed", "standard"),
+    ("wind_direction", "Wind Direction", "Wind Direction", "wind_direction"),
+    ("fuel_moisture_content_10h", "FMC 10h", "FMC 10h", "standard"),
+)
+check_names("variables", PARAMETERS.variables, [item[0] for item in _STATION_VARIABLES])
+WX_VARIABLE_SPECS = tuple(
+    {
+        "label": label,
+        "group_label": group_label,
+        "variable": variable,
+        "common_unit": PARAMETERS.variables[variable].unit,
+        "norm_m": PARAMETERS.variables[variable].norm_m,
+        "metric_set": metric_set,
+    }
+    for variable, label, group_label, metric_set in _STATION_VARIABLES
 )
 
 
@@ -131,6 +162,8 @@ _AIR_TEMPERATURE = ("air_temperature", "degC")
 _RELATIVE_HUMIDITY = ("relative_humidity", "percent")
 _WIND_SPEED = ("wind_speed", "m/s")
 
+check_names("indices", PARAMETERS.indices, ("vapor_pressure_deficit", "fosberg_fire_weather_index"))
+
 # Quantities computed from several station variables, for the model and the observations alike.
 # ``inputs`` lists ``(variable, unit)`` in the order of the arguments of ``function``.
 WX_DIAGNOSTIC_SPECS = (
@@ -139,8 +172,8 @@ WX_DIAGNOSTIC_SPECS = (
         "label": "VPD",
         "group_label": "VPD",
         "variable": "vapor_pressure_deficit",
-        "common_unit": "hPa",
-        "norm_m": 10,
+        "common_unit": PARAMETERS.indices["vapor_pressure_deficit"].unit,
+        "norm_m": PARAMETERS.indices["vapor_pressure_deficit"].norm_m,
         "metric_set": "standard",
         "inputs": (_AIR_TEMPERATURE, _RELATIVE_HUMIDITY),
         "function": fm.fire_weather.vapor_pressure_deficit,
@@ -150,8 +183,8 @@ WX_DIAGNOSTIC_SPECS = (
         "label": "Fosberg FWI",
         "group_label": "Fosberg FWI",
         "variable": "fosberg_fire_weather_index",
-        "common_unit": "dimensionless",
-        "norm_m": 10,
+        "common_unit": PARAMETERS.indices["fosberg_fire_weather_index"].unit,
+        "norm_m": PARAMETERS.indices["fosberg_fire_weather_index"].norm_m,
         "metric_set": "standard",
         "inputs": (_AIR_TEMPERATURE, _RELATIVE_HUMIDITY, _WIND_SPEED),
         "function": fm.fire_weather.fosberg_fire_weather_index,
@@ -220,10 +253,10 @@ class WxForecastSpec:
 
     case_name: str
     cycle: datetime
-    horizon_hours: int = 48
-    lead_bins: tuple = ((1, 48),)
-    informational_lead_bins: tuple = ((0, 0),)
-    cadences: tuple = (1,)
+    horizon_hours: int = PARAMETERS.setup_defaults.horizon_hours
+    lead_bins: tuple = PARAMETERS.setup_defaults.lead_bins
+    informational_lead_bins: tuple = PARAMETERS.setup_defaults.informational_lead_bins
+    cadences: tuple = PARAMETERS.setup_defaults.cadences
     obs_tolerance_s: float = wx_cadence.DEFAULT_OBS_TOLERANCE_S
     model_tolerance_s: float = wx_cadence.DEFAULT_MODEL_TOLERANCE_S
     min_coverage: float = wx_cadence.DEFAULT_MIN_COVERAGE
@@ -345,9 +378,9 @@ def kpi_table(spec: WxForecastSpec) -> list[dict]:
     return rows
 
 
-def _group_weight(quantity: dict, lead_bin: LeadBin) -> int:
-    """Weight of a group in the total: 0 for an informational lead bin and for a diagnostic."""
-    return 0 if lead_bin.informational or quantity["family"] != FAMILY_ACCURACY else 1
+def _group_weight(quantity: dict, lead_bin: LeadBin):
+    """Weight of a group in the total: that of its family, and 0 for an informational lead bin."""
+    return 0 if lead_bin.informational else PARAMETERS.group_weights[quantity["family"]]
 
 
 def _group_kpis(quantity: dict, cadence: int, lead_bin: LeadBin) -> list[dict]:
@@ -477,6 +510,7 @@ def run_wx_forecast_benchmark(
         "obs_dataset_hash": ft.calculate_sha256(obs_data),
         "model_output": ft.calculate_sha256(model_output),
         "benchmark_script": ft.calculate_sha256(Path(__file__)),
+        "benchmark_parameters": PARAMETERS.sha256,
         "certificates_input": certificates,
         "verification_lvl": fsi.compute_input_verification_lvl(certificates),
         "cycle": spec.cycle.astimezone(timezone.utc).isoformat(),

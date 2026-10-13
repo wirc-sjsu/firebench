@@ -1,5 +1,7 @@
 import json
+from dataclasses import replace
 from datetime import datetime, timezone
+from types import MappingProxyType
 
 import h5py
 import numpy as np
@@ -297,6 +299,33 @@ def test_diagnostics_leave_the_total_and_the_weather_kpis_unchanged(tmp_path):
     assert "diagnostics" not in plain and "ignored_reasons" not in plain
     assert diagnosed["diagnostics"] == ["fire_weather_index", "event_threshold"]
     assert "Score VPD 1h F01-03" in diagnosed["score_card"]
+
+
+def test_result_records_the_checksum_of_the_parameter_file(tmp_path):
+    obs_path, model_path = _files(tmp_path)
+
+    result = _run(tmp_path, obs_path, model_path)
+
+    assert result["benchmark_parameters"] == wx_forecast.PARAMETERS.sha256
+    assert len(result["benchmark_parameters"]) == 64
+
+
+def test_weight_of_a_family_in_the_parameter_file_moves_the_total(tmp_path, monkeypatch):
+    obs_path, model_path = _files(tmp_path)
+    shipped = _run(tmp_path, obs_path, model_path, diagnostics=DIAGNOSTICS)
+    weights = {**wx_forecast.PARAMETERS.group_weights, "fire_weather_index": 2}
+    monkeypatch.setattr(
+        wx_forecast, "PARAMETERS", replace(wx_forecast.PARAMETERS, group_weights=MappingProxyType(weights))
+    )
+
+    weighted = _run(tmp_path, obs_path, model_path, diagnostics=DIAGNOSTICS)
+
+    with h5py.File(obs_path) as obs, h5py.File(model_path) as model:
+        groups = wx_forecast.build_registry(_spec(diagnostics=DIAGNOSTICS), model, obs).groups
+    assert groups["VPD 1h F01-03"]["weight"] == 2
+    assert groups["Low RH 1h F01-03"]["weight"] == 0
+    assert weighted["benchmarks"] == shipped["benchmarks"]
+    assert weighted["score_card"]["Score Total"] != shipped["score_card"]["Score Total"]
 
 
 def test_index_kpi_is_the_metric_of_the_index_computed_for_model_and_observations(tmp_path):

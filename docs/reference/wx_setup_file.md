@@ -94,4 +94,10 @@ Secrets (`token`, `api_key`, ...) are rejected in every section.
 | `target` | `ALL` | `ALL`, or one cadence tier such as `1H` |
 | `full_name` | `false` | Show benchmark IDs in the score card |
 
-See [Weather forecast benchmark](../benchmarks/weather_forecast.md) for the KPI definitions.
+The defaults of `model.horizon_hours`, `cadences`, `obs_tolerance_min`, `model_tolerance_s`,
+`min_coverage`, `lead_bins`, and `informational_lead_bins` are the `setup_defaults` of the benchmark's
+parameter file, `src/firebench/resources/benchmarks/wx_forecast.toml`. Normalizations, weights, and
+event thresholds are in that file too and cannot be set here: they belong to the FireBench version.
+
+See [Weather forecast benchmark](../benchmarks/weather_forecast.md) for the KPI definitions and
+the parameter file.

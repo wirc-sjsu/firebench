@@ -29,12 +29,15 @@ from firebench import tools as ft
 from firebench.tools.units import ureg
 
 from . import wx_common as wxc
+from .wx_parameters import load_parameters
 
-DEFAULT_OBS_TOLERANCE_S = 600.0
-DEFAULT_MODEL_TOLERANCE_S = 60.0
-DEFAULT_MIN_COVERAGE = 0.5
-PENALTY_VALUE = -1e6
-CIRCULAR_PENALTY_OFFSET_DEG = 180.0
+# Values of ``resources/benchmarks/wx_forecast.toml``.
+_PARAMETERS = load_parameters()
+DEFAULT_OBS_TOLERANCE_S = _PARAMETERS.setup_defaults.obs_tolerance_s
+DEFAULT_MODEL_TOLERANCE_S = _PARAMETERS.setup_defaults.model_tolerance_s
+DEFAULT_MIN_COVERAGE = _PARAMETERS.setup_defaults.min_coverage
+PENALTY_VALUE = _PARAMETERS.penalty_value
+CIRCULAR_PENALTY_OFFSET_DEG = _PARAMETERS.circular_penalty_offset_deg
 
 
 @dataclass(frozen=True)

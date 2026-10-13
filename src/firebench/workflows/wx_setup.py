@@ -19,6 +19,8 @@ from pathlib import Path
 
 import yaml
 
+from firebench.benchmarks.wx_parameters import load_parameters
+
 TOP_LEVEL_KEYS = {
     "name",
     "output_dir",
@@ -40,6 +42,8 @@ CASE_ALIASES = {
     "caldor": "caldor",
 }
 SUPPORTED_MODELS = ("HRRR",)
+# Values of the options a setup leaves out: ``resources/benchmarks/wx_forecast.toml``.
+_DEFAULTS = load_parameters().setup_defaults
 
 
 class SetupError(ValueError):
@@ -86,7 +90,7 @@ class ModelOptions:
 
     name: str = "HRRR"
     cycle_hours: tuple[int, ...] = (0, 6, 12, 18)
-    horizon_hours: int = 48
+    horizon_hours: int = _DEFAULTS.horizon_hours
     cycles: tuple[datetime, ...] | None = None
     download_workers: int = 8
     keep_grib: bool = True
@@ -96,12 +100,12 @@ class ModelOptions:
 class BenchmarkOptions:
     """Scoring options of the weather-forecast benchmark."""
 
-    cadences: tuple[int, ...] = (1,)
-    obs_tolerance_min: float = 10.0
-    model_tolerance_s: float = 60.0
-    min_coverage: float = 0.5
-    lead_bins: tuple[tuple[int, int], ...] = ((1, 48),)
-    informational_lead_bins: tuple[tuple[int, int], ...] = ((0, 0),)
+    cadences: tuple[int, ...] = _DEFAULTS.cadences
+    obs_tolerance_min: float = _DEFAULTS.obs_tolerance_min
+    model_tolerance_s: float = _DEFAULTS.model_tolerance_s
+    min_coverage: float = _DEFAULTS.min_coverage
+    lead_bins: tuple[tuple[int, int], ...] = _DEFAULTS.lead_bins
+    informational_lead_bins: tuple[tuple[int, int], ...] = _DEFAULTS.informational_lead_bins
     diagnostics: tuple[str, ...] = ()
     target: str = "ALL"
     full_name: bool = False
@@ -407,7 +411,8 @@ def _parse_model(value: dict, problems: list[str]) -> ModelOptions:
             options.cycle_hours = tuple(sorted(set(hours)))
     if "horizon_hours" in value:
         options.horizon_hours = int(
-            _number(value["horizon_hours"], "model.horizon_hours", problems, minimum=1) or 48
+            _number(value["horizon_hours"], "model.horizon_hours", problems, minimum=1)
+            or _DEFAULTS.horizon_hours
         )
     if value.get("cycles") is not None:
         cycles = []
