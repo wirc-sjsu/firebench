@@ -90,7 +90,14 @@ Secrets (`token`, `api_key`, ...) are rejected in every section.
 | `min_coverage` | `0.5` | Minimum share of the hours of a lead bin a station must observe to be scored |
 | `lead_bins` | `[[1, 48]]` | Scored lead-time bins, in hours after the cycle |
 | `informational_lead_bins` | `[[0, 0]]` | Lead bins scored in weight-0 groups (displayed, not in the total) |
+| `diagnostics` | `[]` | Fire-weather diagnostics to add, in weight-0 groups: `fire_weather_index` and/or `event_threshold` |
 | `target` | `ALL` | `ALL`, or one cadence tier such as `1H` |
 | `full_name` | `false` | Show benchmark IDs in the score card |
 
-See [Weather forecast benchmark](../benchmarks/weather_forecast.md) for the KPI definitions.
+The defaults of `model.horizon_hours`, `cadences`, `obs_tolerance_min`, `model_tolerance_s`,
+`min_coverage`, `lead_bins`, and `informational_lead_bins` are the `setup_defaults` of the benchmark's
+parameter file, `src/firebench/resources/benchmarks/wx_forecast.toml`. Normalizations, weights, and
+event thresholds are in that file too and cannot be set here: they belong to the FireBench version.
+
+See [Weather forecast benchmark](../benchmarks/weather_forecast.md) for the KPI definitions and
+the parameter file.

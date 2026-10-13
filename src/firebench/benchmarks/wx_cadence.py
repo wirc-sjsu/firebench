@@ -16,6 +16,7 @@ observation on them:
 The tolerance must stay below half the cadence, so one observation can never serve two marks.
 """
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import hdf5plugin  # pylint: disable=unused-import  # registers the Zstd filter of station datasets
@@ -28,12 +29,22 @@ from firebench import tools as ft
 from firebench.tools.units import ureg
 
 from . import wx_common as wxc
+from .wx_parameters import load_parameters
 
-DEFAULT_OBS_TOLERANCE_S = 600.0
-DEFAULT_MODEL_TOLERANCE_S = 60.0
-DEFAULT_MIN_COVERAGE = 0.5
-PENALTY_VALUE = -1e6
-CIRCULAR_PENALTY_OFFSET_DEG = 180.0
+# Values of ``resources/benchmarks/wx_forecast.toml``.
+_PARAMETERS = load_parameters()
+DEFAULT_OBS_TOLERANCE_S = _PARAMETERS.setup_defaults.obs_tolerance_s
+DEFAULT_MODEL_TOLERANCE_S = _PARAMETERS.setup_defaults.model_tolerance_s
+DEFAULT_MIN_COVERAGE = _PARAMETERS.setup_defaults.min_coverage
+PENALTY_VALUE = _PARAMETERS.penalty_value
+CIRCULAR_PENALTY_OFFSET_DEG = _PARAMETERS.circular_penalty_offset_deg
+
+
+@dataclass(frozen=True)
+class KpiIgnored:
+    """A KPI that could not be computed, with the reason to report."""
+
+    reason: str
 
 
 def check_tolerance(tolerance_s: float, cadence_hours: int) -> None:
@@ -220,6 +231,230 @@ def bench_wx_cadence_index(
         f"{kpi_name_custom}": rslt,
         "Score": fm.kpi_norm_symmetric_open_exponential(rslt, value_norm_param_m),
     }
+
+
+def compound_stations(
+    model_dataset: File | None,
+    obs_dataset: File,
+    inputs: tuple,
+    period: tuple[datetime, datetime],
+    station_set: fs.WeatherStationSet,
+    ctx: dict,
+) -> list[str]:
+    """
+    Stations that ``station_set`` includes for every input variable of a compound quantity.
+
+    Without a model file, only the observations decide; with one, a trusted-source station must also
+    have matching model and observation sensor heights for every input.
+    """
+    stations = None
+    for variable, _ in inputs:
+        if model_dataset is None:
+            selection = wxc.select_weather_stations(obs_dataset, variable, period, station_set, ctx)
+        else:
+            selection = wxc.model_height_compatible_selection(
+                model_dataset, obs_dataset, variable, period, station_set, ctx
+            )
+        included = [item["station"] for item in selection["included"]]
+        stations = included if stations is None else [name for name in stations if name in included]
+    return stations or []
+
+
+def bench_wx_cadence_compound_index(
+    model_dataset: File,
+    obs_dataset: File,
+    ctx: dict,
+    kpi_name_custom: str,
+    lead_window: tuple[datetime, datetime],
+    period: tuple[datetime, datetime],
+    quantity: str,
+    inputs: tuple,
+    function,
+    metric_func,
+    stat_func,
+    value_norm_param_m: float,
+    station_set: fs.WeatherStationSet,
+    cadence_hours: int,
+    obs_tolerance_s: float = DEFAULT_OBS_TOLERANCE_S,
+    model_tolerance_s: float = DEFAULT_MODEL_TOLERANCE_S,
+    min_coverage: float = DEFAULT_MIN_COVERAGE,
+):
+    """
+    KPI of an index computed from several station variables, joined on the mandatory timestamps.
+
+    ``inputs`` lists ``(variable, unit)`` in the order of the arguments of ``function``, which is
+    applied the same way to the model and to the observations. A mark counts when every input is
+    observed; a mark where the model misses an input is penalized. Returns ``KpiIgnored`` when no
+    station can be scored.
+    """
+    series = _compound_series(
+        model_dataset,
+        obs_dataset,
+        ctx,
+        (quantity, inputs, period, station_set),
+        (lead_window, cadence_hours, obs_tolerance_s, model_tolerance_s, min_coverage),
+    )
+    if isinstance(series, KpiIgnored):
+        ft.logger.warning("Ignoring weather KPI %s: %s.", kpi_name_custom, series.reason)
+        return series
+
+    metric_rslt = []
+    for station in series:
+        model = function(*station["model"])
+        model[station["model_missing"]] = PENALTY_VALUE
+        metric_rslt.append(metric_func(model, function(*station["obs"])))
+    rslt = stat_func(metric_rslt)
+    ft.logger.info("%s: %f", kpi_name_custom, rslt)
+    return {
+        f"{kpi_name_custom}": rslt,
+        "Score": fm.kpi_norm_symmetric_open_exponential(rslt, value_norm_param_m),
+    }
+
+
+def bench_wx_cadence_event(
+    model_dataset: File,
+    obs_dataset: File,
+    ctx: dict,
+    kpi_name_custom: str,
+    lead_window: tuple[datetime, datetime],
+    period: tuple[datetime, datetime],
+    quantity: str,
+    inputs: tuple,
+    function,
+    metric_func,
+    station_set: fs.WeatherStationSet,
+    cadence_hours: int,
+    obs_tolerance_s: float = DEFAULT_OBS_TOLERANCE_S,
+    model_tolerance_s: float = DEFAULT_MODEL_TOLERANCE_S,
+    min_coverage: float = DEFAULT_MIN_COVERAGE,
+):
+    """
+    Contingency KPI of an event, pooled over the stations of a set and the mandatory timestamps.
+
+    ``function`` says, from the input variables, whether the event occurs at a mark. It is applied
+    the same way to the model and to the observations. A mark where the model misses an input counts
+    as a wrong forecast: a miss when the event was observed, a false alarm otherwise.
+    ``metric_func`` takes the counts ``[[TN, FP], [FN, TP]]`` and returns the value and its score, or
+    ``KpiIgnored`` when the ratio has no denominator.
+    """
+    series = _compound_series(
+        model_dataset,
+        obs_dataset,
+        ctx,
+        (quantity, inputs, period, station_set),
+        (lead_window, cadence_hours, obs_tolerance_s, model_tolerance_s, min_coverage),
+    )
+    if isinstance(series, KpiIgnored):
+        ft.logger.warning("Ignoring weather KPI %s: %s.", kpi_name_custom, series.reason)
+        return series
+
+    counts = np.zeros((2, 2), dtype=np.int64)
+    for station in series:
+        observed = np.asarray(function(*station["obs"]), dtype=bool)
+        forecast = np.asarray(function(*station["model"]), dtype=bool)
+        forecast[station["model_missing"]] = ~observed[station["model_missing"]]
+        counts += fm.confusion_matrix.binary_cm(observed, forecast)
+    outcome = metric_func(counts)
+    if isinstance(outcome, KpiIgnored):
+        ft.logger.warning("Ignoring weather KPI %s: %s.", kpi_name_custom, outcome.reason)
+        return outcome
+    value, score = outcome
+    ft.logger.info("%s: %f (%d stations)", kpi_name_custom, value, len(series))
+    return {f"{kpi_name_custom}": value, "Score": score}
+
+
+def _compound_series(model_dataset: File, obs_dataset: File, ctx: dict, what: tuple, how: tuple):
+    """
+    Inputs of a compound quantity for every station that can be scored, or why none can.
+
+    Each item holds, for one station, the observed and model values of every input on the marks
+    where all inputs are observed, and the marks where the model misses an input.
+    """
+    cache = ctx.setdefault("wx_compound_series", {})
+    if (what, how) not in cache:
+        cache[(what, how)] = _compute_compound_series(model_dataset, obs_dataset, ctx, what, how)
+    return cache[(what, how)]
+
+
+def _compute_compound_series(model_dataset: File, obs_dataset: File, ctx: dict, what: tuple, how: tuple):
+    quantity, inputs, period, station_set = what
+    lead_window, cadence_hours, obs_tolerance_s, model_tolerance_s, min_coverage = how
+    check_tolerance(obs_tolerance_s, cadence_hours)
+    check_tolerance(model_tolerance_s, cadence_hours)
+    stations = compound_stations(model_dataset, obs_dataset, inputs, period, station_set, ctx)
+    if not stations:
+        return KpiIgnored(f"no station is eligible for {station_set.value} with every input variable")
+    targets = mandatory_timestamps(lead_window, cadence_hours)
+    if targets.size == 0:
+        return KpiIgnored(f"no {cadence_hours}-hourly timestamp in the lead window")
+
+    series = []
+    for station in stations:
+        obs_inputs, model_inputs = [], []
+        for variable, unit in inputs:
+            obs_marks, model_marks = _station_marks(
+                (model_dataset, obs_dataset, ctx),
+                station,
+                variable,
+                unit,
+                targets,
+                (obs_tolerance_s, model_tolerance_s),
+            )
+            obs_inputs.append(obs_marks)
+            model_inputs.append(model_marks)
+        observed = np.all(np.isfinite(obs_inputs), axis=0)
+        matched = int(observed.sum())
+        if matched / targets.size < min_coverage:
+            _record_exclusion(
+                ctx, station, quantity, lead_window, cadence_hours, {"obs_matched": matched}, targets.size
+            )
+            continue
+        model_values = [values[observed] for values in model_inputs]
+        series.append(
+            {
+                "obs": [values[observed] for values in obs_inputs],
+                "model": model_values,
+                "model_missing": ~np.all(np.isfinite(model_values), axis=0),
+            }
+        )
+    if not series:
+        return KpiIgnored(f"no station reaches {100 * min_coverage:.0f}% observation coverage")
+    return series
+
+
+def _station_marks(
+    datasets: tuple, station: str, variable: str, common_unit: str, targets: np.ndarray, tolerances_s: tuple
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Observation and model values of a station on every mark, NaN where a mark has none.
+
+    ``datasets`` is ``(model_dataset, obs_dataset, ctx)`` and ``tolerances_s`` is
+    ``(obs_tolerance_s, model_tolerance_s)``. A station variable is read once per run and kept in
+    ``ctx``: the KPIs of every lead bin use the same series.
+    """
+    model_dataset, obs_dataset, ctx = datasets
+    cache = ctx.setdefault("wx_station_series", {})
+    station_path = f"{fs.TIME_SERIES}/{station}"
+    data_path = f"{station_path}/{variable}"
+    on_marks = []
+    for role, dataset, tolerance_s in (
+        ("obs", obs_dataset, tolerances_s[0]),
+        ("model", model_dataset, tolerances_s[1]),
+    ):
+        key = (role, station, variable, common_unit)
+        if key not in cache:
+            quantity = fs.read_quantity_from_fb_dataset(data_path, dataset).to(common_unit)
+            cache[key] = (
+                station_times_utc(dataset, station_path),
+                np.asarray(quantity.magnitude, dtype=np.float64),
+            )
+        times, values = cache[key]
+        # Only a finite observation serves a mark; the model must provide the mark itself.
+        index = match_nearest(times, targets, tolerance_s, values if role == "obs" else None)
+        marks = np.full(targets.size, np.nan)
+        marks[index >= 0] = values[index[index >= 0]]
+        on_marks.append(marks)
+    return on_marks[0], on_marks[1]
 
 
 def _station_pairs(

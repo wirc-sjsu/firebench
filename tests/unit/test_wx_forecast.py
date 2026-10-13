@@ -1,5 +1,7 @@
 import json
+from dataclasses import replace
 from datetime import datetime, timezone
+from types import MappingProxyType
 
 import h5py
 import numpy as np
@@ -7,6 +9,7 @@ import pytest
 
 from firebench import standardize as fs
 from firebench.benchmarks import wx_forecast
+from firebench.metrics import fire_weather as fm_fire_weather
 
 UTC = timezone.utc
 CYCLE = datetime(2021, 8, 20, 0, tzinfo=UTC)
@@ -190,3 +193,240 @@ def test_unknown_target_lists_the_available_ones(tmp_path):
             output_json=tmp_path / "r.json",
             score_card_report=tmp_path / "c.pdf",
         )
+
+
+# Fire-weather diagnostics
+# ------------------------
+DIAGNOSTICS = wx_forecast.DIAGNOSTIC_FAMILIES
+
+
+def _hourly_files(tmp_path, obs_values, model_values):
+    """Two identical stations with one value per hour, hours 0 to 3 after the cycle."""
+    obs_path = tmp_path / "obs.h5"
+    model_path = tmp_path / "model.h5"
+    minutes = np.arange(4) * 60
+    for path, values in ((obs_path, obs_values), (model_path, model_values)):
+        with h5py.File(path, "w") as h5:
+            _std(h5)
+            for name in ("A", "B"):
+                _station(h5, name, minutes, values)
+    return obs_path, model_path
+
+
+def _run(tmp_path, obs_path, model_path, **overrides):
+    return wx_forecast.run_wx_forecast_benchmark(
+        model_path,
+        obs_path,
+        _spec(**overrides),
+        overwrite=True,
+        output_json=tmp_path / "rslt.json",
+        score_card_report=tmp_path / "card.pdf",
+    )
+
+
+def _value(result, kpi):
+    return next(value for name, value in result["benchmarks"][kpi].items() if name != "Score")
+
+
+def test_diagnostics_are_off_by_default_and_the_table_lists_every_kpi_of_the_registry(tmp_path):
+    obs_path, model_path = _files(tmp_path)
+    with h5py.File(obs_path) as obs, h5py.File(model_path) as model:
+        registry = wx_forecast.build_registry(_spec(), model, obs)
+    table = {row["id"]: row for row in wx_forecast.kpi_table(_spec())}
+
+    assert not any(name.startswith("VPD") for name in registry.groups)
+    scored = {kpi: row for kpi, row in table.items() if row["variable"] != "fuel_moisture_content_10h"}
+    assert list(scored) == list(registry.benchmark_functions)
+    row = table["WX-AT-MAE-MEAN-TSO-1H-F0103"]
+    assert (row["variable"], row["family"], row["metric"], row["statistic"]) == (
+        "air_temperature",
+        "weather_accuracy",
+        "MAE",
+        "mean",
+    )
+    assert (row["group"], row["weight"], row["group_weight"], row["units"]) == (
+        "Air Temp 1h F01-03",
+        1,
+        1,
+        "degC",
+    )
+    assert table["WX-AT-MAE-MEAN-TSO-1H-F0000"]["group_weight"] == 0
+    assert all(row["group"] in registry.groups for row in scored.values())
+
+
+def test_diagnostic_groups_have_weight_zero_and_their_kpis_have_semantic_ids(tmp_path):
+    obs_path, model_path = _files(tmp_path)
+    with h5py.File(obs_path) as obs, h5py.File(model_path) as model:
+        registry = wx_forecast.build_registry(_spec(diagnostics=DIAGNOSTICS), model, obs)
+    table = {row["id"]: row for row in wx_forecast.kpi_table(_spec(diagnostics=DIAGNOSTICS))}
+
+    for group in (
+        "VPD 1h F01-03",
+        "Fosberg FWI 1h F01-03",
+        "Low RH 1h F01-03",
+        "Critical fire wx 1h F01-03",
+    ):
+        assert registry.groups[group]["weight"] == 0
+    assert registry.groups["Air Temp 1h F01-03"]["weight"] == 1
+    weights = registry.groups["Low RH 1h F01-03"]["benchmarks"]
+    assert weights == {
+        "WX-RHLOW-POD-POOLED-TSO-1H-F0103": 1,
+        "WX-RHLOW-POD-POOLED-ALL-1H-F0103": 0,
+        "WX-RHLOW-FAR-POOLED-TSO-1H-F0103": 1,
+        "WX-RHLOW-FAR-POOLED-ALL-1H-F0103": 0,
+        "WX-RHLOW-CSI-POOLED-TSO-1H-F0103": 1,
+        "WX-RHLOW-CSI-POOLED-ALL-1H-F0103": 0,
+    }
+    assert "WX-FFWI-RMSE-MAX-ALL-1H-F0103" in registry.benchmark_functions
+    assert registry.requirements["R-FFWI"]["required_datasets"]["inputs"] == [
+        "air_temperature",
+        "relative_humidity",
+        "wind_speed",
+    ]
+    assert table["WX-CFW-CSI-POOLED-TSO-1H-F0103"]["family"] == "event_threshold"
+    assert table["WX-VPD-BIAS-MIN-TSO-1H-F0103"]["family"] == "fire_weather_index"
+    assert table["WX-VPD-BIAS-MIN-TSO-1H-F0103"]["group_weight"] == 0
+
+
+def test_diagnostics_leave_the_total_and_the_weather_kpis_unchanged(tmp_path):
+    obs_path, model_path = _files(tmp_path)
+
+    plain = _run(tmp_path, obs_path, model_path)
+    diagnosed = _run(tmp_path, obs_path, model_path, diagnostics=DIAGNOSTICS)
+
+    assert diagnosed["score_card"]["Score Total"] == plain["score_card"]["Score Total"]
+    assert all(diagnosed["benchmarks"][kpi] == entry for kpi, entry in plain["benchmarks"].items())
+    assert "diagnostics" not in plain and "ignored_reasons" not in plain
+    assert diagnosed["diagnostics"] == ["fire_weather_index", "event_threshold"]
+    assert "Score VPD 1h F01-03" in diagnosed["score_card"]
+
+
+def test_result_records_the_checksum_of_the_parameter_file(tmp_path):
+    obs_path, model_path = _files(tmp_path)
+
+    result = _run(tmp_path, obs_path, model_path)
+
+    assert result["benchmark_parameters"] == wx_forecast.PARAMETERS.sha256
+    assert len(result["benchmark_parameters"]) == 64
+
+
+def test_weight_of_a_family_in_the_parameter_file_moves_the_total(tmp_path, monkeypatch):
+    obs_path, model_path = _files(tmp_path)
+    shipped = _run(tmp_path, obs_path, model_path, diagnostics=DIAGNOSTICS)
+    weights = {**wx_forecast.PARAMETERS.group_weights, "fire_weather_index": 2}
+    monkeypatch.setattr(
+        wx_forecast, "PARAMETERS", replace(wx_forecast.PARAMETERS, group_weights=MappingProxyType(weights))
+    )
+
+    weighted = _run(tmp_path, obs_path, model_path, diagnostics=DIAGNOSTICS)
+
+    with h5py.File(obs_path) as obs, h5py.File(model_path) as model:
+        groups = wx_forecast.build_registry(_spec(diagnostics=DIAGNOSTICS), model, obs).groups
+    assert groups["VPD 1h F01-03"]["weight"] == 2
+    assert groups["Low RH 1h F01-03"]["weight"] == 0
+    assert weighted["benchmarks"] == shipped["benchmarks"]
+    assert weighted["score_card"]["Score Total"] != shipped["score_card"]["Score Total"]
+
+
+def test_index_kpi_is_the_metric_of_the_index_computed_for_model_and_observations(tmp_path):
+    obs_path, model_path = _files(tmp_path)
+
+    result = _run(tmp_path, obs_path, model_path, diagnostics=("fire_weather_index",))
+
+    # lead hours 1 to 3: observed 21 to 23 degC and 31 to 33 %, the model one unit above
+    hours = np.arange(1, 4)
+    observed = fm_fire_weather.vapor_pressure_deficit(20.0 + hours, 30.0 + hours)
+    forecast = fm_fire_weather.vapor_pressure_deficit(21.0 + hours, 31.0 + hours)
+    assert _value(result, "WX-VPD-MAE-MEAN-TSO-1H-F0103") == pytest.approx(
+        np.mean(np.abs(forecast - observed))
+    )
+    assert _value(result, "WX-VPD-BIAS-MAX-ALL-1H-F0103") == pytest.approx(np.mean(forecast - observed))
+    observed = fm_fire_weather.fosberg_fire_weather_index(20.0 + hours, 30.0 + hours, 3.0)
+    forecast = fm_fire_weather.fosberg_fire_weather_index(21.0 + hours, 31.0 + hours, 4.0)
+    assert _value(result, "WX-FFWI-RMSE-MEAN-TSO-1H-F0103") == pytest.approx(
+        np.sqrt(np.mean((forecast - observed) ** 2))
+    )
+
+
+def test_event_counts_are_pooled_over_stations_and_timestamps(tmp_path):
+    steady = {"air_temperature": np.full(4, 25.0), "wind_speed": np.full(4, 6.0)}
+    obs_path, model_path = _hourly_files(
+        tmp_path,
+        {**steady, "relative_humidity": [15.0, 15.0, 25.0, 18.0]},  # hours 1 to 3: event, none, event
+        {**steady, "relative_humidity": [10.0, 10.0, 10.0, 30.0]},  # hours 1 to 3: event, event, none
+    )
+
+    result = _run(tmp_path, obs_path, model_path, diagnostics=("event_threshold",))
+
+    # per station: one hit, one false alarm, one miss; two stations give the same ratios
+    assert _value(result, "WX-RHLOW-POD-POOLED-TSO-1H-F0103") == pytest.approx(0.5)
+    assert _value(result, "WX-RHLOW-FAR-POOLED-TSO-1H-F0103") == pytest.approx(0.5)
+    assert _value(result, "WX-RHLOW-CSI-POOLED-TSO-1H-F0103") == pytest.approx(1.0 / 3.0)
+    assert result["benchmarks"]["WX-RHLOW-FAR-POOLED-TSO-1H-F0103"]["Score"] == pytest.approx(50.0)
+    # the wind is strong at every hour for both: critical fire weather follows the humidity
+    assert _value(result, "WX-WSHIGH-POD-POOLED-TSO-1H-F0103") == pytest.approx(1.0)
+    assert _value(result, "WX-CFW-CSI-POOLED-ALL-1H-F0103") == pytest.approx(1.0 / 3.0)
+
+
+def test_event_that_was_not_observed_is_ignored_with_its_reason(tmp_path):
+    steady = {"air_temperature": np.full(4, 25.0), "wind_speed": np.full(4, 1.0)}
+    obs_path, model_path = _hourly_files(
+        tmp_path,
+        {**steady, "relative_humidity": np.full(4, 50.0)},
+        {**steady, "relative_humidity": [50.0, 10.0, 50.0, 50.0]},
+    )
+
+    result = _run(tmp_path, obs_path, model_path, diagnostics=("event_threshold",))
+
+    reasons = result["ignored_reasons"]
+    assert reasons["WX-RHLOW-POD-POOLED-TSO-1H-F0103"] == "the event was not observed"
+    assert reasons["WX-WSHIGH-FAR-POOLED-TSO-1H-F0103"] == "the event was not forecast"
+    assert reasons["WX-CFW-CSI-POOLED-TSO-1H-F0103"] == "the event was neither observed nor forecast"
+    assert "WX-RHLOW-POD-POOLED-TSO-1H-F0103" in result["ignored_benchmarks"]
+    assert _value(result, "WX-RHLOW-FAR-POOLED-TSO-1H-F0103") == pytest.approx(1.0)
+    assert "Score Critical fire wx 1h F01-03" not in result["score_card"]
+    assert "Score Total" in result["score_card"]
+
+
+def test_missing_model_value_counts_as_a_wrong_event_forecast(tmp_path):
+    steady = {"air_temperature": np.full(4, 25.0), "wind_speed": np.full(4, 1.0)}
+    obs_path, model_path = _hourly_files(
+        tmp_path,
+        {**steady, "relative_humidity": [15.0, 15.0, 50.0, 15.0]},  # hours 1 to 3: event, none, event
+        {
+            **steady,
+            "relative_humidity": [15.0, np.nan, np.nan, 15.0],
+        },  # hours 1 to 3: missing, missing, event
+    )
+
+    result = _run(tmp_path, obs_path, model_path, diagnostics=("event_threshold",))
+
+    # per station: a miss, a false alarm, a hit
+    assert _value(result, "WX-RHLOW-POD-POOLED-TSO-1H-F0103") == pytest.approx(0.5)
+    assert _value(result, "WX-RHLOW-FAR-POOLED-TSO-1H-F0103") == pytest.approx(0.5)
+
+
+def test_diagnostic_without_one_model_input_is_excluded_and_names_the_input(tmp_path):
+    values = {
+        "air_temperature": np.full(4, 25.0),
+        "relative_humidity": np.full(4, 15.0),
+        "wind_speed": np.full(4, 6.0),
+    }
+    obs_path, model_path = _hourly_files(
+        tmp_path, values, {name: data for name, data in values.items() if name != "wind_speed"}
+    )
+
+    result = _run(tmp_path, obs_path, model_path, diagnostics=DIAGNOSTICS)
+
+    excluded = {item["variable"]: item["reason"] for item in result["excluded_kpis"]}
+    assert excluded["wind_speed"] == "no model data"
+    assert excluded["fosberg_fire_weather_index"] == "no model data for wind_speed"
+    assert excluded["critical_fire_weather"] == "no model data for wind_speed"
+    assert "vapor_pressure_deficit" not in excluded
+    assert _value(result, "WX-VPD-MAE-MEAN-TSO-1H-F0103") == pytest.approx(0.0)
+    assert _value(result, "WX-RHLOW-POD-POOLED-TSO-1H-F0103") == pytest.approx(1.0)
+
+
+def test_unknown_diagnostic_family_is_rejected():
+    with pytest.raises(ValueError, match="unknown diagnostics"):
+        wx_forecast.kpi_table(_spec(diagnostics=("indices",)))

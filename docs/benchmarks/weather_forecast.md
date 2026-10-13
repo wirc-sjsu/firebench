@@ -39,6 +39,30 @@ Operational analyses such as HRRR's assimilate surface observations, so hour 0 i
 against its own inputs. It is therefore scored in **informational** groups of weight 0: displayed on
 the score card, but excluded from both the numerator and the denominator of the total.
 
+## Parameters
+
+Every number the benchmark scores with is in one file of the package,
+`src/firebench/resources/benchmarks/wx_forecast.toml`:
+
+| Table of the file | Content |
+|---|---|
+| `setup_defaults` | Values of the setup options a setup file leaves out: horizon, cadences, lead bins, matching tolerances, minimum coverage |
+| `missing_model_data` | The penalty for a value the model lacks |
+| `station_set_weights` | Weight of a KPI in its group, by station set |
+| `group_weights` | Weight of a group in the total, by metric family |
+| `variables`, `indices` | Unit of comparison and normalization parameter `m` of each quantity |
+| `events` | Thresholds of the events |
+
+FireBench reads the file from the installed package and from nowhere else: no option, setup key, or
+environment variable replaces it. The FireBench version (or commit) of a result therefore identifies
+the parameters it was computed with. A result also records the SHA-256 of the file as
+`benchmark_parameters`, next to the checksum of the benchmark module (`benchmark_script`).
+
+To change a parameter, edit the file in a FireBench commit. Every key is required, and a missing
+key, an unknown key, or a value out of range is refused when FireBench is imported, with the name of
+the key. The values in the tables of this page are those of the file at this version; the file is
+the reference.
+
 ## KPIs
 
 For each variable, cadence, and lead bin:
@@ -63,6 +87,53 @@ A variable absent from the model or from the observations is **excluded** with i
 model data` or `no observation`) and never scored as empty. HRRR, for example, has no 10-hour fuel
 moisture.
 
+## Fire-weather diagnostics
+
+Two families of KPIs evaluate what matters for fire, beyond the mean error of each variable. They
+are optional: list them in `benchmark.diagnostics` of the setup file. Their groups have the weight
+of their family in the parameter file (`group_weights`), which is 0: like the analysis, they are
+displayed, and the total keeps its definition.
+
+**Fire-weather indices** (`fire_weather_index`). An index is computed from the station variables,
+the same way for the model and for the observations, at each hour where every input is observed.
+It is then scored like a variable: MAE, RMSE, and bias per station, summarized over stations.
+
+| Index | Inputs | Unit | Normalization parameter m |
+|---|---|---|---|
+| Vapour pressure deficit (VPD) | air temperature, relative humidity | hPa | 10 |
+| Fosberg fire weather index | air temperature, relative humidity, wind speed | - | 10 |
+
+- The saturation vapour pressure is Bolton's (1980). The Fosberg index (1978) uses the equilibrium
+  moisture content of Simard (1968) and is not capped at 100.
+- The Fosberg index is defined with the 20 ft wind. Here the wind is the one at each station's
+  sensor height, to which the model wind was brought, so both sides use the same height.
+
+**Threshold events** (`event_threshold`). An event occurs at an hour of a station when its
+condition holds. Hits, misses, and false alarms are counted over every station of the set and
+every hour of the lead bin at once (the `pooled` summary): a ratio per station would rest on too
+few events.
+
+| Event | Condition |
+|---|---|
+| Low RH | relative humidity ≤ 20 % |
+| Strong wind | wind speed ≥ 4.5 m/s |
+| Critical fire weather | both at the same hour |
+
+| Metric | Definition | Score |
+|---|---|---|
+| POD, probability of detection | hits / (hits + misses) | 100 × POD |
+| FAR, false alarm ratio | false alarms / (hits + false alarms) | 100 × (1 − FAR) |
+| CSI, critical success index | hits / (hits + misses + false alarms) | 100 × CSI |
+
+- A ratio without a denominator is not computed: an event that was not observed has no detection
+  rate. The KPI is listed in `ignored_benchmarks` and its reason in `ignored_reasons`.
+- A station is in a set when the set includes it for every input. A station observing fewer than
+  `min_coverage` of the hours, with every input, is excluded.
+- An hour where the model misses an input is penalized: `-1e6` for an index, and a wrong forecast
+  for an event (a miss when the event was observed, a false alarm otherwise).
+- A diagnostic whose input the model or the observations lack is excluded with its reason, for
+  example `no model data for wind_speed`.
+
 ## Benchmark IDs
 
 Benchmark IDs are semantic and do not depend on the order of the setup lists:
@@ -75,6 +146,10 @@ hourly, for lead hours 1 to 48.
 | `AT`, `RH`, `WS`, `WD`, `FM10` | air temperature, relative humidity, wind speed, wind direction, 10-hour fuel moisture |
 | `MAE`, `RMSE`, `BIAS`, `CBIAS` | metrics (`CBIAS` is the circular bias) |
 | `MIN`, `MEAN`, `MAX` | summary over stations |
+| `VPD`, `FFWI` | vapour pressure deficit, Fosberg fire weather index |
+| `RHLOW`, `WSHIGH`, `CFW` | events: low RH, strong wind, critical fire weather |
+| `POD`, `FAR`, `CSI` | event metrics |
+| `POOLED` | counted over every station and hour at once |
 | `TSO`, `ALL` | trusted-source stations, all stations |
 
 ## HRRR adapter

@@ -5,16 +5,24 @@ The case is not tied to a fire: it is configured by a forecast cycle, lead-time 
 tiers, and scores any model file with ``/time_series/station_<STID>`` groups (for example the
 output of the embedded HRRR adapter) against a standard observation file.
 
-KPI axes: variable x metric x station set x summary statistic x cadence x lead-time bin. Variables,
-metrics and normalization parameters are those of the Caldor weather benchmark
-(``c001_caldor_config.WX_VARIABLE_SPECS``); trusted-source (TSO) KPIs have weight 1 and all-source
-KPIs weight 0, as in Caldor. Lead bins marked informational (by default ``F00``, the analysis, which
-assimilates surface observations) form weight-0 groups that are displayed but move neither the
-numerator nor the denominator of the total.
+KPI axes: variable x metric x station set x summary statistic x cadence x lead-time bin. Lead bins
+marked informational (by default ``F00``, the analysis, which assimilates surface observations) form
+weight-0 groups that are displayed but move neither the numerator nor the denominator of the total.
+
+Every number the benchmark scores with (normalizations, weights, thresholds, matching tolerances,
+defaults of a setup) is in ``resources/benchmarks/wx_forecast.toml``, read by ``wx_parameters``.
+This module holds what a number cannot change: the variables, their metrics, labels and ID codes.
+With the file FireBench ships, variables and normalizations are those of the Caldor weather
+benchmark, and trusted-source (TSO) KPIs have weight 1 and all-source KPIs weight 0, as in Caldor.
 
 Benchmark IDs are semantic and order-independent, e.g. ``WX-AT-MAE-MEAN-TSO-1H-F0148``.
 A variable that the model or the observations do not provide is reported as excluded, with its
 reason, instead of being scored as empty.
+
+Fire-weather diagnostics are optional (``WxForecastSpec.diagnostics``): compound indices computed
+from the station variables (``fire_weather_index``) and contingency metrics of threshold events
+(``event_threshold``). Their groups have the weight of their family in the parameter file, 0 as
+shipped, so they do not move the total.
 """
 
 import json
@@ -35,11 +43,25 @@ from firebench import tools as ft
 
 from . import wx_cadence
 from . import wx_common as wxc
-from .c001_caldor_config import WX_VARIABLE_SPECS
+from .wx_parameters import check_names, load_parameters
 
 CASE_ID = "WXF"
 BENCHMARK_SHORT_NAME = "WX_Forecast"
 DEFAULT_TARGET = "ALL"
+
+# Every number below comes from ``resources/benchmarks/wx_forecast.toml``.
+PARAMETERS = load_parameters()
+
+# Metric families: what a KPI evaluates. The weight of a family in the total is a parameter.
+FAMILY_ACCURACY = "weather_accuracy"
+FAMILY_INDEX = "fire_weather_index"
+FAMILY_EVENT = "event_threshold"
+DIAGNOSTIC_FAMILIES = (FAMILY_INDEX, FAMILY_EVENT)
+check_names("group_weights", PARAMETERS.group_weights, (FAMILY_ACCURACY, *DIAGNOSTIC_FAMILIES))
+
+# Thresholds of the events, on the hourly values at the sensor height of each station.
+LOW_RELATIVE_HUMIDITY_PERCENT = PARAMETERS.low_relative_humidity_max_percent
+STRONG_WIND_SPEED_MS = PARAMETERS.strong_wind_speed_min_ms
 
 VARIABLE_CODES = {
     "air_temperature": "AT",
@@ -47,7 +69,38 @@ VARIABLE_CODES = {
     "wind_speed": "WS",
     "wind_direction": "WD",
     "fuel_moisture_content_10h": "FM10",
+    "vapor_pressure_deficit": "VPD",
+    "fosberg_fire_weather_index": "FFWI",
+    "low_relative_humidity": "RHLOW",
+    "strong_wind": "WSHIGH",
+    "critical_fire_weather": "CFW",
 }
+
+
+def _probability_of_detection(counts: np.ndarray):
+    _, _, misses, hits = counts.ravel()
+    if hits + misses == 0:
+        return wx_cadence.KpiIgnored("the event was not observed")
+    value = float(fm.confusion_matrix.binary_recall_rate(counts))
+    return value, fm.kpi_norm_bounded_linear(value, 0.0, 1.0)
+
+
+def _false_alarm_ratio(counts: np.ndarray):
+    _, false_alarms, _, hits = counts.ravel()
+    if hits + false_alarms == 0:
+        return wx_cadence.KpiIgnored("the event was not forecast")
+    value = float(fm.confusion_matrix.binary_false_alarm_ratio(counts))
+    return value, fm.kpi_norm_bounded_linear(1.0 - value, 0.0, 1.0)
+
+
+def _critical_success_index(counts: np.ndarray):
+    _, false_alarms, misses, hits = counts.ravel()
+    if hits + false_alarms + misses == 0:
+        return wx_cadence.KpiIgnored("the event was neither observed nor forecast")
+    value = float(fm.confusion_matrix.binary_critical_success_index(counts))
+    return value, fm.kpi_norm_bounded_linear(value, 0.0, 1.0)
+
+
 METRICS = {
     "standard": (
         ("MAE", "MAE", fm.stats.mae),
@@ -55,11 +108,123 @@ METRICS = {
         ("Bias", "BIAS", fm.stats.bias),
     ),
     "wind_direction": (("circular bias", "CBIAS", fm.stats.circular_bias_deg),),
+    "event": (
+        ("POD", "POD", _probability_of_detection),
+        ("FAR", "FAR", _false_alarm_ratio),
+        ("CSI", "CSI", _critical_success_index),
+    ),
 }
 SUMMARY_STATS = (("min", np.nanmin), ("mean", np.nanmean), ("max", np.nanmax))
+# An event is counted over every station and timestamp at once: a ratio per station has too few events.
+POOLED_STATS = (("pooled", None),)
+check_names("station_set_weights", PARAMETERS.station_set_weights, ("TSO", "ALL"))
+# Label, ID code, station set, weight of its KPIs in a group.
 STATION_SETS = (
-    ("TSO", "TSO", fs.WeatherStationSet.TSO, 1),
-    ("All sources", "ALL", fs.WeatherStationSet.ALL_SOURCES, 0),
+    ("TSO", "TSO", fs.WeatherStationSet.TSO, PARAMETERS.station_set_weights["TSO"]),
+    ("All sources", "ALL", fs.WeatherStationSet.ALL_SOURCES, PARAMETERS.station_set_weights["ALL"]),
+)
+
+# Station variables in score-card order: variable, label, group label, metric set.
+_STATION_VARIABLES = (
+    ("air_temperature", "Air temp", "Air Temp", "standard"),
+    ("relative_humidity", "RH", "RH", "standard"),
+    ("wind_speed", "Wind Speed", "Wind Speed", "standard"),
+    ("wind_direction", "Wind Direction", "Wind Direction", "wind_direction"),
+    ("fuel_moisture_content_10h", "FMC 10h", "FMC 10h", "standard"),
+)
+check_names("variables", PARAMETERS.variables, [item[0] for item in _STATION_VARIABLES])
+WX_VARIABLE_SPECS = tuple(
+    {
+        "label": label,
+        "group_label": group_label,
+        "variable": variable,
+        "common_unit": PARAMETERS.variables[variable].unit,
+        "norm_m": PARAMETERS.variables[variable].norm_m,
+        "metric_set": metric_set,
+    }
+    for variable, label, group_label, metric_set in _STATION_VARIABLES
+)
+
+
+def _low_relative_humidity(relative_humidity):
+    return relative_humidity <= LOW_RELATIVE_HUMIDITY_PERCENT
+
+
+def _strong_wind(wind_speed):
+    return wind_speed >= STRONG_WIND_SPEED_MS
+
+
+def _critical_fire_weather(relative_humidity, wind_speed):
+    return _low_relative_humidity(relative_humidity) & _strong_wind(wind_speed)
+
+
+_AIR_TEMPERATURE = ("air_temperature", "degC")
+_RELATIVE_HUMIDITY = ("relative_humidity", "percent")
+_WIND_SPEED = ("wind_speed", "m/s")
+
+check_names("indices", PARAMETERS.indices, ("vapor_pressure_deficit", "fosberg_fire_weather_index"))
+
+# Quantities computed from several station variables, for the model and the observations alike.
+# ``inputs`` lists ``(variable, unit)`` in the order of the arguments of ``function``.
+WX_DIAGNOSTIC_SPECS = (
+    {
+        "family": FAMILY_INDEX,
+        "label": "VPD",
+        "group_label": "VPD",
+        "variable": "vapor_pressure_deficit",
+        "common_unit": PARAMETERS.indices["vapor_pressure_deficit"].unit,
+        "norm_m": PARAMETERS.indices["vapor_pressure_deficit"].norm_m,
+        "metric_set": "standard",
+        "inputs": (_AIR_TEMPERATURE, _RELATIVE_HUMIDITY),
+        "function": fm.fire_weather.vapor_pressure_deficit,
+    },
+    {
+        "family": FAMILY_INDEX,
+        "label": "Fosberg FWI",
+        "group_label": "Fosberg FWI",
+        "variable": "fosberg_fire_weather_index",
+        "common_unit": PARAMETERS.indices["fosberg_fire_weather_index"].unit,
+        "norm_m": PARAMETERS.indices["fosberg_fire_weather_index"].norm_m,
+        "metric_set": "standard",
+        "inputs": (_AIR_TEMPERATURE, _RELATIVE_HUMIDITY, _WIND_SPEED),
+        "function": fm.fire_weather.fosberg_fire_weather_index,
+    },
+    {
+        "family": FAMILY_EVENT,
+        "label": "Low RH",
+        "group_label": "Low RH",
+        "variable": "low_relative_humidity",
+        "common_unit": "dimensionless",
+        "metric_set": "event",
+        "inputs": (_RELATIVE_HUMIDITY,),
+        "function": _low_relative_humidity,
+        "definition": f"relative humidity <= {LOW_RELATIVE_HUMIDITY_PERCENT:g} %",
+    },
+    {
+        "family": FAMILY_EVENT,
+        "label": "Strong wind",
+        "group_label": "Strong wind",
+        "variable": "strong_wind",
+        "common_unit": "dimensionless",
+        "metric_set": "event",
+        "inputs": (_WIND_SPEED,),
+        "function": _strong_wind,
+        "definition": f"wind speed >= {STRONG_WIND_SPEED_MS:g} m/s",
+    },
+    {
+        "family": FAMILY_EVENT,
+        "label": "Critical fire wx",
+        "group_label": "Critical fire wx",
+        "variable": "critical_fire_weather",
+        "common_unit": "dimensionless",
+        "metric_set": "event",
+        "inputs": (_RELATIVE_HUMIDITY, _WIND_SPEED),
+        "function": _critical_fire_weather,
+        "definition": (
+            f"relative humidity <= {LOW_RELATIVE_HUMIDITY_PERCENT:g} % and "
+            f"wind speed >= {STRONG_WIND_SPEED_MS:g} m/s"
+        ),
+    },
 )
 
 
@@ -88,14 +253,16 @@ class WxForecastSpec:
 
     case_name: str
     cycle: datetime
-    horizon_hours: int = 48
-    lead_bins: tuple = ((1, 48),)
-    informational_lead_bins: tuple = ((0, 0),)
-    cadences: tuple = (1,)
+    horizon_hours: int = PARAMETERS.setup_defaults.horizon_hours
+    lead_bins: tuple = PARAMETERS.setup_defaults.lead_bins
+    informational_lead_bins: tuple = PARAMETERS.setup_defaults.informational_lead_bins
+    cadences: tuple = PARAMETERS.setup_defaults.cadences
     obs_tolerance_s: float = wx_cadence.DEFAULT_OBS_TOLERANCE_S
     model_tolerance_s: float = wx_cadence.DEFAULT_MODEL_TOLERANCE_S
     min_coverage: float = wx_cadence.DEFAULT_MIN_COVERAGE
     variables: tuple = tuple(spec["variable"] for spec in WX_VARIABLE_SPECS)
+    # Families of fire-weather diagnostics to add, among ``DIAGNOSTIC_FAMILIES``. None by default.
+    diagnostics: tuple = ()
 
     def bins(self) -> list[LeadBin]:
         """Scored then informational lead bins, clamped to the forecast horizon."""
@@ -152,6 +319,108 @@ def group_name(group_label: str, cadence: int, lead_bin: LeadBin) -> str:
     return name
 
 
+def summary_stats(metric_set: str) -> tuple:
+    """Summaries over stations of a metric set: ``(label, function)`` pairs."""
+    return POOLED_STATS if metric_set == "event" else SUMMARY_STATS
+
+
+def quantity_specs(spec: WxForecastSpec) -> list[dict]:
+    """
+    Every quantity a cycle scores, in score-card order: station variables, then the diagnostics.
+
+    Each item has the keys of ``WX_VARIABLE_SPECS`` and a ``family``. A diagnostic also has its
+    ``inputs`` and the ``function`` that computes it from them.
+    """
+    unknown = sorted(set(spec.diagnostics) - set(DIAGNOSTIC_FAMILIES))
+    if unknown:
+        raise ValueError(f"unknown diagnostics {unknown}; available: {', '.join(DIAGNOSTIC_FAMILIES)}")
+    quantities = [
+        {"family": FAMILY_ACCURACY, **item}
+        for item in WX_VARIABLE_SPECS
+        if item["variable"] in spec.variables
+    ]
+    quantities += [item for item in WX_DIAGNOSTIC_SPECS if item["family"] in spec.diagnostics]
+    return quantities
+
+
+def kpi_table(spec: WxForecastSpec) -> list[dict]:
+    """
+    Every KPI a cycle can define, with its dimensions, in registry order.
+
+    For a consumer that reads a result file: it gives the meaning of a benchmark ID without taking
+    the ID apart. A KPI of the table is absent from a result when its quantity was excluded or the
+    KPI was ignored.
+    """
+    rows = []
+    for quantity in quantity_specs(spec):
+        for cadence in spec.cadences:
+            for lead_bin in spec.bins():
+                for kpi in _group_kpis(quantity, cadence, lead_bin):
+                    rows.append(
+                        {
+                            "id": kpi["id"],
+                            "variable": quantity["variable"],
+                            "label": quantity["label"],
+                            "family": quantity["family"],
+                            "units": quantity["common_unit"],
+                            "metric": kpi["metric_code"],
+                            "metric_label": kpi["metric_label"],
+                            "statistic": kpi["stat_label"],
+                            "station_set": kpi["set_code"],
+                            "station_set_label": kpi["set_label"],
+                            "cadence_hours": cadence,
+                            "lead_bin": lead_bin,
+                            "group": group_name(quantity["group_label"], cadence, lead_bin),
+                            "weight": kpi["weight"],
+                            "group_weight": _group_weight(quantity, lead_bin),
+                        }
+                    )
+    return rows
+
+
+def _group_weight(quantity: dict, lead_bin: LeadBin):
+    """Weight of a group in the total: that of its family, and 0 for an informational lead bin."""
+    return 0 if lead_bin.informational else PARAMETERS.group_weights[quantity["family"]]
+
+
+def _group_kpis(quantity: dict, cadence: int, lead_bin: LeadBin) -> list[dict]:
+    """KPIs of one group: metric x station set x summary over stations."""
+    kpis = []
+    for metric_label, metric_code, metric_func in METRICS[quantity["metric_set"]]:
+        for set_label, set_code, station_set, weight in STATION_SETS:
+            for stat_label, stat_func in summary_stats(quantity["metric_set"]):
+                kpis.append(
+                    {
+                        "id": benchmark_id(
+                            quantity["variable"], metric_code, stat_label, set_code, cadence, lead_bin
+                        ),
+                        "metric_label": metric_label,
+                        "metric_code": metric_code,
+                        "metric_func": metric_func,
+                        "set_label": set_label,
+                        "set_code": set_code,
+                        "station_set": station_set,
+                        "weight": weight,
+                        "stat_label": stat_label,
+                        "stat_func": stat_func,
+                    }
+                )
+    return kpis
+
+
+def _exclusion_reason(quantity: dict, model_variables, obs_variables) -> str | None:
+    """Why a quantity cannot be scored with these files, or None when it can."""
+    compound = "inputs" in quantity
+    needed = [name for name, _ in quantity["inputs"]] if compound else [quantity["variable"]]
+    for available, reason in ((model_variables, "no model data"), (obs_variables, "no observation")):
+        if available is None:
+            continue
+        missing = [name for name in needed if name not in available]
+        if missing:
+            return f"{reason} for {', '.join(missing)}" if compound else reason
+    return None
+
+
 def station_variables(dataset: File) -> set[str]:
     """Variables present in at least one ``station*`` group of a standard file."""
     variables = set()
@@ -173,24 +442,25 @@ def build_registry(
     bins = spec.bins()
     registry = WxRegistry()
 
-    for variable_spec in WX_VARIABLE_SPECS:
+    for variable_spec in quantity_specs(spec):
         variable = variable_spec["variable"]
-        if variable not in spec.variables:
-            continue
-        if model_variables is not None and variable not in model_variables:
-            registry.excluded.append({"variable": variable, "reason": "no model data"})
-            continue
-        if obs_variables is not None and variable not in obs_variables:
-            registry.excluded.append({"variable": variable, "reason": "no observation"})
+        reason = _exclusion_reason(variable_spec, model_variables, obs_variables)
+        if reason:
+            registry.excluded.append({"variable": variable, "reason": reason})
             continue
 
         requirement = f"R-{VARIABLE_CODES[variable]}"
+        required_datasets = {"station_pattern": "station_", "variable": variable}
+        if "inputs" in variable_spec:
+            required_datasets["inputs"] = [name for name, _ in variable_spec["inputs"]]
         registry.requirements[requirement] = {
             "main": partial(
-                _weather_requirement, req_name=requirement, benchmark_functions=registry.benchmark_functions
+                _compound_requirement if "inputs" in variable_spec else _weather_requirement,
+                req_name=requirement,
+                benchmark_functions=registry.benchmark_functions,
             ),
             "benchmarks": [],
-            "required_datasets": {"station_pattern": "station_", "variable": variable},
+            "required_datasets": required_datasets,
         }
         for cadence in spec.cadences:
             for lead_bin in bins:
@@ -240,6 +510,7 @@ def run_wx_forecast_benchmark(
         "obs_dataset_hash": ft.calculate_sha256(obs_data),
         "model_output": ft.calculate_sha256(model_output),
         "benchmark_script": ft.calculate_sha256(Path(__file__)),
+        "benchmark_parameters": PARAMETERS.sha256,
         "certificates_input": certificates,
         "verification_lvl": fsi.compute_input_verification_lvl(certificates),
         "cycle": spec.cycle.astimezone(timezone.utc).isoformat(),
@@ -258,6 +529,8 @@ def run_wx_forecast_benchmark(
         "model_tolerance_s": spec.model_tolerance_s,
         "min_coverage": spec.min_coverage,
     }
+    if spec.diagnostics:
+        output_dict["diagnostics"] = list(spec.diagnostics)
     if data_tier:
         output_dict["data_tier"] = data_tier
 
@@ -280,6 +553,9 @@ def run_wx_forecast_benchmark(
     output_dict.update(scored)
     output_dict["excluded_kpis"] = registry.excluded
     output_dict["ignored_benchmarks"] = sorted(ignored)
+    if spec.diagnostics:
+        # Why a diagnostic KPI has no value: an event that was not observed has no detection rate.
+        output_dict["ignored_reasons"] = dict(sorted(ctx.get("ignored_reasons", {}).items()))
     output_dict["cadence_exclusions"] = list(ctx.get("cadence_exclusions", {}).values())
     if height_policy is not None:
         output_dict["height_policy"] = json.loads(_attr_text(height_policy, "{}"))
@@ -300,6 +576,59 @@ def _weather_requirement(
     )
 
 
+def _compound_requirement(
+    model_dataset, obs_dataset, list_benchmarks, required_datasets, ctx, *, req_name, benchmark_functions
+):
+    """
+    Check that the model has every input of a compound quantity, then run its KPIs.
+
+    A KPI that cannot be computed is ignored and its reason is kept in ``ctx["ignored_reasons"]``.
+    """
+    ft.logger.info("Check Requirement %s", req_name)
+    bench_output = {}
+    if not list_benchmarks:
+        ft.logger.info("No benchmark to run for Requirement %s", req_name)
+        return bench_output
+
+    periods = wxc.weather_requirement_periods(benchmark_functions, list_benchmarks)
+    stations = set()
+    for bench_id in list_benchmarks:
+        keywords = benchmark_functions[bench_id].keywords
+        stations.update(
+            wx_cadence.compound_stations(
+                None, obs_dataset, keywords["inputs"], keywords["period"], keywords["station_set"], ctx
+            )
+        )
+    for variable in required_datasets["inputs"]:
+        req_ok, miss = fs.validate_h5_weather_stations_structure(
+            model_dataset,
+            obs_dataset,
+            variable,
+            required_datasets["station_pattern"],
+            periods=periods,
+            selected_stations=stations,
+        )
+        if not req_ok:
+            ft.logger.warning(
+                "Requirement %s not satisfied. All related benchmarks ignored. Missing item(s): %s",
+                req_name,
+                miss,
+            )
+            wxc.log_missing_wx_station_requirements(req_name, variable, miss)
+            return bench_output
+
+    ft.logger.info("Requirement %s valid", req_name)
+    for bench_id in list_benchmarks:
+        ft.logger.info("Run Benchmark %s", bench_id)
+        result = benchmark_functions[bench_id](model_dataset, obs_dataset, ctx)
+        if isinstance(result, wx_cadence.KpiIgnored):
+            ctx.setdefault("ignored_benchmarks", set()).add(bench_id)
+            ctx.setdefault("ignored_reasons", {})[bench_id] = result.reason
+        else:
+            bench_output[bench_id] = result
+    return bench_output
+
+
 def _add_group(
     registry: WxRegistry,
     spec: WxForecastSpec,
@@ -311,40 +640,60 @@ def _add_group(
 ):
     variable = variable_spec["variable"]
     group = group_name(variable_spec["group_label"], cadence, lead_bin)
-    registry.groups[group] = {"weight": 0 if lead_bin.informational else 1, "benchmarks": {}}
+    registry.groups[group] = {"weight": _group_weight(variable_spec, lead_bin), "benchmarks": {}}
     lead_window = (cycle + timedelta(hours=lead_bin.start), cycle + timedelta(hours=lead_bin.end))
-    period = wx_cadence.expand_window(lead_window, spec.obs_tolerance_s)
-    for metric_label, metric_code, metric_func in METRICS[variable_spec["metric_set"]]:
-        for set_label, set_code, station_set, weight in STATION_SETS:
-            for stat_label, stat_func in SUMMARY_STATS:
-                bench_id = benchmark_id(variable, metric_code, stat_label, set_code, cadence, lead_bin)
-                registry.benchmark_functions[bench_id] = partial(
-                    wx_cadence.bench_wx_cadence_index,
-                    kpi_name_custom=" ".join(
-                        (
-                            variable_spec["label"],
-                            metric_label,
-                            stat_label,
-                            f"{cadence}h",
-                            lead_bin.label,
-                            set_label,
-                        )
-                    ),
-                    lead_window=lead_window,
-                    period=period,
-                    wx_variable_name=variable,
-                    common_unit=variable_spec["common_unit"],
-                    metric_func=metric_func,
-                    stat_func=stat_func,
-                    value_norm_param_m=variable_spec["norm_m"],
-                    station_set=station_set,
-                    cadence_hours=cadence,
-                    obs_tolerance_s=spec.obs_tolerance_s,
-                    model_tolerance_s=spec.model_tolerance_s,
-                    min_coverage=spec.min_coverage,
-                )
-                registry.groups[group]["benchmarks"][bench_id] = weight
-                registry.requirements[requirement]["benchmarks"].append(bench_id)
+    join = {
+        "lead_window": lead_window,
+        "period": wx_cadence.expand_window(lead_window, spec.obs_tolerance_s),
+        "cadence_hours": cadence,
+        "obs_tolerance_s": spec.obs_tolerance_s,
+        "model_tolerance_s": spec.model_tolerance_s,
+        "min_coverage": spec.min_coverage,
+    }
+    for kpi in _group_kpis(variable_spec, cadence, lead_bin):
+        name = " ".join(
+            (variable_spec["label"], kpi["metric_label"], kpi["stat_label"], f"{cadence}h", lead_bin.label)
+            + (kpi["set_label"],)
+        )
+        if variable_spec["family"] == FAMILY_ACCURACY:
+            function = partial(
+                wx_cadence.bench_wx_cadence_index,
+                kpi_name_custom=name,
+                wx_variable_name=variable,
+                common_unit=variable_spec["common_unit"],
+                metric_func=kpi["metric_func"],
+                stat_func=kpi["stat_func"],
+                value_norm_param_m=variable_spec["norm_m"],
+                station_set=kpi["station_set"],
+                **join,
+            )
+        elif variable_spec["family"] == FAMILY_INDEX:
+            function = partial(
+                wx_cadence.bench_wx_cadence_compound_index,
+                kpi_name_custom=name,
+                quantity=variable,
+                inputs=variable_spec["inputs"],
+                function=variable_spec["function"],
+                metric_func=kpi["metric_func"],
+                stat_func=kpi["stat_func"],
+                value_norm_param_m=variable_spec["norm_m"],
+                station_set=kpi["station_set"],
+                **join,
+            )
+        else:
+            function = partial(
+                wx_cadence.bench_wx_cadence_event,
+                kpi_name_custom=name,
+                quantity=variable,
+                inputs=variable_spec["inputs"],
+                function=variable_spec["function"],
+                metric_func=kpi["metric_func"],
+                station_set=kpi["station_set"],
+                **join,
+            )
+        registry.benchmark_functions[kpi["id"]] = function
+        registry.groups[group]["benchmarks"][kpi["id"]] = kpi["weight"]
+        registry.requirements[requirement]["benchmarks"].append(kpi["id"])
 
 
 def _copy_groups(groups: dict, names: list[str]) -> dict:

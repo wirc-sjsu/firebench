@@ -1,0 +1,77 @@
+# Parameters of the weather-forecast benchmark (firebench.benchmarks.wx_forecast).
+#
+# Every number the benchmark scores with is in this file. FireBench reads it from the installed
+# package and from nowhere else: no option, setup key, or environment variable replaces it. The
+# FireBench version (or commit) of a result therefore identifies the parameters it was computed
+# with, and a result also records the SHA-256 of this file (`benchmark_parameters`).
+#
+# To change a parameter: edit this file in a FireBench commit. Every key is required and an unknown
+# key is refused when FireBench is imported.
+
+[setup_defaults]
+# Used when a setup file does not give the option named in the comment.
+horizon_hours = 48                  # model.horizon_hours
+cadences = [1]                      # benchmark.cadences, hours
+lead_bins = [[1, 48]]               # benchmark.lead_bins, scored, [start, end] hours after the cycle
+informational_lead_bins = [[0, 0]]  # benchmark.informational_lead_bins, displayed with weight 0
+obs_tolerance_min = 10.0            # benchmark.obs_tolerance_min
+model_tolerance_s = 60.0            # benchmark.model_tolerance_s
+min_coverage = 0.5                  # benchmark.min_coverage, share of the timestamps of a station
+
+[missing_model_data]
+# A timestamp a station observed and the model lacks is scored as a large error, not skipped.
+penalty_value = -1e6                 # model value used instead, in the unit of the variable
+circular_penalty_offset_deg = 180.0  # wind direction: the observation plus this offset
+
+[station_set_weights]
+# Weight of a KPI in its group, by the station set it is computed on.
+TSO = 1  # trusted sources only
+ALL = 0  # all sources
+
+[group_weights]
+# Weight of a group in the total score, by metric family. A group of an informational lead bin has
+# weight 0 whatever its family.
+weather_accuracy = 1
+fire_weather_index = 0
+event_threshold = 0
+
+# Station variables. `unit` is the unit model and observations are compared in. `norm_m` is the
+# error, in that unit, at which the score of MAE, RMSE, or bias is 50
+# (firebench.metrics.kpi_norm_symmetric_open_exponential).
+
+[variables.air_temperature]
+unit = "degC"
+norm_m = 5
+
+[variables.relative_humidity]
+unit = "percent"
+norm_m = 15
+
+[variables.wind_speed]
+unit = "m/s"
+norm_m = 5
+
+[variables.wind_direction]
+unit = "degree"
+norm_m = 45
+
+[variables.fuel_moisture_content_10h]
+unit = "percent"
+norm_m = 5
+
+# Fire-weather indices (benchmark.diagnostics: fire_weather_index), computed from the station
+# variables of the model and of the observations alike. Same meaning of `unit` and `norm_m`.
+
+[indices.vapor_pressure_deficit]
+unit = "hPa"
+norm_m = 10
+
+[indices.fosberg_fire_weather_index]
+unit = "dimensionless"
+norm_m = 10
+
+[events]
+# Thresholds of the events (benchmark.diagnostics: event_threshold), on the hourly values at the
+# sensor height of each station. Critical fire weather is both events at the same timestamp.
+low_relative_humidity_max_percent = 20.0  # low relative humidity: at or below
+strong_wind_speed_min_ms = 4.5            # strong wind: at or above

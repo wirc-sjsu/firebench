@@ -220,3 +220,64 @@ def binary_f_score(bcm: np.ndarray):
     if pr + rc == 0:
         return 0
     return 2.0 * (pr * rc) / (pr + rc)
+
+
+def binary_false_alarm_ratio(bcm: np.ndarray):
+    """
+    Compute the false alarm ratio (FAR) from a 2x2 binary confusion matrix.
+
+    This function expects a confusion matrix of the form:
+
+        [[TN, FP],
+         [FN, TP]]
+
+    The false alarm ratio is the share of the predicted positives that did not occur:
+
+        FAR = FP / (FP + TP)
+
+    It is not the false positive rate, which divides by the actual negatives.
+
+    Parameters
+    ----------
+    bcm : numpy.ndarray
+        A 2x2 array representing the binary confusion matrix.
+
+    Returns
+    -------
+    float
+        The false alarm ratio, ranging from 0.0 to 1.0. Returns 0 when nothing is predicted positive.
+    """  # pylint: disable=line-too-long
+    _, fp, _, tp = bcm.ravel()
+    if fp + tp == 0:
+        return 0
+    return fp / (fp + tp)
+
+
+def binary_critical_success_index(bcm: np.ndarray):
+    """
+    Compute the critical success index (CSI, or threat score) from a 2x2 binary confusion matrix.
+
+    This function expects a confusion matrix of the form:
+
+        [[TN, FP],
+         [FN, TP]]
+
+    The critical success index is the share of hits among the events that were observed or
+    predicted. Correct negatives do not count:
+
+        CSI = TP / (TP + FP + FN)
+
+    Parameters
+    ----------
+    bcm : numpy.ndarray
+        A 2x2 array representing the binary confusion matrix.
+
+    Returns
+    -------
+    float
+        The critical success index, ranging from 0.0 to 1.0. Returns 0 when no event is observed or predicted.
+    """  # pylint: disable=line-too-long
+    _, fp, fn, tp = bcm.ravel()
+    if tp + fp + fn == 0:
+        return 0
+    return tp / (tp + fp + fn)
