@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `firebench data synoptic`, which downloads the Synoptic weather-station time series of a
+  domain and a UTC window with the user's own token and writes them as one raw Synoptic JSON file,
+  the file the weather QC pipeline reads.
 - Add `read_kml_layer` to `firebench.standardize`: the polygons of one layer of a KML or KMZ file,
   read as `standardize_perimeter_from_kml` reads them, every hole kept, without writing anything. It
   lets a tool show a layer before a perimeter is standardized from it.

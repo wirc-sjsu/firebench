@@ -28,12 +28,20 @@ accepted. The command writes no files.
 firebench data list
 firebench data versions CASE
 firebench data get CASE [--version TEXT] [--output-dir DIRECTORY]
+firebench data synoptic --bbox LON_MIN,LAT_MIN,LON_MAX,LAT_MAX --start TIME --end TIME [-o FILE] [--overwrite]
 ```
 
 `list` discovers downloadable cases; `versions` prints registered versions; `get` downloads one
 archive. The version defaults to `latest` and the output directory defaults to the current
 directory. FireBench creates the directory but does not extract the archive. An unknown case or
 version, a URL without a filename, or a network/filesystem failure is nonzero.
+
+`synoptic` downloads the Synoptic weather-station time series of a domain and a UTC window with
+your own token (`firebench keys set synoptic`, or `SYNOPTIC_TOKEN`), and writes them as one raw
+Synoptic JSON file (default `synoptic.json`), the file the weather QC pipeline reads. The times are
+ISO 8601 with a time zone, for example `2021-08-01T00:00Z`. The download is split into chunks under Synoptic's station-hour
+cap and finished chunks are cached. A missing token, an existing output file without `--overwrite`,
+or a domain with no station is nonzero.
 
 ## `run`
 

@@ -407,3 +407,104 @@ def test_preferred_origin_can_fail_and_fallback_again():
         "https://two.example",
         "https://one.example",
     ]
+
+
+@pytest.fixture
+def _cli_env(monkeypatch, tmp_path):
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.tools.logging_config import configure_logging
+
+    monkeypatch.setenv("FIREBENCH_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("FIREBENCH_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.delenv("SYNOPTIC_ORIGIN", raising=False)
+    monkeypatch.setenv("SYNOPTIC_TOKEN", TOKEN)
+    fake = _FakeSynoptic()
+    real = synoptic.SynopticTimeseriesClient
+    monkeypatch.setattr(synoptic, "SynopticTimeseriesClient", lambda token: real(token, opener=fake))
+    yield fake
+    # the command binds a console handler to the CliRunner stream, which closes
+    configure_logging(2, use_console=False)
+
+
+def test_cli_data_synoptic_writes_the_payload_of_the_domain_and_window(_cli_env, tmp_path):
+    # pylint: disable-next=import-outside-toplevel
+    from click.testing import CliRunner
+
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.cli import main
+
+    output = tmp_path / "out" / "synoptic.json"
+    result = CliRunner().invoke(
+        main,
+        [
+            "data",
+            "synoptic",
+            "--bbox",
+            "-120.8,38.4,-119.7,39",
+            "--start",
+            "2021-08-20T00:00Z",
+            "--end",
+            "2021-08-22T00:00Z",
+            "-o",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "2 stations" in result.output
+    payload = json.loads(output.read_text())
+    assert [station["STID"] for station in payload["STATION"]] == ["A", "B"]
+    params = _cli_env.timeseries_requests()[0]
+    assert params["bbox"] == "-120.8,38.4,-119.7,39"
+    assert params["start"] == "202108200000"
+    assert TOKEN not in output.read_text()
+
+
+def test_cli_data_synoptic_refuses_a_window_without_time_zone_and_an_existing_file(_cli_env, tmp_path):
+    # pylint: disable-next=import-outside-toplevel
+    from click.testing import CliRunner
+
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.cli import main
+
+    arguments = ["data", "synoptic", "--bbox", "-120.8,38.4,-119.7,39", "--end", "2021-08-22T00:00Z"]
+    naive = CliRunner().invoke(
+        main, [*arguments, "--start", "2021-08-20T00:00", "-o", str(tmp_path / "a.json")]
+    )
+    (tmp_path / "b.json").write_text("{}")
+    existing = CliRunner().invoke(
+        main, [*arguments, "--start", "2021-08-20T00:00Z", "-o", str(tmp_path / "b.json")]
+    )
+
+    assert naive.exit_code != 0 and "has no time zone" in naive.output
+    assert existing.exit_code != 0 and "already exists" in existing.output
+    assert _cli_env.requests == []
+
+
+def test_cli_data_synoptic_names_where_the_token_is_looked_up(_cli_env, monkeypatch, tmp_path):
+    # pylint: disable-next=import-outside-toplevel
+    from click.testing import CliRunner
+
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.cli import main
+
+    monkeypatch.delenv("SYNOPTIC_TOKEN")
+    result = CliRunner().invoke(
+        main,
+        [
+            "data",
+            "synoptic",
+            "--bbox",
+            "-120.8,38.4,-119.7,39",
+            "--start",
+            "2021-08-20T00:00Z",
+            "--end",
+            "2021-08-22T00:00Z",
+            "-o",
+            str(tmp_path / "synoptic.json"),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "firebench keys set synoptic" in result.output
+    assert not (tmp_path / "synoptic.json").exists()
