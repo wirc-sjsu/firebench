@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `exclude_polygons` to the RAVG standardization functions, beside `exclude_boxes`: the cells
+  strictly inside geographic polygons, given as (lat, lon) vertices, are set to the fill value, and
+  the polygons are recorded in the group attribute `excluded_polygons`. A polygon that crosses
+  itself is refused.
 - Add optional fire-weather diagnostics to the weather-forecast benchmark (`benchmark.diagnostics` in
   the setup file, `WxForecastSpec.diagnostics`): the vapour pressure deficit and the Fosberg fire
   weather index, scored like a variable, and the events low RH, strong wind, and critical fire

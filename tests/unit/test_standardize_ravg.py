@@ -159,3 +159,77 @@ def test_malformed_box_is_refused(inputs, box):
         _standardize(inputs, exclude_boxes=[box])
 
     assert "spatial_2d" not in inputs[1]
+
+
+# A triangle over the cut: it holds the centres (39.125, -120.375), (38.875, -120.375),
+# (38.875, -120.125), and no other, whatever the order of its vertices.
+TRIANGLE = [(39.3, -120.45), (38.75, -120.45), (38.75, -119.95)]
+
+
+@pytest.mark.parametrize(
+    "function,variable",
+    [
+        (fs.standardize_ravg_cc_from_geotiff, svn.RAVG_CANOPY_COVER_LOSS.value),
+        (fs.standardize_ravg_cbi_from_geotiff, svn.RAVG_COMPOSITE_BURN_INDEX_SEVERITY.value),
+        (fs.standardize_ravg_ba_from_geotiff, svn.RAVG_LIVE_BASAL_AREA_LOSS.value),
+    ],
+)
+def test_a_polygon_blanks_the_cells_inside_and_no_other(inputs, function, variable):
+    group = _standardize(inputs, function, exclude_polygons=[TRIANGLE])
+
+    expected = CUT.copy()
+    expected[0, 0] = expected[1, 0] = expected[1, 1] = 0
+    np.testing.assert_array_equal(group[variable][:], expected)
+    assert json.loads(group.attrs["excluded_polygons"]) == [[list(vertex) for vertex in TRIANGLE]]
+    assert "excluded_boxes" not in group.attrs
+
+
+def test_a_polygon_is_read_whatever_its_orientation_and_closed_or_not(inputs):
+    first = _standardize(inputs, exclude_polygons=[TRIANGLE])[VARIABLE][:]
+    closed = _standardize(inputs, exclude_polygons=[TRIANGLE[::-1] + [TRIANGLE[-1]]])[VARIABLE][:]
+    np.testing.assert_array_equal(first, closed)
+
+
+def test_a_cell_on_the_edge_of_a_polygon_is_not_blanked(inputs):
+    # A square whose west side runs through the centres of the first column.
+    square = [(39.2, -120.375), (38.8, -120.375), (38.8, -120.2), (39.2, -120.2)]
+    group = _standardize(inputs, exclude_polygons=[square])
+
+    np.testing.assert_array_equal(group[VARIABLE][:], CUT)
+
+
+def test_boxes_and_polygons_are_both_blanked(inputs):
+    box = ((38.5, -120.0), (39.0, -119.75))
+    group = _standardize(inputs, exclude_boxes=[box], exclude_polygons=[TRIANGLE], invert_y=True)
+
+    values = group[VARIABLE][:]
+    lat, lon = group["position_lat"][:], group["position_lon"][:]
+    in_box = (lat > 38.5) & (lat < 39.0) & (lon > -120.0) & (lon < -119.75)
+    # The box holds two centres of the last column; the triangle three others.
+    assert values[in_box].tolist() == [0, 0]
+    assert (values == 0).sum() == 5
+    assert {"excluded_boxes", "excluded_polygons"} <= set(group.attrs)
+
+
+def test_projected_output_with_polygons_is_refused(inputs):
+    with pytest.raises(ValueError, match="exclude_polygons are geographic"):
+        _standardize(inputs, projection="EPSG:3310", exclude_polygons=[TRIANGLE])
+
+
+@pytest.mark.parametrize(
+    "polygon",
+    [
+        [(39.0, -120.4), (38.8, -120.2)],
+        [(39.0, -120.4), (39.0, -120.4), (38.8, -120.2)],
+        [(39.0, -120.4), (38.8, -120.2), (38.6, -120.0)],
+        # a bow tie: the ring crosses itself
+        [(39.0, -120.4), (38.8, -120.0), (39.0, -120.0), (38.8, -120.4)],
+        [(39.0, np.nan), (38.8, -120.2), (38.8, -120.0)],
+        [39.0, -120.4, 38.8],
+    ],
+)
+def test_malformed_polygon_is_refused(inputs, polygon):
+    with pytest.raises(ValueError, match="must be at least three .lat, lon. vertices"):
+        _standardize(inputs, exclude_polygons=[polygon])
+
+    assert "spatial_2d" not in inputs[1]
