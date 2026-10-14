@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -52,7 +53,9 @@ def plot_from_config(*args, **kwargs):
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
 
-FIREBENCH_BANNER = "\b" + r"""
+FIREBENCH_BANNER = (
+    "\b"
+    + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -62,6 +65,7 @@ FIREBENCH_BANNER = "\b" + r"""
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
+)
 
 
 @click.group(help=FIREBENCH_BANNER)
@@ -858,6 +862,59 @@ def data_get(case: str, version: str, output_dir: Path) -> None:
     click.echo(f"Downloading case {case_id} data version {version} to {output_path}")
     _download_with_progress(url, output_path)
     click.echo(f"Downloaded {output_path}")
+    return 0
+
+
+@data.command("synoptic")
+@click.option("--bbox", required=True, help="Domain as lon_min,lat_min,lon_max,lat_max (degrees).")
+@click.option(
+    "--start", required=True, help="Window start, ISO 8601 with time zone (e.g. 2021-08-01T00:00Z)."
+)
+@click.option("--end", required=True, help="Window end, ISO 8601 with time zone.")
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("synoptic.json"),
+    show_default=True,
+    help="JSON file to write.",
+)
+@click.option("--overwrite", is_flag=True, help="Replace an existing output file.")
+def data_synoptic(bbox: str, start: str, end: str, output: Path, overwrite: bool) -> None:
+    """
+    Download the Synoptic weather-station time series of a domain and window as one JSON file.
+
+    The file is the raw Synoptic payload that the weather QC pipeline reads ('firebench wx-qc
+    process', or the 'synoptic_json' source of a wx setup). The download uses your own Synoptic
+    token: see 'firebench keys set synoptic'.
+    """
+    if output.exists() and not overwrite:
+        raise click.UsageError(f"{output} already exists; use --overwrite to replace it")
+    setup_module = _wx_setup_module()
+    try:
+        start_time = setup_module.parse_utc(start, "--start")
+        end_time = setup_module.parse_utc(end, "--end")
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+    domain = _parse_bbox_option(bbox)
+    keys_module = _keys_module()
+    resolution = keys_module.resolve_key("synoptic")
+    if resolution.value is None:
+        raise click.ClickException(keys_module.missing_key_message(resolution))
+    synoptic = import_module(".acquisition.synoptic", __package__)
+    # The client reports its station count and chunks at info level: the download can take minutes.
+    configure_logging(3)
+    try:
+        payload = synoptic.SynopticTimeseriesClient(resolution.value).fetch(domain, start_time, end_time)
+    except (synoptic.SynopticError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    stations = payload.get("STATION") or []
+    if not stations:
+        raise click.ClickException("No weather station observed inside the domain during the window.")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    # Compact separators: a payload of a hundred stations over weeks is tens of megabytes.
+    output.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+    click.echo(f"Wrote {output}: {len(stations)} stations, {output.stat().st_size / 1e6:.1f} MB.")
     return 0
 
 

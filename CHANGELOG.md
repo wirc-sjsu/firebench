@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `firebench data synoptic`, which downloads the Synoptic weather-station time series of a
+  domain and a UTC window with the user's own token and writes them as one raw Synoptic JSON file,
+  the file the weather QC pipeline reads.
 - Add optional fire-weather diagnostics to the weather-forecast benchmark (`benchmark.diagnostics` in
   the setup file, `WxForecastSpec.diagnostics`): the vapour pressure deficit and the Fosberg fire
   weather index, scored like a variable, and the events low RH, strong wind, and critical fire
