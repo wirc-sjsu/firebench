@@ -26,7 +26,7 @@ from .files import (
 )
 from .landfire import standardize_landfire_from_geotiff
 from .building_damage import list_dins_incidents, standardize_dins_building_damage
-from .perimeters import list_kml_layers, standardize_perimeter_from_kml
+from .perimeters import list_kml_layers, read_kml_layer, standardize_perimeter_from_kml
 from .ravg import (
     standardize_ravg_ba_from_geotiff,
     standardize_ravg_cbi_from_geotiff,
