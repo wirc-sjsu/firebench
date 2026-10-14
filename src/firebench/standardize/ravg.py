@@ -4,11 +4,15 @@ import h5py
 import hdf5plugin
 import numpy as np
 import rasterio
+import shapely
 from pyproj import CRS
 from .tools import check_std_version, import_tif_with_rect_box
 from ..tools.logging_config import logger
 from ..tools import StandardVariableNames as svn
 from .std_file_info import SPATIAL_2D
+
+# Smallest area of a polygon to blank out, in square degrees: about a hundredth of a square metre.
+MIN_POLYGON_AREA = 1e-12
 
 
 def standardize_ravg_cc_from_geotiff(
@@ -22,6 +26,7 @@ def standardize_ravg_cc_from_geotiff(
     invert_y: bool = False,
     compression_lvl: int = 3,
     exclude_boxes: list[tuple[tuple[float, float], tuple[float, float]]] | None = None,
+    exclude_polygons: list[list[tuple[float, float]]] | None = None,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard for Canopy Cover Loss
@@ -46,6 +51,11 @@ def standardize_ravg_cc_from_geotiff(
         A cell whose position (`position_lat`, `position_lon`) is strictly inside a box is set to the
         fill value, 0. The output coordinates must be geographic. The boxes are stored as JSON in the
         group attribute `excluded_boxes`, with null for an infinite bound.
+    exclude_polygons: list[list[tuple[float, float]]] | None
+        Polygons to blank out, each as its vertices [(lat, lon), ...], at least three, the ring closed
+        or not. A cell whose position is strictly inside a polygon is set to the fill value, 0, as for
+        a box. A polygon that crosses itself is refused. The output coordinates must be geographic. The
+        polygons are stored as JSON in the group attribute `excluded_polygons`, as given.
 
     Returns
     -------
@@ -65,6 +75,7 @@ def standardize_ravg_cc_from_geotiff(
         compression_lvl,
         fill_value=0,
         exclude_boxes=exclude_boxes,
+        exclude_polygons=exclude_polygons,
     )
 
 
@@ -79,6 +90,7 @@ def standardize_ravg_cbi_from_geotiff(
     invert_y: bool = False,
     compression_lvl: int = 3,
     exclude_boxes: list[tuple[tuple[float, float], tuple[float, float]]] | None = None,
+    exclude_polygons: list[list[tuple[float, float]]] | None = None,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard for Composite Burn Index Severity
@@ -103,6 +115,11 @@ def standardize_ravg_cbi_from_geotiff(
         A cell whose position (`position_lat`, `position_lon`) is strictly inside a box is set to the
         fill value, 0. The output coordinates must be geographic. The boxes are stored as JSON in the
         group attribute `excluded_boxes`, with null for an infinite bound.
+    exclude_polygons: list[list[tuple[float, float]]] | None
+        Polygons to blank out, each as its vertices [(lat, lon), ...], at least three, the ring closed
+        or not. A cell whose position is strictly inside a polygon is set to the fill value, 0, as for
+        a box. A polygon that crosses itself is refused. The output coordinates must be geographic. The
+        polygons are stored as JSON in the group attribute `excluded_polygons`, as given.
 
     Returns
     -------
@@ -122,6 +139,7 @@ def standardize_ravg_cbi_from_geotiff(
         compression_lvl,
         fill_value=0,
         exclude_boxes=exclude_boxes,
+        exclude_polygons=exclude_polygons,
     )
 
 
@@ -136,6 +154,7 @@ def standardize_ravg_ba_from_geotiff(
     invert_y: bool = False,
     compression_lvl: int = 3,
     exclude_boxes: list[tuple[tuple[float, float], tuple[float, float]]] | None = None,
+    exclude_polygons: list[list[tuple[float, float]]] | None = None,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard for Live Basal Area loss
@@ -160,6 +179,11 @@ def standardize_ravg_ba_from_geotiff(
         A cell whose position (`position_lat`, `position_lon`) is strictly inside a box is set to the
         fill value, 0. The output coordinates must be geographic. The boxes are stored as JSON in the
         group attribute `excluded_boxes`, with null for an infinite bound.
+    exclude_polygons: list[list[tuple[float, float]]] | None
+        Polygons to blank out, each as its vertices [(lat, lon), ...], at least three, the ring closed
+        or not. A cell whose position is strictly inside a polygon is set to the fill value, 0, as for
+        a box. A polygon that crosses itself is refused. The output coordinates must be geographic. The
+        polygons are stored as JSON in the group attribute `excluded_polygons`, as given.
 
     Returns
     -------
@@ -179,6 +203,7 @@ def standardize_ravg_ba_from_geotiff(
         compression_lvl,
         fill_value=0,
         exclude_boxes=exclude_boxes,
+        exclude_polygons=exclude_polygons,
     )
 
 
@@ -195,6 +220,7 @@ def _standardize_ravg_from_geotiff(
     compression_lvl: int = 3,
     fill_value=None,
     exclude_boxes: list[tuple[tuple[float, float], tuple[float, float]]] | None = None,
+    exclude_polygons: list[list[tuple[float, float]]] | None = None,
 ):
     """
     Convert a RAVG GeoTIFF to FireBench HDF5 Standard.
@@ -219,6 +245,11 @@ def _standardize_ravg_from_geotiff(
         A cell whose position (`position_lat`, `position_lon`) is strictly inside a box is set to the
         fill value, 0. The output coordinates must be geographic. The boxes are stored as JSON in the
         group attribute `excluded_boxes`, with null for an infinite bound.
+    exclude_polygons: list[list[tuple[float, float]]] | None
+        Polygons to blank out, each as its vertices [(lat, lon), ...], at least three, the ring closed
+        or not. A cell whose position is strictly inside a polygon is set to the fill value, 0, as for
+        a box. A polygon that crosses itself is refused. The output coordinates must be geographic. The
+        polygons are stored as JSON in the group attribute `excluded_polygons`, as given.
 
     Returns
     -------
@@ -228,12 +259,17 @@ def _standardize_ravg_from_geotiff(
     logger.debug("Standardize RAVG %s dataset from file %s ", ravg_variable, geotiff_path)
     check_std_version(h5file)
     boxes = _checked_boxes(geotiff_path, projection, exclude_boxes) if exclude_boxes else []
+    polygons = _checked_polygons(geotiff_path, projection, exclude_polygons) if exclude_polygons else []
 
     lat, lon, ravg_data, crs, nodata = import_tif_with_rect_box(
         geotiff_path, lower_left_corner, upper_right_corner, projection, invert_y
     )
     for (lat_min, lon_min), (lat_max, lon_max) in boxes:
         inside = (lat > lat_min) & (lat < lat_max) & (lon > lon_min) & (lon < lon_max)
+        ravg_data[inside] = 0 if fill_value is None else fill_value
+    for polygon, _ in polygons:
+        # Shapely works in (x, y): longitude first. A cell on the boundary is not inside.
+        inside = shapely.contains_xy(polygon, lon, lat)
         ravg_data[inside] = 0 if fill_value is None else fill_value
 
     if group_name is None:
@@ -259,6 +295,8 @@ def _standardize_ravg_from_geotiff(
             [[[None if np.isinf(bound) else bound for bound in corner] for corner in box] for box in boxes],
             allow_nan=False,
         )
+    if polygons:
+        g.attrs["excluded_polygons"] = json.dumps([vertices for _, vertices in polygons], allow_nan=False)
 
     dlat = g.create_dataset(
         "position_lat", data=lat, dtype=np.float64, **hdf5plugin.Zstd(clevel=compression_lvl)
@@ -280,16 +318,43 @@ def _standardize_ravg_from_geotiff(
         ddata.attrs["_FillValue"] = fill_value
 
 
-def _checked_boxes(geotiff_path: Path, projection: str | None, exclude_boxes: list) -> list:
-    """Check that the boxes are well formed and that the output coordinates are geographic."""
+def _check_geographic(geotiff_path: Path, projection: str | None, option: str) -> None:
+    """Refuse an exclusion option when the output coordinates are not geographic."""
     if projection is None:
         with rasterio.open(geotiff_path) as src:
             projection = src.crs
     if not CRS(projection).is_geographic:
         raise ValueError(
-            f"exclude_boxes are geographic, but the output coordinates are in {CRS(projection).name}. "
+            f"{option} are geographic, but the output coordinates are in {CRS(projection).name}. "
             "Set `projection` to a geographic CRS, for example EPSG:4326."
         )
+
+
+def _checked_polygons(geotiff_path: Path, projection: str | None, exclude_polygons: list) -> list:
+    """Each polygon as a shapely polygon in (lon, lat) with its vertices as given, once checked."""
+    _check_geographic(geotiff_path, projection, "exclude_polygons")
+    polygons = []
+    for item in exclude_polygons:
+        try:
+            vertices = [(float(lon), float(lat)) for lat, lon in item]
+            valid = len(set(vertices)) >= 3 and all(np.isfinite(vertices).ravel())
+            polygon = shapely.Polygon(vertices) if valid else None
+            # A ring of points on one line has no area, up to rounding.
+            valid = valid and polygon.is_valid and polygon.area > MIN_POLYGON_AREA
+        except (TypeError, ValueError):
+            valid = False
+        if not valid:
+            raise ValueError(
+                f"exclude polygon {item!r} must be at least three (lat, lon) vertices of a ring "
+                "that does not cross itself"
+            )
+        polygons.append((polygon, [[lat, lon] for lon, lat in vertices]))
+    return polygons
+
+
+def _checked_boxes(geotiff_path: Path, projection: str | None, exclude_boxes: list) -> list:
+    """Check that the boxes are well formed and that the output coordinates are geographic."""
+    _check_geographic(geotiff_path, projection, "exclude_boxes")
 
     boxes = []
     for item in exclude_boxes:
