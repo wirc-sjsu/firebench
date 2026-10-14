@@ -47,6 +47,35 @@ def list_kml_layers(path: Path) -> list[dict]:
     return _layers(path, _read_kml(path))
 
 
+def read_kml_layer(path: Path, layer: str | None = None) -> gpd.GeoDataFrame:
+    """
+    Read the polygons of one layer of a KML or KMZ file, as `standardize_perimeter_from_kml` reads them.
+
+    Every hole of a polygon is kept, including the holes of an inner boundary that holds several
+    rings. Features that are not polygons or multipolygons are left out. Nothing is written.
+
+    Parameters
+    ----------
+    path : Path
+        A `.kml` or `.kmz` file.
+    layer : str | None
+        Layer to read, as named by `list_kml_layers`. None reads the only layer of the file.
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        The polygons of the layer with their attributes, in longitude and latitude (EPSG:4326).
+        Empty when the layer holds no polygon.
+
+    Raises
+    ------
+    ValueError
+        If the file cannot be read, or the layer is unknown or not given when the file has several.
+    """  # pylint: disable=line-too-long
+    kml = _read_kml(path)
+    return _read_polygons(path, kml, _select_layer(path, kml, layer))
+
+
 def standardize_perimeter_from_kml(
     kml_path: Path,
     h5file: h5py.File,

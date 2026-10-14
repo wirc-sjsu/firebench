@@ -120,6 +120,42 @@ def test_list_kml_layers_refuses_other_file_types(tmp_path):
         fs.list_kml_layers(empty_kmz)
 
 
+def test_read_kml_layer_gives_the_polygons_of_the_layer(bundle, tmp_path):
+    _, _, kml_path = bundle
+    kmz_path = tmp_path / "source.kmz"
+    with zipfile.ZipFile(kmz_path, "w") as archive:
+        archive.write(kml_path, "doc.kml")
+
+    for path in (kml_path, kmz_path):
+        polygons = fs.read_kml_layer(path, "perimeter_a")
+        assert polygons.crs.to_epsg() == 4326
+        assert shapely.force_2d(polygons.union_all()).equals(
+            shapely.union(Polygon(SQUARE_A1), Polygon(SQUARE_A2))
+        )
+    # a layer of points holds no polygon
+    assert fs.read_kml_layer(kml_path, "hot_spots").empty
+
+
+def test_read_kml_layer_refuses_an_unknown_or_missing_layer_name(bundle):
+    _, _, kml_path = bundle
+    with pytest.raises(ValueError, match="layer 'no_such_layer' not found"):
+        fs.read_kml_layer(kml_path, "no_such_layer")
+    with pytest.raises(ValueError, match="Name one with `layer`"):
+        fs.read_kml_layer(kml_path)
+
+
+def test_read_kml_layer_keeps_every_ring_of_an_inner_boundary(tmp_path):
+    kml_path = tmp_path / "holes.kml"
+    kml_path.write_text(
+        _kml_text({"perimeter": [_polygon_placemark(SQUARE_B, [[HOLE_1, HOLE_2]])]}), encoding="utf-8"
+    )
+
+    # the only layer is read without a name
+    polygons = fs.read_kml_layer(kml_path)
+
+    assert shapely.force_2d(polygons.union_all()).equals(Polygon(SQUARE_B, [HOLE_1, HOLE_2]))
+
+
 def test_chosen_layer_is_the_one_stored(bundle):
     h5, h5_dir, kml_path = bundle
 

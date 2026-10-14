@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `read_kml_layer` to `firebench.standardize`: the polygons of one layer of a KML or KMZ file,
+  read as `standardize_perimeter_from_kml` reads them, every hole kept, without writing anything. It
+  lets a tool show a layer before a perimeter is standardized from it.
 - Add `exclude_polygons` to the RAVG standardization functions, beside `exclude_boxes`: the cells
   strictly inside geographic polygons, given as (lat, lon) vertices, are set to the fill value, and
   the polygons are recorded in the group attribute `excluded_polygons`. A polygon that crosses
