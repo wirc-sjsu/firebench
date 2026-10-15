@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add satellite fire detections to the standard format: `/unstructured/fire_detections/<stream>`,
+  one group per satellite with a `detections` table and an `observations` table, and the namespace
+  variables `FIRE_RADIATIVE_POWER`, `FIRE_DETECTION_CONFIDENCE`, `FIRE_TEMPERATURE`,
+  `BRIGHTNESS_TEMPERATURE_MIR`, `BRIGHTNESS_TEMPERATURE_TIR`, `PIXEL_SIZE_SCAN`, `PIXEL_SIZE_TRACK`,
+  `FOOTPRINT_LAT`, `FOOTPRINT_LON`, `DAY_NIGHT_FLAG`, and `OBSERVED_FRACTION`.
+- Add the key services `firms` (`FIRMS_MAP_KEY`), `goes`, and `cmr` (anonymous). `redact` also
+  removes a FIRMS key from a URL path.
+- Add `firebench.acquisition.cmr`: the granules of a fire product over a box from NASA CMR, merged
+  into overpasses with the share of the box each one covered.
+- Add `firebench.acquisition.firms` and `firebench data firms`: the VIIRS and MODIS detections of a
+  domain and window from NASA FIRMS, with the CMR overpasses, as one JSON bundle that keeps every
+  CSV verbatim and never holds the key.
+- Add `firebench.acquisition.goes_fdc` and `firebench data goes-fdc`: the GOES ABI fire product
+  (`ABI-L2-FDCC`) scans of a window, with the satellite of each platform resolved by date, one scan
+  per time step, downloaded in parallel.
+- Add `standardize_firms_bundle`, `standardize_goes_fdc`, `read_fdc_file` (h5py, no netCDF4),
+  `list_fire_detection_streams`, `confidence_class`, and `frp_time_series` to
+  `firebench.standardize`. `frp_time_series` gives the FRP total of each observation: 0 when the
+  sensor saw no fire, NaN when no detection has FRP, and no entry when the sensor did not look.
 - Add `placemark` to `read_kml_layer` and `standardize_perimeter_from_kml`: only the polygons of the
   placemarks of that name are read, and the name is stored in the group attribute `placemark`.
   `list_kml_layers` lists the named polygon placemarks of each layer (`placemarks`). The NIROPS files of

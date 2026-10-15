@@ -18,6 +18,7 @@ objects and modules omitted from this reference are internal and may change with
    stats.rst
    wind_interpolation.rst
    standardize.rst
+   acquisition.rst
    signing.rst
    benchmarks.rst
    sensors.rst

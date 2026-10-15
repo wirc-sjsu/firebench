@@ -26,6 +26,15 @@ from .files import (
 )
 from .landfire import standardize_landfire_from_geotiff
 from .building_damage import list_dins_incidents, standardize_dins_building_damage
+from .fire_detections import (
+    FrpSeries,
+    confidence_class,
+    frp_time_series,
+    list_fire_detection_streams,
+    read_fdc_file,
+    standardize_firms_bundle,
+    standardize_goes_fdc,
+)
 from .perimeters import list_kml_layers, read_kml_layer, standardize_perimeter_from_kml
 from .ravg import (
     standardize_ravg_ba_from_geotiff,
@@ -38,6 +47,8 @@ from .std_file_info import (
     SPATIAL_1D,
     SPATIAL_2D,
     SPATIAL_3D,
+    UNSTRUCTURED,
+    FIRE_DETECTIONS,
     GEOPOLYGONS,
     FUEL_MODELS,
     MISCELLANEOUS,

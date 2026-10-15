@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 SERVICE_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 QUERY_SECRET_PATTERN = re.compile(r"(?i)\b(token|apikey|api_key|key|map_key)=([^&\s\"']+)")
+# FIRMS puts its MAP_KEY in the URL path: /api/area/csv/<key>/..., /api/data_availability/csv/<key>/...
+PATH_SECRET_PATTERN = re.compile(r"(?i)(/api/[a-z_]+/(?:csv|json|kml)/)([^/\s\"']+)")
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,24 @@ SERVICES = {
     "hrrr": ServiceInfo(
         name="hrrr",
         description="NOAA HRRR forecasts on AWS Open Data (anonymous, no key needed)",
+        env_var=None,
+        anonymous=True,
+    ),
+    "firms": ServiceInfo(
+        name="firms",
+        description="NASA FIRMS MAP_KEY (VIIRS and MODIS fire detections)",
+        env_var="FIRMS_MAP_KEY",
+        signup_url="https://firms.modaps.eosdis.nasa.gov/api/map_key/",
+    ),
+    "goes": ServiceInfo(
+        name="goes",
+        description="NOAA GOES fire detections on AWS Open Data (anonymous, no key needed)",
+        env_var=None,
+        anonymous=True,
+    ),
+    "cmr": ServiceInfo(
+        name="cmr",
+        description="NASA CMR granule search (anonymous, no key needed)",
         env_var=None,
         anonymous=True,
     ),
@@ -213,11 +233,15 @@ def fingerprint(value: str) -> str:
 
 
 def redact(text: str, secrets=()) -> str:
-    """Remove secrets from ``text``: the given values and any ``token=``/``apikey=`` query value."""
+    """
+    Remove secrets from ``text``: the given values, any ``token=``/``apikey=`` query value, and the
+    key FIRMS carries in its URL path (``/api/area/csv/<key>/``).
+    """
     redacted = str(text)
     for secret in secrets:
         if secret:
             redacted = redacted.replace(str(secret), "***")
+    redacted = PATH_SECRET_PATTERN.sub(lambda match: f"{match.group(1)}***", redacted)
     return QUERY_SECRET_PATTERN.sub(lambda match: f"{match.group(1)}=***", redacted)
 
 

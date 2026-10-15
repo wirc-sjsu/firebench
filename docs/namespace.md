@@ -14,6 +14,8 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `AIR_TEMPERATURE`: Air temperature [K]
 - `ALPHA`: Alpha
 - `BETA`: Beta
+- `BRIGHTNESS_TEMPERATURE_MIR`: Brightness temperature in the middle infrared, e.g. VIIRS I4 or MODIS band 21/22 [K]
+- `BRIGHTNESS_TEMPERATURE_TIR`: Brightness temperature in the thermal infrared, e.g. VIIRS I5 or MODIS band 31 [K]
 - `BUILDING_RATIO_FIRE_RESISTANT`: Ratio of fire resistant building [-]
 - `BUILDING_RATIO_STRUCTURE_WOOD_BARE`: Ratio of buildings made with bare wood materials [-]
 - `BUILDING_RATIO_STRUCTURE_WOOD_MORTAR`: Ratio of buildings made with mortar [-]
@@ -23,9 +25,15 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `CANOPY_HEIGHT`: Canopy height [m]
 - `CANOPY_HEIGHT_BOTTOM`: Canopy height bottom [m]
 - `CANOPY_HEIGHT_TOP`: Canopy height top [m]
+- `DAY_NIGHT_FLAG`: Day (1) or night (0) acquisition flag (int)
 - `DIRECTION`: Direction [-]
 - `FIRE_ARRIVAL_TIME`: Fire arrival time [s]
 - `FIRE_BURN_SEVERITY`: Fire burn severity [-]
+- `FIRE_DETECTION_CONFIDENCE`: Product-native confidence of a fire detection (int)
+- `FIRE_RADIATIVE_POWER`: Fire radiative power [MW]
+- `FIRE_TEMPERATURE`: Fire temperature retrieved from a fire pixel [K]
+- `FOOTPRINT_LAT`: Latitude of the corners of a pixel footprint [deg]
+- `FOOTPRINT_LON`: Longitude of the corners of a pixel footprint [deg]
 - `FUEL_CLASS`: Fuel class (int)
 - `FUEL_CHAPARRAL_FLAG`: Fuel chaparral flag (int)
 - `FUEL_COVER`: Fuel cover [%]
@@ -80,6 +88,9 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `MAGNITUDE`: Magnitude
 - `NORMAL_SPREAD_DIR_X`: Fire front normal vector component in x direction [-]
 - `NORMAL_SPREAD_DIR_Y`: Fire front normal vector component in y direction [-]
+- `OBSERVED_FRACTION`: Fraction of an area observed by a sensor [-]
+- `PIXEL_SIZE_SCAN`: Pixel size along the scan direction [m]
+- `PIXEL_SIZE_TRACK`: Pixel size along the track direction [m]
 - `RATE_OF_SPREAD`: Rate of spread [m s-1]
 - `RAVG_CANOPY_COVER_LOSS`: Rapid Assessment of Vegetation Condition After Wildfire canopy cover loss [%]
 - `RAVG_COMPOSITE_BURN_INDEX_SEVERITY`: Rapid Assessment of Vegetation Condition After Wildfire composite burn index severity [-]

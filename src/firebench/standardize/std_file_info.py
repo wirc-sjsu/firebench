@@ -5,6 +5,8 @@ SPATIAL_1D = "spatial_1d"
 SPATIAL_2D = "spatial_2d"
 SPATIAL_3D = "spatial_3d"
 UNSTRUCTURED = "unstructured"
+# satellite fire detections, under UNSTRUCTURED
+FIRE_DETECTIONS = "fire_detections"
 GEOPOLYGONS = "polygons"
 FUEL_MODELS = "fuel_models"
 MISCELLANEOUS = "miscellaneous"

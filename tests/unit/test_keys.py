@@ -311,3 +311,40 @@ def test_corrupt_origin_metadata_is_actionable():
 def test_origins_require_a_stored_token():
     with pytest.raises(keys.KeyConfigError, match="no stored"):
         keys.set_origins(["https://first.example"])
+
+
+def test_firms_key_comes_from_its_environment_variable_and_goes_and_cmr_need_none(monkeypatch):
+    monkeypatch.setenv("FIRMS_MAP_KEY", "firms-key-value")
+
+    assert keys.resolve_key("firms").value == "firms-key-value"
+    assert keys.resolve_key("firms").source == "environment variable FIRMS_MAP_KEY"
+    for service in ("goes", "cmr"):
+        resolution = keys.resolve_key(service)
+        assert resolution.anonymous and resolution.found and resolution.value is None
+
+
+def test_missing_firms_key_names_the_sign_up_page(monkeypatch):
+    monkeypatch.delenv("FIRMS_MAP_KEY", raising=False)
+
+    message = keys.missing_key_message(keys.resolve_key("firms"))
+    assert "environment variable FIRMS_MAP_KEY" in message
+    assert "firebench keys set firms" in message
+    assert "https://firms.modaps.eosdis.nasa.gov/api/map_key/" in message
+
+
+def test_redact_removes_a_firms_key_from_the_url_path_without_being_given_it():
+    area = "HTTP 500 for https://firms.modaps.eosdis.nasa.gov/api/area/csv/0a1b2c3d4e/VIIRS_SNPP_SP/1,2,3,4/5/2021-08-01"
+    availability = "failed: https://firms.modaps.eosdis.nasa.gov/api/data_availability/csv/0a1b2c3d4e/ALL"
+
+    for text in (area, availability):
+        redacted = keys.redact(text)
+        assert "0a1b2c3d4e" not in redacted
+        assert "/csv/***/" in redacted or redacted.endswith("/csv/***/ALL")
+    assert keys.redact(area).endswith("/csv/***/VIIRS_SNPP_SP/1,2,3,4/5/2021-08-01")
+
+
+def test_redact_leaves_a_url_without_a_key_unchanged_and_still_redacts_query_keys():
+    plain = "https://noaa-goes17.s3.amazonaws.com/?list-type=2&prefix=ABI-L2-FDCC/2021/232/09/"
+
+    assert keys.redact(plain) == plain
+    assert keys.redact("https://x/api?token=abc") == "https://x/api?token=***"
