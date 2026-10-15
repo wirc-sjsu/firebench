@@ -113,6 +113,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- `standardize_landfire_from_geotiff` writes the licence terms of the group, as the Synoptic
+  standardization does: `license` (`/DATA_LICENSES/LANDFIRE.txt`), `redistribution_allowed`
+  (true), `public_access_level` (`Public`), and `data_use_restrictions`. The data package must ship
+  `DATA_LICENSES/LANDFIRE.txt`.
 - Treat every fuel-moisture sensor as a trusted source: 10 h FMC stations enter the TSO station set
   regardless of their sensor-height confidence and skip the model/observation height match.
 - Move the weather-station selection, requirement, run-loop, and aggregation helpers of the Caldor

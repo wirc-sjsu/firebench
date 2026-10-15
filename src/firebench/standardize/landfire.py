@@ -66,6 +66,10 @@ def standardize_landfire_from_geotiff(
     g = h5file.create_group(group_name)
     g.attrs["data_source"] = f"LANDFIRE {geotiff_path}"
     g.attrs["crs"] = str(crs)
+    g.attrs["license"] = "/DATA_LICENSES/LANDFIRE.txt"
+    g.attrs["data_use_restrictions"] = "No restrictions on public use"
+    g.attrs["public_access_level"] = "Public"
+    g.attrs["redistribution_allowed"] = True
 
     # Lat/Lon as 2-D arrays
     dlat = g.create_dataset(
