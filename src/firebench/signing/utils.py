@@ -8,7 +8,7 @@ import tempfile
 _ALLOWED_GPG_PATHS = {
     "/usr/bin/gpg",
     "/opt/homebrew/bin/gpg",
-    "/opt/local/bin/gpg", # macports install location with command: sudo port install gnupg2
+    "/opt/local/bin/gpg",  # macports install location with command: sudo port install gnupg2
 }
 
 
