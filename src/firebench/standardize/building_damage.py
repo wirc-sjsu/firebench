@@ -17,18 +17,22 @@ from .std_file_info import POINTS
 from .tools import check_std_version
 
 DEFAULT_DAMAGE = "No Damage"
-# least to most severe; a label outside this list ranks with `Inaccessible`
+# least to most severe; a label outside this list ranks with `Inaccessible`. CAL FIRE renamed two
+# classes in 2026 (`Affected (>0-10%)`, `Major (25-50%)`): both spellings are listed, as in the tables.
 DAMAGE_SEVERITY = {
     "No Damage": 0,
     "Inaccessible": 1,
     "Affected (1-9%)": 2,
+    "Affected (>0-10%)": 2,
     "Minor (10-25%)": 3,
     "Major (26-50%)": 4,
+    "Major (25-50%)": 4,
     "Destroyed (>50%)": 5,
 }
 SYNTHETIC_BUILDING_RADIUS_M = 5.0
 
-# column of the DINS table: its name, and whether the name may be followed by other text
+# column of the DINS table: its name, and whether the name may be followed by other text. A table
+# exported since 2026 marks required columns with a leading `*` (`* Incident Name`), which is ignored.
 _DINS_COLUMNS = {
     "name": ("Incident Name", False),
     "number": ("Incident Number", True),
@@ -61,7 +65,8 @@ def list_dins_incidents(dins_csv: Path) -> list[dict]:
     ----------
     dins_csv : Path
         The CAL FIRE DINS table. Columns used: `Incident Name`, `Incident Number`,
-        `Incident Start Date`, `Latitude`, `Longitude`, `Damage`.
+        `Incident Start Date`, `Latitude`, `Longitude`, `Damage`. A name may start with `*`, as
+        in the tables CAL FIRE exports.
 
     Returns
     -------
@@ -144,8 +149,8 @@ def standardize_dins_building_damage(
     ----------
     dins_csv : Path
         The CAL FIRE DINS table. Columns used: `Incident Name`, `Incident Number`,
-        `Incident Start Date`, `Latitude`, `Longitude`, `Damage`. Rows missing a position or a
-        damage are dropped.
+        `Incident Start Date`, `Latitude`, `Longitude`, `Damage`. A name may start with `*`, as
+        in the tables CAL FIRE exports. Rows missing a position or a damage are dropped.
     footprints : Path
         Building footprints as line-delimited GeoJSON, the format of Microsoft's Global ML Building
         Footprints. Footprints that intersect the box are kept.
@@ -237,6 +242,11 @@ def standardize_dins_building_damage(
     return group
 
 
+def _dins_column_name(column: str) -> str:
+    """The name of a DINS column without surrounding spaces and the `*` that marks a required column."""
+    return column.strip().lstrip("*").strip()
+
+
 def _read_dins(dins_csv: Path) -> pd.DataFrame:
     """Read the columns of a DINS table this module uses, under the keys of `_DINS_COLUMNS`."""
     try:
@@ -246,7 +256,8 @@ def _read_dins(dins_csv: Path) -> pd.DataFrame:
             matches = [
                 column
                 for column in header
-                if column.strip() == name or (is_prefix and column.strip().startswith(name))
+                if _dins_column_name(column) == name
+                or (is_prefix and _dins_column_name(column).startswith(name))
             ]
             if not matches:
                 raise ValueError(f"column `{name}` not found")

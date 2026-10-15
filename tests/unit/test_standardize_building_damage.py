@@ -7,6 +7,7 @@ import pytest
 from pyproj import Transformer
 
 import firebench.standardize as fs
+from firebench.standardize.building_damage import DAMAGE_SEVERITY
 
 # Footprints and DINS rows are laid out in metres in this projection, which is also the one the
 # function is asked to measure distances in, so a row placed 49 m from a centroid is at 49 m.
@@ -140,6 +141,41 @@ def test_list_dins_incidents_gives_the_box_of_each_incident(inputs):
     assert twin["lat_min"] == pytest.approx(min(first[1], second[1]), abs=1e-12)
     assert twin["lat_max"] == pytest.approx(max(first[1], second[1]), abs=1e-12)
     assert json.loads(json.dumps(twin)) == twin
+
+
+def test_table_with_starred_required_columns_is_read(inputs, tmp_path):
+    dins_csv, footprints, h5 = inputs
+    starred = tmp_path / "starred.csv"
+    header, rest = dins_csv.read_text(encoding="utf-8-sig").split("\n", 1)
+    header = header.replace('"Damage"', '"* Damage"').replace('"Incident Name"', '"* Incident Name"')
+    starred.write_text(header + "\n" + rest, encoding="utf-8-sig")
+
+    assert fs.list_dins_incidents(starred) == fs.list_dins_incidents(dins_csv)
+    group = _standardize((starred, footprints, h5))
+    assert _text(group["building_damage"])[:3] == ["Affected (1-9%)", "Destroyed (>50%)", "Major (26-50%)"]
+
+
+def test_class_names_of_2026_rank_as_the_names_they_replace(inputs, tmp_path):
+    _, footprints, h5 = inputs
+    rows = [
+        ("Test Fire", "N-1", "8/14/2026 12:00:00 AM", 0, 5, 0, "Affected (>0-10%)"),
+        ("Test Fire", "N-1", "8/14/2026 12:00:00 AM", 0, 8, 0, "No Damage"),
+        ("Test Fire", "N-1", "8/14/2026 12:00:00 AM", 1, 5, 0, "Major (25-50%)"),
+        ("Test Fire", "N-1", "8/14/2026 12:00:00 AM", 1, 8, 0, "Minor (10-25%)"),
+        ("Test Fire", "N-1", "8/14/2026 12:00:00 AM", 2, 5, 0, "Major (25-50%)"),
+        ("Test Fire", "N-1", "8/14/2026 12:00:00 AM", 2, 8, 0, "Destroyed (>50%)"),
+    ]
+    dins_csv = _write_dins(tmp_path / "dins_2026.csv", rows=rows)
+
+    group = _standardize((dins_csv, footprints, h5))
+
+    assert _text(group["building_damage"])[:3] == [
+        "Affected (>0-10%)",
+        "Major (25-50%)",
+        "Destroyed (>50%)",
+    ]
+    assert DAMAGE_SEVERITY["Affected (>0-10%)"] == DAMAGE_SEVERITY["Affected (1-9%)"]
+    assert DAMAGE_SEVERITY["Major (25-50%)"] == DAMAGE_SEVERITY["Major (26-50%)"]
 
 
 def test_footprint_takes_the_most_severe_damage_of_its_rows(inputs):

@@ -1385,3 +1385,14 @@ def test_run_with_groups_scores_the_composed_target(monkeypatch, tmp_path):
 
     assert seen["scheme"] == c001_caldor.compose_target(["Fire Perimeter W2"])
     assert seen["benchmarks"] == set(c001_caldor.GROUPS["Fire Perimeter W2"]["benchmarks"])
+
+
+def test_binary_building_damage_accepts_the_class_names_of_2026(tmp_path):
+    names = ["No Damage", "Affected (>0-10%)", "Affected (1-9%)", "Minor (10-25%)", "Major (25-50%)"]
+    names += ["Major (26-50%)", "Destroyed (>50%)", "Inaccessible"]
+    with h5py.File(tmp_path / "damage.h5", "w") as h5:
+        h5.create_dataset("/points/building_damaged/building_damage", data=np.array(names, dtype="S"))
+
+        binary = c001_caldor.aggregate_building_damage_binary(h5)
+
+    assert binary.tolist() == [0, 0, 0, 0, 1, 1, 1]

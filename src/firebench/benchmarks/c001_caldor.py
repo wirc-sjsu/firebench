@@ -1898,13 +1898,14 @@ def aggregate_scores(benchmark_results, agg_scheme, ignored_benchmarks: set[str]
 def aggregate_building_damage_binary(data_file: File):
     """
     Aggregates building damage classes into binary classes
-    - unburnt (0) from `No Damage`, `Affected (1-9%)`, and `Minor (10-25%)`,
-    - burnt (1) from `Major (26-50%)`, and `Destroyed (>50%)`
+    - unburnt (0) from `No Damage`, `Affected (1-9%)` or `Affected (>0-10%)`, and `Minor (10-25%)`,
+    - burnt (1) from `Major (26-50%)` or `Major (25-50%)`, and `Destroyed (>50%)`
 
+    CAL FIRE renamed two classes in 2026; both spellings are accepted.
     class `Inaccessible` is ignored.
     """
-    UNBURNT_CAT = ["No Damage", "Affected (1-9%)", "Minor (10-25%)"]
-    BURNT_CAT = ["Major (26-50%)", "Destroyed (>50%)"]
+    UNBURNT_CAT = ["No Damage", "Affected (1-9%)", "Affected (>0-10%)", "Minor (10-25%)"]
+    BURNT_CAT = ["Major (26-50%)", "Major (25-50%)", "Destroyed (>50%)"]
     binary_bd = []
     bd = np.array(data_file[f"/{fs.POINTS}/building_damaged/building_damage"][:], dtype="U")
 
