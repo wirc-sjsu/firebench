@@ -113,6 +113,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Read the CAL FIRE DINS tables exported since 2026: column names may start with the `*` that marks a
+  required column (`* Damage`, `* Incident Name`), and the renamed classes `Affected (>0-10%)` and
+  `Major (25-50%)` rank as `Affected (1-9%)` and `Major (26-50%)` and fall in the same binary class
+  of the Caldor benchmark.
 - `standardize_landfire_from_geotiff` writes the licence terms of the group, as the Synoptic
   standardization does: `license` (`/DATA_LICENSES/LANDFIRE.txt`), `redistribution_allowed`
   (true), `public_access_level` (`Public`), and `data_use_restrictions`. The data package must ship

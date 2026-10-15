@@ -39,6 +39,7 @@ The original CSV file containing multiple fires has been processed to extract on
 - 'Destroyed (>50%)',
 - 'Inaccessible'.
 
+Since 2026, CAL FIRE names two of these classes 'Affected (>0-10%)' and 'Major (25-50%)'. The Caldor records are the same buildings with the same classes; FireBench accepts both spellings.
 
 The sha256 of the source file is: *0190a5a51aafafa20270fe046a7ae17a53697b1fb218ff8096a3d8ebbc9ef983*.
 
@@ -83,15 +84,15 @@ Total                  | 4444
 *Performed at obs dataset level*
 
 The data from the original CSV file were standardized without modification.
-The column names from the original csv file were corrected from "* Damage" to "Damage" and "* Incident Name" to "Incident Name" to simplify processing.
+The column names from the original csv file were corrected from "* Damage" to "Damage" and "* Incident Name" to "Incident Name" to simplify processing. FireBench now reads the column names with or without the leading `*`.
 
 #### Binary classes of building damage
 
 *Performed at benchmark run level*
 
 To perform some calculations, the damaged building classes can be aggregated to form binary classes. The `Inaccessible` is ignored. The following aggregation method is used:
-- `unburnt` binary class contains `No Damage`, `Affected (1-9%)`, and `Minor (10-25%)`,
-- `burnt` binary class contains `Major (26-50%)`, and `Destroyed (>50%)`.
+- `unburnt` binary class contains `No Damage`, `Affected (1-9%)` (or `Affected (>0-10%)`), and `Minor (10-25%)`,
+- `burnt` binary class contains `Major (26-50%)` (or `Major (25-50%)`), and `Destroyed (>50%)`.
 
 ### Benchmarks
 
