@@ -23,14 +23,14 @@ def _linear_ring(ring):
     return f"<LinearRing><coordinates>{coordinates}</coordinates></LinearRing>"
 
 
-def _polygon_placemark(ring, inner_boundaries=()):
+def _polygon_placemark(ring, inner_boundaries=(), name="polygon"):
     """A polygon placemark. Each inner boundary is a list of rings: standard KML has one ring in each."""
     inner = "".join(
         f"<innerBoundaryIs>{''.join(_linear_ring(hole) for hole in holes)}</innerBoundaryIs>"
         for holes in inner_boundaries
     )
     return (
-        "<Placemark><name>polygon</name><Polygon>"
+        f"<Placemark><name>{name}</name><Polygon>"
         f"<outerBoundaryIs>{_linear_ring(ring)}</outerBoundaryIs>{inner}"
         "</Polygon></Placemark>"
     )
@@ -397,3 +397,67 @@ def test_failed_write_leaves_the_previous_file_and_group(bundle, monkeypatch):
     assert h5["polygons/Test"].attrs["sha256"] == sha256
     assert [path.name for path in (h5_dir / "kml").iterdir()] == ["Test.kml"]
     assert fs.validate_h5_referenced_files(h5) == (True, None)
+
+
+def _nirops_2026(tmp_path):
+    """A NIROPS file of 2026: its placemarks are in the document, with no folder, told apart by name."""
+    perimeter = (
+        "<Placemark><name>Heat Perimeter</name><MultiGeometry>"
+        f"<Polygon><outerBoundaryIs>{_linear_ring(SQUARE_A1)}</outerBoundaryIs></Polygon>"
+        f"<Polygon><outerBoundaryIs>{_linear_ring(SQUARE_A2)}</outerBoundaryIs></Polygon>"
+        "</MultiGeometry></Placemark>"
+    )
+    body = perimeter + _polygon_placemark(SQUARE_B, name="Intense Heat") + _point_placemark(-120.45, 38.55)
+    kml_path = tmp_path / "nirops.kml"
+    kml_path.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2">'
+        f"<Document><name>20260826_Test_IR</name>{body}</Document></kml>",
+        encoding="utf-8",
+    )
+    return kml_path
+
+
+def test_list_kml_layers_gives_the_named_polygon_placemarks_of_each_layer(bundle, tmp_path):
+    (layer,) = fs.list_kml_layers(_nirops_2026(tmp_path))
+
+    assert layer["n_polygons"] == 2
+    assert layer["placemarks"] == [
+        {"name": "Heat Perimeter", "n_polygons": 2},
+        {"name": "Intense Heat", "n_polygons": 1},
+    ]
+    _, _, kml_path = bundle
+    counts = {item["name"]: item["placemarks"] for item in fs.list_kml_layers(kml_path)}
+    assert counts["perimeter_a"] == [{"name": "polygon", "n_polygons": 2}] and counts["hot_spots"] == []
+
+
+def test_a_placemark_tells_the_perimeter_from_the_heat_of_the_same_layer(bundle, tmp_path):
+    h5, h5_dir, _ = bundle
+    kml_path = _nirops_2026(tmp_path)
+
+    polygons = fs.read_kml_layer(kml_path, placemark="Heat Perimeter")
+    group = fs.standardize_perimeter_from_kml(
+        kml_path, h5, "perimeter", TIME, h5_dir / "kml", placemark="Heat Perimeter"
+    )
+
+    expected = shapely.union(Polygon(SQUARE_A1), Polygon(SQUARE_A2))
+    assert shapely.force_2d(polygons.union_all()).equals(expected)
+    assert _stored_polygons(group, h5_dir).equals(expected)
+    assert group.attrs["placemark"] == "Heat Perimeter"
+    # Without a placemark, the layer is read whole, heat included.
+    assert shapely.force_2d(fs.read_kml_layer(kml_path).union_all()).equals(
+        shapely.union(expected, Polygon(SQUARE_B))
+    )
+
+
+def test_an_unknown_placemark_is_refused_with_the_names_of_the_layer(bundle, tmp_path):
+    h5, h5_dir, _ = bundle
+    kml_path = _nirops_2026(tmp_path)
+
+    with pytest.raises(
+        ValueError,
+        match="no polygon placemark named 'Perimeter'. Placemarks: 'Heat Perimeter', 'Intense Heat'",
+    ):
+        fs.standardize_perimeter_from_kml(
+            kml_path, h5, "perimeter", TIME, h5_dir / "kml", placemark="Perimeter"
+        )
+    assert "polygons" not in h5 or "perimeter" not in h5["polygons"]
