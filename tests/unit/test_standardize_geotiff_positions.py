@@ -78,3 +78,18 @@ def test_landfire_positions_are_the_cell_centers(geotiff_path, tmp_path):
     group = h5["spatial_2d/landfire"]
     _assert_positions_are_cell_centers(group["position_lat"][:], group["position_lon"][:])
     h5.close()
+
+
+def test_landfire_group_carries_its_licence_terms(geotiff_path, tmp_path):
+    h5 = fs.new_std_file(str(tmp_path / "landfire.h5"), "FireBench tests")
+
+    fs.standardize_landfire_from_geotiff(
+        str(geotiff_path), h5, "canopy_height", "m", "landfire", fill_value=0
+    )
+
+    attrs = h5["spatial_2d/landfire"].attrs
+    assert attrs["license"] == "/DATA_LICENSES/LANDFIRE.txt"
+    assert attrs["redistribution_allowed"] is np.True_
+    assert attrs["public_access_level"] == "Public"
+    assert attrs["data_use_restrictions"] == "No restrictions on public use"
+    h5.close()
