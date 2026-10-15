@@ -53,7 +53,8 @@ AVAIL_BENCHMARKS = {
             "score_card_report": caldor_config.DEFAULT_SCORE_CARD_REPORT_PATH,
         },
         "data": {
-            "latest": "https://zenodo.org/records/20279621/files/v2026.2.zip?download=1",
+            "latest": "https://zenodo.org/records/23383592/files/v2026.3.zip?download=1",
+            "2026.3": "https://zenodo.org/records/23383592/files/v2026.3.zip?download=1",
             "2026.2": "https://zenodo.org/records/20279621/files/v2026.2.zip?download=1",
             "2026.1": "https://zenodo.org/records/19041000/files/v2026.1.zip?download=1",
             "2026.0": "https://zenodo.org/records/18250104/files/2021_Caldor_v1.0.0.zip?download=1",
