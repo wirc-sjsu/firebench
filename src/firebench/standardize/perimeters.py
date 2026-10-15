@@ -6,6 +6,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import h5py
+import pandas as pd
 from pyproj import CRS
 
 from ..tools import calculate_sha256, ureg
@@ -36,8 +37,13 @@ def list_kml_layers(path: Path) -> list[dict]:
     Returns
     -------
     list[dict]
-        One item per layer: `{"name": str, "n_polygons": int}`, where `n_polygons` counts the
-        features of the layer that are polygons or multipolygons.
+        One item per layer: `{"name": str, "n_polygons": int, "placemarks": list[dict]}`, where
+        `n_polygons` counts the features of the layer that are polygons or multipolygons, and
+        `placemarks` lists, in file order, the names of its polygon placemarks with the number of
+        polygons each holds, the parts of a multipolygon counted: `{"name": str, "n_polygons": int}`. A placemark without a name is not listed. A
+        file whose placemarks are not in folders, as the NIROPS files of 2026 (`Heat Perimeter`,
+        `Intense Heat`, `Scattered Heat` in one document), has one layer: the placemark tells the
+        perimeter apart.
 
     Raises
     ------
@@ -47,7 +53,7 @@ def list_kml_layers(path: Path) -> list[dict]:
     return _layers(path, _read_kml(path))
 
 
-def read_kml_layer(path: Path, layer: str | None = None) -> gpd.GeoDataFrame:
+def read_kml_layer(path: Path, layer: str | None = None, placemark: str | None = None) -> gpd.GeoDataFrame:
     """
     Read the polygons of one layer of a KML or KMZ file, as `standardize_perimeter_from_kml` reads them.
 
@@ -60,6 +66,9 @@ def read_kml_layer(path: Path, layer: str | None = None) -> gpd.GeoDataFrame:
         A `.kml` or `.kmz` file.
     layer : str | None
         Layer to read, as named by `list_kml_layers`. None reads the only layer of the file.
+    placemark : str | None
+        Keep the polygons of the placemarks of this name only, as `list_kml_layers` lists them.
+        None keeps every polygon of the layer.
 
     Returns
     -------
@@ -70,10 +79,12 @@ def read_kml_layer(path: Path, layer: str | None = None) -> gpd.GeoDataFrame:
     Raises
     ------
     ValueError
-        If the file cannot be read, or the layer is unknown or not given when the file has several.
+        If the file cannot be read, the layer is unknown or not given when the file has several, or
+        the layer has no polygon placemark of the name given.
     """  # pylint: disable=line-too-long
     kml = _read_kml(path)
-    return _read_polygons(path, kml, _select_layer(path, kml, layer))
+    layer = _select_layer(path, kml, layer)
+    return _select_placemark(path, layer, _read_polygons(path, kml, layer), placemark)
 
 
 def standardize_perimeter_from_kml(
@@ -85,6 +96,7 @@ def standardize_perimeter_from_kml(
     layer: str | None = None,
     area_crs: str | None = None,
     overwrite: bool = False,
+    placemark: str | None = None,
 ) -> h5py.Group:
     """
     Read one fire perimeter from a KML or KMZ file and register it in a FireBench HDF5 standard file.
@@ -119,6 +131,10 @@ def standardize_perimeter_from_kml(
         projection centred on the perimeter.
     overwrite : bool
         Replace the group if it exists. Default: False
+    placemark : str | None
+        Keep the polygons of the placemarks of this name only, as `list_kml_layers` lists them: for
+        a NIROPS file of 2026, `Heat Perimeter`. None keeps every polygon of the layer. The name is
+        stored in the group attribute `placemark`.
 
     Returns
     -------
@@ -129,7 +145,8 @@ def standardize_perimeter_from_kml(
     ------
     ValueError
         If the file cannot be read, the layer is unknown or not given when the file has several, the
-        layer holds no polygon, the time has no UTC offset, `kml_dir` is outside the directory of the
+        layer has no polygon placemark of the name given, the layer holds no polygon, the time has no
+        UTC offset, `kml_dir` is outside the directory of the
         HDF5 file, or the group exists and `overwrite` is False.
     """  # pylint: disable=line-too-long
     logger.debug("Standardize perimeter %s from file %s", group_name, kml_path)
@@ -162,7 +179,7 @@ def standardize_perimeter_from_kml(
 
     kml = _read_kml(kml_path)
     layer = _select_layer(kml_path, kml, layer)
-    perimeter = _read_polygons(kml_path, kml, layer)
+    perimeter = _select_placemark(kml_path, layer, _read_polygons(kml_path, kml, layer), placemark)
     if perimeter.empty:
         raise ValueError(f"layer {layer!r} of {kml_path} holds no polygon")
     burnt_area = _area_acres(perimeter, area_crs)
@@ -180,6 +197,8 @@ def standardize_perimeter_from_kml(
     group.attrs["time"] = time
     group.attrs["burnt_area"] = burnt_area
     group.attrs["burnt_area_units"] = "acre"
+    if placemark is not None:
+        group.attrs["placemark"] = placemark
     return group
 
 
@@ -222,10 +241,38 @@ def _one_boundary_per_ring(inner_boundary: re.Match) -> bytes:
 
 
 def _layers(path: Path, kml: bytes) -> list[dict]:
-    return [
-        {"name": name, "n_polygons": len(_read_polygons(path, kml, name, columns=[]))}
-        for name in _layer_names(path, kml)
-    ]
+    layers = []
+    for name in _layer_names(path, kml):
+        polygons = _read_polygons(path, kml, name)
+        layers.append({"name": name, "n_polygons": len(polygons), "placemarks": _placemarks(polygons)})
+    return layers
+
+
+def _placemark_names(polygons: gpd.GeoDataFrame):
+    """The name of each polygon feature, without surrounding spaces; empty when it has none."""
+    if "Name" not in polygons.columns:
+        return pd.Series("", index=polygons.index)
+    return polygons["Name"].fillna("").astype(str).str.strip()
+
+
+def _placemarks(polygons: gpd.GeoDataFrame) -> list[dict]:
+    counts: dict[str, int] = {}
+    for name, geometry in zip(_placemark_names(polygons), polygons.geometry):
+        if name:
+            counts[name] = counts.get(name, 0) + len(getattr(geometry, "geoms", [geometry]))
+    return [{"name": name, "n_polygons": count} for name, count in counts.items()]
+
+
+def _select_placemark(path: Path, layer: str, polygons: gpd.GeoDataFrame, placemark: str | None):
+    if placemark is None:
+        return polygons
+    kept = polygons[_placemark_names(polygons) == placemark.strip()]
+    if kept.empty:
+        names = ", ".join(repr(item["name"]) for item in _placemarks(polygons)) or "none"
+        raise ValueError(
+            f"layer {layer!r} of {path} has no polygon placemark named {placemark!r}. Placemarks: {names}"
+        )
+    return kept
 
 
 def _layer_names(path: Path, kml: bytes) -> list[str]:

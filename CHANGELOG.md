@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `placemark` to `read_kml_layer` and `standardize_perimeter_from_kml`: only the polygons of the
+  placemarks of that name are read, and the name is stored in the group attribute `placemark`.
+  `list_kml_layers` lists the named polygon placemarks of each layer (`placemarks`). The NIROPS files of
+  2026 put `Heat Perimeter`, `Intense Heat`, and `Scattered Heat` in one document with no folder, so
+  the perimeter is told apart by its placemark, not by its layer.
 - Add score cards composed of chosen KPI groups to the Caldor benchmark. `describe_composable_groups`
   lists every group with its kind, period, weather variable, weight, and KPIs;
   `compose_target(group_names)` registers an aggregation scheme of those groups with their own
