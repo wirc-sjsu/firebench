@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add score cards composed of chosen KPI groups to the Caldor benchmark. `describe_composable_groups`
+  lists every group with its kind, period, weather variable, weight, and KPIs;
+  `compose_target(group_names)` registers an aggregation scheme of those groups with their own
+  weights and returns its name (`C-` and 12 hex digits of the hash of the sorted names, so the same
+  selection gives the same target); `run_caldor_benchmark(..., groups=[...])` scores it.
 - Add `firebench data synoptic`, which downloads the Synoptic weather-station time series of a
   domain and a UTC window with the user's own token and writes them as one raw Synoptic JSON file,
   the file the weather QC pipeline reads.

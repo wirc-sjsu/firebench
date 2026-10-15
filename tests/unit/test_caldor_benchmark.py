@@ -1308,3 +1308,80 @@ def test_run_records_observation_verification_level_and_warning(
         assert str(obs_path) in caplog.text
         assert "fb-verified-obs-dataset" in caplog.text
         assert "forcing verification level VL-D" in caplog.text
+
+
+def test_describe_composable_groups_covers_every_group_once():
+    groups = c001_caldor.describe_composable_groups()
+
+    assert [group["name"] for group in groups] == list(c001_caldor.GROUPS)
+    by_name = {group["name"]: group for group in groups}
+    assert by_name["Building Damage"]["kind"] == "B"
+    assert by_name["Building Damage"]["period"] is None
+    assert by_name["Fire Perimeter W2"]["kind"] == "P"
+    assert by_name["Fire Perimeter W2"]["period"]["target"] == "P02"
+    assert by_name["FP_H13"]["period"]["target"] == "H013"
+    assert by_name["Air Temp W3"]["kind"] == "W"
+    assert by_name["Air Temp W3"]["variable"] == "air_temperature"
+    assert by_name["Air Temp W3"]["period"]["target"] == "P03"
+    assert by_name["RH WH13"]["period"]["target"] == "H013"
+    assert by_name["RH WH13"]["kpis"] == c001_caldor.GROUPS["RH WH13"]["benchmarks"]
+
+
+def test_compose_target_is_stable_and_keeps_group_weights():
+    c001_caldor.build_registries()
+
+    target = c001_caldor.compose_target(["Fire Perimeter W3", "Fire Perimeter W2", "Fire Perimeter W3"])
+
+    assert target.startswith(c001_caldor.COMPOSED_TARGET_PREFIX)
+    assert c001_caldor.compose_target(["Fire Perimeter W2", "Fire Perimeter W3"]) == target
+    assert list(c001_caldor.AGGREGATION[target]) == ["Fire Perimeter W2", "Fire Perimeter W3"]
+    assert c001_caldor.AGGREGATION[target]["Fire Perimeter W2"] == c001_caldor.GROUPS["Fire Perimeter W2"]
+    assert c001_caldor.resolve_benchmark_target(target) == target
+    assert set(c001_caldor.get_list_benchmark_with_agg(c001_caldor.AGGREGATION, target)) == set(
+        c001_caldor.GROUPS["Fire Perimeter W2"]["benchmarks"]
+    ) | set(c001_caldor.GROUPS["Fire Perimeter W3"]["benchmarks"])
+    assert c001_caldor.compose_target(["Fire Perimeter W2"]) != target
+
+
+@pytest.mark.parametrize(
+    ("groups", "message"), [([], "at least one"), (["No Such Group"], "No Such Group")]
+)
+def test_compose_target_refuses_empty_or_unknown_groups(groups, message):
+    c001_caldor.build_registries()
+
+    with pytest.raises(ValueError, match=message):
+        c001_caldor.compose_target(groups)
+
+
+def test_run_with_groups_scores_the_composed_target(monkeypatch, tmp_path):
+    obs_path = tmp_path / "observations.h5"
+    model_path = tmp_path / "model.h5"
+    for path in (obs_path, model_path):
+        with h5py.File(path, "w") as h5:
+            h5.attrs["version"] = "test"
+    monkeypatch.setattr(c001_caldor.fsi, "retrieve_h5_certificates", lambda *_args: {})
+    seen = {}
+
+    def run_all(_model, scheme, list_bench, _obs):
+        seen["scheme"] = scheme
+        seen["benchmarks"] = set(list_bench)
+        return {"benchmarks": {}, "score_card": {"Scheme": {}, "aggregation_scheme_name": scheme}}
+
+    monkeypatch.setattr(c001_caldor, "run_all_benchmarks", run_all)
+    monkeypatch.setattr(
+        c001_caldor.fm,
+        "save_as_table",
+        lambda filename, *_args, **_kwargs: Path(filename).write_bytes(b"pdf"),
+    )
+
+    c001_caldor.run_caldor_benchmark(
+        model_path,
+        benchmark_target="",
+        groups=["Fire Perimeter W2"],
+        obs_data=obs_path,
+        output_json=tmp_path / "result.json",
+        score_card_report=tmp_path / "scorecard.pdf",
+    )
+
+    assert seen["scheme"] == c001_caldor.compose_target(["Fire Perimeter W2"])
+    assert seen["benchmarks"] == set(c001_caldor.GROUPS["Fire Perimeter W2"]["benchmarks"])
