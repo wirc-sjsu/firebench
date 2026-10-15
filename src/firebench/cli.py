@@ -53,9 +53,7 @@ def plot_from_config(*args, **kwargs):
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
 
-FIREBENCH_BANNER = (
-    "\b"
-    + r"""
+FIREBENCH_BANNER = "\b" + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -65,7 +63,6 @@ FIREBENCH_BANNER = (
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
-)
 
 
 @click.group(help=FIREBENCH_BANNER)
@@ -915,6 +912,155 @@ def data_synoptic(bbox: str, start: str, end: str, output: Path, overwrite: bool
     # Compact separators: a payload of a hundred stations over weeks is tens of megabytes.
     output.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
     click.echo(f"Wrote {output}: {len(stations)} stations, {output.stat().st_size / 1e6:.1f} MB.")
+    return 0
+
+
+def _parse_window_options(start: str, end: str):
+    setup_module = _wx_setup_module()
+    try:
+        return setup_module.parse_utc(start, "--start"), setup_module.parse_utc(end, "--end")
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+
+
+def _parse_list_option(value: str | None, option: str, known) -> list[str] | None:
+    if value is None:
+        return None
+    items = [item.strip() for item in value.split(",") if item.strip()]
+    unknown = [item for item in items if item not in known]
+    if unknown or not items:
+        raise click.UsageError(f"{option} takes a comma-separated list of: {', '.join(known)}")
+    return items
+
+
+@data.command("firms")
+@click.option("--bbox", required=True, help="Domain as lon_min,lat_min,lon_max,lat_max (degrees).")
+@click.option(
+    "--start", required=True, help="Window start, ISO 8601 with time zone (e.g. 2021-08-01T00:00Z)."
+)
+@click.option("--end", required=True, help="Window end, ISO 8601 with time zone.")
+@click.option(
+    "--streams",
+    default=None,
+    help="Comma-separated satellites: viirs_snpp, viirs_noaa20, viirs_noaa21, modis_terra, modis_aqua. "
+    "Default: all.",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("firms.json"),
+    show_default=True,
+    help="Bundle file to write.",
+)
+@click.option("--overwrite", is_flag=True, help="Replace an existing output file.")
+def data_firms(bbox: str, start: str, end: str, streams: str | None, output: Path, overwrite: bool) -> None:
+    """
+    Download the VIIRS and MODIS fire detections of a domain and window from NASA FIRMS as one bundle.
+
+    The bundle keeps the CSV FIRMS returned for each request, the overpasses of each satellite
+    found in NASA CMR, and every request that failed. It never holds your key. The download uses
+    your own FIRMS MAP_KEY: see 'firebench keys set firms'.
+    """
+    if output.exists() and not overwrite:
+        raise click.UsageError(f"{output} already exists; use --overwrite to replace it")
+    start_time, end_time = _parse_window_options(start, end)
+    domain = _parse_bbox_option(bbox)
+    firms = import_module(".acquisition.firms", __package__)
+    selected = _parse_list_option(streams, "--streams", list(firms.STREAMS)) or list(firms.STREAMS)
+    keys_module = _keys_module()
+    resolution = keys_module.resolve_key("firms")
+    if resolution.value is None:
+        raise click.ClickException(keys_module.missing_key_message(resolution))
+    configure_logging(3)
+    try:
+        bundle = firms.download_firms_bundle(domain, start_time, end_time, selected, resolution.value)
+    except ValueError as exc:
+        raise click.ClickException(keys_module.redact(str(exc), (resolution.value,))) from exc
+    if not any(request["status"] == "ok" for request in bundle["requests"]):
+        raise click.ClickException("FIRMS answered no request; nothing was written.")
+    firms.write_firms_bundle(bundle, output)
+    rows: dict[str, int] = {}
+    for request in bundle["requests"]:
+        if request["status"] == "ok":
+            count = max(0, len(request["csv"].strip().splitlines()) - 1)
+            rows[request["product"]] = rows.get(request["product"], 0) + count
+    for product, count in rows.items():
+        click.echo(f"{product}: {count} detections")
+    for stream in selected:
+        record = bundle["overpasses"].get(stream, {})
+        passes = (
+            f"{len(record.get('items', []))} overpasses"
+            if record.get("status") == "ok"
+            else "no overpasses"
+        )
+        click.echo(f"{stream}: {passes}")
+    for request in bundle["requests"]:
+        if request["status"] != "ok":
+            click.echo(
+                f"failed: {request['product']} from {request['day']}, {request['n_days']} days: "
+                f"{request['error']}"
+            )
+    click.echo(f"Wrote {output}, {output.stat().st_size / 1e6:.1f} MB.")
+    return 0
+
+
+@data.command("goes-fdc")
+@click.option("--bbox", required=True, help="Domain as lon_min,lat_min,lon_max,lat_max (degrees).")
+@click.option(
+    "--start", required=True, help="Window start, ISO 8601 with time zone (e.g. 2021-08-01T00:00Z)."
+)
+@click.option("--end", required=True, help="Window end, ISO 8601 with time zone.")
+@click.option("--platforms", default="east,west", show_default=True, help="Comma-separated: east, west.")
+@click.option(
+    "--step",
+    type=click.Choice(["5", "10", "15", "30", "60"]),
+    default="30",
+    show_default=True,
+    help="Keep one scan per step, in minutes. 5 keeps every scan.",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path("goes_fdc"),
+    show_default=True,
+    help="Directory to write the scans to, laid out like the buckets.",
+)
+@click.option("--dry-run", is_flag=True, help="List the scans and their size; download nothing.")
+def data_goes_fdc(
+    bbox: str, start: str, end: str, platforms: str, step: str, output: Path, dry_run: bool
+) -> None:
+    """
+    Download GOES ABI fire detection scans (FDC, CONUS) of a window from the NOAA archive on AWS.
+
+    The bbox only checks the domain; FDCC files cover the continental United States and are kept
+    whole. No key is needed. Each platform is resolved to the satellite that served it at the time.
+    """
+    start_time, end_time = _parse_window_options(start, end)
+    _parse_bbox_option(bbox)
+    goes = import_module(".acquisition.goes_fdc", __package__)
+    selected = _parse_list_option(platforms, "--platforms", list(goes.SWITCHES))
+    configure_logging(3)
+    try:
+        segments = goes.goes_segments(start_time, end_time, selected)
+        plan = [
+            (segment, goes.select_scans(goes.list_fdc_scans(segment), int(step))) for segment in segments
+        ]
+    except (ValueError, ConnectionError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    for segment, scans in plan:
+        size = sum(scan.size or 0 for scan in scans) / 1e6
+        click.echo(f"{segment.bucket}: {len(scans)} scans, {size:.0f} MB")
+    if dry_run:
+        return 0
+    failed = 0
+    for _, scans in plan:
+        for fetched in goes.fetch_fdc_scans(scans, output, keep=True):
+            failed += fetched.path is None
+    click.echo(f"Wrote the scans under {output}" + (f"; {failed} failed" if failed else "") + ".")
+    if failed:
+        raise click.ClickException(f"{failed} scans could not be downloaded")
     return 0
 
 

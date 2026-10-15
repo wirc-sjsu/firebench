@@ -454,6 +454,71 @@ kml/polygons_2022_07_14.kml
 **Note**: This part of the standard is in an early stage and intentionally allows significant flexibility to accommodate diverse unstructured data types. The structure and required fields may evolve in future versions based on user feedback and practical experience.
 
 
+#### fire_detections
+
+Satellite active-fire detections, with their fire radiative power (FRP), are stored under
+`/unstructured/fire_detections`, one group per **stream**: one satellite of one product family.
+
+```
+/unstructured/fire_detections/<stream>/
+├── detections/          (N rows, one per fire pixel)
+└── observations/        (M rows, one per time the sensor looked at the frame)
+```
+
+- Streams: `viirs_snpp`, `viirs_noaa20`, `viirs_noaa21`, `modis_terra`, `modis_aqua` (NASA FIRMS),
+  and `goes16`, `goes17`, `goes18`, `goes19` (NOAA GOES-R ABI fire product, CONUS).
+- The observations tell a time the sensor looked and saw no fire from a time it did not look: a
+  reader computes an FRP total of 0 for the first and no value for the second.
+- `/unstructured` and `/unstructured/fire_detections` carry no attributes, so files that each hold
+  some streams merge without conflict.
+- Every detection the product reports is stored with its product-native confidence. Filtering by
+  confidence is a choice of the reader.
+
+Stream group attributes:
+
+Attributes | Type | Description
+:--------- | :----: | :-----------
+`satellite` | str | `Suomi NPP`, `NOAA-20`, `NOAA-21`, `Terra`, `Aqua`, `GOES-16` to `GOES-19`
+`instrument` | str | `VIIRS`, `MODIS`, `ABI`
+`provider` | str | `NASA FIRMS` or `NOAA`
+`product` | str | JSON list of the products used (`VIIRS_SNPP_SP`, `VIIRS_SNPP_NRT`, `ABI-L2-FDCC`, ...)
+`product_version` | str | FIRMS: the distinct values of the `version` column, `;`-separated
+`data_source` | str | The service the data came from. Never a key.
+`crs` | str | `EPSG:4326`
+`frame_west`, `frame_south`, `frame_east`, `frame_north` | float | The frame requested, with `*_units` = `degree`
+`time_start`, `time_end` | str | The window requested, ISO 8601
+`observation_source` | str | `cmr` (NASA CMR overpasses), `goes_scans`, or `detections` (observations rebuilt from detections)
+`observations_complete` | bool | False when some observations are missing or rebuilt
+`failed` | str | JSON list of what failed: FIRMS days (`day`, `reason`) or GOES scans (`key`, `reason`)
+`time_step`, `time_step_units` | int, str | GOES: the selection step, `min`
+`source_files` | str | JSON: the SHA-256 of the FIRMS bundle and the CMR collections, or the GOES bucket and scan count
+
+`detections/`, every dataset of length N:
+
+Dataset | Units | Description
+:------ | :---: | :----------
+`time` | `s` | Acquisition time, relative to `time_origin` (the window start), `time_units` = `s`
+`position_lat`, `position_lon` | `degree` | Pixel centre
+`fire_radiative_power` | `MW` | NaN when the product gives none
+`fire_detection_confidence` | `1` | Product-native value, attribute `confidence_scale` (`viirs_lnh`: 0 low, 1 nominal, 2 high; `modis_percent`: 0 to 100; `goes_fdc_mask`: FDC mask code), `_FillValue` -1
+`brightness_temperature_mir`, `brightness_temperature_tir` | `K` | FIRMS: VIIRS I4 and I5, MODIS bands 21/22 and 31
+`fire_temperature` | `K` | GOES: retrieved fire temperature
+`pixel_size_scan`, `pixel_size_track` | `m` | FIRMS: pixel size along scan and track
+`footprint_lat`, `footprint_lon` | `degree` | GOES: (N, 4) pixel corners, SW, SE, NE, NW in scan-angle space
+`day_night_flag` | `1` | 1 day, 0 night, `_FillValue` -1 (GOES)
+`observation_index` | `1` | Row of `observations/` the detection belongs to
+
+`observations/`, every dataset of length M:
+
+Dataset | Units | Description
+:------ | :---: | :----------
+`time`, `time_end` | `s` | Start and end of the overpass or scan, same origin
+`observed_fraction` | `1` | Attribute `method`: `swath` (share of the frame inside the swath outlines of the overpass) or `assessed_pixels` (share of the frame's GOES pixels the algorithm cleared or found burning). NaN when unknown
+`granule_ids` | | FIRMS: the CMR granule ids of the overpass, `;`-separated
+`source_key`, `source_sha256` | | GOES: S3 key and SHA-256 of the scan
+
+`firebench.standardize.frp_time_series` reads a stream as one FRP total per observation.
+
 ### fuel_models
 - Contains data from a Fuel Model (Anderson/Albini, Scott and Burgan).
 - Datasets must be grouped per fuel model. Fuel model extensions (new properties for an existing fuel model) must be added separately and be named with the suffix `_extension_*`.

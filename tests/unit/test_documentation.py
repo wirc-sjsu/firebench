@@ -132,6 +132,8 @@ def test_documented_cli_commands_have_help():
         ["data", "list"],
         ["data", "versions"],
         ["data", "get"],
+        ["data", "firms"],
+        ["data", "goes-fdc"],
         ["run"],
         ["multirun"],
         ["plot"],

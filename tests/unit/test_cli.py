@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import time
@@ -1219,3 +1220,128 @@ def test_cli_check_origin_override(origin_config, monkeypatch):
     )
     assert result.exit_code == 0, result.output
     assert calls == [("https://explicit.example",)]
+
+
+@pytest.fixture
+def _fire_cli(monkeypatch, tmp_path):
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.acquisition import firms, goes_fdc, http
+
+    monkeypatch.setenv("FIREBENCH_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setattr(http.time, "sleep", lambda seconds: None)
+    csv = (
+        "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,"
+        "bright_ti5,frp,daynight,type\n38.55,-120.46,327.2,0.54,0.51,2021-08-20,918,N,VIIRS,n,2,289.8,4.3,N,0\n"
+    )
+    urls = []
+
+    class _Response:
+        def __init__(self, body):
+            self.body, self.status = body, 200
+
+        def read(self):
+            return self.body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def opener(request, timeout):
+        urls.append(request.full_url)
+        if "cmr.earthdata" in request.full_url:
+            return _Response(b'{"feed": {"entry": []}}')
+        if "data_availability" in request.full_url:
+            return _Response(b"data_id,min_date,max_date\nVIIRS_SNPP_SP,2012-01-20,2026-06-30\n")
+        return _Response(csv.encode())
+
+    download = firms.download_firms_bundle
+    monkeypatch.setattr(
+        firms, "download_firms_bundle", lambda *args, **kwargs: download(*args, opener=opener, **kwargs)
+    )
+    start = datetime(2021, 8, 20, 9, 1, 17, tzinfo=timezone.utc)
+    scans = [
+        goes_fdc.FdcScan(
+            "noaa-goes17",
+            f"ABI-L2-FDCC/2021/232/09/OR_ABI-L2-FDCC-M6_G17_s20212320{minute:02d}1170_e20212320{minute:02d}3550_c0.nc",
+            start.replace(minute=minute),
+            start.replace(minute=minute),
+            500_000,
+        )
+        for minute in (1, 31)
+    ]
+    monkeypatch.setattr(
+        goes_fdc, "list_fdc_scans", lambda segment, **kwargs: scans if segment.satellite == 17 else []
+    )
+    fetch = goes_fdc.fetch_fdc_scans
+    monkeypatch.setattr(
+        goes_fdc, "fetch_fdc_scans", lambda *args, **kwargs: fetch(*args, opener=opener, **kwargs)
+    )
+    return urls
+
+
+FIRE_WINDOW = [
+    "--bbox",
+    "-120.8,38.4,-119.7,39",
+    "--start",
+    "2021-08-20T00:00Z",
+    "--end",
+    "2021-08-21T00:00Z",
+]
+
+
+def test_cli_data_firms_writes_a_bundle_without_the_key(_fire_cli, monkeypatch, tmp_path):
+    monkeypatch.setenv("FIRMS_MAP_KEY", "secret-map-key-42")
+    output = tmp_path / "firms.json"
+
+    result = CliRunner().invoke(
+        main, ["data", "firms", *FIRE_WINDOW, "--streams", "viirs_snpp", "-o", str(output)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "VIIRS_SNPP_SP: 1 detections" in result.output and "viirs_snpp: 0 overpasses" in result.output
+    assert json.loads(output.read_text())["streams"] == ["viirs_snpp"]
+    assert "secret-map-key-42" not in output.read_text() and "secret-map-key-42" not in result.output
+    assert any("/secret-map-key-42/VIIRS_SNPP_SP/" in url for url in _fire_cli)
+
+
+def test_cli_data_firms_without_a_key_or_over_an_existing_file_is_refused(_fire_cli, monkeypatch, tmp_path):
+    monkeypatch.delenv("FIRMS_MAP_KEY", raising=False)
+    output = tmp_path / "firms.json"
+
+    missing = CliRunner().invoke(main, ["data", "firms", *FIRE_WINDOW, "-o", str(output)])
+    output.write_text("{}")
+    monkeypatch.setenv("FIRMS_MAP_KEY", "k")
+    existing = CliRunner().invoke(main, ["data", "firms", *FIRE_WINDOW, "-o", str(output)])
+    unknown = CliRunner().invoke(
+        main, ["data", "firms", *FIRE_WINDOW, "--streams", "goes16", "-o", str(tmp_path / "x")]
+    )
+
+    assert missing.exit_code == 1 and "firebench keys set firms" in missing.output
+    assert existing.exit_code != 0 and "already exists" in existing.output
+    assert unknown.exit_code != 0 and "--streams" in unknown.output
+    assert _fire_cli == []
+
+
+def test_cli_data_goes_fdc_dry_run_lists_the_scans_and_writes_nothing(_fire_cli, tmp_path):
+    output = tmp_path / "goes"
+
+    result = CliRunner().invoke(
+        main, ["data", "goes-fdc", *FIRE_WINDOW, "--step", "30", "-o", str(output), "--dry-run"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "noaa-goes17: 2 scans, 1 MB" in result.output and "noaa-goes16: 0 scans" in result.output
+    assert not output.exists() and _fire_cli == []
+
+
+def test_cli_data_goes_fdc_keeps_the_scans_in_the_bucket_layout(_fire_cli, tmp_path):
+    output = tmp_path / "goes"
+
+    result = CliRunner().invoke(
+        main, ["data", "goes-fdc", *FIRE_WINDOW, "--platforms", "west", "-o", str(output)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert len(list((output / "noaa-goes17" / "ABI-L2-FDCC").rglob("*.nc"))) == 2
