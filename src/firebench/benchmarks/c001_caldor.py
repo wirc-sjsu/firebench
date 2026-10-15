@@ -1,5 +1,6 @@
 import argparse
 import copy
+import hashlib
 import json
 import re
 from h5py import File
@@ -46,6 +47,7 @@ RETAINED_PERIOD_TARGET_PATTERNS = (
     (re.compile(r"^WX_WH(\d+)$"), "H{:03d}"),
     (re.compile(r"^FP_H(\d+)$"), "H{:03d}"),
 )
+COMPOSED_TARGET_PREFIX = "C-"
 BINARY_KPI_SUFFIXES = (
     "Accuracy",
     "Precision",
@@ -1624,6 +1626,83 @@ def resolve_benchmark_target(benchmark_target: str) -> str:
     return canonical_target
 
 
+def _period_ref(period_name: str) -> dict:
+    """The target spelling and bounds of a curated (`W2`) or HRRR (`WH13`) period."""
+    selector = (
+        f"H{int(period_name.removeprefix('WH')):03d}"
+        if period_name.startswith("WH")
+        else f"P{int(period_name.removeprefix('W')):02d}"
+    )
+    start, end = _target_period(selector)
+    return {"target": selector, "start": start, "end": end}
+
+
+def describe_composable_groups() -> list[dict]:
+    """
+    Describe every KPI group a score card can be composed of, in registry order.
+
+    Each entry gives the group `name` (the key `compose_target` takes), its `kind` (the flag of
+    `KPI_GROUP_CATEGORIES`), its `period` (None for a group that covers the whole event), the
+    weather `variable` it scores (None for the others), its `weight`, and its KPIs with their weights.
+    """
+    build_registries()
+    weather = {}
+    for period_set in cfg.WX_PERIOD_SETS:
+        for variable_spec in cfg.WX_VARIABLE_SPECS:
+            for period_name in period_set["periods"]:
+                weather[f"{variable_spec['group_label']} {period_name}"] = (variable_spec, period_name)
+    curated_perimeters = {
+        f"Fire Perimeter {period_name}": period_name for period_name in cfg.CURATED_PERIODS
+    }
+
+    groups = []
+    for group_name, group in GROUPS.items():
+        kind, label = _group_category(group_name)
+        variable = None
+        if group_name in weather:
+            variable_spec, period_name = weather[group_name]
+            variable = variable_spec["variable"]
+            label = variable_spec["label"]
+            period = _period_ref(period_name)
+        elif group_name in curated_perimeters:
+            period = _period_ref(curated_perimeters[group_name])
+        elif group_name.startswith("FP_H"):
+            period = _period_ref(f"WH{group_name.removeprefix('FP_H')}")
+        else:
+            period = None
+        groups.append(
+            {
+                "name": group_name,
+                "label": label,
+                "kind": kind,
+                "period": period,
+                "variable": variable,
+                "weight": group["weight"],
+                "kpis": dict(group["benchmarks"]),
+            }
+        )
+    return groups
+
+
+def compose_target(group_names: list[str]) -> str:
+    """
+    Register an aggregation scheme made of the given KPI groups, with their own weights, and return its name.
+
+    The name is derived from the set of groups, so the same selection always gives the same target.
+    The registries must have been built. An empty selection or an unknown group is refused.
+    """
+    selected = set(group_names)
+    if not selected:
+        raise ValueError("A composed target needs at least one KPI group.")
+    unknown = sorted(selected - GROUPS.keys())
+    if unknown:
+        raise ValueError(f"Unknown KPI group(s): {', '.join(unknown)}.")
+    digest = hashlib.sha256("\n".join(sorted(selected)).encode("utf-8")).hexdigest()
+    target = f"{COMPOSED_TARGET_PREFIX}{digest[:12]}"
+    AGGREGATION[target] = _copy_groups([group_name for group_name in GROUPS if group_name in selected])
+    return target
+
+
 def create_aggregation_schemes():
     curated_period_names = list(cfg.CURATED_PERIODS.keys())
     hrrr_period_names = list(cfg.HRRR_PERIODS.keys())
@@ -2156,7 +2235,13 @@ def run_caldor_benchmark(
     output_json: Path = DEFAULT_OUTPUT_PATH_JSON,
     score_card_report: Path = DEFAULT_SCORE_CARD_REPORT_PATH,
     score_card_full_name: bool = False,
+    groups: list[str] | None = None,
 ):
+    """
+    Score `model_output` on `benchmark_target`, or on the KPI groups listed in `groups` when given.
+
+    A list of groups is registered with `compose_target`, and the target of the results is its name.
+    """
     model_output = Path(model_output)
     obs_data = Path(obs_data)
     output_json = Path(output_json)
@@ -2211,7 +2296,10 @@ def run_caldor_benchmark(
     output_dict["verification_lvl"] = fsi.compute_input_verification_lvl(output_dict["certificates_input"])
 
     build_registries()
-    aggregation_scheme = resolve_benchmark_target(benchmark_target)
+    if groups is not None:
+        aggregation_scheme = compose_target(groups)
+    else:
+        aggregation_scheme = resolve_benchmark_target(benchmark_target)
     list_bench = get_list_benchmark_with_agg(AGGREGATION, aggregation_scheme)
 
     rslt = run_all_benchmarks(model_output, aggregation_scheme, list_bench, obs_data)
