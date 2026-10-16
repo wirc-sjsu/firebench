@@ -9,6 +9,8 @@ RADAR = "radar"
 UNSTRUCTURED = "unstructured"
 # satellite fire detections, under UNSTRUCTURED
 FIRE_DETECTIONS = "fire_detections"
+# cloud-to-ground lightning, under UNSTRUCTURED
+LIGHTNING = "lightning"
 GEOPOLYGONS = "polygons"
 FUEL_MODELS = "fuel_models"
 MISCELLANEOUS = "miscellaneous"

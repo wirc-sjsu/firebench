@@ -84,6 +84,8 @@ class StandardVariableNames(Enum):  # pragma: no cover
     FUEL_WIND_REDUCTION_FACTOR = "fuel_wind_reduction_factor"
     IGNITION_LENGTH = "ignition_length"
     LATITUDE = "latitude"
+    LIGHTNING_PEAK_CURRENT = "lightning_peak_current"
+    LIGHTNING_STROKE_COUNT = "lightning_stroke_count"
     LENGTH = "length"
     LONGITUDE = "longitude"
     MAGNITUDE = "magnitude"

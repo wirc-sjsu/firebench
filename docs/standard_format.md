@@ -594,6 +594,54 @@ Dataset | Units | Description
 
 `firebench.standardize.frp_time_series` reads a stream as one FRP total per observation.
 
+#### lightning
+
+Lightning that reached the ground (cloud-to-ground) is stored under `/unstructured/lightning`, one
+group per **stream**, with one table:
+
+```
+/unstructured/lightning/<stream>/
+└── strikes/             (N rows, one per record)
+```
+
+- Streams: `nldn_tiles` (NOAA NCEI's daily counts of Vaisala NLDN cloud-to-ground strikes per 0.1°
+  cell, `aggregation` = `cell_day`) and `strokes` (the cloud-to-ground strokes of a network's stroke
+  file, `aggregation` = `stroke`).
+- A record has a start and an end time, a position, and a number of strikes, so a reader treats a
+  cell-day and a stroke the same way. A stroke's `time_end` equals its `time`.
+- Only discharges that reached the ground are stored. A cell with no row had no strike that day.
+- `/unstructured` and `/unstructured/lightning` carry no attributes, so files merge without conflict.
+
+Stream group attributes:
+
+Attributes | Type | Description
+:--------- | :----: | :-----------
+`network` | str | `NLDN`, or the network a stroke file came from
+`provider` | str | `NOAA NCEI`, or the network
+`product` | str | JSON list: `nldn-tiles` or `strokes`
+`data_source` | str | The directory the tiles came from, or `file`. Never a key.
+`discharge` | str | `cloud_to_ground`
+`aggregation` | str | `cell_day` or `stroke`
+`cell_size`, `cell_size_units` | float, str | `nldn_tiles`: 0.1, `degree`
+`period`, `period_units` | int, str | `nldn_tiles`: 86400, `s`
+`crs` | str | `EPSG:4326`
+`frame_west`, `frame_south`, `frame_east`, `frame_north` | float | The frame requested, with `*_units` = `degree`
+`time_start`, `time_end` | str | The window requested, ISO 8601
+`complete` | bool | False when some months of the window have no published tile file
+`missing` | str | JSON list of the months (`YYYY-MM`) no tile file covers
+`source_files` | str | JSON: each tile file with its SHA-256 and the rows kept, or the stroke file's name, rows, and cloud rows dropped
+
+`strikes/`, every dataset of length N:
+
+Dataset | Units | Description
+:------ | :---: | :----------
+`time`, `time_end` | `s` | Start and end of the record, relative to `time_origin` (00 UTC of the first day for `nldn_tiles`, the window start for `strokes`), `time_units` = `s`
+`position_lat`, `position_lon` | `degree` | Cell centre or stroke position
+`lightning_stroke_count` | `1` | Strikes the record counts (1 for a stroke)
+`lightning_peak_current` | `kA` | `strokes`: signed peak current, NaN when the file gives none
+
+`firebench.standardize.lightning_time_series` counts the strikes of a stream per time step.
+
 ### fuel_models
 - Contains data from a Fuel Model (Anderson/Albini, Scott and Burgan).
 - Datasets must be grouped per fuel model. Fuel model extensions (new properties for an existing fuel model) must be added separately and be named with the suffix `_extension_*`.
