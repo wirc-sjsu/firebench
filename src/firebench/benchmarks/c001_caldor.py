@@ -48,6 +48,7 @@ RETAINED_PERIOD_TARGET_PATTERNS = (
     (re.compile(r"^FP_H(\d+)$"), "H{:03d}"),
 )
 COMPOSED_TARGET_PREFIX = "C-"
+BUILDING_DAMAGE_PATH = f"/{fs.POINTS}/building_damaged/building_damage"
 BINARY_KPI_SUFFIXES = (
     "Accuracy",
     "Precision",
@@ -196,19 +197,23 @@ def _require_positive_norm_param_m(value_norm_param_m: float) -> float:
     return value_norm_param_m
 
 
-def fire_area_final_bias_norm_param_m(observed_areas) -> float:
+def fire_area_final_bias_norm_param_m(observed_areas, relative_error: float | None = None) -> float:
+    """`relative_error` of the final observed area; FB001's AREA_RELATIVE_ERROR_AT_SCORE_50 when None."""
+    relative_error = AREA_RELATIVE_ERROR_AT_SCORE_50 if relative_error is None else relative_error
     observed_areas = np.asarray(observed_areas, dtype=float)
     if observed_areas.size == 0:
         raise ValueError("Cannot calculate fire-area normalization parameter m without observed areas.")
-    return _require_positive_norm_param_m(AREA_RELATIVE_ERROR_AT_SCORE_50 * float(observed_areas[-1]))
+    return _require_positive_norm_param_m(relative_error * float(observed_areas[-1]))
 
 
-def fire_area_rmse_norm_param_m(observed_areas) -> float:
+def fire_area_rmse_norm_param_m(observed_areas, relative_error: float | None = None) -> float:
+    """`relative_error` of the RMS observed area; FB001's AREA_RELATIVE_ERROR_AT_SCORE_50 when None."""
+    relative_error = AREA_RELATIVE_ERROR_AT_SCORE_50 if relative_error is None else relative_error
     observed_areas = np.asarray(observed_areas, dtype=float)
     if observed_areas.size == 0:
         raise ValueError("Cannot calculate fire-area normalization parameter m without observed areas.")
     observed_area_rms = float(np.sqrt(np.mean(np.square(observed_areas))))
-    return _require_positive_norm_param_m(AREA_RELATIVE_ERROR_AT_SCORE_50 * observed_area_rms)
+    return _require_positive_norm_param_m(relative_error * observed_area_rms)
 
 
 def bench_bd_generic(
@@ -217,6 +222,7 @@ def bench_bd_generic(
     ctx: dict,
     kpi_name_custom: str,
     func_cm_index: any,
+    dataset_path: str = BUILDING_DAMAGE_PATH,
 ):
     KPI_NAME = f"{kpi_name_custom}"
     KPI_NORM_PARAM_A = 0
@@ -225,10 +231,10 @@ def bench_bd_generic(
     CTX_KEY_MODEL = ("agg_bin", "building_damage", "model")
 
     binary_bd_obs = fm.ctx_get_or_compute(
-        CTX_SPEC, ctx, CTX_KEY_OBS, aggregate_building_damage_binary, obs_dataset
+        CTX_SPEC, ctx, CTX_KEY_OBS, aggregate_building_damage_binary, obs_dataset, dataset_path
     )
     binary_bd_model = fm.ctx_get_or_compute(
-        CTX_SPEC, ctx, CTX_KEY_MODEL, aggregate_building_damage_binary, model_dataset
+        CTX_SPEC, ctx, CTX_KEY_MODEL, aggregate_building_damage_binary, model_dataset, dataset_path
     )
 
     # binary_bd_obs = aggregate_building_damage_binary(obs_dataset)
@@ -276,14 +282,15 @@ def bench_fp_generic_area_final_bias(
     ctx: dict,
     period_name: str,
     list_perims: list[str],
+    projection_epsg: int = 3310,
+    relative_error: float | None = None,
 ):
     KPI_NAME = f"Final Burn Area Bias"
-    EPSG_PROJ = 3310
 
-    area_obs = area_from_list(obs_dataset, [list_perims[-1]], EPSG_PROJ).to("acre")
-    area_model = area_from_list(model_dataset, [list_perims[-1]], EPSG_PROJ).to("acre")
+    area_obs = area_from_list(obs_dataset, [list_perims[-1]], projection_epsg).to("acre")
+    area_model = area_from_list(model_dataset, [list_perims[-1]], projection_epsg).to("acre")
     rslt = fm.stats.bias(area_model.magnitude, area_obs.magnitude)
-    value_norm_param_m = fire_area_final_bias_norm_param_m(area_obs.magnitude)
+    value_norm_param_m = fire_area_final_bias_norm_param_m(area_obs.magnitude, relative_error)
 
     ft.logger.info("%s: %f", KPI_NAME, rslt)
     ft.logger.info("%s normalization parameter m: %f acres", KPI_NAME, value_norm_param_m)
@@ -301,13 +308,13 @@ def bench_fp_generic_area(
     period_name: str,
     list_perims: list[str],
     func: any,
+    projection_epsg: int = 3310,
+    relative_error: float | None = None,
 ):
-    EPSG_PROJ = 3310
-
-    area_obs = area_from_list(obs_dataset, list_perims, EPSG_PROJ).to("acre")
-    area_model = area_from_list(model_dataset, list_perims, EPSG_PROJ).to("acre")
+    area_obs = area_from_list(obs_dataset, list_perims, projection_epsg).to("acre")
+    area_model = area_from_list(model_dataset, list_perims, projection_epsg).to("acre")
     rslt = func(area_model.magnitude, area_obs.magnitude)
-    value_norm_param_m = fire_area_rmse_norm_param_m(area_obs.magnitude)
+    value_norm_param_m = fire_area_rmse_norm_param_m(area_obs.magnitude, relative_error)
 
     ft.logger.info("%s: %f", kpi_name_custom, rslt)
     ft.logger.info("%s normalization parameter m: %f acres", kpi_name_custom, value_norm_param_m)
@@ -326,6 +333,7 @@ def bench_fp_generic_index(
     list_perims: list[str],
     func_index: any,
     func_index_rslt_agg: any,
+    projection: str = "EPSG:5070",
 ):
     KPI_NAME = f"{kpi_name_custom} Index"
     KPI_NORM_PARAM_A = 0
@@ -337,7 +345,7 @@ def bench_fp_generic_index(
                 model_dataset,
                 obs_dataset,
                 list_perims,
-                projection="EPSG:5070",
+                projection=projection,
             )
         )
     )
@@ -1895,7 +1903,7 @@ def aggregate_scores(benchmark_results, agg_scheme, ignored_benchmarks: set[str]
     )
 
 
-def aggregate_building_damage_binary(data_file: File):
+def aggregate_building_damage_binary(data_file: File, dataset_path: str = BUILDING_DAMAGE_PATH):
     """
     Aggregates building damage classes into binary classes
     - unburnt (0) from `No Damage`, `Affected (1-9%)` or `Affected (>0-10%)`, and `Minor (10-25%)`,
@@ -1907,7 +1915,7 @@ def aggregate_building_damage_binary(data_file: File):
     UNBURNT_CAT = ["No Damage", "Affected (1-9%)", "Affected (>0-10%)", "Minor (10-25%)"]
     BURNT_CAT = ["Major (26-50%)", "Major (25-50%)", "Destroyed (>50%)"]
     binary_bd = []
-    bd = np.array(data_file[f"/{fs.POINTS}/building_damaged/building_damage"][:], dtype="U")
+    bd = np.array(data_file[dataset_path][:], dtype="U")
 
     for i in range(len(bd)):
         if str(bd[i]) in UNBURNT_CAT:

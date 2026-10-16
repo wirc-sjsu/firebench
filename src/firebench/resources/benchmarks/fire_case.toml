@@ -1,0 +1,102 @@
+# Parameters of the benchmark cases defined outside FireBench (firebench.benchmarks.fire_case).
+#
+# A case definition (schema fb-case-v1) names this parameter set by `set` and `version`; it never
+# carries a number that changes a score. Every threshold, normalization, and weight of a generic case
+# is in this file, which FireBench reads from the installed package and from nowhere else. The
+# values below are those of the Caldor case (FB001), except where a comment says otherwise.
+#
+# To change a parameter: edit this file in a FireBench commit and raise `version`, so that a case
+# definition names the parameters it was reviewed with. Every key is required and an unknown key is
+# refused when a case is loaded.
+
+set = "fire_case"
+version = "2026.1"
+
+[group_weights]
+# Weight of a group in the total score, by family.
+building_damage = 1
+burn_severity_cbi = 1
+fire_perimeters = 1
+weather_stations = 1
+
+[building_damage]
+# Weight of each binary structure-loss KPI in its group (accuracy, precision, recall, specificity,
+# negative predictive value, F1 score).
+kpi_weight = 1
+
+[burn_severity_cbi]
+# RAVG's four-class composite burn index (CBI4). Class 4 is "high", CBI >= 2.25, RAVG's own class
+# bound (decision 1 of the generic-case work). Class 0 is no data: a cell that is no data in the
+# observations or in the model is left out.
+high_classes = [4]
+other_classes = [1, 2, 3]
+kpi_weight = 1
+
+[fire_perimeters]
+# Projections allowed for the areas and indices of a generic case (decision 3). FB001 computes its
+# areas in EPSG:3310 and keeps it.
+projections = ["EPSG:5070"]
+# The relative error of a burnt area at which its score is 50.
+area_relative_error_at_score_50 = 0.20
+# A period is scored on at least this many perimeters.
+min_perimeters = 2
+# Weight of each KPI of a period in its group.
+mean_jaccard_weight = 2
+min_jaccard_weight = 1
+max_jaccard_weight = 0
+mean_dice_weight = 0
+min_dice_weight = 0
+max_dice_weight = 0
+final_area_bias_weight = 1
+area_rmse_weight = 1
+
+[forecast_windows]
+# The forecast windows `propose_case` offers: cycles at these UTC hours, this long, that hold at
+# least `min_perimeters` perimeters (FB001's HRRR windows).
+cycle_hours = [0, 6, 12, 18]
+hours = 48
+min_perimeters = 2
+
+[weather_stations]
+# Weight of a KPI in its group, by station set: trusted sources only, and all sources.
+tso_weight = 1
+all_weight = 0
+
+# Station variables, in the order a case lists them. `unit` is the unit model and observations are
+# compared in; `norm_m` is the error, in that unit, at which the score of a metric is 50
+# (firebench.metrics.kpi_norm_symmetric_open_exponential). `metrics` is `standard` (MAE, RMSE,
+# bias) or `wind_direction` (circular bias).
+[weather_stations.variables.air_temperature]
+label = "Air temp"
+group_label = "Air Temp"
+unit = "degC"
+norm_m = 5
+metrics = "standard"
+
+[weather_stations.variables.relative_humidity]
+label = "RH"
+group_label = "RH"
+unit = "percent"
+norm_m = 15
+metrics = "standard"
+
+[weather_stations.variables.wind_speed]
+label = "Wind Speed"
+group_label = "Wind Speed"
+unit = "m/s"
+norm_m = 5
+metrics = "standard"
+
+[weather_stations.variables.wind_direction]
+label = "Wind Direction"
+group_label = "Wind Direction"
+unit = "degree"
+norm_m = 45
+metrics = "wind_direction"
+
+[weather_stations.variables.fuel_moisture_content_10h]
+label = "FMC 10h"
+group_label = "FMC 10h"
+unit = "percent"
+norm_m = 5
+metrics = "standard"

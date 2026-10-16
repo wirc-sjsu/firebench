@@ -16,6 +16,7 @@ manage_weather_sensor_heights.md
 generate_weather_release_inventory.md
 convert_model_output.md
 select_caldor_target.md
+define_benchmark_case.md
 custom_fuel_model.md
 plot_from_toml.md
 report_skeleton.md
