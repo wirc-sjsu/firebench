@@ -1271,6 +1271,139 @@ def wx_qc_finalize(manifest: Path, output: Path, reviewer: str, overwrite: bool)
     click.echo(f"Final HDF5: {result['artifacts']['final_h5']}")
 
 
+@main.group("case")
+def case_group() -> None:
+    """
+    Benchmark cases defined outside FireBench, by a definition document (schema fb-case-v1).
+
+    'propose' writes a definition for a standard file, 'check' lists what a definition gets wrong
+    about a file, and 'run' scores a model output on it. A definition can be a JSON file, or a
+    standard file that holds one (/benchmark_case/definition).
+    """
+
+
+def _case_modules():
+    return import_module(".benchmarks.fire_case_definition", __package__), import_module(
+        ".benchmarks.fire_case", __package__
+    )
+
+
+def _read_definition(path: Path) -> dict:
+    definition_module, _ = _case_modules()
+    if path.suffix.lower() in {".h5", ".hdf5"}:
+        try:
+            definition = definition_module.read_case_definition(path)
+        except definition_module.CaseDefinitionError as exc:
+            raise click.ClickException(str(exc)) from exc
+        if definition is None:
+            raise click.ClickException(f"{path} holds no case definition.")
+        return definition
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise click.ClickException(f"{path} is not a JSON file: {exc}") from exc
+
+
+@case_group.command("propose")
+@click.argument("std_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--start", help="Start of the case window, ISO 8601 with time zone (default: the data's).")
+@click.option("--end", help="End of the case window, ISO 8601 with time zone.")
+@click.option("--name", help="Name of the case (default: the file's description).")
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="JSON file to write the definition to (default: print it).",
+)
+def case_propose(
+    std_file: Path, start: str | None, end: str | None, name: str | None, output: Path | None
+) -> None:
+    """Propose a case definition with every family of KPIs STD_FILE allows."""
+    definition_module, _ = _case_modules()
+    if (start is None) != (end is None):
+        raise click.UsageError("Give both --start and --end, or neither.")
+    window = _parse_window_options(start, end) if start else None
+    try:
+        proposal = definition_module.propose_case(std_file, window=window, name=name)
+    except definition_module.CaseDefinitionError as exc:
+        raise click.ClickException(str(exc)) from exc
+    text = json.dumps(proposal["definition"], indent=2, ensure_ascii=False)
+    if output is None:
+        click.echo(text)
+    else:
+        output.write_text(text + "\n", encoding="utf-8")
+        click.echo(f"Wrote {output}: {len(proposal['definition']['periods'])} periods.")
+    for item in proposal["left_out"]:
+        click.echo(f"Left out {item['family']}: {item['reason']}", err=True)
+
+
+@case_group.command("check")
+@click.argument("definition", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("std_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def case_check(definition: Path, std_file: Path) -> None:
+    """List the problems of DEFINITION against the standard file STD_FILE."""
+    definition_module, _ = _case_modules()
+    problems = definition_module.check_case(_read_definition(definition), std_file)
+    if problems:
+        for problem in problems:
+            click.echo(f"- {problem}")
+        raise click.ClickException(f"{len(problems)} problem(s).")
+    click.echo("The definition can be run on this file.")
+
+
+@case_group.command("run")
+@click.argument("definition", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("model_output", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--obs",
+    "obs_data",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Observation standard file (default: DEFINITION, when it is a standard file).",
+)
+@click.option(
+    "-t", "--target", default="A", show_default=True, help="Benchmark target, for example P02_PW."
+)
+@click.option("-n", "--name", default="", help="Name of the evaluated model.")
+@click.option(
+    "--output-json", type=click.Path(dir_okay=False, path_type=Path), default=Path("case_rslt.json")
+)
+@click.option("--score-card", type=click.Path(dir_okay=False, path_type=Path), default=Path("case.pdf"))
+@click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing results if present.")
+def case_run(
+    definition: Path,
+    model_output: Path,
+    obs_data: Path | None,
+    target: str,
+    name: str,
+    output_json: Path,
+    score_card: Path,
+    overwrite: bool,
+) -> None:
+    """Score MODEL_OUTPUT on the case of DEFINITION."""
+    definition_module, case_module = _case_modules()
+    if obs_data is None:
+        if definition.suffix.lower() not in {".h5", ".hdf5"}:
+            raise click.UsageError("Give the observation file with --obs.")
+        obs_data = definition
+    try:
+        case = case_module.load_case(_read_definition(definition), obs_data)
+        result = case.run_benchmark(
+            model_output,
+            target,
+            name=name,
+            overwrite=overwrite,
+            obs_data=obs_data,
+            output_json=output_json,
+            score_card_report=score_card,
+        )
+    except (definition_module.CaseDefinitionError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    if result:
+        click.echo(
+            f"Total score {result['score_card'].get('Score Total')}; wrote {output_json} and {score_card}."
+        )
+
+
 @main.group()
 def keys() -> None:
     """

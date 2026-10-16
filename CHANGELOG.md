@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add benchmark cases defined outside FireBench: a definition document (schema `fb-case-v1`) names
+  the periods and the families of KPIs a standard file is scored on, and the parameter set it uses.
+  `propose_case`, `check_case`, `edit_case`, `write_case_definition`, and `read_case_definition`
+  (`firebench.benchmarks.fire_case_definition`) propose, check, edit, and keep it in the file at
+  `/benchmark_case/definition`; `load_case` (`firebench.benchmarks.fire_case`) runs it with the
+  interface of a case module. The families are fire perimeters (in EPSG:5070), building damage,
+  burn severity from RAVG's composite burn index (high is CBI ≥ 2.25), and weather stations.
+- Add the parameter file of these cases, `resources/benchmarks/fire_case.toml` (set `fire_case`,
+  version `2026.1`), with FB001's normalizations and weights and the CBI classes.
+- Add `firebench case propose`, `firebench case check`, and `firebench case run`.
+- Add the optional `/benchmark_case` group to the standard format.
+
 - Add cloud-to-ground lightning to the standard format: `/unstructured/lightning/<stream>`, one
   `strikes` table of records with a start, an end, a position, and a strike count, and the namespace
   variables `LIGHTNING_STROKE_COUNT` and `LIGHTNING_PEAK_CURRENT`.
@@ -156,6 +168,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The KPI functions of FB001 take the dataset path of building damage, the projection of the
+  perimeter indices and areas, and the relative area error at score 50 as keyword arguments, with
+  FB001's values as defaults, so that generic cases reuse them. FB001's results do not change.
 - Read the CAL FIRE DINS tables exported since 2026: column names may start with the `*` that marks a
   required column (`* Damage`, `* Incident Name`), and the renamed classes `Affected (>0-10%)` and
   `Major (25-50%)` rank as `Affected (1-9%)` and `Major (26-50%)` and fall in the same binary class

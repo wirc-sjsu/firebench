@@ -2,7 +2,7 @@
 
 - **Version**: 1.0
 - **Status**: Pre-release
-- **Last update**: 2026-10-15
+- **Last update**: 2026-10-16
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
 
@@ -21,6 +21,7 @@ Each .h5 file must adhere to the following structure:
 ├── polygons/       (geopolygons)
 ├── fuel_models/    (fuel model classification or parameters)
 ├── miscellaneous/  (non-standard or project-specific data)
+├── benchmark_case/ (the definition of a benchmark case, optional)
 ├── certificates/   (FireBench certificates)
 ```
 
@@ -686,6 +687,18 @@ Dataset | Units | Description
 ### Metadata
 
 - If `/metadata` is present, it must contain only datasets (no nested groups) and each dataset must have a `description` attribute.
+
+### Benchmark case
+
+- `/benchmark_case/definition` holds the definition of a benchmark case defined outside FireBench
+  (schema `fb-case-v1`): its canonical JSON (sorted keys, no spaces, UTF-8) as a **fixed-length**
+  byte string, with the attributes `schema` and `sha256` (the SHA-256 of the JSON, which names the
+  definition). A variable-length string would not do: the signing digest hashes it as pointers.
+- The group is optional. A file that holds a definition can be scored with
+  `firebench case run FILE MODEL` and needs no FireBench code for its case. See
+  [Define a benchmark case from a dataset](how_to/define_benchmark_case.md).
+- Write it with `write_case_definition` and read it with `read_case_definition`
+  (`firebench.benchmarks.fire_case_definition`), before the file is signed: the certificate covers it.
 
 ### Certificates
 
