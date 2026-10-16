@@ -316,3 +316,51 @@ def test_subject_digest_is_public_and_ignores_certificates(tmp_path):
     _add_external_certificate(path, lambda _message: b"signature")
 
     assert signing.hdf5_subject_digest_sha256(path) == digest
+
+
+def _numbers_and_strings(path, names):
+    with h5py.File(path, "w") as h5:
+        h5.attrs["name"] = "fixed"
+        h5.attrs["levels"] = np.array([1.5, 2.5])
+        h5.attrs["sources"] = np.array(names, dtype=h5py.string_dtype())
+        group = h5.create_group("time_series/station_A")
+        group.attrs["position_lat"] = 38.7
+        group.create_dataset("air_temperature", data=np.arange(12, dtype=np.float32).reshape(3, 4))
+        group.create_dataset("count", data=np.int64(7))
+        group.create_dataset("empty", shape=(0,), dtype=np.float64)
+        group.create_dataset("codes", data=np.array([b"AB", b"CD"], dtype="S2"))
+        group.create_dataset("granule_ids", data=names, dtype=h5py.string_dtype())
+
+
+def test_subject_digest_of_numbers_and_fixed_strings_is_pinned(tmp_path):
+    # Signers outside FireBench sign this value: it must not change across versions.
+    path = tmp_path / "dataset.h5"
+    with h5py.File(path, "w") as h5:
+        h5.attrs["name"] = "fixed"
+        h5.attrs["levels"] = np.array([1.5, 2.5])
+        group = h5.create_group("time_series/station_A")
+        group.attrs["position_lat"] = 38.7
+        group.create_dataset("air_temperature", data=np.arange(12, dtype=np.float32).reshape(3, 4))
+        group.create_dataset("count", data=np.int64(7))
+        group.create_dataset("empty", shape=(0,), dtype=np.float64)
+        group.create_dataset("codes", data=np.array([b"AB", b"CD"], dtype="S2"))
+
+    assert (
+        signing.hdf5_subject_digest_sha256(path)
+        == "66eca36029d8d15d46e357cfe29d5af507a1f8d47f655d4c53cdda14aca30359"
+    )
+
+
+def test_subject_digest_of_variable_length_strings_is_their_text(tmp_path):
+    path = tmp_path / "dataset.h5"
+    _numbers_and_strings(path, ["VNP14IMG.A2026180.0912", "VNP14IMG.A2026180.2054"])
+    digest = signing.hdf5_subject_digest_sha256(path)
+
+    # h5py reads them as objects, whose bytes are pointers that change from one read to the next.
+    assert {signing.hdf5_subject_digest_sha256(path) for _ in range(5)} == {digest}
+    copy = tmp_path / "copy.h5"
+    _numbers_and_strings(copy, ["VNP14IMG.A2026180.0912", "VNP14IMG.A2026180.2054"])
+    assert signing.hdf5_subject_digest_sha256(copy) == digest
+    # The length of each string counts, so text moved from one to the next is another digest.
+    _numbers_and_strings(copy, ["VNP14IMG.A2026180.091", "2VNP14IMG.A2026180.2054"])
+    assert signing.hdf5_subject_digest_sha256(copy) != digest
