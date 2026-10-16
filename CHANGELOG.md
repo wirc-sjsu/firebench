@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add cloud-to-ground lightning to the standard format: `/unstructured/lightning/<stream>`, one
+  `strikes` table of records with a start, an end, a position, and a strike count, and the namespace
+  variables `LIGHTNING_STROKE_COUNT` and `LIGHTNING_PEAK_CURRENT`.
+- Add `firebench.acquisition.nldn_tiles`: NOAA NCEI's daily counts of Vaisala NLDN cloud-to-ground
+  strikes per 0.1° cell (SWDI `nldn-tiles`), the cells of a box on the days of a window, from the
+  annual file of a year or the monthly files of the year in progress.
+- Add `standardize_nldn_tiles`, `standardize_lightning_strokes` (the cloud-to-ground strokes of a
+  network's CSV file; a file without a stroke type is refused), `list_lightning_streams`, and
+  `lightning_time_series` to `firebench.standardize`.
 - Add weather radar to the standard format: `/spatial_3d/radar/<SITE>`, polar sweeps cropped to the
   frame with a `volumes` table, and the namespace variables `RADAR_REFLECTIVITY`,
   `RADAR_CORRELATION_COEFFICIENT`, `RADAR_DIFFERENTIAL_REFLECTIVITY`, and `RADAR_RADIAL_VELOCITY`.

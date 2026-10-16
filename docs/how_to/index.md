@@ -9,6 +9,7 @@ details.
 
 validate_hdf5.md
 fire_detections.md
+lightning.md
 weather_radar.md
 review_weather_station_qc.md
 manage_weather_sensor_heights.md

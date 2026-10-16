@@ -83,6 +83,8 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_WIND_REDUCTION_FACTOR`: Fuel wind reduction factor [-]
 - `IGNITION_LENGTH`: Ignition length [m]
 - `LATITUDE`: Latitude [deg]
+- `LIGHTNING_PEAK_CURRENT`: Signed peak current of a lightning stroke [kA]
+- `LIGHTNING_STROKE_COUNT`: Number of lightning strokes or strikes a record counts [-]
 - `LENGTH`: Length [m]
 - `LONGITUDE`: Longitude [deg]
 - `MAGNITUDE`: Magnitude
