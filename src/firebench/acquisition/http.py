@@ -11,7 +11,9 @@ import os
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET  # nosec B405 - parses the listings of fixed public buckets
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Protocol
@@ -113,6 +115,27 @@ def http_get(
     if isinstance(last_error, HTTPStatusError):
         raise last_error
     raise ConnectionError(f"download failed after {retries} attempts: {shown_url} ({last_error})") from None
+
+
+S3_NS = "{http://s3.amazonaws.com/doc/2006-03-01/}"
+
+
+def list_s3_keys(
+    bucket: str, prefix: str, *, opener: Callable = urllib.request.urlopen
+) -> list[tuple[str, int | None]]:
+    """Keys and sizes under a prefix of a public S3 bucket, with the anonymous listing (``list-type=2``)."""
+    items, token = [], None
+    while True:
+        url = f"https://{bucket}.s3.amazonaws.com/?list-type=2&prefix={urllib.parse.quote(prefix)}"
+        if token:
+            url += f"&continuation-token={urllib.parse.quote(token)}"
+        root = ET.fromstring(http_get(url, opener=opener).decode())  # nosec B314 - fixed public bucket
+        for content in root.iter(f"{S3_NS}Contents"):
+            size = content.findtext(f"{S3_NS}Size")
+            items.append((content.findtext(f"{S3_NS}Key"), int(size) if size else None))
+        if root.findtext(f"{S3_NS}IsTruncated") != "true":
+            return items
+        token = root.findtext(f"{S3_NS}NextContinuationToken")
 
 
 def fetch_text(url: str, **kwargs) -> str:

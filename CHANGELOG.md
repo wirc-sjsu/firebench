@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add weather radar to the standard format: `/spatial_3d/radar/<SITE>`, polar sweeps cropped to the
+  frame with a `volumes` table, and the namespace variables `RADAR_REFLECTIVITY`,
+  `RADAR_CORRELATION_COEFFICIENT`, `RADAR_DIFFERENTIAL_REFLECTIVITY`, and `RADAR_RADIAL_VELOCITY`.
+- Add `firebench.acquisition.nexrad`: the WSR-88D sites (from NOAA NCEI's list, kept with
+  FireBench), the sites within reach of a box, and the NEXRAD Level II volumes of a site and window
+  from the NOAA archive on AWS (`unidata-nexrad-level2`), one per time step, downloaded in parallel.
+- Add `standardize_nexrad_level2`, `read_level2_volume`, `list_radar_sites`, `radar_echo_top_series`,
+  and `radar_composite` to `firebench.standardize`, and `firebench data nexrad`. Split cuts are merged
+  into one sweep; a sweep the archive left unfinished is skipped. Reading Level II needs the new
+  optional extra `radar` (`xradar`).
 - Add satellite fire detections to the standard format: `/unstructured/fire_detections/<stream>`,
   one group per satellite with a `detections` table and an `observations` table, and the namespace
   variables `FIRE_RADIATIVE_POWER`, `FIRE_DETECTION_CONFIDENCE`, `FIRE_TEMPERATURE`,
