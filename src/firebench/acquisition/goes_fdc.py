@@ -17,9 +17,7 @@ import logging
 import os
 import re
 import tempfile
-import urllib.parse
 import urllib.request
-import xml.etree.ElementTree as ET  # nosec B405 - parses the listing of a fixed public bucket
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -27,12 +25,11 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from .http import http_get
+from .http import http_get, list_s3_keys
 
 logger = logging.getLogger(__name__)
 
 PRODUCT = "ABI-L2-FDCC"
-S3_NS = "{http://s3.amazonaws.com/doc/2006-03-01/}"
 # The satellite serving each platform, from the date it took over (UTC midnight).
 SWITCHES: dict[str, list[tuple[date | None, int]]] = {
     "east": [(None, 16), (date(2025, 4, 7), 19)],
@@ -248,18 +245,7 @@ def _fetch_one(scan: FdcScan, directory: Path, opener: Callable) -> FetchedScan:
 
 def _list_prefix(bucket: str, prefix: str, opener: Callable) -> list[tuple[str, int | None]]:
     """Keys and sizes under a prefix, with the anonymous S3 listing (``list-type=2``)."""
-    items, token = [], None
-    while True:
-        url = f"https://{bucket}.s3.amazonaws.com/?list-type=2&prefix={urllib.parse.quote(prefix)}"
-        if token:
-            url += f"&continuation-token={urllib.parse.quote(token)}"
-        root = ET.fromstring(http_get(url, opener=opener).decode())  # nosec B314 - fixed public bucket
-        for content in root.iter(f"{S3_NS}Contents"):
-            size = content.findtext(f"{S3_NS}Size")
-            items.append((content.findtext(f"{S3_NS}Key"), int(size) if size else None))
-        if root.findtext(f"{S3_NS}IsTruncated") != "true":
-            return items
-        token = root.findtext(f"{S3_NS}NextContinuationToken")
+    return list_s3_keys(bucket, prefix, opener=opener)
 
 
 def _stamp(values) -> datetime:

@@ -1,7 +1,8 @@
 firebench.acquisition
 =====================
 
-Downloads from data providers: HTTP primitives, API keys, and satellite fire detections.
+Downloads from data providers: HTTP primitives, API keys, satellite fire detections, and weather
+radar volumes.
 
 .. automodule:: firebench.acquisition.keys
    :members:
@@ -13,4 +14,7 @@ Downloads from data providers: HTTP primitives, API keys, and satellite fire det
    :members:
 
 .. automodule:: firebench.acquisition.goes_fdc
+   :members:
+
+.. automodule:: firebench.acquisition.nexrad
    :members:

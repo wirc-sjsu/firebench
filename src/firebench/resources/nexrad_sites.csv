@@ -1,0 +1,167 @@
+# WSR-88D sites (NEXRAD), from NOAA NCEI HOMR nexrad-stations.txt, read on 2026-10-15:
+# https://www.ncei.noaa.gov/access/homr/file/nexrad-stations.txt (public domain).
+# elevation_ft is the station elevation above mean sea level, in feet, as NCEI lists it.
+icao,name,state,country,latitude,longitude,elevation_ft
+KABR,Aberdeen,SD,United States,45.455833,-98.413333,1383
+KABX,Albuquerque,NM,United States,35.149722,-106.82388,5951
+KAKQ,Norfolk Rich,VA,United States,36.98405,-77.007361,255
+KAMA,Amarillo,TX,United States,35.233333,-101.70927,3703
+KAMX,Miami,FL,United States,25.611083,-80.412667,111
+KAPX,Gaylord,MI,United States,44.90635,-84.719533,1561
+KARX,La Crosse,WI,United States,43.822778,-91.191111,1357
+KATX,Seattle,WA,United States,48.194611,-122.49569,642
+KBBX,Beale AFB,CA,United States,39.495639,-121.63161,221
+KBGM,Binghamton,NY,United States,42.199694,-75.984722,1703
+KBHX,Eureka,CA,United States,40.498583,-124.29216,2516
+KBIS,Bismarck,ND,United States,46.770833,-100.76055,1755
+KBLX,Billings,MT,United States,45.853778,-108.60680,3703
+KBMX,Birmingham,AL,United States,33.172417,-86.770167,759
+KBOX,Boston,MA,United States,41.955778,-71.136861,232
+KBRO,Brownsville,TX,United States,25.916,-97.418967,88
+KBUF,Buffalo,NY,United States,42.948789,-78.736781,790
+KBYX,Key West,FL,United States,24.5975,-81.703167,89
+KCAE,Columbia,SC,United States,33.948722,-81.118278,345
+KCBW,Houlton,ME,United States,46.03925,-67.806431,860
+KCBX,Boise,ID,United States,43.490217,-116.23603,3172
+KCCX,State College,PA,United States,40.923167,-78.003722,2486
+KCLE,Cleveland,OH,United States,41.413217,-81.859867,860
+KCLX,Charleston,SC,United States,32.655528,-81.042194,229
+KCRI,Roc Faa Redundant Rda 1,OK,United States,35.238333,-97.46,1315
+KCRP,Corpus Christi,TX,United States,27.784017,-97.51125,142
+KCXX,Burlington,VT,United States,44.511,-73.166431,431
+KCYS,Cheyenne,WY,United States,41.151919,-104.80603,6193
+KDAX,Sacramento,CA,United States,38.501111,-121.67783,144
+KDDC,Dodge City,KS,United States,37.760833,-99.968889,2671
+KDFX,Laughlin AFB,TX,United States,29.273139,-100.28033,1196
+KDGX,Jackson Brandon,MS,United States,32.279944,-89.984444,609
+KDIX,Philadelphia,NJ,United States,39.947089,-74.410731,230
+KDLH,Duluth,MN,United States,46.836944,-92.209722,1542
+KDMX,Des Moines,IA,United States,41.7312,-93.722869,1095
+KDOX,Dover AFB,DE,United States,38.825767,-75.440117,164
+KDTX,Detroit,MI,United States,42.7,-83.471667,1216
+KDVN,Davenport,IA,United States,41.611667,-90.580833,851
+KDYX,Dyess AFB,TX,United States,32.5385,-99.254333,1582
+KEAX,Kansas City,MO,United States,38.81025,-94.264472,1092
+KEMX,Tucson,AZ,United States,31.89365,-110.63025,5319
+KENX,Albany,NY,United States,42.586556,-74.064083,1935
+KEOX,Fort Rucker,AL,United States,31.460556,-85.459389,537
+KEPZ,El Paso,NM,United States,31.873056,-106.698,4218
+KESX,Las Vegas,NV,United States,35.70135,-114.89165,4948
+KEVX,Eglin AFB,FL,United States,30.565033,-85.921667,221
+KEWX,Austin San Antonio,TX,United States,29.704056,-98.028611,767
+KEYX,Edwards,CA,United States,35.09785,-117.56075,2873
+KFCX,Roanoke,VA,United States,37.0244,-80.273969,2965
+KFDR,Altus AFB,OK,United States,34.362194,-98.976667,1315
+KFDX,Cannon AFB,NM,United States,34.634167,-103.61888,4698
+KFFC,Atlanta,GA,United States,33.36355,-84.56595,972
+KFSD,Sioux Falls,SD,United States,43.587778,-96.729444,1495
+KFSX,Flagstaff,AZ,United States,34.574333,-111.19844,7514
+KFTG,Denver Front Range Ap,CO,United States,39.786639,-104.54580,5611
+KFWS,Dallas,TX,United States,32.573,-97.30315,777
+KGGW,Glasgow,MT,United States,48.206361,-106.62469,2384
+KGJX,Grand Junction,CO,United States,39.062169,-108.21376,10101
+KGLD,Goodland,KS,United States,39.366944,-101.70027,3716
+KGRB,Green Bay,WI,United States,44.498633,-88.111111,823
+KGRK,Fort Hood,TX,United States,30.721833,-97.382944,603
+KGRR,Grand Rapids,MI,United States,42.893889,-85.544889,875
+KGSP,Greer,SC,United States,34.883306,-82.219833,1069
+KGWX,Columbus AFB,MS,United States,33.896917,-88.329194,590
+KGYX,Portland,ME,United States,43.891306,-70.256361,474
+KHDC,Hammond Municipal Airport,LA,United States,30.5193,-90.4074,43
+KHDX,Holloman AFB,NM,United States,33.077,-106.12003,4270
+KHGX,Houston,TX,United States,29.4719,-95.078733,115
+KHNX,San Joaquin Valley,CA,United States,36.314181,-119.63213,340
+KHPX,Fort Campbell,KY,United States,36.736972,-87.285583,613
+KHTX,Huntsville,AL,United States,34.930556,-86.083611,1859
+KICT,Wichita,KS,United States,37.654444,-97.443056,1400
+KICX,Cedar City,UT,United States,37.59105,-112.86218,10757
+KILN,Cincinnati,OH,United States,39.420483,-83.82145,1170
+KILX,Lincoln,IL,United States,40.1505,-89.336792,731
+KIND,Indianapolis,IN,United States,39.7075,-86.280278,887
+KINX,Tulsa,OK,United States,36.175131,-95.564161,749
+KIWA,Phoenix,AZ,United States,33.289233,-111.66991,1426
+KIWX,Fort Wayne,IN,United States,41.358611,-85.7,1056
+KJAX,Jacksonville,FL,United States,30.484633,-81.7019,160
+KJGX,Robins AFB,GA,United States,32.675683,-83.350833,618
+KJKL,Jackson,KY,United States,37.590833,-83.313056,1461
+KLBB,Lubbock,TX,United States,33.654139,-101.81416,3378
+KLCH,Lake Charles,LA,United States,30.125306,-93.215889,137
+KLGX,Langley Hill Nw Washington,WA,United States,47.116944,-124.10666,366
+KLIX,New Orleans,LA,United States,30.336667,-89.825417,179
+KLNX,North Platte,NE,United States,41.957944,-100.57622,3113
+KLOT,Chicago,IL,United States,41.604444,-88.084444,760
+KLRX,Elko,NV,United States,40.73955,-116.8027,6895
+KLSX,St Louis,MO,United States,38.698611,-90.682778,722
+KLTX,Wilmington,NC,United States,33.98915,-78.429108,145
+KLVX,Louisville,KY,United States,37.975278,-85.943889,833
+KLWX,Sterling,VA,United States,38.976111,-77.4875,404
+KLZK,Little Rock,AR,United States,34.8365,-92.262194,649
+KMAF,Midland Odessa,TX,United States,31.943461,-102.18925,2962
+KMAX,Medford,OR,United States,42.081169,-122.71736,7561
+KMBX,Minot AFB,ND,United States,48.393056,-100.86444,1590
+KMHX,Morehead City,NC,United States,34.775908,-76.876189,145
+KMKX,Milwaukee,WI,United States,42.9679,-88.550667,1023
+KMLB,Melbourne,FL,United States,28.113194,-80.654083,149
+KMOB,Mobile,AL,United States,30.679444,-88.24,289
+KMPX,Minneapolis,MN,United States,44.848889,-93.565528,1101
+KMQT,Marquette,MI,United States,46.531111,-87.548333,1525
+KMRX,Knoxville,TN,United States,36.168611,-83.401944,1434
+KMSX,Missoula,MT,United States,47.041,-113.98622,7978
+KMTX,Salt Lake City,UT,United States,41.262778,-112.44777,6594
+KMUX,San Francisco,CA,United States,37.155222,-121.89844,3550
+KMVX,Grand Forks,ND,United States,47.527778,-97.325556,1083
+KMXX,Maxwell AFB,AL,United States,32.53665,-85.78975,560
+KNKX,San Diego,CA,United States,32.919017,-117.0418,1052
+KNQA,Memphis,TN,United States,35.344722,-89.873333,435
+KOAX,Omaha,NE,United States,41.320369,-96.366819,1262
+KOHX,Nashville,TN,United States,36.247222,-86.5625,676
+KOKX,New York City,NY,United States,40.865528,-72.863917,199
+KOTX,Spokane,WA,United States,47.680417,-117.62677,2449
+KOUN,Norman Nssl,OK,United States,35.236058,-97.46235,1284
+KPAH,Paducah,KY,United States,37.068333,-88.771944,506
+KPBZ,Pittsburgh,PA,United States,40.531717,-80.217967,1266
+KPDT,Pendleton,OR,United States,45.69065,-118.85293,1580
+KPOE,Fort Polk,LA,United States,31.155278,-92.976111,473
+KPUX,Pueblo,CO,United States,38.45955,-104.18135,5363
+KRAX,Raleigh Durham,NC,United States,35.665519,-78.48975,462
+KRGX,Reno,NV,United States,39.754056,-119.46202,8396
+KRIW,Riverton,WY,United States,43.066089,-108.4773,5633
+KRLX,Charleston,WV,United States,38.311111,-81.722778,1213
+KRTX,Portland,OR,United States,45.715039,-122.965,1728
+KSFX,Pocatello,ID,United States,43.1056,-112.68613,4539
+KSGF,Springfield,MO,United States,37.235239,-93.400419,1375
+KSHV,Shreveport,LA,United States,32.450833,-93.84125,387
+KSJT,San Angelo,TX,United States,31.371278,-100.4925,2004
+KSOX,Santa Ana Mountains,CA,United States,33.817733,-117.636,3106
+KSRX,Fort Smith,AR,United States,35.290417,-94.361889,737
+KTBW,Tampa,FL,United States,27.7055,-82.401778,122
+KTFX,Great Falls,MT,United States,47.459583,-111.38533,3805
+KTLH,Tallahassee,FL,United States,30.397583,-84.328944,177
+KTLX,Oklahoma City,OK,United States,35.333361,-97.277761,1278
+KTWX,Topeka,KS,United States,38.99695,-96.23255,1415
+KTYX,Fort Drum,NY,United States,43.755694,-75.679861,1960
+KUDX,Rapid City,SD,United States,44.124722,-102.83,3195
+KUEX,Hastings,NE,United States,40.320833,-98.441944,2057
+KVAX,Moody AFB,GA,United States,30.890278,-83.001806,330
+KVBX,Vandenberg AFB,CA,United States,34.83855,-120.39791,1354
+KVNX,Vance AFB,OK,United States,36.740617,-98.127717,1258
+KVTX,Los Angeles,CA,United States,34.412017,-119.17875,2807
+KVWX,Evansville,IN,United States,38.26025,-87.724528,625
+KYUX,Yuma,AZ,United States,32.495281,-114.65671,239
+LPLA,Lajes AB,,Azores,38.73028,-27.32167,3334
+PABC,Bethel Faa,AK,United States,60.791944,-161.87638,193
+PACG,Sitka,AK,United States,56.852778,-135.52916,272
+PAEC,Nome,AK,United States,64.511389,-165.295,90
+PAHG,Anchorage,AK,United States,60.725914,-151.35146,356
+PAIH,Middleton Island,AK,United States,59.460767,-146.30344,132
+PAKC,King Salmon,AK,United States,58.679444,-156.62944,144
+PAPD,Fairbanks,AK,United States,65.035114,-147.50143,2707
+PGUA,Andersen AFB Agana,GU,Guam,13.455833,144.811111,386
+PHKI,South Kauai,HI,United States,21.893889,-159.5525,340
+PHKM,Kamuela,HI,United States,20.125278,-155.77777,3966
+PHMO,Molokai,HI,United States,21.132778,-157.18027,1444
+PHWA,South Shore,HI,United States,19.095,-155.56888,1461
+RKJK,Kunsan,,"Korea, South",35.924167,126.622222,192
+RKSG,Camp Humphreys,,"Korea, South",37.207569,127.285561,1521
+RODN,Kadena,,Japan,26.3078,127.903469,412
+TJUA,San Juan,PR,United States,18.115667,-66.078167,2958

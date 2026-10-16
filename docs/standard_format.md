@@ -2,7 +2,7 @@
 
 - **Version**: 1.0
 - **Status**: Pre-release
-- **Last update**: 2026-07-24
+- **Last update**: 2026-10-15
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
 
@@ -391,6 +391,81 @@ Units attributes must be set for each field.
 │    │    ├── wind_w         (W wind output from WRF-SFIRE simulation)
 │    │    ├── temperature    (temperature output from WRF-SFIRE simulation)
 ```
+
+#### radar
+
+Weather radar volumes are stored as polar sweeps, the way the radar observed them, under
+`/spatial_3d/radar`, one group per **site** (the ICAO identifier, *e.g.* `KDAX`). Nothing is gridded
+at standardization: a reader grids or cuts what it needs.
+
+```
+/spatial_3d/radar/<SITE>/
+├── azimuth, range       (fixed axes of the site)
+├── time, elevation, volume_index, azimuth_resolution, nyquist_velocity   (one row per sweep)
+├── radar_reflectivity, ...   (n_sweep, n_azimuth, n_range)
+└── volumes/             (one row per volume scan read)
+```
+
+- Position follows the [spherical convention](#spherical-coordinates): the origin is the antenna
+  (`position_origin_lat`, `position_origin_lon`, `position_origin_alt`), and a cell is given by its
+  azimuth (clockwise from true north), its elevation, and its slant range.
+- **Axes.** `azimuth` holds the centres of 0.5 degree bins and `range` the slant ranges of 250 m
+  gates. Both are cropped to the cells that can fall inside the frame: a cell is kept when the beam
+  centre of some elevation from 0 to 19.75 degree lies above the frame, at most `max_height` above
+  mean sea level, with the 4/3 effective Earth radius. The azimuth axis is the smallest arc that
+  holds those cells and may cross north (*e.g.* 350.25 to 10.25); a radar inside the frame keeps
+  the whole circle. Values of a kept cell outside the frame are stored as observed.
+- **Rows.** One row per sweep, in time order. A split cut (a surveillance cut, then a Doppler cut at
+  the same elevation) is one row: reflectivity and the dual-polarization fields of the first,
+  radial velocity of the second, the time of the first. A tilt scanned again within a volume
+  (SAILS) is a row of its own. A sweep scanned with 1 degree rays fills two bins per ray. The value
+  of a bin is the one of the ray nearest its centre, NaN when no ray is within 0.75 times the ray
+  width.
+- Values below the signal threshold and range-folded values are NaN. Radial velocity is stored as
+  observed, aliased beyond `nyquist_velocity`.
+- `/spatial_3d` and `/spatial_3d/radar` carry no attributes, so files that each hold some sites
+  merge without conflict.
+
+Site group attributes:
+
+Attributes | Type | Description
+:--------- | :----: | :-----------
+`site`, `instrument`, `provider`, `product` | str | *e.g.* `KDAX`, `WSR-88D`, `NOAA NEXRAD`, `NEXRAD Level II`
+`data_source` | str | The archive the volumes came from, *e.g.* `s3://unidata-nexrad-level2`
+`crs` | str | `EPSG:4326`
+`position_origin_lat`, `position_origin_lon`, `position_origin_alt` | float | The antenna, with `*_units` (`degree`, `m` above mean sea level)
+`beam_width`, `azimuth_step`, `gate_spacing` | float | 0.95 degree, 0.5 degree, 250 m, with `*_units`
+`effective_earth_radius` | float | The radius of the beam geometry (4/3 of 6,371 km), `*_units` = `m`
+`max_height` | float | The ceiling of the crop, `*_units` = `m` above mean sea level
+`frame_west`, `frame_south`, `frame_east`, `frame_north` | float | The frame requested, `*_units` = `degree`
+`time_start`, `time_end` | str | The window requested and the end of the last volume read, ISO 8601
+`fields` | str | JSON list of the field datasets present
+`time_step`, `time_step_units` | int, str | The selection step, `min`; 0 keeps every volume
+`volumes_complete` | bool | False when some volume of the selection could not be fetched or read
+`failed` | str | JSON list of the volumes not read: `key`, `reason`
+`source_files` | str | JSON: the bucket and the number of volumes read
+
+Sweep rows, every dataset of length `n_sweep`:
+
+Dataset | Units | Description
+:------ | :---: | :----------
+`time` | `s` | Start of the sweep, relative to `time_origin` (the window start), `time_units` = `s`
+`elevation` | `degree` | Fixed angle of the sweep, from the scan pattern
+`volume_index` | `1` | Row of `volumes/` the sweep belongs to
+`azimuth_resolution` | `degree` | 0.5 or 1, the width of the rays scanned
+`nyquist_velocity` | `m/s` | NaN when the sweep has no velocity
+
+Fields, each `(n_sweep, n_azimuth, n_range)` float32, named in the [namespace](./namespace.md):
+`radar_reflectivity` (`dBZ`), `radar_correlation_coefficient` (`1`),
+`radar_differential_reflectivity` (`dB`), `radar_radial_velocity` (`m/s`). Attribute
+`source_moment` gives the Level II name (`DBZH`, `RHOHV`, `ZDR`, `VRADH`).
+
+`volumes/`, every dataset of length `n_volume`: `time` and `time_end` (`s`, same origin), `vcp`
+(the volume coverage pattern, `_FillValue` -1), `n_sweeps`, `source_key` and `source_sha256` (the S3
+key and SHA-256 of the volume file).
+
+`firebench.standardize.radar_echo_top_series` reads the height of the plume gates of each volume,
+and `firebench.standardize.radar_composite` the column maximum of a field over them.
 
 ### polygons
 - As HDF5 is not a file format that is practical to use for vectorized dataset, the polygons are stored using the `KML` file format.

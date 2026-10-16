@@ -35,6 +35,15 @@ from .fire_detections import (
     standardize_firms_bundle,
     standardize_goes_fdc,
 )
+from .radar import (
+    EchoTopSeries,
+    RadarComposite,
+    list_radar_sites,
+    radar_composite,
+    radar_echo_top_series,
+    read_level2_volume,
+    standardize_nexrad_level2,
+)
 from .perimeters import list_kml_layers, read_kml_layer, standardize_perimeter_from_kml
 from .ravg import (
     standardize_ravg_ba_from_geotiff,
@@ -47,6 +56,7 @@ from .std_file_info import (
     SPATIAL_1D,
     SPATIAL_2D,
     SPATIAL_3D,
+    RADAR,
     UNSTRUCTURED,
     FIRE_DETECTIONS,
     GEOPOLYGONS,

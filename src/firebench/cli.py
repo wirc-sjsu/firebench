@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import tempfile
 from collections.abc import Iterator, Mapping
 from importlib import import_module
 from pathlib import Path
@@ -1061,6 +1062,129 @@ def data_goes_fdc(
     click.echo(f"Wrote the scans under {output}" + (f"; {failed} failed" if failed else "") + ".")
     if failed:
         raise click.ClickException(f"{failed} scans could not be downloaded")
+    return 0
+
+
+@data.command("nexrad")
+@click.option("--bbox", required=True, help="Domain as lon_min,lat_min,lon_max,lat_max (degrees).")
+@click.option(
+    "--start", required=True, help="Window start, ISO 8601 with time zone (e.g. 2021-08-17T00:00Z)."
+)
+@click.option("--end", required=True, help="Window end, ISO 8601 with time zone.")
+@click.option(
+    "--site",
+    "sites",
+    default=None,
+    help="Comma-separated WSR-88D identifiers (e.g. KDAX,KRGX). Default: list the sites in range and stop.",
+)
+@click.option(
+    "--step",
+    type=click.Choice(["0", "5", "10", "15", "30", "60"]),
+    default="10",
+    show_default=True,
+    help="Keep one volume per step, in minutes. 0 keeps every volume.",
+)
+@click.option(
+    "--fields",
+    default="DBZH,RHOHV,ZDR,VRADH",
+    show_default=True,
+    help="Comma-separated Level II moments: DBZH, RHOHV, ZDR, VRADH.",
+)
+@click.option(
+    "--max-height",
+    type=click.FloatRange(min=1.0, max=30.0),
+    default=20.0,
+    show_default=True,
+    help="Ceiling of the crop, in km above mean sea level.",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("nexrad.h5"),
+    show_default=True,
+    help="Standard file to write.",
+)
+@click.option("--overwrite", is_flag=True, help="Replace an existing output file.")
+@click.option("--dry-run", is_flag=True, help="List the volumes and their size; download nothing.")
+def data_nexrad(  # pylint: disable=too-many-arguments,too-many-locals
+    bbox: str,
+    start: str,
+    end: str,
+    sites: str | None,
+    step: str,
+    fields: str,
+    max_height: float,
+    output: Path,
+    overwrite: bool,
+    dry_run: bool,
+) -> None:
+    """
+    Download NEXRAD Level II volumes of a window from the NOAA archive on AWS into a standard file.
+
+    Each volume is downloaded, cropped to the cells over the domain below the ceiling, written as
+    polar sweeps under /spatial_3d/radar/<SITE>, and deleted. No key is needed. Without --site, the
+    command lists the sites within 230 km of the domain. Reading needs the 'radar' extra:
+    pip install 'firebench[radar]'.
+    """
+    start_time, end_time = _parse_window_options(start, end)
+    domain = _parse_bbox_option(bbox)
+    nexrad = import_module(".acquisition.nexrad", __package__)
+    if sites is None:
+        in_range = nexrad.sites_in_range(domain)
+        if not in_range:
+            raise click.ClickException("No WSR-88D site is within 230 km of the domain.")
+        for site, distance in in_range:
+            click.echo(f"{site.icao}  {site.name}, {site.state or site.country}: {distance:.0f} km")
+        return 0
+    selected = _parse_list_option(sites, "--site", list(nexrad.nexrad_sites()))
+    radar = import_module(".standardize.radar", __package__)
+    moments = _parse_list_option(fields, "--fields", list(radar.FIELDS))
+    if output.exists() and not overwrite and not dry_run:
+        raise click.UsageError(f"{output} already exists; use --overwrite to replace it")
+    configure_logging(3)
+    try:
+        plan = [
+            (icao, nexrad.select_volumes(nexrad.list_volumes(icao, start_time, end_time), int(step)))
+            for icao in selected
+        ]
+    except (ValueError, ConnectionError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    for icao, volumes in plan:
+        size = sum(volume.size or 0 for volume in volumes) / 1e6
+        click.echo(f"{icao}: {len(volumes)} volumes, {size:.0f} MB")
+    if dry_run:
+        return 0
+    files = import_module(".standardize.files", __package__)
+    h5 = files.new_std_file(str(output), "FireBench data nexrad", overwrite=True)
+    try:
+        with tempfile.TemporaryDirectory(prefix="nexrad-") as scratch:
+            for icao, volumes in plan:
+                if not volumes:
+                    click.echo(f"{icao}: no volume in the window")
+                    continue
+                group = radar.standardize_nexrad_level2(
+                    nexrad.fetch_volumes(volumes, Path(scratch)),
+                    h5,
+                    site=icao,
+                    bbox=domain,
+                    start=start_time,
+                    end=end_time,
+                    fields=moments,
+                    max_height=max_height * 1000.0,
+                    time_step_min=int(step),
+                )
+                failed = json.loads(group.attrs["failed"])
+                click.echo(
+                    f"{icao}: {len(group['volumes']['time'])} volumes read, {len(group['time'])} sweeps"
+                    + (f", {len(failed)} failed" if failed else "")
+                )
+    except (ValueError, ImportError) as exc:
+        h5.close()
+        output.unlink(missing_ok=True)
+        raise click.ClickException(str(exc)) from exc
+    h5.close()
+    click.echo(f"Wrote {output}, {output.stat().st_size / 1e6:.1f} MB.")
     return 0
 
 

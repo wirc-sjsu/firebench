@@ -73,6 +73,9 @@ dev = [
 hrrr = [
     "eccodes>=2.37",
 ]
+radar = [
+    "xradar>=0.11, <1.0",
+]
 docs = [
     "myst-parser",
     "pytest",

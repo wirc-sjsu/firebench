@@ -1345,3 +1345,105 @@ def test_cli_data_goes_fdc_keeps_the_scans_in_the_bucket_layout(_fire_cli, tmp_p
 
     assert result.exit_code == 0, result.output
     assert len(list((output / "noaa-goes17" / "ABI-L2-FDCC").rglob("*.nc"))) == 2
+
+
+@pytest.fixture
+def _nexrad_cli(monkeypatch, tmp_path):
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.acquisition import nexrad
+
+    sample = Path(__file__).resolve().parents[2] / "data" / "test" / "KDAX20210817_000309_V06_cut"
+    key = "2021/08/17/KDAX/KDAX20210817_000309_V06"
+    archive = tmp_path / "archive"
+    (archive / nexrad.BUCKET / key).parent.mkdir(parents=True)
+    (archive / nexrad.BUCKET / key).write_bytes(sample.read_bytes())
+    volumes = [
+        nexrad.NexradVolume(nexrad.BUCKET, key, "KDAX", nexrad.volume_time(key), sample.stat().st_size)
+    ]
+    listed = []
+
+    def list_volumes(icao, start, end, **kwargs):
+        listed.append(icao)
+        return volumes if icao == "KDAX" else []
+
+    monkeypatch.setattr(nexrad, "list_volumes", list_volumes)
+    monkeypatch.setattr(
+        nexrad,
+        "fetch_volumes",
+        lambda items, directory, **kwargs: nexrad.local_fetched_volumes(items, archive),
+    )
+    return listed
+
+
+NEXRAD_WINDOW = [
+    "--bbox",
+    "-120.8,38.4,-119.7,39",
+    "--start",
+    "2021-08-17T00:00Z",
+    "--end",
+    "2021-08-17T01:00Z",
+]
+
+
+def test_cli_data_nexrad_without_a_site_lists_the_sites_in_range(_nexrad_cli):
+    result = CliRunner().invoke(main, ["data", "nexrad", *NEXRAD_WINDOW])
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0].startswith("KDAX  Sacramento, CA: 76 km") and lines[1].startswith("KRGX")
+    assert _nexrad_cli == []
+
+
+def test_cli_data_nexrad_dry_run_lists_the_volumes_and_writes_nothing(_nexrad_cli, tmp_path):
+    output = tmp_path / "radar.h5"
+
+    result = CliRunner().invoke(
+        main, ["data", "nexrad", *NEXRAD_WINDOW, "--site", "KDAX,KRGX", "-o", str(output), "--dry-run"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "KDAX: 1 volumes, 0 MB" in result.output and "KRGX: 0 volumes" in result.output
+    assert not output.exists() and _nexrad_cli == ["KDAX", "KRGX"]
+
+
+def test_cli_data_nexrad_refuses_an_unknown_site_or_field(_nexrad_cli, tmp_path):
+    site = CliRunner().invoke(main, ["data", "nexrad", *NEXRAD_WINDOW, "--site", "KXXX"])
+    field = CliRunner().invoke(
+        main, ["data", "nexrad", *NEXRAD_WINDOW, "--site", "KDAX", "--fields", "KDP"]
+    )
+
+    assert site.exit_code != 0 and "--site" in site.output
+    assert field.exit_code != 0 and "--fields" in field.output
+    assert _nexrad_cli == []
+
+
+def test_cli_data_nexrad_writes_a_standard_file(_nexrad_cli, tmp_path):
+    pytest.importorskip("xradar")
+    output = tmp_path / "radar.h5"
+
+    result = CliRunner().invoke(
+        main,
+        ["data", "nexrad", *NEXRAD_WINDOW, "--site", "KDAX", "--fields", "DBZH,RHOHV", "-o", str(output)],
+    )
+    again = CliRunner().invoke(
+        main, ["data", "nexrad", *NEXRAD_WINDOW, "--site", "KDAX", "-o", str(output)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "KDAX: 1 volumes read, 2 sweeps" in result.output
+    import h5py  # pylint: disable=import-outside-toplevel
+
+    with h5py.File(output) as h5:
+        assert sorted(h5["/spatial_3d/radar/KDAX"]) == [
+            "azimuth",
+            "azimuth_resolution",
+            "elevation",
+            "nyquist_velocity",
+            "radar_correlation_coefficient",
+            "radar_reflectivity",
+            "range",
+            "time",
+            "volume_index",
+            "volumes",
+        ]
+    assert again.exit_code != 0 and "already exists" in again.output
