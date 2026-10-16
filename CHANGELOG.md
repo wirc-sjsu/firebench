@@ -184,6 +184,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   issue highlight during a time-series redraw.
 - Let Synoptic standardization bind provenance to an original source hash and write UTC time origins
   while retaining each station's source timezone.
+- Hash variable-length strings and sequences in `hdf5_subject_digest_sha256` by their content,
+  each preceded by its length, not by the pointers h5py reads them as. The digest of a file holding
+  them (the GOES and FIRMS fire detections) changed at every read, so a certificate written on it
+  never verified. The digest of every other file is unchanged.
 
 ## [0.10.0] - 2026 / 08 / 27
 

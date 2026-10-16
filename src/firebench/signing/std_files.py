@@ -175,6 +175,28 @@ def hdf5_subject_digest_sha256(path: str, exclude_prefixes: list[str] = EXCLUDE_
     return h.hexdigest()
 
 
+def _array_bytes(arr: np.ndarray) -> bytes:
+    """
+    Bytes of an array for the digest.
+
+    An array of objects (variable-length strings or sequences, as h5py reads them) holds pointers,
+    which change between reads: its elements are hashed instead, each preceded by its length.
+    Every other array is hashed as its C-ordered bytes.
+    """
+    if arr.dtype.kind != "O":
+        return arr.tobytes(order="C")
+    parts = []
+    for item in arr.ravel(order="C"):
+        if isinstance(item, str):
+            data = item.encode("utf-8")
+        elif isinstance(item, bytes):
+            data = item
+        else:
+            data = np.asarray(item).tobytes(order="C")
+        parts.append(len(data).to_bytes(8, "little") + data)
+    return b"".join(parts)
+
+
 def _hash_attrs(h: hashlib._hashlib.HASH, attrs: h5py.AttributeManager):
     # Deterministic ordering by attribute name
     for k in sorted(attrs.keys()):
@@ -191,7 +213,7 @@ def _hash_attrs(h: hashlib._hashlib.HASH, attrs: h5py.AttributeManager):
             vb = str(v).encode("utf-8")
         else:
             arr = np.array(v)
-            vb = arr.tobytes(order="C")
+            vb = _array_bytes(arr)
             h.update(b"SHAPE\x00" + str(arr.shape).encode("utf-8") + b"\x00")
             h.update(b"DTYPE\x00" + str(arr.dtype).encode("utf-8") + b"\x00")
         h.update(vb)
@@ -215,7 +237,7 @@ def _hash_dataset(h: hashlib._hashlib.HASH, ds: h5py.Dataset):
     # For simple numeric datasets: chunk along first axis
     if ds.ndim == 0:
         data = ds[()]
-        h.update(np.array(data).tobytes(order="C"))
+        h.update(_array_bytes(np.array(data)))
         h.update(b"\x00")
         return
 
@@ -228,7 +250,7 @@ def _hash_dataset(h: hashlib._hashlib.HASH, ds: h5py.Dataset):
     for i0 in range(0, ds.shape[0], rows_per_chunk):
         i1 = min(ds.shape[0], i0 + rows_per_chunk)
         slab = ds[i0:i1, ...]
-        h.update(np.asarray(slab).tobytes(order="C"))
+        h.update(_array_bytes(np.asarray(slab)))
     h.update(b"\x00")
 
 

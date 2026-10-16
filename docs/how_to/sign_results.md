@@ -62,6 +62,7 @@ verifies it, and it does not count towards a verification level.
 - **Signature**: an ASCII-armored detached GPG signature of the canonical bytes.
 - **Subject digest**: `firebench.signing.hdf5_subject_digest_sha256(path)`. It covers the whole
   file except `/certificates`, so write the certificate after the last change to the data.
+  Variable-length strings count by their text, so the digest does not depend on how the file is read.
 - **Storage**: the group `/certificates/<certificate id>`, with two scalar byte-string datasets,
   `payload` (the canonical bytes) and `signature`, and the attributes `cert_name`, `spec`,
   `signed_at`, `key_id`, and `subject_digest_sha256`, each with the value it has in the payload.
