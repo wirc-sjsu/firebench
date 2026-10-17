@@ -49,6 +49,8 @@ class FireCaseParameters:  # pylint: disable=too-many-instance-attributes
     cbi_high_classes: tuple[int, ...]
     cbi_other_classes: tuple[int, ...]
     cbi_kpi_weight: float | int
+    canopy_high_classes: tuple[int, ...]
+    canopy_kpi_weight: float | int
     projections: tuple[str, ...]
     area_relative_error_at_score_50: float
     min_perimeters: int
@@ -76,7 +78,13 @@ PERIMETER_WEIGHT_KEYS = (
     "final_area_bias_weight",
     "area_rmse_weight",
 )
-FAMILIES = ("building_damage", "burn_severity_cbi", "fire_perimeters", "weather_stations")
+FAMILIES = (
+    "building_damage",
+    "burn_severity_cbi",
+    "canopy_cover_loss",
+    "fire_perimeters",
+    "weather_stations",
+)
 
 
 def _keys(table, label: str, expected: set) -> dict:
@@ -164,6 +172,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
             "group_weights",
             "building_damage",
             "burn_severity_cbi",
+            "canopy_cover_loss",
             "fire_perimeters",
             "forecast_windows",
             "weather_stations",
@@ -176,6 +185,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         "[burn_severity_cbi]",
         {"high_classes", "other_classes", "kpi_weight"},
     )
+    canopy = _keys(document["canopy_cover_loss"], "[canopy_cover_loss]", {"high_classes", "kpi_weight"})
     perimeters = _keys(
         document["fire_perimeters"],
         "[fire_perimeters]",
@@ -212,6 +222,8 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         cbi_high_classes=high,
         cbi_other_classes=other,
         cbi_kpi_weight=_number(cbi, "kpi_weight", "burn_severity_cbi"),
+        canopy_high_classes=_wholes(canopy, "high_classes", "canopy_cover_loss"),
+        canopy_kpi_weight=_number(canopy, "kpi_weight", "canopy_cover_loss"),
         projections=tuple(projections),
         area_relative_error_at_score_50=_number(
             perimeters, "area_relative_error_at_score_50", "fire_perimeters", minimum=1e-9

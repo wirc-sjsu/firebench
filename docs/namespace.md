@@ -21,6 +21,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `BUILDING_RATIO_STRUCTURE_WOOD_MORTAR`: Ratio of buildings made with mortar [-]
 - `BUILDING_LENGTH_SEPARATION`: Building separation length [m]
 - `BUILDING_LENGTH_SIDE`: Buildings side length [m]
+- `CANOPY_COVER`: Canopy cover [%]
 - `CANOPY_DENSITY_BULK`: Canopy bulk density [kg m-3]
 - `CANOPY_HEIGHT`: Canopy height [m]
 - `CANOPY_HEIGHT_BOTTOM`: Canopy height bottom [m]

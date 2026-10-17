@@ -36,6 +36,7 @@ REQUIREMENTS_SCHEMA = "fb-requirements-v1"
 FAMILY_OF_KIND = {
     "B": "building_damage",
     "S": "burn_severity_cbi",
+    "C": "canopy_cover_loss",
     "P": "fire_perimeters",
     "W": "weather_stations",
 }
@@ -155,7 +156,8 @@ def _write_perimeters(out: h5py.File, obs: h5py.File, entry: dict) -> None:
         _copy_attrs(source, target, leave_out=(*REFERENCED_FILE_ATTRIBUTES, *PERIMETER_VALUES))
 
 
-def _write_cbi(out: h5py.File, obs: h5py.File, entry: dict) -> None:
+def _write_grid(out: h5py.File, obs: h5py.File, entry: dict) -> None:
+    """The grid of a family that names one (CBI, canopy cover loss), every value its `_FillValue`."""
     path = entry["dataset"]
     group = path.rsplit("/", 1)[0]
     source = obs[path]
@@ -196,8 +198,8 @@ def write_model_output_template(std_file, definition: dict, out_path, *, overwri
     Write the model-output template of ``definition`` on the observation file ``std_file``.
 
     The template keeps the groups the case scores, at the observation file's paths: each perimeter
-    group with its attributes but no file reference and no burnt area; the CBI grid with its
-    positions, every value its ``_FillValue``; the buildings' positions, each damage blank but
+    group with its attributes but no file reference and no burnt area; the CBI and canopy cover loss
+    grids with their positions, every value its ``_FillValue``; the buildings' positions, each damage blank but
     ``"Inaccessible"``; and each station the case selects for some variable, period, and station set,
     with its ``time`` and, for each variable it is selected for, NaN values. Licence attributes go
     with each group. The definition is written in too, so an adapter can read the case from it.
@@ -212,7 +214,9 @@ def write_model_output_template(std_file, definition: dict, out_path, *, overwri
             out.attrs["case_definition_sha256"] = definition_sha256(definition)
             writers = {
                 "fire_perimeters": _write_perimeters,
-                "burn_severity_cbi": _write_cbi,
+                "burn_severity_cbi": _write_grid,
+                # The LANDFIRE layers stay out: the canopy mask is read from the observations.
+                "canopy_cover_loss": _write_grid,
                 "building_damage": _write_building_damage,
             }
             for entry in definition["families"]:

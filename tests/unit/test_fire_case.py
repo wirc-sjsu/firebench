@@ -13,6 +13,7 @@ from firebench.benchmarks import c001_caldor
 from firebench.benchmarks import fire_case
 from firebench.benchmarks import fire_case_definition as definition_module
 from firebench.benchmarks import fire_case_parameters as parameters_module
+from firebench.benchmarks import fire_case_template
 from firebench.cli import main
 from firebench.signing import hdf5_subject_digest_sha256
 
@@ -32,6 +33,28 @@ DAMAGE_OBS = ["No Damage", "Destroyed (>50%)", "Minor (10-25%)", "Major (26-50%)
 DAMAGE_MODEL = ["Destroyed (>50%)", "Destroyed (>50%)", "No Damage", "No Damage", "Destroyed (>50%)"]
 CBI_OBS = np.array([[0, 1, 4], [4, 2, 3]], dtype=np.uint8)
 CBI_MODEL = np.array([[4, 4, 4], [1, 0, 3]], dtype=np.uint8)
+CC_OBS = np.array([[0, 5, 5], [1, 9, 5]], dtype=np.uint8)
+CC_MODEL = np.array([[5, 5, 1], [5, 5, 9]], dtype=np.uint8)
+# LANDFIRE canopy height, base height, and bulk density, on a grid a little off RAVG's. Cell (1, 0)
+# has no canopy height; cell (0, 2) has no base height (the fill value), which FB001 counts as canopy.
+LANDFIRE_FILL = 32767
+CANOPY = {
+    "ch": np.array([[10, 20, 30], [0, 40, 50]], dtype=np.uint16),
+    "cbh": np.array([[5, 5, LANDFIRE_FILL], [5, 5, 5]], dtype=np.uint16),
+    "cbd": np.array([[3, 3, 3], [3, 3, 3]], dtype=np.uint16),
+}
+
+
+def _write_grid(h5, path: str, values, fill, offset=0.0):  # pylint: disable=too-many-arguments
+    group_path, variable = path.rsplit("/", 1)
+    group = h5.create_group(group_path)
+    group.attrs["crs"] = "EPSG:4326"
+    dataset = group.create_dataset(variable, data=values)
+    dataset.attrs["units"] = "dimensionless"
+    dataset.attrs["_FillValue"] = fill
+    lat, lon = np.meshgrid([38.6 + offset, 38.5 + offset], [-120.5, -120.4, -120.3], indexing="ij")
+    group.create_dataset("position_lat", data=lat).attrs["units"] = "degree"
+    group.create_dataset("position_lon", data=lon + offset).attrs["units"] = "degree"
 
 
 def _kml(ring) -> str:
@@ -53,6 +76,8 @@ def _write_case_file(  # pylint: disable=too-many-arguments
     observational=True,
     perimeters=True,
     stations=True,
+    canopy_cover_loss=None,
+    canopy=None,
 ):
     """A standard file with Caldor's W2 perimeters, building damage, a CBI grid, and one station."""
     directory.mkdir(parents=True, exist_ok=True)
@@ -86,6 +111,11 @@ def _write_case_file(  # pylint: disable=too-many-arguments
             lat, lon = np.meshgrid([38.6, 38.5], [-120.5, -120.4, -120.3], indexing="ij")
             group.create_dataset("position_lat", data=lat).attrs["units"] = "degree"
             group.create_dataset("position_lon", data=lon).attrs["units"] = "degree"
+        if canopy_cover_loss is not None:
+            _write_grid(h5, definition_module.CANOPY_COVER_LOSS_PATH, canopy_cover_loss, 0)
+        for grid_path, product in zip(definition_module.CANOPY_PATHS, ("ch", "cbh", "cbd")):
+            if canopy is not None and product in canopy:
+                _write_grid(h5, grid_path, canopy[product], LANDFIRE_FILL, offset=0.001)
         if stations:
             station = h5.create_group("time_series/station_A")
             time = station.create_dataset("time", data=np.arange(STATION_HOURS + 1, dtype=float))
@@ -322,7 +352,7 @@ def _broken(change) -> dict:
         (lambda d: d.update(extra=1), "unknown extra"),
         (lambda d: d.update(parameters={"set": "x", "version": "1"}), "Unknown parameter set"),
         (lambda d: d.update(projection="EPSG:3310"), "projection"),
-        (lambda d: d["families"].append({"family": "canopy_cover_loss"}), "Unknown family"),
+        (lambda d: d["families"].append({"family": "fuel_moisture"}), "Unknown family"),
         (lambda d: d["families"][1].update(dataset="/points/none"), "Building damage"),
         (lambda d: d["families"][2].update(dataset="/spatial_2d/none/cbi"), "Burn severity"),
         (lambda d: d["periods"][0].update(end=d["periods"][0]["start"]), "is empty"),
@@ -769,3 +799,130 @@ def test_perimeter_values_leave_out_a_perimeter_the_model_lacks(files):
         values = c001_caldor.perimeter_values(model_h5, obs_h5)
 
     assert [item["path"] for item in values] == list(W2_PERIMETERS[1:])
+
+
+# ---------------------------
+# Canopy cover loss
+# ---------------------------
+@pytest.fixture(name="canopy_files")
+def fixture_canopy_files(tmp_path):
+    obs = _write_case_file(tmp_path / "obs", canopy_cover_loss=CC_OBS, canopy=CANOPY)
+    model = _write_case_file(
+        tmp_path / "model",
+        squares=MODEL_SQUARES,
+        damage=DAMAGE_MODEL,
+        cbi=CBI_MODEL,
+        temperature_offset=1.5,
+        observational=False,
+        canopy_cover_loss=CC_MODEL,
+    )
+    return obs, model
+
+
+def _canopy_definition() -> dict:
+    definition = _definition()
+    definition["families"].append(
+        {
+            "family": "canopy_cover_loss",
+            "dataset": definition_module.CANOPY_COVER_LOSS_PATH,
+            "canopy": list(definition_module.CANOPY_PATHS),
+        }
+    )
+    return definition
+
+
+def test_propose_case_offers_canopy_cover_loss_with_the_landfire_canopy(canopy_files):
+    obs, _ = canopy_files
+
+    proposal = definition_module.propose_case(obs)
+
+    entry = definition_module.family(proposal["definition"], "canopy_cover_loss")
+    assert entry == {
+        "family": "canopy_cover_loss",
+        "dataset": "/spatial_2d/ravg_cc/ravg_canopy_cover_loss",
+        "canopy": [
+            "/spatial_2d/landfire_ch/canopy_height",
+            "/spatial_2d/landfire_cbh/canopy_height_bottom",
+            "/spatial_2d/landfire_cbd/canopy_density_bulk",
+        ],
+    }
+    assert proposal["left_out"] == []
+    assert definition_module.check_case(proposal["definition"], obs) == []
+
+
+def test_canopy_cover_loss_is_left_out_without_every_landfire_layer(tmp_path):
+    path = _write_case_file(
+        tmp_path / "obs", canopy_cover_loss=CC_OBS, canopy={"ch": CANOPY["ch"], "cbd": CANOPY["cbd"]}
+    )
+
+    proposal = definition_module.propose_case(path)
+
+    assert definition_module.family(proposal["definition"], "canopy_cover_loss") is None
+    reasons = {item["family"]: item["reason"] for item in proposal["left_out"]}
+    assert reasons["canopy_cover_loss"] == definition_module.CANOPY_COVER_REASON
+    assert "LANDFIRE" in reasons["canopy_cover_loss"]
+
+
+def test_check_case_refuses_landfire_layers_on_different_grids(canopy_files):
+    obs, _ = canopy_files
+    with h5py.File(obs, "a") as h5:
+        h5["spatial_2d/landfire_cbd/position_lat"][0, 0] += 0.5
+
+    problems = definition_module.check_case(_canopy_definition(), obs)
+
+    assert any("Canopy cover loss" in problem and "same grid" in problem for problem in problems), problems
+
+
+def test_high_canopy_cover_loss_is_scored_where_landfire_had_canopy(canopy_files):
+    obs, model = canopy_files
+    case = fire_case.load_case(_canopy_definition(), obs)
+
+    accuracy, precision, recall = _run(case.BENCHMARK_FUNCTIONS, ["G-CC01", "G-CC02", "G-CC03"], obs, model)
+
+    # Cells with canopy and an observed class: (0, 1), (1, 1), (1, 2). Observed high [1, 0, 1] (class 9
+    # is not high), modelled high [1, 1, 0]. Cell (0, 2) has the fill value as base height: left out.
+    assert accuracy[0] == pytest.approx(1 / 3)
+    assert precision[0] == pytest.approx(0.5)
+    assert recall[0] == pytest.approx(0.5)
+
+
+def test_the_canopy_mask_is_fb001s_where_no_layer_holds_the_fill_value(tmp_path):
+    canopy = {**CANOPY, "cbh": np.full((2, 3), 5, dtype=np.uint16)}
+    obs = _write_case_file(tmp_path / "obs", canopy_cover_loss=CC_OBS, canopy=canopy)
+
+    with h5py.File(obs, "r") as h5:
+        paths = list(definition_module.CANOPY_PATHS)
+        ours = fire_case.canopy_mask(h5, definition_module.CANOPY_COVER_LOSS_PATH, paths)
+        fb001 = c001_caldor.mask_landfire_canopy(h5, "/spatial_2d/ravg_cc", paths)
+
+    np.testing.assert_array_equal(ours, fb001)
+
+
+def test_canopy_cover_loss_against_itself_scores_100(canopy_files, tmp_path):
+    obs, _ = canopy_files
+    case = fire_case.load_case(_canopy_definition(), obs)
+
+    result = case.run_benchmark(
+        obs,
+        "CC",
+        obs_data=obs,
+        output_json=tmp_path / "result.json",
+        score_card_report=tmp_path / "card.pdf",
+    )
+
+    assert set(result["benchmarks"]) == {f"G-CC{index:02d}" for index in range(1, 7)}
+    assert result["score_card"]["Score Total"] == pytest.approx(100)
+
+
+def test_canopy_cover_loss_has_its_targets_and_its_template_grid(canopy_files, tmp_path):
+    obs, _ = canopy_files
+    definition = _canopy_definition()
+    case = fire_case.load_case(definition, obs)
+
+    assert case.resolve_benchmark_target("p02_cs") == "P02_SC"
+    assert "CC" in case.describe_available_targets()["standalone_targets"]
+
+    template = fire_case_template.write_model_output_template(obs, definition, tmp_path / "template.h5")
+    with h5py.File(template, "r") as h5:
+        assert (h5[definition_module.CANOPY_COVER_LOSS_PATH][()] == 0).all()
+        assert "spatial_2d/landfire_ch" not in h5

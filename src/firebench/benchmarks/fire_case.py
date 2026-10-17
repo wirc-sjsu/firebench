@@ -8,8 +8,9 @@ to a program that runs it: the registries (``REQUIREMENTS``, ``BENCHMARK_FUNCTIO
 
 The KPI functions are FB001's, with the paths, projection, and parameters of the definition and of
 ``fire_case.toml``. The one family FB001 does not have, burn severity from RAVG's composite burn
-index, is defined here. KPI ids are ``G-`` and a family code (BD, SV, FP, WX) with a number that
-follows the order of families and periods in the definition, so they are stable for a definition.
+index, is defined here, and so is FB001's canopy cover loss with paths taken from the definition. KPI
+ids are ``G-`` and a family code (BD, SV, CC, FP, WX) with a number that follows the order of
+families and periods in the definition, so they are stable for a definition.
 """
 
 import hashlib
@@ -20,6 +21,7 @@ from types import SimpleNamespace
 
 import numpy as np
 from h5py import File
+from scipy.spatial import cKDTree
 
 from .. import __version__ as fb_version
 from .. import metrics as fm
@@ -43,8 +45,8 @@ KPI_PREFIX = "G-"
 COMPOSED_TARGET_PREFIX = "C-"
 DEFAULT_OUTPUT_PATH_JSON = Path("case_rslt.json")
 DEFAULT_SCORE_CARD_REPORT_PATH = Path("case.pdf")
-PERIOD_TARGET_PATTERN = re.compile(r"^(P\d{2}|H\d{3})_([BSPTW]+)$")
-FLAG_ORDER = "BSPTW"
+PERIOD_TARGET_PATTERN = re.compile(r"^(P\d{2}|H\d{3})_([BSCPTW]+)$")
+FLAG_ORDER = "BSCPTW"
 
 BINARY_METRICS = (
     ("Accuracy", fm.confusion_matrix.binary_accuracy),
@@ -74,6 +76,7 @@ STATION_SETS = {
 CATEGORIES = {
     "B": "Building Damage",
     "S": "Burn Severity",
+    "C": "Canopy Cover Loss",
     "P": "Fire Perimeters",
     "W": "Weather Stations",
 }
@@ -84,6 +87,11 @@ CTX_SPEC = {
         "ravg_cbi",
         "pair",
     ): "High burn severity of observations and model, on the cells both classify",
+    (
+        "agg_bin",
+        "ravg_cc",
+        "pair",
+    ): "High canopy cover loss of observations and model, on the cells with canopy before the fire",
 }
 
 
@@ -145,6 +153,99 @@ def bench_cbi_index(
         dataset_path,
         high_classes,
         other_classes,
+    )
+    rslt = func_cm_index(fm.confusion_matrix.binary_cm(binary_obs, binary_model))
+    ft.logger.info("%s: %f", kpi_name_custom, rslt)
+    return {kpi_name_custom: rslt, "Score": fm.kpi_norm_bounded_linear(rslt, 0, 1)}
+
+
+# ---------------------------
+# Canopy cover loss from RAVG, where LANDFIRE had canopy
+# ---------------------------
+def canopy_mask(obs_dataset: File, dataset_path: str, canopy_paths: list[str]) -> np.ndarray:
+    """
+    The cells of the RAVG grid ``dataset_path`` that are scored: LANDFIRE had canopy there before the
+    fire, and the observations classify the cell.
+
+    A LANDFIRE cell has canopy when every layer of ``canopy_paths`` is above 0 and is not its
+    ``_FillValue``; FB001's mask counts the fill value as canopy. The canopy is carried to the RAVG grid
+    by the nearest LANDFIRE cell, in latitude and longitude, as FB001 does.
+    """
+    group = canopy_paths[0].rsplit("/", 1)[0]
+    has_canopy = np.ones(obs_dataset[canopy_paths[0]].shape, dtype=bool)
+    for path in canopy_paths:
+        values = np.asarray(obs_dataset[path][()])
+        has_canopy &= (values > 0) & (values != obs_dataset[path].attrs["_FillValue"])
+    tree = cKDTree(
+        np.column_stack(
+            (
+                np.asarray(obs_dataset[f"{group}/position_lat"][()]).ravel(),
+                np.asarray(obs_dataset[f"{group}/position_lon"][()]).ravel(),
+            )
+        )
+    )
+    target = dataset_path.rsplit("/", 1)[0]
+    lat = np.asarray(obs_dataset[f"{target}/position_lat"][()])
+    _, nearest = tree.query(
+        np.column_stack((lat.ravel(), np.asarray(obs_dataset[f"{target}/position_lon"][()]).ravel()))
+    )
+    on_grid = has_canopy.ravel()[nearest].reshape(lat.shape)
+    observed = np.asarray(obs_dataset[dataset_path][()])
+    return on_grid & (observed != obs_dataset[dataset_path].attrs["_FillValue"])
+
+
+def cc_high_binary(
+    obs_dataset: File,
+    model_dataset: File,
+    dataset_path: str,
+    canopy_paths: list[str],
+    high_classes: tuple[int, ...],
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    High canopy cover loss (1) or not (0) of the observations and the model, on the cells of
+    ``canopy_mask``. A class outside ``high_classes`` is not high, in either file (FB001).
+    """
+    obs = np.asarray(obs_dataset[dataset_path][()])
+    model = np.asarray(model_dataset[dataset_path][()])
+    if obs.shape != model.shape:
+        raise ValueError(
+            f"The model's `{dataset_path}` has the shape {model.shape}; the observations have {obs.shape}. "
+            "The model must give the canopy cover loss on the observation grid."
+        )
+    mask = canopy_mask(obs_dataset, dataset_path, canopy_paths)
+    high = np.array(sorted(high_classes))
+    binary_obs = np.isin(obs[mask], high).astype(np.int8)
+    binary_model = np.isin(model[mask], high).astype(np.int8)
+    ft.logger.info(
+        "high canopy cover loss on %d cells with canopy: %d observed, %d modelled",
+        binary_obs.size,
+        int(binary_obs.sum()),
+        int(binary_model.sum()),
+    )
+    return binary_obs, binary_model
+
+
+def bench_cc_index(
+    model_dataset: File,
+    obs_dataset: File,
+    ctx: dict,
+    kpi_name_custom: str,
+    func_cm_index,
+    dataset_path: str,
+    canopy_paths: list[str],
+    high_classes: tuple[int, ...],
+):
+    """A binary index of high canopy cover loss, scored from 0 to 100 as FB001's CC KPIs are."""
+    binary_obs, binary_model = fm.ctx_get_or_compute(
+        CTX_SPEC,
+        ctx,
+        ("agg_bin", "ravg_cc", "pair"),
+        cc_high_binary,
+        obs_dataset,
+        model_dataset,
+        dataset_path,
+        canopy_paths,
+        high_classes,
     )
     rslt = func_cm_index(fm.confusion_matrix.binary_cm(binary_obs, binary_model))
     ft.logger.info("%s: %f", kpi_name_custom, rslt)
@@ -282,6 +383,34 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                 self.parameters.cbi_kpi_weight,
             )
 
+    def _add_canopy_cover(self, entry: dict) -> None:
+        path = entry["dataset"]
+        group_path = path.rsplit("/", 1)[0]
+        required = {
+            group_path: ["crs"],
+            path: ["units", "_FillValue"],
+            f"{group_path}/position_lat": ["units"],
+            f"{group_path}/position_lon": ["units"],
+        }
+        self._requirement("R_CC", required)
+        self._group("Canopy Cover Loss", "canopy_cover_loss", "C", "Canopy Cover Loss")
+        for index, (suffix, func) in enumerate(BINARY_METRICS, start=1):
+            function = partial(
+                bench_cc_index,
+                kpi_name_custom=f"Binary High Canopy Cover Loss {suffix}",
+                func_cm_index=func,
+                dataset_path=path,
+                canopy_paths=list(entry["canopy"]),
+                high_classes=self.parameters.canopy_high_classes,
+            )
+            self._add(
+                "R_CC",
+                "Canopy Cover Loss",
+                f"{KPI_PREFIX}CC{index:02d}",
+                function,
+                self.parameters.canopy_kpi_weight,
+            )
+
     def _add_perimeters(self, entry: dict) -> None:
         projection = self.definition["projection"]
         weights = self.parameters.perimeter_weights
@@ -380,6 +509,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         builders = {
             "building_damage": self._add_building_damage,
             "burn_severity_cbi": self._add_burn_severity,
+            "canopy_cover_loss": self._add_canopy_cover,
             "fire_perimeters": self._add_perimeters,
             "weather_stations": self._add_weather,
         }
@@ -414,7 +544,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
 
     def _create_aggregation_schemes(self) -> None:
         self.AGGREGATION["A"] = self._copy_groups(self.GROUPS)
-        for target, kind in (("B", "B"), ("S", "S"), ("FP", "P"), ("WX", "W")):
+        for target, kind in (("B", "B"), ("S", "S"), ("CC", "C"), ("FP", "P"), ("WX", "W")):
             if self._of_kind(kind):
                 self.AGGREGATION[target] = self._copy_groups(self._of_kind(kind))
 
@@ -437,6 +567,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
             for target, kind, label in (
                 ("B", "B", "Building Damage"),
                 ("S", "S", "Burn Severity"),
+                ("CC", "C", "Canopy Cover Loss"),
                 ("FP", "P", "Fire Perimeters (all periods)"),
                 ("WX", "W", "Weather Stations (all periods)"),
             ):
@@ -446,6 +577,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
             for flag, kind, label in (
                 ("B", "B", "Building Damage"),
                 ("S", "S", "Burn Severity"),
+                ("C", "C", "Canopy Cover Loss"),
                 ("P", "P", "Fire Perimeters"),
                 ("T", "W", "Weather Stations (TSO only)"),
                 ("W", "W", "Weather Stations (TSO and all sources)"),
@@ -504,7 +636,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
     def resolve_benchmark_target(self, benchmark_target: str) -> str:
         """The canonical name of a target, registered in ``AGGREGATION``.
 
-        A target is a scheme (``A``, ``B``, ``S``, ``FP``, ``WX``, a composed one), ``0`` for every
+        A target is a scheme (``A``, ``B``, ``S``, ``CC``, ``FP``, ``WX``, a composed one), ``0`` for every
         KPI unaggregated, or a period and flags such as ``P02_PW`` or ``H003_T``.
         """
         raw = str(benchmark_target).strip()
