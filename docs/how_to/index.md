@@ -15,6 +15,7 @@ review_weather_station_qc.md
 manage_weather_sensor_heights.md
 generate_weather_release_inventory.md
 convert_model_output.md
+prepare_model_output.md
 select_caldor_target.md
 define_benchmark_case.md
 custom_fuel_model.md

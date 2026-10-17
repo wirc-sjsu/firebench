@@ -47,6 +47,9 @@ FAMILY_KEYS = {
     "weather_stations": {"family", "periods", "station_sets"},
 }
 CANOPY_COVER_REASON = "canopy cover loss needs a LANDFIRE source, which the dataset does not have"
+# The root attribute of a model-output template (``fire_case_template``), and why one is refused.
+TEMPLATE_ATTRIBUTE = "firebench_template"
+TEMPLATE_REFUSAL = "This file is a model-output template, not an observation file."
 
 
 class CaseDefinitionError(ValueError):
@@ -173,6 +176,12 @@ def data_span(h5: h5py.File, parameters: FireCaseParameters) -> tuple[datetime, 
     if not times:
         return None
     return min(times), max(times)
+
+
+def is_template(std_file) -> bool:
+    """Whether a standard file is a model-output template, which is never an observation file."""
+    with h5py.File(std_file, "r") as h5:
+        return TEMPLATE_ATTRIBUTE in h5.attrs
 
 
 def _has_dataset(h5: h5py.File, path: str) -> bool:
@@ -522,6 +531,8 @@ def check_case(definition, std_file) -> list[str]:
     if parameters is None:
         return problems
     with h5py.File(std_file, "r") as h5:
+        if TEMPLATE_ATTRIBUTE in h5.attrs:
+            return problems + [TEMPLATE_REFUSAL]
         period_problems, bounds = _check_periods(definition, data_span(h5, parameters))
         problems += period_problems
         families = definition["families"]

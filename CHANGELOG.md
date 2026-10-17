@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add the parameter file of these cases, `resources/benchmarks/fire_case.toml` (set `fire_case`,
   version `2026.1`), with FB001's normalizations and weights and the CBI classes.
 - Add `firebench case propose`, `firebench case check`, and `firebench case run`.
+- Add `write_model_output_template` and `case_requirements`
+  (`firebench.benchmarks.fire_case_template`), and `firebench case template` and
+  `firebench case requirements`: the layout a model output for a case is written on, with no
+  observed value (root attribute `firebench_template`), and what `FireCase` will check in it
+  (schema `fb-requirements-v1`), with the stations it selects in each period and station set. A
+  case refuses a template as its observation file. See the guide "Prepare a model output for a
+  benchmark case".
 - Add the optional `/benchmark_case` group to the standard format.
 
 - Add cloud-to-ground lightning to the standard format: `/unstructured/lightning/<stream>`, one

@@ -700,6 +700,19 @@ Dataset | Units | Description
 - Write it with `write_case_definition` and read it with `read_case_definition`
   (`firebench.benchmarks.fire_case_definition`), before the file is signed: the certificate covers it.
 
+### Model-output template
+
+- A file whose root has `firebench_template = "model-output"` is the template of a model output for
+  one benchmark case (`firebench case template`): the observation file's layout for the groups the
+  case scores, with its `case_definition_sha256` and its definition at `/benchmark_case/definition`.
+- It holds no observed value: perimeter groups have their `time` and no file reference or burnt
+  area, the CBI grid is its `_FillValue`, building damage is `""` (except `"Inaccessible"`), and
+  station variables are NaN. Positions, grids, times, units, sensor heights, and licence attributes
+  are kept.
+- A template is never an observation file: the generic cases refuse one. A model output written on
+  it is a new file, without the attribute. See
+  [Prepare a model output for a benchmark case](how_to/prepare_model_output.md).
+
 ### Certificates
 
 - Reserved namespace for FireBench certificates. See the signing and verification guide.
