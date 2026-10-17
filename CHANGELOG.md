@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   case refuses a template as its observation file. See the guide "Prepare a model output for a
   benchmark case".
 - Add the optional `/benchmark_case` group to the standard format.
+- Add `perimeter_values` to FB001 (`c001_caldor`) and to `FireCase`: per perimeter both files hold,
+  the Jaccard and Dice-Sorensen indices and the observed and model burnt areas (acres) that the
+  perimeter KPIs aggregate, computed in the projections of those KPIs. `common_perimeters` lists
+  the perimeters a model output and an observation file share, in time order.
 
 - Add cloud-to-ground lightning to the standard format: `/unstructured/lightning/<stream>`, one
   `strikes` table of records with a start, an end, a position, and a strike count, and the namespace

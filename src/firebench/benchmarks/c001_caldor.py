@@ -2063,6 +2063,73 @@ def area_from_list(dataset: File, list_perims: list[str], projection_epsg: int):
     return Quantity(np.array(output), "m^2")
 
 
+def _attr_text(value) -> str:
+    if isinstance(value, np.ndarray):
+        value = value.reshape(-1)[0] if value.size else b""
+    return value.decode() if isinstance(value, (bytes, np.bytes_)) else str(value)
+
+
+def common_perimeters(model_dataset: File, obs_dataset: File) -> list[str]:
+    """Perimeter paths both files hold with a KML file and a time, in the observed time order."""
+    polygons = obs_dataset.get(fs.GEOPOLYGONS)
+    if polygons is None:
+        return []
+    times = {}
+    for name, item in polygons.items():
+        path = f"/{fs.GEOPOLYGONS}/{name}"
+        if path not in model_dataset or "rel_path" not in model_dataset[path].attrs:
+            continue
+        if "rel_path" not in item.attrs or "time" not in item.attrs:
+            continue
+        try:
+            times[path] = datetime.fromisoformat(_attr_text(item.attrs["time"]))
+        except ValueError:
+            continue
+    return sorted(times, key=times.get)
+
+
+def perimeter_values_generic(
+    model_dataset: File,
+    obs_dataset: File,
+    list_perims: list[str] | None = None,
+    projection: str = "EPSG:5070",
+    projection_epsg: int = 3310,
+) -> list[dict]:
+    """The values the perimeter KPIs aggregate, one entry per perimeter.
+
+    Each entry holds the `path`, the observed `time` as the file stores it, the Jaccard and
+    Dice-Sorensen indices (computed in `projection`), and the observed and model burnt areas
+    (`observed_area`, `model_area`, in acres, computed in `projection_epsg`). `list_perims` defaults
+    to every perimeter both files hold (`common_perimeters`).
+    """
+    paths = common_perimeters(model_dataset, obs_dataset) if list_perims is None else list(list_perims)
+    if not paths:
+        return []
+    jaccard = jaccard_from_list(model_dataset, obs_dataset, paths, projection=projection)
+    dice = sorensen_dice_from_list(model_dataset, obs_dataset, paths, projection=projection)
+    observed = area_from_list(obs_dataset, paths, projection_epsg).to("acre")
+    model = area_from_list(model_dataset, paths, projection_epsg).to("acre")
+    return [
+        {
+            "path": path,
+            "time": _attr_text(obs_dataset[path].attrs["time"]),
+            "jaccard": float(jaccard[index]),
+            "dice": float(dice[index]),
+            "observed_area": observed[index],
+            "model_area": model[index],
+        }
+        for index, path in enumerate(paths)
+    ]
+
+
+def perimeter_values(model_dataset: File, obs_dataset: File, list_perims: list[str] | None = None):
+    """Caldor's per-perimeter values, with the projections of its perimeter KPIs.
+
+    See `perimeter_values_generic`.
+    """
+    return perimeter_values_generic(model_dataset, obs_dataset, list_perims, "EPSG:5070", 3310)
+
+
 def overwrite_previous_run(overwrite: bool, output_path: Path = DEFAULT_OUTPUT_PATH_JSON):
     ft.logger.debug("overwrite_previous_run")
     if overwrite:
