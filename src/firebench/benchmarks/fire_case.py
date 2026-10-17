@@ -29,10 +29,12 @@ from .. import tools as ft
 from . import c001_caldor as fb001
 from . import wx_common as wxc
 from .fire_case_definition import (
+    TEMPLATE_REFUSAL,
     CaseDefinitionError,
     _check_document,
     check_case,
     definition_sha256,
+    is_template,
     period_bounds,
     read_case_definition,
 )
@@ -655,6 +657,8 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         if obs_data is None:
             raise ValueError("A generic case needs the observation file (`obs_data`).")
         model_output, obs_data = Path(model_output), Path(obs_data)
+        if is_template(obs_data):
+            raise CaseDefinitionError(TEMPLATE_REFUSAL)
         output_json, score_card_report = Path(output_json), Path(score_card_report)
         if not fb001.overwrite_previous_run(overwrite, output_json):
             ft.logger.info("Overwrite not authorized for output file: %s. Benchmark stopped", output_json)

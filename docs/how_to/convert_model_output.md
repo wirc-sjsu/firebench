@@ -52,6 +52,9 @@ Here `interpolate_wind` is the adapter's model-specific vertical interpolation f
 checks that the recorded model height and trusted observation height have compatible units and
 agree within 0.01 m before including that station in TSO.
 
+To enter a benchmark case whose observation file you cannot get, write the output on the case's
+model-output template instead: see [Prepare a model output for a benchmark case](prepare_model_output.md).
+
 After conversion:
 
 ```bash

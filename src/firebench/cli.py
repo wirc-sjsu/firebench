@@ -1277,7 +1277,8 @@ def case_group() -> None:
     Benchmark cases defined outside FireBench, by a definition document (schema fb-case-v1).
 
     'propose' writes a definition for a standard file, 'check' lists what a definition gets wrong
-    about a file, and 'run' scores a model output on it. A definition can be a JSON file, or a
+    about a file, and 'run' scores a model output on it. 'template' and 'requirements' write what a
+    modeller needs to prepare a model output without the observed values. A definition can be a JSON file, or a
     standard file that holds one (/benchmark_case/definition).
     """
 
@@ -1349,6 +1350,70 @@ def case_check(definition: Path, std_file: Path) -> None:
             click.echo(f"- {problem}")
         raise click.ClickException(f"{len(problems)} problem(s).")
     click.echo("The definition can be run on this file.")
+
+
+def _definition_for(definition: str, std_file: Path) -> dict:
+    """The definition of DEF, or the one STD_FILE holds when DEF is `-`."""
+    if definition == "-":
+        return _read_definition(std_file)
+    path = Path(definition)
+    if not path.is_file():
+        raise click.BadParameter(f"{definition} is not a file.", param_hint="DEF")
+    return _read_definition(path)
+
+
+@case_group.command("template")
+@click.argument("definition", metavar="DEF", type=str)
+@click.argument("std_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("-o", "--output", required=True, type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--overwrite", is_flag=True, help="Replace an existing template.")
+def case_template(definition: str, std_file: Path, output: Path, overwrite: bool) -> None:
+    """
+    Write the model-output template of the case DEF on the observation file STD_FILE.
+
+    DEF is a JSON file or a standard file holding a definition; `-` reads it from STD_FILE. The
+    template has the layout a model output is written on, and no observed value.
+    """
+    definition_module, _ = _case_modules()
+    template_module = import_module(".benchmarks.fire_case_template", __package__)
+    try:
+        template_module.write_model_output_template(
+            std_file, _definition_for(definition, std_file), output, overwrite=overwrite
+        )
+    except FileExistsError as exc:
+        raise click.ClickException(f"{output} exists; give --overwrite to replace it.") from exc
+    except (definition_module.CaseDefinitionError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Wrote {output}.")
+
+
+@case_group.command("requirements")
+@click.argument("definition", metavar="DEF", type=str)
+@click.argument("std_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="JSON file to write the requirement list to (default: print it).",
+)
+def case_requirements(definition: str, std_file: Path, output: Path | None) -> None:
+    """
+    List what a model output must hold for the case DEF on the observation file STD_FILE.
+
+    DEF is a JSON file or a standard file holding a definition; `-` reads it from STD_FILE.
+    """
+    definition_module, _ = _case_modules()
+    template_module = import_module(".benchmarks.fire_case_template", __package__)
+    try:
+        document = template_module.case_requirements(_definition_for(definition, std_file), std_file)
+    except (definition_module.CaseDefinitionError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    text = json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False)
+    if output is None:
+        click.echo(text)
+    else:
+        output.write_text(text + "\n", encoding="utf-8")
+        click.echo(f"Wrote {output}: {len(document['requirements'])} requirements.")
 
 
 @case_group.command("run")
