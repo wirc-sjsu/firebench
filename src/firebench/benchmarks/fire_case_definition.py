@@ -39,14 +39,31 @@ STATION_SETS = ("TSO", "ALL")
 STATION_PREFIX = "station_"
 BUILDING_DAMAGE_PATH = f"/{fs.POINTS}/building_damaged/building_damage"
 CBI_PATH = f"/{fs.SPATIAL_2D}/ravg_cbi/ravg_composite_burn_index_severity"
-FAMILIES = ("fire_perimeters", "building_damage", "burn_severity_cbi", "weather_stations")
+CANOPY_COVER_LOSS_PATH = f"/{fs.SPATIAL_2D}/ravg_cc/ravg_canopy_cover_loss"
+# The LANDFIRE canopy layers that tell where there was canopy before the fire (FB001's mask), as
+# ``standardize_landfire_canopy`` writes them.
+CANOPY_PATHS = tuple(
+    f"/{fs.SPATIAL_2D}/{fs.LANDFIRE_CANOPY_PRODUCTS[product][2]}/{fs.LANDFIRE_CANOPY_PRODUCTS[product][0]}"
+    for product in ("ch", "cbh", "cbd")
+)
+FAMILIES = (
+    "fire_perimeters",
+    "building_damage",
+    "burn_severity_cbi",
+    "canopy_cover_loss",
+    "weather_stations",
+)
 FAMILY_KEYS = {
     "fire_perimeters": {"family", "periods"},
     "building_damage": {"family", "dataset"},
     "burn_severity_cbi": {"family", "dataset"},
+    "canopy_cover_loss": {"family", "dataset", "canopy"},
     "weather_stations": {"family", "periods", "station_sets"},
 }
-CANOPY_COVER_REASON = "canopy cover loss needs a LANDFIRE source, which the dataset does not have"
+CANOPY_COVER_REASON = (
+    "canopy cover loss needs the LANDFIRE canopy height, base height, and bulk density, "
+    "which the dataset does not have"
+)
 # The root attribute of a model-output template (``fire_case_template``), and why one is refused.
 TEMPLATE_ATTRIBUTE = "firebench_template"
 TEMPLATE_REFUSAL = "This file is a model-output template, not an observation file."
@@ -198,6 +215,36 @@ def _cbi_problem(h5: h5py.File, path: str) -> str | None:
     return None
 
 
+def _canopy_problem(h5: h5py.File, dataset: str, canopy) -> str | None:
+    """Why canopy cover loss cannot be scored from a RAVG grid and LANDFIRE canopy layers, or None."""
+    problem = _cbi_problem(h5, dataset)
+    if problem:
+        return problem
+    if (
+        not isinstance(canopy, list)
+        or not canopy
+        or not all(isinstance(path, str) for path in canopy)
+        or len(set(canopy)) != len(canopy)
+    ):
+        return "`canopy` must list the paths of the LANDFIRE canopy layers, once each."
+    for path in canopy:
+        problem = _cbi_problem(h5, path)
+        if problem:
+            return problem
+        if "_FillValue" not in h5[path].attrs:
+            return f"`{path}` has no `_FillValue`."
+    groups = [path.rsplit("/", 1)[0] for path in canopy]
+    shape = h5[canopy[0]].shape
+    for group, path in zip(groups[1:], canopy[1:]):
+        same = h5[path].shape == shape and all(
+            np.allclose(h5[f"{groups[0]}/{name}"][()], h5[f"{group}/{name}"][()])
+            for name in ("position_lat", "position_lon")
+        )
+        if not same:
+            return f"The LANDFIRE layers `{groups[0]}` and `{group}` are not on the same grid."
+    return None
+
+
 # ---------------------------
 # Proposal
 # ---------------------------
@@ -258,6 +305,12 @@ def propose_case(
         has_damage = _has_dataset(h5, BUILDING_DAMAGE_PATH)
         cbi_problem = _cbi_problem(h5, CBI_PATH)
         has_canopy_cover = f"/{fs.SPATIAL_2D}/ravg_cc" in h5
+        canopy_problem = _canopy_problem(h5, CANOPY_COVER_LOSS_PATH, list(CANOPY_PATHS))
+        canopy_reason = (
+            CANOPY_COVER_REASON
+            if not all(_has_dataset(h5, path) for path in CANOPY_PATHS)
+            else f"the LANDFIRE canopy layers cannot be used: {canopy_problem}"
+        )
         has_stations = station_span(h5, tuple(spec.variable for spec in parameters.variables)) is not None
         title = name or _text(h5.attrs.get("description", "")) or Path(std_file).stem
 
@@ -319,8 +372,12 @@ def propose_case(
         )
     else:
         left_out.append({"family": "weather_stations", "reason": "no weather station time series"})
-    if has_canopy_cover:
-        left_out.append({"family": "canopy_cover_loss", "reason": CANOPY_COVER_REASON})
+    if has_canopy_cover and canopy_problem is None:
+        families.append(
+            {"family": "canopy_cover_loss", "dataset": CANOPY_COVER_LOSS_PATH, "canopy": list(CANOPY_PATHS)}
+        )
+    elif has_canopy_cover:
+        left_out.append({"family": "canopy_cover_loss", "reason": canopy_reason})
 
     definition = {
         "schema": SCHEMA,
@@ -564,6 +621,10 @@ def check_case(definition, std_file) -> list[str]:
                 problem = _cbi_problem(h5, str(entry["dataset"]))
                 if problem:
                     problems.append(f"Burn severity: {problem}")
+            elif name == "canopy_cover_loss":
+                problem = _canopy_problem(h5, str(entry["dataset"]), entry["canopy"])
+                if problem:
+                    problems.append(f"Canopy cover loss: {problem}")
     return problems
 
 

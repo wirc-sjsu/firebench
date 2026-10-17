@@ -16,6 +16,7 @@ version = "2026.1"
 # Weight of a group in the total score, by family.
 building_damage = 1
 burn_severity_cbi = 1
+canopy_cover_loss = 1
 fire_perimeters = 1
 weather_stations = 1
 
@@ -30,6 +31,16 @@ kpi_weight = 1
 # observations or in the model is left out.
 high_classes = [4]
 other_classes = [1, 2, 3]
+kpi_weight = 1
+
+[canopy_cover_loss]
+# RAVG's five-class canopy cover loss (CC5), on the cells where LANDFIRE had canopy before the fire:
+# the canopy height, base height, and bulk density all above 0 (FB001's mask). Class 5, 75 to 100 %
+# loss, is "high"; every other class of the model or of the observations (9, outside the burn area,
+# included) is not. Class 0 of the observations is no data and leaves its cell out, as in FB001.
+# Added without raising `version`: no definition of version 2026.1 holds this family, and the scores
+# of the other families are unchanged.
+high_classes = [5]
 kpi_weight = 1
 
 [fire_perimeters]

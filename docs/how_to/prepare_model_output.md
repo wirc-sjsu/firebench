@@ -32,6 +32,7 @@ observation file, only the groups the case scores:
 |---|---|---|
 | `fire_perimeters` | each perimeter group of the definition, with its `time` | no `rel_path`, `sha256`, or `file_size_bytes`, no KML file, no burnt area |
 | `burn_severity_cbi` | the CBI group: `position_lat`, `position_lon`, `crs`, `units`, `_FillValue` | every value is the `_FillValue` |
+| `canopy_cover_loss` | the RAVG canopy cover loss group, as for `burn_severity_cbi`; not the LANDFIRE layers, read from the observations | every value is the `_FillValue` |
 | `building_damage` | the buildings' `position_lat` and `position_lon` | every damage is `""`, except `"Inaccessible"`, a building that was not surveyed |
 | `weather_stations` | each station the case selects, with its attributes, its `time`, and each variable it is selected for, with `units` and the sensor height attributes | every value is NaN |
 

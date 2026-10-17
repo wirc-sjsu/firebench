@@ -22,6 +22,7 @@ The proposal holds every family the file allows, and says why it left out the ot
 | `fire_perimeters` | `/polygons/*` with `time` and `rel_path` | Jaccard and Dice indices (min, mean, max) per period, final burn area bias, burn area RMSE, in the case's projection (EPSG:5070) |
 | `building_damage` | `/points/building_damaged/building_damage` | the six binary structure-loss metrics of FB001 |
 | `burn_severity_cbi` | `/spatial_2d/ravg_cbi/ravg_composite_burn_index_severity` | the six binary metrics of high severity, where high is RAVG's class 4 (CBI ≥ 2.25) |
+| `canopy_cover_loss` | `/spatial_2d/ravg_cc/ravg_canopy_cover_loss`, and the LANDFIRE canopy height, base height, and bulk density (`/spatial_2d/landfire_ch`, `landfire_cbh`, `landfire_cbd`, written by `standardize_landfire_canopy`) | the six binary metrics of high canopy cover loss (RAVG class 5, 75 to 100 %), on the cells where every LANDFIRE layer is above 0 and not its fill value, as FB001's CC KPIs |
 | `weather_stations` | `/time_series/station_*` | MAE, RMSE, and bias (circular for wind direction) of each station variable, min, mean, and max over stations, on trusted (TSO) and all stations |
 
 and these periods:

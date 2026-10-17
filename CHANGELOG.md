@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `/benchmark_case/definition`; `load_case` (`firebench.benchmarks.fire_case`) runs it with the
   interface of a case module. The families are fire perimeters (in EPSG:5070), building damage,
   burn severity from RAVG's composite burn index (high is CBI ≥ 2.25), and weather stations.
+- Add the family `canopy_cover_loss` to these cases: FB001's six binary metrics of high canopy cover
+  loss (RAVG class 5), on the cells of the RAVG grid where the LANDFIRE canopy height, base height,
+  and bulk density are all above 0. Unlike FB001's mask, a LANDFIRE fill value is not canopy.
+  `propose_case` offers it when the file holds `/spatial_2d/ravg_cc` and the three
+  `/spatial_2d/landfire_*` layers. The parameter file gains `[canopy_cover_loss]` and its group
+  weight; its version stays `2026.1`, as no score of an earlier definition changes.
+- Add `standardize_landfire_canopy` and `LANDFIRE_CANOPY_PRODUCTS` to `firebench.standardize`: a
+  LANDFIRE canopy product (CC, CH, CBH, CBD) of a national mosaic, cut to a box, in
+  `/spatial_2d/landfire_<product>`. `standardize_landfire_from_geotiff` takes optional
+  `lower_left_corner` and `upper_right_corner` to read only the window of the box, and stores a
+  negative value (LANDFIRE's -9999) as the fill value. Add the namespace variable `CANOPY_COVER`.
 - Add the parameter file of these cases, `resources/benchmarks/fire_case.toml` (set `fire_case`,
   version `2026.1`), with FB001's normalizations and weights and the CBI classes.
 - Add `firebench case propose`, `firebench case check`, and `firebench case run`.
