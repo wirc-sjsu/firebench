@@ -6,6 +6,8 @@ SPATIAL_2D = "spatial_2d"
 SPATIAL_3D = "spatial_3d"
 # weather radar sites, under SPATIAL_3D
 RADAR = "radar"
+# Doppler wind lidars, under SPATIAL_3D
+LIDAR = "lidar"
 UNSTRUCTURED = "unstructured"
 # satellite fire detections, under UNSTRUCTURED
 FIRE_DETECTIONS = "fire_detections"

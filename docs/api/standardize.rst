@@ -29,6 +29,9 @@ Public standard-file creation and validation API.
 .. automodule:: firebench.standardize.fire_detections
    :members:
 
+.. automodule:: firebench.standardize.lidar
+   :members:
+
 .. automodule:: firebench.standardize.lightning
    :members:
 

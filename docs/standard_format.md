@@ -468,6 +468,69 @@ key and SHA-256 of the volume file).
 `firebench.standardize.radar_echo_top_series` reads the height of the plume gates of each volume,
 and `firebench.standardize.radar_composite` the column maximum of a field over them.
 
+#### lidar
+
+Doppler wind lidar scans are stored the way the lidar observed them, under `/spatial_3d/lidar`, one
+group per **instrument** (*e.g.* `HALO_19`, a Halo Photonics StreamLine of system ID 19): one row
+per ray, a fixed axis of gates, and one row per scan file. Nothing is gridded or filtered at
+standardization.
+
+```
+/spatial_3d/lidar/<INSTRUMENT>/
+├── range                                              (fixed axis: gate centres)
+├── time, azimuth, elevation, pitch, roll, scan_index  (one row per ray)
+├── lidar_radial_velocity, lidar_intensity, lidar_attenuated_backscatter   (n_ray, n_range)
+└── scans/                                             (one row per scan file)
+```
+
+- Position follows the [spherical convention](#spherical-coordinates): the origin is the lidar, and a
+  gate is given by its azimuth, its elevation, and its range along the ray. The lidar may move
+  between scans, so each row of `scans/` holds its own origin; the group attributes hold the origin
+  of the first scan.
+- **Azimuths are stored as recorded**, clockwise from the instrument's 0 degree. The attribute
+  `azimuth_offset` is the azimuth of that 0 clockwise from true north (the heading), so the true
+  azimuth of a ray is `azimuth + azimuth_offset`. Pitch and roll are stored and not applied.
+- **Gates.** The centre of gate `k` is at `(k + 0.5)` times the gate spacing. In an overlapping scan
+  a gate starts every point, so the spacing is the range gate length divided by its length in
+  points; otherwise it is the range gate length.
+- **Values** are stored as observed, NaN where none. Readers apply quality thresholds (*e.g.*
+  `firebench.standardize.lidar_points`, with the thresholds of `resources/lidar.toml`).
+- `/spatial_3d` and `/spatial_3d/lidar` carry no attributes, so files that each hold some lidars
+  merge without conflict.
+
+Instrument group attributes:
+
+Attributes | Type | Description
+:--------- | :----: | :-----------
+`instrument`, `system_id` | str, int | *e.g.* `Halo Photonics StreamLine`, `19`
+`data_source` | str | `file`: scans a member supplied
+`crs` | str | `EPSG:4326`
+`position_origin_lat`, `position_origin_lon`, `position_origin_alt` | float | The lidar at the first scan, with `*_units` (`degree`, `m` above mean sea level)
+`azimuth_offset` | float | The heading, `*_units` = `degree`
+`gate_length`, `gate_points`, `gate_spacing`, `n_gates` | float, int, float, int | The range gate length (`m`), its length in points, the spacing of gate centres (`m`), the gates of a ray
+`frame_west`, `frame_south`, `frame_east`, `frame_north` | float | The frame requested, `*_units` = `degree`
+`time_start`, `time_end` | str | The window start and the last ray read, ISO 8601
+`fields` | str | JSON list of the field datasets present
+`failed` | str | JSON list of the files not written: `file`, `reason`
+`source_files` | str | JSON list of the files written: `name`, `rays`
+
+Ray rows, every dataset of length `n_ray`: `time` (`s` from `time_origin`, the window start),
+`azimuth`, `elevation`, `pitch`, `roll` (`degree`), and `scan_index` (the row of `scans/`).
+
+Fields, each `(n_ray, n_range)` float32, named in the [namespace](./namespace.md):
+`lidar_radial_velocity` (`m/s`, positive away from the lidar), `lidar_intensity` (`1`, the
+signal-to-noise ratio plus one), `lidar_attenuated_backscatter` (`1/m/sr`).
+
+`scans/`, every dataset of length `n_scan`: `time` and `time_end` (first and last ray, same origin),
+`n_rays`, `first_ray`, `position_origin_lat`, `position_origin_lon`, `position_origin_alt`,
+`position_source` (`gps`: the fix of the lidar's `Time_Sync` file nearest the scan; `entered`: given
+by the person who standardized), `scan_type`, `focus_range`, `pulses_per_ray`,
+`velocity_resolution`, `source_file`, and `source_sha256`. Strings are fixed-length ASCII.
+
+`firebench.standardize.lidar_scans` lists the scans of a lidar, and
+`firebench.standardize.lidar_points` gives the gates of one scan as east, north, and up from the
+lidar.
+
 ### polygons
 - As HDF5 is not a file format that is practical to use for vectorized dataset, the polygons are stored using the `KML` file format.
 - The HDF5 file contains the necessary metadata to point to the KML file containing the polygons dataset in a group registered in the `/polygons` main group.

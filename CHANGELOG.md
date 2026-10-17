@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add Doppler wind lidar scans to the standard format: `/spatial_3d/lidar/<INSTRUMENT>`, one row per
+  ray with its time, recorded azimuth, elevation, pitch, and roll, a fixed axis of gate ranges, a
+  `scans` table with the position of each scan, the heading as `azimuth_offset`, and the namespace
+  variables `LIDAR_RADIAL_VELOCITY`, `LIDAR_INTENSITY`, and `LIDAR_ATTENUATED_BACKSCATTER`.
+- Add `read_halo_hpl` (a raw Halo Photonics StreamLine scan, `.hpl`), `read_halo_time_sync` (the GPS
+  fixes of its `Time_Sync` file), `halo_file_kind`, `standardize_halo_lidar`,
+  `list_lidar_instruments`, `lidar_scans`, `lidar_points`, and `lidar_parameters` to
+  `firebench.standardize`. The quality thresholds of `lidar_points` and the longest gap to a GPS fix
+  are in `resources/lidar.toml`.
 - Add benchmark cases defined outside FireBench: a definition document (schema `fb-case-v1`) names
   the periods and the families of KPIs a standard file is scored on, and the parameter set it uses.
   `propose_case`, `check_case`, `edit_case`, `write_case_definition`, and `read_case_definition`

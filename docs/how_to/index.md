@@ -11,6 +11,7 @@ validate_hdf5.md
 fire_detections.md
 lightning.md
 weather_radar.md
+doppler_lidar.md
 review_weather_station_qc.md
 manage_weather_sensor_heights.md
 generate_weather_release_inventory.md

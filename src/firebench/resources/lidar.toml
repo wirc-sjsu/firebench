@@ -1,0 +1,18 @@
+# Parameters of the Doppler wind lidar reader (firebench.standardize.lidar).
+#
+# The file is read from the installed package and from nowhere else, so the FireBench version or
+# commit of a result identifies its parameters.
+
+[position]
+# A scan takes the position of the GPS fix nearest its start. A fix further away than this gives the
+# scan no position: the lidar may have moved.
+max_fix_gap_h = 3.0
+
+[qc]
+# The gates a reader keeps (lidar_points). The stored values are never filtered.
+# Signal-to-noise ratio, 10 log10(intensity - 1), at least this many dB.
+snr_min_db = -2.0
+# Attenuated backscatter strictly above this value, in m-1 sr-1: aerosol and smoke.
+backscatter_min = 1.0e-5
+# Radial velocity strictly between 0 and this value in absolute value, in m s-1.
+radial_velocity_max_abs = 30.0

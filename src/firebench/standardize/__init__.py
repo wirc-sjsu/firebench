@@ -46,6 +46,20 @@ from .lightning import (
     standardize_lightning_strokes,
     standardize_nldn_tiles,
 )
+from .lidar import (
+    GpsFix,
+    HaloScan,
+    LidarPoints,
+    LidarScanInfo,
+    halo_file_kind,
+    lidar_parameters,
+    lidar_points,
+    lidar_scans,
+    list_lidar_instruments,
+    read_halo_hpl,
+    read_halo_time_sync,
+    standardize_halo_lidar,
+)
 from .radar import (
     EchoTopSeries,
     RadarComposite,
@@ -68,6 +82,7 @@ from .std_file_info import (
     SPATIAL_2D,
     SPATIAL_3D,
     RADAR,
+    LIDAR,
     UNSTRUCTURED,
     FIRE_DETECTIONS,
     LIGHTNING,
