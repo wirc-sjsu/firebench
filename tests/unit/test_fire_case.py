@@ -726,3 +726,46 @@ def test_edit_case_drops_a_family_left_without_a_period(files):
 
     assert [item["family"] for item in edited["families"]] == ["building_damage", "burn_severity_cbi"]
     assert "no period" in " ".join(definition_module.check_case(edited, obs))
+
+
+def test_perimeter_values_give_what_the_perimeter_kpis_aggregate(files):
+    obs, model = files
+    case = fire_case.load_case(_definition(), obs)
+
+    with h5py.File(model, "r") as model_h5, h5py.File(obs, "r") as obs_h5:
+        values = case.perimeter_values(model_h5, obs_h5)
+
+    assert [item["path"] for item in values] == list(W2_PERIMETERS)
+    assert [item["time"] for item in values] == [path.rsplit("_", 1)[-1] for path in W2_PERIMETERS]
+    mean_jaccard, min_jaccard = _run(case.BENCHMARK_FUNCTIONS, ["G-FP01", "G-FP02"], obs, model)
+    jaccard = [item["jaccard"] for item in values]
+    assert np.mean(jaccard) == pytest.approx(mean_jaccard[0])
+    assert min(jaccard) == pytest.approx(min_jaccard[0])
+    (bias,) = _run(case.BENCHMARK_FUNCTIONS, ["G-FP07"], obs, model)
+    last = values[-1]
+    assert (last["model_area"] - last["observed_area"]).to("acre").magnitude == pytest.approx(bias[0])
+    assert all(0 < item["dice"] <= 1 for item in values)
+
+
+def test_caldor_perimeter_values_use_its_own_area_projection(files):
+    obs, model = files
+    c001_caldor.build_registries()
+
+    with h5py.File(model, "r") as model_h5, h5py.File(obs, "r") as obs_h5:
+        values = c001_caldor.perimeter_values(model_h5, obs_h5)
+
+    caldor_bias_id = list(c001_caldor.GROUPS["Fire Perimeter W2"]["benchmarks"])[6]
+    (bias,) = _run(c001_caldor.BENCHMARK_FUNCTIONS, [caldor_bias_id], obs, model)
+    last = values[-1]
+    assert (last["model_area"] - last["observed_area"]).to("acre").magnitude == pytest.approx(bias[0])
+
+
+def test_perimeter_values_leave_out_a_perimeter_the_model_lacks(files):
+    obs, model = files
+    with h5py.File(model, "a") as model_h5:
+        del model_h5[W2_PERIMETERS[0]]
+
+    with h5py.File(model, "r") as model_h5, h5py.File(obs, "r") as obs_h5:
+        values = c001_caldor.perimeter_values(model_h5, obs_h5)
+
+    assert [item["path"] for item in values] == list(W2_PERIMETERS[1:])

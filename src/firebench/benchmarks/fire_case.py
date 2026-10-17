@@ -397,6 +397,18 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
             for name in names
         }
 
+    def perimeter_values(
+        self, model_dataset: File, obs_dataset: File, list_perims: list[str] | None = None
+    ) -> list[dict]:
+        """The case's per-perimeter values, in the projection of its definition.
+
+        See `c001_caldor.perimeter_values_generic`.
+        """
+        projection = self.definition["projection"]
+        return fb001.perimeter_values_generic(
+            model_dataset, obs_dataset, list_perims, projection, _epsg(projection)
+        )
+
     def _of_kind(self, kind: str) -> list[str]:
         return [name for name, info in self._groups.items() if info["kind"] == kind]
 
