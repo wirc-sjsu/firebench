@@ -18,3 +18,6 @@ radar volumes.
 
 .. automodule:: firebench.acquisition.nexrad
    :members:
+
+.. automodule:: firebench.acquisition.copernicus_dem
+   :members:

@@ -12,8 +12,10 @@ StreamLine lidar.
   user scans (CSM, sector), PPI, RHI, VAD rays, and stares. Processed wind profiles
   (`Processed_Wind_Profile_*.hpl`) and background files are not raw scans and are refused.
 - **`Time_Sync_*.txt`**: the GPS fixes the lidar records when it sets its clock, with its position.
-  A scan takes the position of the fix nearest its start, if one is within `max_fix_gap_h` hours
-  (`resources/lidar.toml`). A position can be given instead.
+  The lidar is static: its position is the median of the fixes from `max_fix_gap_h` hours
+  (`resources/lidar.toml`) before its first scan to as long after its last. A position (`position`)
+  and an altitude (`altitude`) can be given instead; the GPS height is a poor altitude, and
+  `ground_elevation` gives the ground under the lidar from LANDFIRE or the Copernicus DEM.
 - **The heading**: the azimuths of a scan are relative to the instrument's 0 degree. Give the
   azimuth of that 0, clockwise from true north; it is stored as `azimuth_offset`, and the azimuths
   as recorded.
@@ -40,9 +42,8 @@ with new_std_file("lidar.h5", "me") as h5:
 ```
 
 A scan whose start is outside the window is skipped. A file that cannot be read, a file given
-twice, a scan with no position, a scan whose lidar is outside the box, and a file whose gates differ
-from the first file of its lidar are not written; the group's `failed` attribute lists them with the
-reason.
+twice, and a file whose gates differ from the first file of its lidar are not written; the group's
+`failed` attribute lists them with the reason. A lidar with no position or outside the box is refused.
 
 ## Gates
 

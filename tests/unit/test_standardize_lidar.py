@@ -185,33 +185,89 @@ def test_the_scans_of_a_lidar_are_one_group_with_a_row_per_ray(tmp_path, std_fil
     assert list_lidar_instruments(std_file) == ["HALO_7"]
 
 
-def test_an_entered_position_is_used_instead_of_the_gps(tmp_path, std_file):
+def test_an_entered_position_and_altitude_are_used_instead_of_the_gps(tmp_path, std_file):
     (group,) = _write(
-        std_file, [_hpl(tmp_path)], time_sync=[_sync(tmp_path)], position=(40.78, -119.21, 1190.0)
+        std_file,
+        [_hpl(tmp_path)],
+        time_sync=[_sync(tmp_path)],
+        position=(40.78, -119.21),
+        altitude=1193.0,
+        altitude_source="LANDFIRE",
     )
     assert group["scans/position_origin_lat"][0] == pytest.approx(40.78)
+    assert group["scans/position_origin_alt"][0] == pytest.approx(1193.0)
     assert group["scans/position_source"][0] == b"entered"
+    assert (group.attrs["position_source"], group.attrs["altitude_source"]) == ("entered", "LANDFIRE")
 
 
-def test_scans_out_of_the_window_far_from_a_fix_or_out_of_the_frame_are_not_written(tmp_path, std_file):
+def test_the_altitude_can_come_from_an_elevation_model_at_the_position(tmp_path, std_file):
+    asked = []
+
+    def ground(lat, lon):
+        asked.append((round(lat, 4), round(lon, 4)))
+        return 1191.0, "LANDFIRE"
+
+    (group,) = _write(std_file, [_hpl(tmp_path)], time_sync=[_sync(tmp_path)], altitude_of=ground)
+    assert asked == [(40.7911, -119.2)]
+    assert group.attrs["position_origin_alt"] == pytest.approx(1191.0)
+    assert (group.attrs["position_source"], group.attrs["altitude_source"]) == ("gps", "LANDFIRE")
+    # An altitude given wins, and a model with no value leaves the GPS height.
+    (group,) = _write(
+        std_file,
+        [_hpl(tmp_path)],
+        time_sync=[_sync(tmp_path)],
+        altitude=1193.0,
+        altitude_of=ground,
+        overwrite=True,
+    )
+    assert group.attrs["altitude_source"] == "entered" and len(asked) == 1
+    (group,) = _write(
+        std_file,
+        [_hpl(tmp_path)],
+        time_sync=[_sync(tmp_path)],
+        altitude_of=lambda lat, lon: None,
+        overwrite=True,
+    )
+    assert group.attrs["altitude_source"] == "gps" and group.attrs["position_origin_alt"] == pytest.approx(
+        1183.9
+    )
+
+
+def test_a_static_lidar_takes_the_median_of_the_fixes_near_its_scans(tmp_path, std_file):
+    fixes = [
+        SYNC_LINE,
+        SYNC_LINE.replace("03:00:03", "04:00:03").replace("27.96", "28.06").replace("01183.9", "01187.5"),
+        # Days before: the lidar was elsewhere.
+        SYNC_LINE.replace("06/09/2023", "01/09/2023").replace("119 12' 0.00", "119 12' 50.00"),
+    ]
+    late = _hpl(
+        tmp_path, "User1_7_20230906_033000.hpl", start="20230906 03:30:00.00", rays=((3.5, 60.0, 5.0),)
+    )
+    (group,) = _write(std_file, [_hpl(tmp_path), late], time_sync=[_sync(tmp_path, fixes)])
+    lats = group["scans/position_origin_lat"][()]
+    assert lats[0] == lats[1] == pytest.approx(40 + 47 / 60 + 28.01 / 3600)
+    assert group["scans/position_origin_alt"][0] == pytest.approx(1185.7)
+    assert (group.attrs["position_fixes"], group.attrs["altitude_source"]) == (2, "gps")
+    assert group.attrs["position_spread"] == pytest.approx(1.5, abs=0.2)
+
+
+def test_scans_out_of_the_window_are_skipped_and_a_lidar_without_position_or_out_of_the_frame_refused(
+    tmp_path, std_file
+):
     kept = _hpl(tmp_path)
     late = _hpl(
         tmp_path, "User1_7_20230906_053000.hpl", start="20230906 05:30:00.00", rays=((5.5, 60.0, 5.0),)
     )
-    far_fix = _hpl(
-        tmp_path, "User1_7_20230906_040000.hpl", start="20230906 04:00:00.00", rays=((4.0, 60.0, 5.0),)
-    )
-    sync = _sync(tmp_path, [SYNC_LINE.replace("03:00:03", "00:30:00")])
-    (group,) = _write(
-        std_file, [kept, late, far_fix], time_sync=[sync], end=datetime(2023, 9, 6, 5, tzinfo=timezone.utc)
-    )
+    (group,) = _write(std_file, [kept, late], time_sync=[_sync(tmp_path)])
     assert group["scans/n_rays"].shape == (1,)
-    failed = json.loads(group.attrs["failed"])
-    assert [item["file"] for item in failed] == ["User1_7_20230906_040000.hpl"]
-    assert "no GPS fix" in failed[0]["reason"]
 
+    far = _sync(tmp_path, [SYNC_LINE.replace("03:00:03", "23:30:00").replace("06/09/2023", "05/09/2023")])
+    with pytest.raises(ValueError, match="no position"):
+        _write(std_file, [kept], time_sync=[far], overwrite=True)
+    with pytest.raises(ValueError, match="no altitude"):
+        _write(std_file, [kept], position=(40.79, -119.2), overwrite=True)
     with pytest.raises(ValueError, match="outside the frame"):
-        _write(std_file, [kept], position=(41.5, -119.2, 1190.0), overwrite=True)
+        _write(std_file, [kept], position=(41.5, -119.2), altitude=1190.0, overwrite=True)
 
 
 def test_a_file_given_twice_or_with_other_gates_is_not_written(tmp_path, std_file):
@@ -236,7 +292,7 @@ def test_a_file_given_twice_or_with_other_gates_is_not_written(tmp_path, std_fil
 
 def test_nothing_to_write_and_bad_settings_are_refused(tmp_path, std_file):
     with pytest.raises(ValueError, match="no lidar scan"):
-        _write(std_file, [_hpl(tmp_path)])
+        _write(std_file, [_hpl(tmp_path)], end=datetime(2023, 9, 6, 2, 30, tzinfo=timezone.utc))
     with pytest.raises(ValueError, match="heading"):
         _write(std_file, [_hpl(tmp_path)], heading_deg=360)
     _write(std_file, [_hpl(tmp_path)], time_sync=[_sync(tmp_path)])

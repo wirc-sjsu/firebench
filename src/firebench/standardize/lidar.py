@@ -18,8 +18,9 @@ Licence attributes are not written: the caller sets them.
 import hashlib
 import json
 import logging
+import math
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -336,18 +337,24 @@ def standardize_halo_lidar(  # pylint: disable=too-many-locals
     end: datetime,
     heading_deg: float,
     time_sync: Sequence[Path | str] = (),
-    position: tuple[float, float, float] | None = None,
+    position: tuple[float, float] | None = None,
+    altitude: float | None = None,
+    altitude_source: str = "entered",
+    altitude_of: Callable[[float, float], tuple[float, str] | None] | None = None,
     overwrite: bool = False,
     compression_lvl: int = 6,
 ) -> list[h5py.Group]:
     """
     Write the raw scans of Halo lidars, one group ``/spatial_3d/lidar/HALO_<system id>`` each.
 
-    A scan is kept when its start is in ``[start, end)``. Its position is ``position`` when given,
-    else the GPS fix of ``time_sync`` nearest its start, if one is within ``max_fix_gap_h`` of
-    ``resources/lidar.toml``. A scan whose lidar is outside the frame, a file read twice, and a file
-    whose gates differ from the first file of its instrument are not written: they are in the
-    ``failed`` attribute with the reason, as is a file that cannot be read.
+    A scan is kept when its start is in ``[start, end)``. The lidar is static: every scan has the same
+    position. Its latitude and longitude are ``position`` when given, else the median of the GPS fixes
+    of ``time_sync`` from ``max_fix_gap_h`` (``resources/lidar.toml``) before the first scan kept to as
+    long after the last; its altitude is ``altitude`` when given, else ``altitude_of`` of that position
+    (*e.g.* the ground elevation of :func:`firebench.standardize.ground_elevation`), else the median
+    height of those fixes. A file read twice and a file whose gates differ from the first file of its
+    instrument are not written: they are in the ``failed`` attribute with the reason, as is a file
+    that cannot be read.
 
     Parameters
     ----------
@@ -364,14 +371,21 @@ def standardize_halo_lidar(  # pylint: disable=too-many-locals
         as recorded and the heading as the attribute ``azimuth_offset``.
     time_sync : sequence of path
         ``Time_Sync`` files of the lidars.
-    position : (latitude, longitude, altitude) or None
-        The position of the lidar, in degrees and m above mean sea level, instead of the GPS.
+    position : (latitude, longitude) or None
+        The position of the lidar, in degrees, instead of the GPS.
+    altitude : float or None
+        The altitude of the lidar, in m above mean sea level, instead of the GPS height.
+    altitude_source : str
+        What ``altitude`` comes from, recorded in the group (*e.g.* ``entered``, ``LANDFIRE``).
+    altitude_of : callable or None
+        ``(latitude, longitude) -> (altitude, source)`` or None, asked when ``altitude`` is not given.
 
     Raises
     ------
     ValueError
         If the heading or the position is invalid, a ``Time_Sync`` file cannot be read, no scan can
-        be written, or a group exists and ``overwrite`` is False.
+        be written, the lidar has no position or is outside the frame, or a group exists and
+        ``overwrite`` is False.
     """
     check_std_version(h5file)
     start, end = _utc(start), _utc(end)
@@ -381,13 +395,15 @@ def standardize_halo_lidar(  # pylint: disable=too-many-locals
         raise ValueError(f"the heading must be in [0, 360) degree, not {heading_deg!r}")
     if position is not None:
         position = _position(position)
+    if altitude is not None and not math.isfinite(float(altitude)):
+        raise ValueError(f"invalid altitude {altitude!r}")
     fixes = [fix for path in time_sync for fix in read_halo_time_sync(path)]
     fixes.sort(key=lambda fix: fix.time)
     max_gap = timedelta(hours=lidar_parameters().max_fix_gap_h)
 
     failed: list[dict] = []
     seen: set[str] = set()
-    kept: dict[int, list[tuple[HaloScan, tuple[float, float, float], str]]] = {}
+    kept: dict[int, list[HaloScan]] = {}
     for path in scans:
         name = Path(path).name
         try:
@@ -402,17 +418,13 @@ def standardize_halo_lidar(  # pylint: disable=too-many-locals
         seen.add(scan.sha256)
         if not start <= scan.time[0] < end:
             continue
-        where = _scan_position(scan, position, fixes, max_gap, frame)
-        if isinstance(where, str):
-            failed.append({"file": name, "reason": where})
-            continue
         group = kept.setdefault(scan.system_id, [])
-        if group and not _same_gates(group[0][0], scan):
+        if group and not _same_gates(group[0], scan):
             failed.append(
                 {"file": name, "reason": "its gates differ from the first scan of the same lidar"}
             )
             continue
-        group.append((scan, *where))
+        group.append(scan)
     if not kept:
         reasons = "; ".join(f"{item['file']}: {item['reason']}" for item in failed[:5])
         raise ValueError(f"no lidar scan in the window could be written{': ' + reasons if reasons else ''}")
@@ -422,17 +434,81 @@ def standardize_halo_lidar(  # pylint: disable=too-many-locals
         path = f"{GROUP}/HALO_{system_id}"
         if path in h5file and not overwrite:
             raise ValueError(f"group {path} already exists in {h5file.filename}. Set `overwrite` to True.")
-        rows.sort(key=lambda row: row[0].time[0])
+        rows.sort(key=lambda row: row.time[0])
+        where = _static_position(
+            rows, position, (altitude, altitude_source, altitude_of), fixes, max_gap, frame
+        )
         groups.append(
             _write_instrument(
-                h5file, path, rows, frame, start, heading, failed, compression_lvl=compression_lvl
+                h5file,
+                path,
+                [(row, where.origin, where.source) for row in rows],
+                frame,
+                start,
+                heading,
+                failed,
+                where,
+                compression_lvl=compression_lvl,
             )
         )
     return groups
 
 
+@dataclass(frozen=True)
+class _Position:
+    origin: tuple[float, float, float]
+    source: str
+    altitude_source: str
+    fixes: int
+    spread: float  # m, the farthest fix from the position
+
+
+def _static_position(rows, position, height, fixes, max_gap, frame) -> _Position:
+    """The one position of a static lidar: entered, or the median of the GPS fixes around its scans."""
+    altitude, altitude_source, altitude_of = height
+    first, last = rows[0].time[0], max(row.time[-1] for row in rows)
+    near = [fix for fix in fixes if first - max_gap <= fix.time <= last + max_gap]
+    if position is None and not near:
+        raise ValueError("the lidar has no position: no GPS fix near its scans and none entered")
+    lat, lon = (
+        position
+        if position is not None
+        else (
+            float(np.median([fix.latitude for fix in near])),
+            float(np.median([fix.longitude for fix in near])),
+        )
+    )
+    if altitude is None and altitude_of is not None:
+        found = altitude_of(lat, lon)
+        if found is not None:
+            altitude, altitude_source = found
+    if altitude is None and not near:
+        raise ValueError("the lidar has no altitude: no GPS fix near its scans and none given")
+    alt = float(altitude) if altitude is not None else float(np.median([fix.altitude for fix in near]))
+    west, south, east, north = frame
+    if not (west <= lon <= east and south <= lat <= north):
+        raise ValueError(f"the lidar ({lat:.5f}, {lon:.5f}) is outside the frame")
+    scale = 111_320.0
+    spread = max(
+        (
+            math.hypot(
+                (fix.latitude - lat) * scale, (fix.longitude - lon) * scale * math.cos(math.radians(lat))
+            )
+            for fix in near
+        ),
+        default=0.0,
+    )
+    return _Position(
+        origin=(lat, lon, alt),
+        source="entered" if position is not None else "gps",
+        altitude_source=altitude_source if altitude is not None else "gps",
+        fixes=len(near),
+        spread=spread,
+    )
+
+
 def _write_instrument(  # pylint: disable=too-many-arguments,too-many-locals
-    h5file, path, rows, frame, start, heading, failed, *, compression_lvl
+    h5file, path, rows, frame, start, heading, failed, where, *, compression_lvl
 ) -> h5py.Group:
     first = rows[0][0]
     instrument = path.rsplit("/", 1)[-1]
@@ -454,6 +530,11 @@ def _write_instrument(  # pylint: disable=too-many-arguments,too-many-locals
         "position_origin_lon_units": "degree",
         "position_origin_alt": alt,
         "position_origin_alt_units": "m",
+        "position_source": where.source,
+        "altitude_source": where.altitude_source,
+        "position_fixes": where.fixes,
+        "position_spread": round(where.spread, 1),
+        "position_spread_units": "m",
         "azimuth_offset": heading,
         "azimuth_offset_units": "degree",
         "gate_length": first.gate_length,
@@ -748,37 +829,15 @@ def _degrees(match: re.Match, prefix: str) -> float:
     return -value if match[f"{prefix}_hem"] in ("S", "W") else value
 
 
-def _scan_position(scan: HaloScan, position, fixes, max_gap, frame):
-    """``((lat, lon, alt), source)`` of a scan, or the reason it has none in the frame."""
-    if position is not None:
-        where, source = position, "entered"
-    else:
-        fix = _nearest_fix(fixes, scan.time[0], max_gap)
-        if fix is None:
-            return "no position: no GPS fix near the scan and none entered"
-        where, source = (fix.latitude, fix.longitude, fix.altitude), "gps"
-    west, south, east, north = frame
-    if not (west <= where[1] <= east and south <= where[0] <= north):
-        return "the lidar is outside the frame"
-    return where, source
-
-
-def _nearest_fix(fixes: list[GpsFix], time: datetime, max_gap: timedelta) -> GpsFix | None:
-    if not fixes:
-        return None
-    nearest = min(fixes, key=lambda fix: abs(fix.time - time))
-    return nearest if abs(nearest.time - time) <= max_gap else None
-
-
 def _same_gates(first: HaloScan, other: HaloScan) -> bool:
     return first.n_gates == other.n_gates and np.isclose(first.gate_spacing, other.gate_spacing)
 
 
-def _position(position) -> tuple[float, float, float]:
-    lat, lon, alt = (float(value) for value in position)
-    if not (-90 <= lat <= 90 and -180 <= lon <= 180 and np.isfinite(alt)):
-        raise ValueError(f"invalid position {position!r}: expected latitude, longitude, altitude")
-    return lat, lon, alt
+def _position(position) -> tuple[float, float]:
+    lat, lon = (float(value) for value in position)
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise ValueError(f"invalid position {position!r}: expected latitude and longitude")
+    return lat, lon
 
 
 def _bbox(bbox) -> tuple[float, float, float, float]:

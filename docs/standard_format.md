@@ -359,6 +359,22 @@ Units attributes must be set for each field.
 │    │    ├── wind_w               (vertical wind output from WRF-SFIRE simulation)
 ```
 
+#### terrain_elevation
+
+The ground elevation of a box on a regular longitude-latitude grid, under
+`/spatial_2d/terrain_elevation`:
+
+- `position_lat` (`n_lat`, south to north) and `position_lon` (`n_lon`): the cell centres, `degree`.
+- `terrain_elevation` (`n_lat`, `n_lon`) float32: m above mean sea level, NaN where no source has a value.
+- `elevation_source` (`n_lat`, `n_lon`) uint8: `0` none, `1` LANDFIRE's elevation (bare earth, from
+  USGS 3DEP, NAVD88), `2` the Copernicus DEM GLO-30 (a surface model, EGM2008). LANDFIRE is used
+  wherever it has a value, the Copernicus DEM elsewhere (`flag_values`, `flag_meanings`).
+- Attributes: `crs` (`EPSG:4326`), `step` (`degree`, one arc-second unless the box is large),
+  `vertical_reference`, `sources` (JSON: the LANDFIRE file and the Copernicus tiles with their
+  SHA-256, and the cells each gave), the frame. `/spatial_2d` carries no attribute.
+
+`firebench.standardize.terrain_elevation_grid` makes the grid and `ground_elevation` gives one point.
+
 ### Spatial 3D
 - Contains time series data from a dataset associated with three-dimensional spatial data.
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group. For example, `wind_u` and `wind_v` share the same x, y, z, and time coordinates, so they are stored in the same group.
@@ -484,9 +500,11 @@ standardization.
 ```
 
 - Position follows the [spherical convention](#spherical-coordinates): the origin is the lidar, and a
-  gate is given by its azimuth, its elevation, and its range along the ray. The lidar may move
-  between scans, so each row of `scans/` holds its own origin; the group attributes hold the origin
-  of the first scan.
+  gate is given by its azimuth, its elevation, and its range along the ray. The lidar is static: its
+  position is the group's `position_origin_*`, repeated in every row of `scans/`. Its latitude and
+  longitude are entered (`position_source` = `entered`) or the median of the GPS fixes around its
+  scans (`gps`); its altitude is entered or taken from an elevation model (`altitude_source`, *e.g.*
+  `entered`, `LANDFIRE`), else the median GPS height (`gps`).
 - **Azimuths are stored as recorded**, clockwise from the instrument's 0 degree. The attribute
   `azimuth_offset` is the azimuth of that 0 clockwise from true north (the heading), so the true
   azimuth of a ray is `azimuth + azimuth_offset`. Pitch and roll are stored and not applied.
@@ -505,7 +523,9 @@ Attributes | Type | Description
 `instrument`, `system_id` | str, int | *e.g.* `Halo Photonics StreamLine`, `19`
 `data_source` | str | `file`: scans a member supplied
 `crs` | str | `EPSG:4326`
-`position_origin_lat`, `position_origin_lon`, `position_origin_alt` | float | The lidar at the first scan, with `*_units` (`degree`, `m` above mean sea level)
+`position_origin_lat`, `position_origin_lon`, `position_origin_alt` | float | The lidar, with `*_units` (`degree`, `m` above mean sea level)
+`position_source`, `altitude_source` | str | Where the position and the altitude come from: `entered`, `gps`, or the elevation model
+`position_fixes`, `position_spread` | int, float | The GPS fixes used, and the farthest one from the position (`*_units` = `m`)
 `azimuth_offset` | float | The heading, `*_units` = `degree`
 `gate_length`, `gate_points`, `gate_spacing`, `n_gates` | float, int, float, int | The range gate length (`m`), its length in points, the spacing of gate centres (`m`), the gates of a ray
 `frame_west`, `frame_south`, `frame_east`, `frame_north` | float | The frame requested, `*_units` = `degree`

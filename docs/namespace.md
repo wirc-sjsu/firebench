@@ -109,6 +109,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `SLOPE_ANGLE`: Slope angle [deg]
 - `SOLAR_RADIATION`: Solar radiation [W m-2]
 - `TEMPERATURE`: Temperature [K]
+- `TERRAIN_ELEVATION`: Ground elevation above mean sea level [m]
 - `TIME`: Time [s]
 - `WIND_DIRECTION`: Wind direction [deg]
 - `WIND_GUST`: Wind gust [m s-1]

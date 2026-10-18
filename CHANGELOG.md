@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add the ground elevation of a box to the standard format, `/spatial_2d/terrain_elevation`, from
+  LANDFIRE's elevation where it has a value and the Copernicus DEM GLO-30 elsewhere, with the source
+  of each cell, and the namespace variable `TERRAIN_ELEVATION`. Add `terrain_elevation_grid`,
+  `ground_elevation`, `standardize_terrain_elevation`, and `read_terrain_elevation` to
+  `firebench.standardize`, and `firebench.acquisition.copernicus_dem` (tiles of the open archive on AWS).
+- Make a Doppler lidar static in `standardize_halo_lidar`: one position, entered or the median of the
+  GPS fixes around its scans, and an `altitude` given apart (`altitude_source`), recorded with
+  `position_source`, `position_fixes`, and `position_spread`.
 - Add Doppler wind lidar scans to the standard format: `/spatial_3d/lidar/<INSTRUMENT>`, one row per
   ray with its time, recorded azimuth, elevation, pitch, and roll, a fixed axis of gate ranges, a
   `scans` table with the position of each scan, the heading as `azimuth_offset`, and the namespace

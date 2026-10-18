@@ -46,6 +46,13 @@ from .lightning import (
     standardize_lightning_strokes,
     standardize_nldn_tiles,
 )
+from .elevation import (
+    ElevationGrid,
+    ground_elevation,
+    read_terrain_elevation,
+    standardize_terrain_elevation,
+    terrain_elevation_grid,
+)
 from .lidar import (
     GpsFix,
     HaloScan,

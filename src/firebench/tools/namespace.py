@@ -110,6 +110,7 @@ class StandardVariableNames(Enum):  # pragma: no cover
     SOLAR_RADIATION = "solar_radiation"
     SLOPE_ANGLE = "slope_angle"
     TEMPERATURE = "temperature"
+    TERRAIN_ELEVATION = "terrain_elevation"
     TIME = "time"
     VAPOR_PRESSURE_DEFICIT = "vapor_pressure_deficit"
     WIND_DIRECTION = "wind_direction"
