@@ -224,6 +224,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- A radar cross section's name may hold upper-case letters and underscores (`Plume_1`): 1 to 40
+  letters, digits, hyphens, and underscores.
 - The KPI functions of FB001 take the dataset path of building damage, the projection of the
   perimeter indices and areas, and the relative area error at score 50 as keyword arguments, with
   FB001's values as defaults, so that generic cases reuse them. FB001's results do not change.
