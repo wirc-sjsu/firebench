@@ -235,6 +235,46 @@ def test_a_failed_day_loses_its_observations_and_detections(std_file, tmp_path):
     assert len(series.time) == 1  # the failed day is no pass with zero FRP
 
 
+def test_a_part_of_the_window_keeps_its_rows_overpasses_and_failed_days_alone(
+    std_file, tmp_path, viirs_bundle
+):
+    noon = START + timedelta(hours=12)
+    (group,) = standardize_firms_bundle(viirs_bundle, std_file, start=noon)
+
+    assert group.attrs["time_start"] == noon.isoformat() and group.attrs["time_end"] == END.isoformat()
+    assert group["detections/time"].attrs["time_origin"] == noon.isoformat()
+    assert list(group["detections/time"][()]) == [160800.0 - 43200]  # 2021-08-02 20:40 alone
+    assert list(group["observations/time"][()]) == [32400.0, 160560.0 - 43200]
+    assert list(group["detections/observation_index"][()]) == [1]
+
+    csv = VIIRS_HEADER + _viirs("2021-08-02", "2040")
+    failed_first_day = _bundle(
+        tmp_path,
+        [
+            _request("VIIRS_SNPP_SP", ["viirs_snpp"], "2021-08-01", 1, status="failed"),
+            _request("VIIRS_SNPP_SP", ["viirs_snpp"], "2021-08-02", 1, csv),
+        ],
+        {
+            "viirs_snpp": {
+                "status": "ok",
+                "error": None,
+                "collections": [],
+                "items": [_pass("2021-08-02T20:36:00+00:00")],
+            }
+        },
+        ["viirs_snpp"],
+    )
+    (group,) = standardize_firms_bundle(
+        failed_first_day, std_file, overwrite=True, start=START + timedelta(days=1)
+    )
+    assert json.loads(group.attrs["failed"]) == [] and group.attrs["observations_complete"]
+
+    with pytest.raises(ValueError, match="not a part of the bundle's"):
+        standardize_firms_bundle(viirs_bundle, std_file, overwrite=True, end=END + timedelta(hours=1))
+    with pytest.raises(ValueError, match="not a part of the bundle's"):
+        standardize_firms_bundle(viirs_bundle, std_file, overwrite=True, start=END, end=noon)
+
+
 def test_a_stream_without_answered_request_gets_no_group_and_unknown_streams_are_refused(
     std_file, tmp_path
 ):

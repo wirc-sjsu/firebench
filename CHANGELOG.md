@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `start` and `end` to `standardize_firms_bundle`: a part of the bundle's window to write, its rows,
+  overpasses, and failed days alone, recorded as the window of the group.
 - Add the `radar_plume` family of generic cases (`fire_case_radar`): a model's passive tracer and wind
   (`/spatial_3d/plume`, namespace variable `PASSIVE_TRACER`) against the radar cross sections, per
   section and period: the IoU of the plume masks, the errors on the plume top and centroid, the rank

@@ -142,6 +142,8 @@ def standardize_firms_bundle(
     streams: list[str] | None = None,
     overwrite: bool = False,
     compression_lvl: int = 6,
+    start: datetime | None = None,
+    end: datetime | None = None,
 ) -> list[h5py.Group]:
     """
     Write the VIIRS and MODIS streams of a FIRMS bundle to ``/unstructured/fire_detections``.
@@ -159,6 +161,10 @@ def standardize_firms_bundle(
     loses its observations and detections and is listed in ``failed``: it must never read as a pass
     with no fire.
 
+    The window is the bundle's, or the part of it ``start`` and ``end`` give: rows, overpasses, and
+    failed days outside it are left out, and the group records it as its ``time_start`` and
+    ``time_end`` and as the origin of its times.
+
     Parameters
     ----------
     bundle_path : Path
@@ -171,6 +177,8 @@ def standardize_firms_bundle(
         Replace a stream group that exists. Default: False
     compression_lvl : int
         Zstandard compression level of the datasets.
+    start, end : datetime | None
+        Part of the bundle's window to write, timezone-aware. None keeps the bundle's start or end.
 
     Returns
     -------
@@ -181,7 +189,8 @@ def standardize_firms_bundle(
     ------
     ValueError
         If the file is not a bundle, a stream is not in the bundle, a MODIS row has an unknown
-        satellite code, or a group exists and ``overwrite`` is False.
+        satellite code, a group exists and ``overwrite`` is False, or ``start`` and ``end`` do not
+        give a part of the bundle's window.
     """
     check_std_version(h5file)
     bundle_path = Path(bundle_path)
@@ -194,7 +203,14 @@ def standardize_firms_bundle(
     for stream in wanted:
         _check_new_group(h5file, stream, overwrite)
 
-    start, end = _utc(datetime.fromisoformat(bundle["start"])), _utc(datetime.fromisoformat(bundle["end"]))
+    first, last = _utc(datetime.fromisoformat(bundle["start"])), _utc(datetime.fromisoformat(bundle["end"]))
+    start = first if start is None else _utc(start)
+    end = last if end is None else _utc(end)
+    if not first <= start < end <= last:
+        raise ValueError(
+            f"the window {start.isoformat()} to {end.isoformat()} is not a part of the bundle's, "
+            f"{first.isoformat()} to {last.isoformat()}"
+        )
     frame = tuple(float(value) for value in bundle["bbox"])
     frames = _firms_frames(bundle)
     written = []
@@ -205,7 +221,11 @@ def standardize_firms_bundle(
         if not answered:
             logger.info("[fire detections] %s: no FIRMS request answered, no group written", stream)
             continue
-        excluded = _excluded_days(bundle, stream, requests)
+        excluded = [
+            item
+            for item in _excluded_days(bundle, stream, requests)
+            if start.date().isoformat() <= item["day"] <= end.date().isoformat()
+        ]
         rows = frames.get(stream, pd.DataFrame())
         rows = _firms_rows_in_window(rows, start, end, {item["day"] for item in excluded})
 
