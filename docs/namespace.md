@@ -95,6 +95,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `NORMAL_SPREAD_DIR_X`: Fire front normal vector component in x direction [-]
 - `NORMAL_SPREAD_DIR_Y`: Fire front normal vector component in y direction [-]
 - `OBSERVED_FRACTION`: Fraction of an area observed by a sensor [-]
+- `PASSIVE_TRACER`: Concentration of a passive tracer of a model's plume, on any scale [-]
 - `PIXEL_SIZE_SCAN`: Pixel size along the scan direction [m]
 - `PIXEL_SIZE_TRACK`: Pixel size along the track direction [m]
 - `RADAR_CORRELATION_COEFFICIENT`: Co-polar correlation coefficient of a weather radar, rhoHV [-]

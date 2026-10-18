@@ -8,9 +8,10 @@ to a program that runs it: the registries (``REQUIREMENTS``, ``BENCHMARK_FUNCTIO
 
 The KPI functions are FB001's, with the paths, projection, and parameters of the definition and of
 ``fire_case.toml``. The one family FB001 does not have, burn severity from RAVG's composite burn
-index, is defined here, and so is FB001's canopy cover loss with paths taken from the definition. KPI
-ids are ``G-`` and a family code (BD, SV, CC, FP, WX) with a number that follows the order of
-families and periods in the definition, so they are stable for a definition.
+index, is defined here, and so is FB001's canopy cover loss with paths taken from the definition; the
+radar plume family is in ``fire_case_radar``. KPI ids are ``G-`` and a family code (BD, SV, CC, FP,
+WX, RP) with a number that follows the order of families and periods in the definition, so they are
+stable for a definition.
 """
 
 import hashlib
@@ -30,6 +31,7 @@ from .. import standardize as fs
 from .. import tools as ft
 from . import c001_caldor as fb001
 from . import wx_common as wxc
+from .fire_case_radar import RADAR_KPIS, bench_radar_plume, model_requirements
 from .fire_case_definition import (
     TEMPLATE_REFUSAL,
     CaseDefinitionError,
@@ -45,8 +47,8 @@ KPI_PREFIX = "G-"
 COMPOSED_TARGET_PREFIX = "C-"
 DEFAULT_OUTPUT_PATH_JSON = Path("case_rslt.json")
 DEFAULT_SCORE_CARD_REPORT_PATH = Path("case.pdf")
-PERIOD_TARGET_PATTERN = re.compile(r"^(P\d{2}|H\d{3})_([BSCPTW]+)$")
-FLAG_ORDER = "BSCPTW"
+PERIOD_TARGET_PATTERN = re.compile(r"^(P\d{2}|H\d{3})_([BSCPTWR]+)$")
+FLAG_ORDER = "BSCPTWR"
 
 BINARY_METRICS = (
     ("Accuracy", fm.confusion_matrix.binary_accuracy),
@@ -79,6 +81,7 @@ CATEGORIES = {
     "C": "Canopy Cover Loss",
     "P": "Fire Perimeters",
     "W": "Weather Stations",
+    "R": "Radar Plume",
 }
 CTX_SPEC = {
     **fb001.CTX_SPEC,
@@ -327,7 +330,12 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
             return output
         for bench_id in list_benchmarks:
             ft.logger.info("Run Benchmark %s", bench_id)
-            output[bench_id] = self.BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
+            result = self.BENCHMARK_FUNCTIONS[bench_id](model_dataset, obs_dataset, ctx)
+            if result is None:
+                # A KPI with nothing to score (a radar plume no volume shows) is left out of its group.
+                ctx.setdefault("ignored_benchmarks", set()).add(bench_id)
+                continue
+            output[bench_id] = result
         return output
 
     def _add(self, requirement: str, group: str, bench_id: str, function, weight) -> None:
@@ -502,6 +510,35 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                             )
                             number += 1
 
+    def _add_radar_plume(self, entry: dict) -> None:
+        parameters = self.parameters.radar_plume
+        group_path = entry["model_group"]
+        self._requirement("R_RP", model_requirements(group_path))
+        number = 1
+        for section in entry["sections"]:
+            for period in entry["periods"]:
+                group = f"Radar Plume {section} {period}"
+                self._group(group, "radar_plume", "R", "Radar Plume", period=period)
+                for kpi_name, kpi, weight_key in RADAR_KPIS:
+                    function = partial(
+                        bench_radar_plume,
+                        kpi_name_custom=kpi_name,
+                        kpi=kpi,
+                        section=section,
+                        period_name=period,
+                        period=self.periods[period],
+                        model_group=group_path,
+                        parameters=parameters,
+                    )
+                    self._add(
+                        "R_RP",
+                        group,
+                        f"{KPI_PREFIX}RP{number:02d}",
+                        function,
+                        parameters.kpi_weights[weight_key],
+                    )
+                    number += 1
+
     def build_registries(self):
         """Build the registries again from the definition. Composed targets are forgotten."""
         self.REQUIREMENTS, self.BENCHMARK_FUNCTIONS, self.GROUPS, self.AGGREGATION = {}, {}, {}, {}
@@ -512,6 +549,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
             "canopy_cover_loss": self._add_canopy_cover,
             "fire_perimeters": self._add_perimeters,
             "weather_stations": self._add_weather,
+            "radar_plume": self._add_radar_plume,
         }
         for entry in self.definition["families"]:
             builders[entry["family"]](entry)
@@ -544,7 +582,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
 
     def _create_aggregation_schemes(self) -> None:
         self.AGGREGATION["A"] = self._copy_groups(self.GROUPS)
-        for target, kind in (("B", "B"), ("S", "S"), ("CC", "C"), ("FP", "P"), ("WX", "W")):
+        for target, kind in (("B", "B"), ("S", "S"), ("CC", "C"), ("FP", "P"), ("WX", "W"), ("RP", "R")):
             if self._of_kind(kind):
                 self.AGGREGATION[target] = self._copy_groups(self._of_kind(kind))
 
@@ -570,6 +608,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                 ("CC", "C", "Canopy Cover Loss"),
                 ("FP", "P", "Fire Perimeters (all periods)"),
                 ("WX", "W", "Weather Stations (all periods)"),
+                ("RP", "R", "Radar Plume (all periods)"),
             ):
                 if self._of_kind(kind):
                     standalone[target] = label
@@ -581,6 +620,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                 ("P", "P", "Fire Perimeters"),
                 ("T", "W", "Weather Stations (TSO only)"),
                 ("W", "W", "Weather Stations (TSO and all sources)"),
+                ("R", "R", "Radar Plume"),
             ):
                 if self._of_kind(kind):
                     flags[flag] = label

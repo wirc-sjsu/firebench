@@ -364,6 +364,216 @@ def test_two_site_fragments_merge_without_conflict(tmp_path, fake_reader):
         assert radar.list_radar_sites(h5) == ["KDAX", "KRGX"]
 
 
+def test_points_are_the_plume_gates_at_their_beam_centre(tmp_path, fake_reader):
+    fetched = [
+        _fetched(tmp_path, fake_reader, 3),
+        _fetched(tmp_path, fake_reader, 18, volume=_volume(START + timedelta(minutes=18), plume=False)),
+    ]
+    _write(tmp_path, "radar.h5", fetched)
+    points = radar.radar_points(tmp_path / "radar.h5", "KDAX", 0)
+    tops = radar.radar_echo_top_series(tmp_path / "radar.h5", "KDAX")
+    assert len(points.height) == 1 and points.height[0] == pytest.approx(tops.height_max[0])
+    assert points.values["radar_reflectivity"][0] == 25.0
+    assert points.values["radar_radial_velocity"][0] == 5.0
+    assert points.values["radar_correlation_coefficient"][0] == pytest.approx(0.5, abs=2e-3)
+    # Both echoes over the box have a reflectivity; one passes the mask.
+    assert points.n_gates == 2 and points.time == tops.time[0]
+    assert CALDOR[0] < points.longitude[0] < CALDOR[2] and CALDOR[1] < points.latitude[0] < CALDOR[3]
+    empty = radar.radar_points(tmp_path / "radar.h5", "KDAX", 1)
+    assert len(empty.longitude) == 0 and empty.n_gates == 0
+    with pytest.raises(ValueError, match="volume 2 is not one of the 2 volumes"):
+        radar.radar_points(tmp_path / "radar.h5", "KDAX", 2)
+
+
+def test_the_parameters_file_gives_the_plume_mask_and_section_limits():
+    parameters = radar.radar_parameters()
+    assert (parameters.min_dbz, parameters.rhohv_range) == (
+        radar.DEFAULT_MIN_DBZ,
+        radar.DEFAULT_RHOHV_RANGE,
+    )
+    assert parameters.version and len(parameters.sha256) == 64
+    assert parameters.min_spacing < 250.0 < parameters.max_spacing
+
+
+def test_the_beam_through_a_point_inverts_the_beam_geometry():
+    ranges = np.array([2_125.0, 50_000.0, 120_125.0, 230_000.0])
+    for elevation in (0.0, 0.5, 3.1, 19.5):
+        height = radar.beam_height(ranges, elevation)
+        ground = radar.beam_ground_distance(ranges, elevation)
+        back, slant = radar.beam_elevation_range(ground, height)
+        assert np.allclose(back, elevation, atol=1e-9) and np.allclose(slant, ranges, rtol=1e-9)
+
+
+GEOD = Geod(ellps="WGS84")
+SECTION_AZIMUTH = 75.25
+
+
+def _ground(distance: float, alt: float) -> tuple[float, float, float]:
+    """A point at ``distance`` from KDAX along the section azimuth, as (lat, lon, alt)."""
+    lon, lat, _ = GEOD.fwd(KDAX.longitude, KDAX.latitude, SECTION_AZIMUTH, distance)
+    return (lat, lon, alt)
+
+
+def test_a_vertical_plane_has_its_nodes_above_its_ground_line():
+    p1, p2 = _ground(100_000.0, 0.0), _ground(140_000.0, 0.0)
+    plane = radar.RadarPlane.from_points(p1, p2, (p1[0], p1[1], 8_000.0), spacing=500.0)
+    assert plane.u[-1] == 40_000.0 and len(plane.u) == 81
+    assert plane.v[-1] == 8_000.0 and len(plane.v) == 17
+    assert plane.latitude.shape == (17, 81)
+    # A vertical plane: altitude is v, and every row stands over the same ground line.
+    assert np.allclose(plane.height, plane.v[:, None])
+    assert np.allclose(plane.latitude[0], plane.latitude[-1]) and np.allclose(
+        plane.longitude[0], plane.longitude[-1]
+    )
+    assert plane.latitude[0, 0] == pytest.approx(p1[0]) and plane.longitude[0, -1] == pytest.approx(
+        p2[1], abs=1e-6
+    )
+    _, _, distance = GEOD.inv(p1[1], p1[0], plane.longitude[0, -1], plane.latitude[0, -1])
+    assert distance == pytest.approx(40_000.0, rel=1e-3)
+
+
+def test_a_plane_refuses_three_points_on_a_line_and_a_grid_too_large():
+    p1, p2 = _ground(100_000.0, 1_000.0), _ground(140_000.0, 1_000.0)
+    with pytest.raises(ValueError, match="on one line"):
+        radar.RadarPlane.from_points(p1, p2, _ground(120_000.0, 1_000.0))
+    with pytest.raises(ValueError, match="closer than its spacing"):
+        radar.RadarPlane.from_points(p1, p1, (p1[0], p1[1], 9_000.0))
+    with pytest.raises(ValueError, match="spacing is"):
+        radar.RadarPlane.from_points(p1, p2, (p1[0], p1[1], 9_000.0), spacing=10.0)
+    with pytest.raises(ValueError, match="cells"):
+        radar.RadarPlane.from_points(
+            p1, _ground(400_000.0, 1_000.0), (p1[0], p1[1], 20_000.0), spacing=100.0
+        )
+    with pytest.raises(ValueError, match="longest allowed"):
+        radar.RadarPlane.from_points(
+            p1, _ground(450_000.0, 1_000.0), (p1[0], p1[1], 9_000.0), spacing=2000.0
+        )
+    with pytest.raises(ValueError, match="altitude"):
+        radar.RadarPlane.from_points(p1, p2, (p1[0], p1[1], 30_000.0), spacing=1000.0)
+
+
+TILTS = (0.5, 1.5, 6.0)
+TILT_DBZ = (20.0, 30.0, 40.0)
+TILT_VELOCITY = (5.0, 7.0, 9.0)
+TILT_NYQUIST = (10.0, 20.0, 30.0)
+
+
+def _layered_volume(time: datetime) -> radar.RadarVolume:
+    """Three tilts, each with one value of every field everywhere, and a SAILS repeat of the first."""
+    sweeps = []
+    tilts = [*zip(TILTS, TILT_DBZ, TILT_VELOCITY, TILT_NYQUIST), (0.5, 60.0, -1.0, 99.0)]
+    for position, (elevation, dbz, velocity, nyquist) in enumerate(tilts):
+        shape = (720, 1000)
+        sweeps.append(
+            radar.RadarSweep(
+                time=time + timedelta(seconds=30 * position),
+                elevation=elevation,
+                azimuth_resolution=0.5,
+                nyquist_velocity=nyquist,
+                first_gate=2125.0,
+                data={
+                    "DBZH": np.full(shape, dbz, dtype=np.float32),
+                    "RHOHV": np.full(shape, 0.5, dtype=np.float32),
+                    "VRADH": np.full(shape, velocity, dtype=np.float32),
+                },
+                azimuth=(np.arange(720) + 0.5) * 0.5 + 0.03,
+            )
+        )
+    return radar.RadarVolume(
+        site="KDAX",
+        latitude=KDAX.latitude,
+        longitude=KDAX.longitude,
+        altitude=43.0,
+        vcp=212,
+        time_start=time,
+        time_end=time + timedelta(minutes=4),
+        sweeps=sweeps,
+    )
+
+
+def _expected(elevation: np.ndarray):
+    """Reflectivity, velocity, and Nyquist velocity of a node at a beam elevation, by the rules."""
+    half = radar.BEAM_WIDTH / 2
+    dbz = np.full(elevation.shape, np.nan)
+    velocity = np.full(elevation.shape, np.nan)
+    nyquist = np.full(elevation.shape, np.nan)
+    for index, value in np.ndenumerate(elevation):
+        if TILTS[0] - half <= value <= TILTS[0]:
+            dbz[index], velocity[index], nyquist[index] = TILT_DBZ[0], TILT_VELOCITY[0], TILT_NYQUIST[0]
+        elif TILTS[0] < value <= TILTS[1]:
+            share = (value - TILTS[0]) / (TILTS[1] - TILTS[0])
+            linear = (1 - share) * 10 ** (TILT_DBZ[0] / 10) + share * 10 ** (TILT_DBZ[1] / 10)
+            dbz[index] = 10 * np.log10(linear)
+            pick = 0 if share <= 0.5 else 1
+            velocity[index], nyquist[index] = TILT_VELOCITY[pick], TILT_NYQUIST[pick]
+        elif TILTS[2] <= value <= TILTS[2] + half:
+            dbz[index], velocity[index], nyquist[index] = TILT_DBZ[2], TILT_VELOCITY[2], TILT_NYQUIST[2]
+    return dbz, velocity, nyquist
+
+
+def test_a_section_reads_between_tilts_and_never_interpolates_velocity(tmp_path, fake_reader):
+    fetched = [
+        _fetched(tmp_path, fake_reader, minute, volume=_layered_volume(START + timedelta(minutes=minute)))
+        for minute in (3, 8)
+    ]
+    _write(tmp_path, "radar.h5", fetched)
+    p1, p2 = _ground(100_000.0, 0.0), _ground(140_000.0, 0.0)
+    plane = radar.RadarPlane.from_points(p1, p2, (p1[0], p1[1], 12_000.0), spacing=250.0)
+    section = radar.radar_cross_section(tmp_path / "radar.h5", "KDAX", plane, name="axis")
+    assert section.values["radar_reflectivity"].shape == (2, len(plane.v), len(plane.u))
+    assert list(section.time) == [np.datetime64("2021-08-17T00:03"), np.datetime64("2021-08-17T00:08")]
+    assert np.allclose(section.azimuth, SECTION_AZIMUTH, atol=0.01)
+    dbz, velocity, nyquist = _expected(section.beam_elevation.astype(np.float64))
+    for volume in range(2):
+        assert np.allclose(section.values["radar_reflectivity"][volume], dbz, equal_nan=True, atol=1e-3)
+        assert np.allclose(section.values["radar_radial_velocity"][volume], velocity, equal_nan=True)
+        assert np.allclose(section.nyquist_velocity[volume], nyquist, equal_nan=True)
+    # Velocity takes a tilt's own value, never one between; the SAILS repeat (60 dBZ) is never read.
+    observed = section.values["radar_radial_velocity"]
+    assert set(np.unique(observed[np.isfinite(observed)])) <= {5.0, 7.0, 9.0}
+    assert np.nanmax(section.values["radar_reflectivity"]) <= 40.0 + 1e-3
+    # The gap from 1.5 to 6 degree is wider than max_elevation_gap: no value there.
+    gap = (section.beam_elevation > 1.6) & (section.beam_elevation < 5.9)
+    assert gap.any() and np.isnan(section.values["radar_reflectivity"][0][gap]).all()
+    assert np.isfinite(dbz).any() and np.isnan(dbz).any()
+    with pytest.raises(ValueError, match="lower-case"):
+        radar.radar_cross_section(tmp_path / "radar.h5", "KDAX", plane, name="Axis 1")
+    with pytest.raises(ValueError, match="has no field"):
+        radar.radar_cross_section(
+            tmp_path / "radar.h5", "KDAX", plane, name="axis", fields=["radar_spectrum_width"]
+        )
+
+
+def test_sections_are_stored_beside_the_sweeps_and_read_back(tmp_path, fake_reader):
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.signing import hdf5_subject_digest_sha256
+
+    fetched = [_fetched(tmp_path, fake_reader, 3, volume=_layered_volume(START + timedelta(minutes=3)))]
+    _write(tmp_path, "radar.h5", fetched)
+    p1, p2 = _ground(100_000.0, 0.0), _ground(120_000.0, 0.0)
+    plane = radar.RadarPlane.from_points(p1, p2, (p1[0], p1[1], 6_000.0), spacing=500.0)
+    with h5py.File(tmp_path / "radar.h5", "a") as h5:
+        cut = radar.radar_cross_section(h5, "KDAX", plane, name="axis")
+        radar.write_radar_sections(h5, "KDAX", [cut])
+        # Writing it again replaces it.
+        radar.write_radar_sections(h5, "KDAX", [cut])
+        assert radar.list_radar_sections(h5, "KDAX") == ["axis"]
+        assert dict(h5["/spatial_3d/radar/KDAX/sections"].attrs) == {}
+        assert radar.list_radar_sites(h5) == ["KDAX"]
+        validate_h5_std(h5)
+    back = radar.read_radar_section(tmp_path / "radar.h5", "KDAX", "axis")
+    assert back.plane.points == plane.points and back.plane.spacing == 500.0
+    assert np.array_equal(back.plane.height, plane.height) and list(back.time) == list(cut.time)
+    for field, values in cut.values.items():
+        assert np.array_equal(back.values[field], values, equal_nan=True)
+    assert np.array_equal(back.elevation, cut.elevation, equal_nan=True)
+    assert np.array_equal(back.azimuth, cut.azimuth)
+    first = hdf5_subject_digest_sha256(str(tmp_path / "radar.h5"))
+    assert hdf5_subject_digest_sha256(str(tmp_path / "radar.h5")) == first
+    with pytest.raises(ValueError, match="no radar section KDAX/other"):
+        radar.read_radar_section(tmp_path / "radar.h5", "KDAX", "other")
+
+
 # A real volume ------------------------------------------------------------------------------------------
 
 

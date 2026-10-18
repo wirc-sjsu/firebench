@@ -9,23 +9,32 @@ at standardization; a reader grids or cuts what it needs.
 - :func:`standardize_nexrad_level2` writes one WSR-88D site from NEXRAD Level II volumes
   (:mod:`firebench.acquisition.nexrad`), read with xradar (the optional ``radar`` extra), one
   volume at a time.
-- :func:`radar_echo_top_series` gives the height of the plume gates of each volume, and
-  :func:`radar_composite` the column maximum of a field over the plume gates on a lon/lat grid.
+- :func:`radar_echo_top_series` gives the height of the plume gates of each volume,
+  :func:`radar_composite` the column maximum of a field over the plume gates on a lon/lat grid, and
+  :func:`radar_points` the plume gates of a volume as points.
+- :func:`radar_cross_section` cuts every volume on a plane given by three points
+  (:class:`RadarPlane`); :func:`write_radar_sections` stores sections beside the sweeps, under
+  ``sections/``, and :func:`read_radar_section` reads one back.
 
 The plume mask is the pyrometeor mask of Krishna et al. (2024): reflectivity at least ``min_dbz``
-and a correlation coefficient strictly between the bounds of ``rhohv_range``. Licence attributes are
-not written: the caller sets them.
+and a correlation coefficient strictly between the bounds of ``rhohv_range``; its defaults and the
+limits of a section are in ``resources/radar.toml``. Licence attributes are not written: the caller
+sets them.
 """
 
 import gzip
+import hashlib
 import json
 import logging
+import re
 import shutil
 import tempfile
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import datetime, timezone
+from functools import lru_cache
+from importlib.resources import files
 from pathlib import Path
 
 import h5py
@@ -38,6 +47,11 @@ from ..acquisition.nexrad import BUCKET, FetchedVolume
 from ..tools.namespace import StandardVariableNames as svn
 from .std_file_info import RADAR, SPATIAL_3D
 from .tools import check_std_version
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
+    import tomli as tomllib
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +87,53 @@ EARTH_RADIUS = 6_371_000.0  # m
 EFFECTIVE_RADIUS = 4.0 / 3.0 * EARTH_RADIUS  # standard refraction (Doviak and Zrnic, 1993)
 _GEOD = Geod(ellps="WGS84")
 
-DEFAULT_MIN_DBZ = 10.0
-DEFAULT_RHOHV_RANGE = (0.2, 0.9)
+PARAMETER_FILE = "resources/radar.toml"
+SECTIONS = "sections"
+_SECTION_NAME = re.compile(r"^[a-z0-9-]{1,40}$")
+
+
+@dataclass(frozen=True)
+class RadarParameters:  # pylint: disable=too-many-instance-attributes
+    """The values of ``resources/radar.toml``."""
+
+    version: str
+    min_dbz: float
+    rhohv_range: tuple[float, float]
+    min_spacing: float
+    max_spacing: float
+    max_length: float
+    max_span: float
+    max_cells: int
+    max_elevation_gap: float
+    sha256: str
+
+
+@lru_cache(maxsize=1)
+def radar_parameters() -> RadarParameters:
+    """The parameters of the installed FireBench."""
+    content = files("firebench").joinpath(PARAMETER_FILE).read_bytes()
+    document = tomllib.loads(content.decode("utf-8"))
+    try:
+        mask, sections = document["plume_mask"], document["sections"]
+        low, high = (float(value) for value in mask["rhohv_range"])
+        return RadarParameters(
+            version=str(document["version"]),
+            min_dbz=float(mask["min_dbz"]),
+            rhohv_range=(low, high),
+            min_spacing=float(sections["min_spacing"]),
+            max_spacing=float(sections["max_spacing"]),
+            max_length=float(sections["max_length"]),
+            max_span=float(sections["max_span"]),
+            max_cells=int(sections["max_cells"]),
+            max_elevation_gap=float(sections["max_elevation_gap"]),
+            sha256=hashlib.sha256(content).hexdigest(),
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"{PARAMETER_FILE} is not what the radar reader expects: {error}") from None
+
+
+DEFAULT_MIN_DBZ = radar_parameters().min_dbz
+DEFAULT_RHOHV_RANGE = radar_parameters().rhohv_range
 
 
 @dataclass
@@ -906,6 +965,7 @@ class _SiteReader:
         self.elevation = group["elevation"][()].astype(np.float64)
         self.volume_index = group["volume_index"][()].astype(np.int64)
         self.n_volumes = len(group[VOLUMES][svn.TIME.value])
+        self.fields = [name for name in json.loads(_text(attrs.get("fields", "[]"))) if name in group]
         self._geometry: dict[float, tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = {}
 
     def volume_times(self) -> np.ndarray:
@@ -959,6 +1019,437 @@ class _SiteReader:
             inside = (lon >= west) & (lon <= east) & (lat >= south) & (lat <= north)
             self._geometry[key] = (np.broadcast_to(height, azimuth.shape), lat, lon, inside)
         return self._geometry[key]
+
+
+# Points and cross sections -------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RadarPoints:
+    """The plume gates of one volume: where their beam centre is, and the values stored there."""
+
+    site: str
+    time: np.datetime64  # volume start
+    longitude: np.ndarray  # degree
+    latitude: np.ndarray  # degree
+    height: np.ndarray  # m above mean sea level
+    values: dict[str, np.ndarray]  # standard field name -> one value per point, NaN where none
+    # Gates over the box with a reflectivity, before the plume mask.
+    n_gates: int
+
+
+def radar_points(
+    h5file: h5py.File | Path | str,
+    site: str,
+    volume: int,
+    *,
+    min_dbz: float = DEFAULT_MIN_DBZ,
+    rhohv_range: tuple[float, float] | None = DEFAULT_RHOHV_RANGE,
+    corners=None,
+) -> RadarPoints:
+    """
+    The gates of one volume that pass the plume mask of :func:`radar_echo_top_series`, as points.
+
+    Each gate is placed at its beam centre, with the value of every field of the site there, sweep
+    after sweep. ``corners`` is ``((lat, lon), (lat, lon))``, or None for the site's frame.
+    """
+    if not isinstance(h5file, h5py.File):
+        with h5py.File(h5file, "r") as opened:
+            return radar_points(
+                opened, site, volume, min_dbz=min_dbz, rhohv_range=rhohv_range, corners=corners
+            )
+    reader = _SiteReader(h5file, site, corners)
+    if not 0 <= volume < reader.n_volumes:
+        raise ValueError(f"volume {volume} is not one of the {reader.n_volumes} volumes of {site}")
+    fields = reader.fields
+    parts: dict[str, list[np.ndarray]] = {name: [] for name in ("lon", "lat", "height", *fields)}
+    n_gates = 0
+    reflectivity = svn.RADAR_REFLECTIVITY.value
+    for row in reader.rows_of(volume):
+        mask = reader.plume_mask(row, min_dbz, rhohv_range)
+        _, _, _, inside = reader._cells(float(reader.elevation[row]))  # pylint: disable=protected-access
+        n_gates += int((inside & np.isfinite(reader.group[reflectivity][row])).sum())
+        if not mask.any():
+            continue
+        height, lat, lon = reader.geometry(row)
+        parts["lon"].append(lon[mask])
+        parts["lat"].append(lat[mask])
+        parts["height"].append(height[mask])
+        for name in fields:
+            parts[name].append(reader.group[name][row][mask].astype(np.float32))
+
+    def joined(name: str, dtype) -> np.ndarray:
+        return np.concatenate(parts[name]).astype(dtype) if parts[name] else np.zeros(0, dtype=dtype)
+
+    return RadarPoints(
+        site=site,
+        time=reader.volume_times()[volume],
+        longitude=joined("lon", np.float64),
+        latitude=joined("lat", np.float64),
+        height=joined("height", np.float64),
+        values={name: joined(name, np.float32) for name in fields},
+        n_gates=n_gates,
+    )
+
+
+@dataclass(frozen=True)
+class RadarPlane:  # pylint: disable=too-many-instance-attributes
+    """
+    A rectangle of a plane, given by three points, and the nodes of its grid.
+
+    The plane is flat in a local frame: east and north of an azimuthal equidistant projection
+    centred on P1, and the altitude above mean sea level. ``u`` runs from P1 towards P2, ``v`` across
+    towards P3, so the rectangle is ``u`` from 0 to the length of P1P2 and ``v`` from 0 to the
+    distance of P3 from the line P1P2. A vertical section is P1 and P2 at its floor and P3 above P1
+    at its top.
+    """
+
+    points: tuple[tuple[float, float, float], ...]  # P1, P2, P3: (lat, lon, alt m above mean sea level)
+    spacing: float  # m between nodes, both axes
+    u: np.ndarray  # (n_u,) m from P1 along P1P2
+    v: np.ndarray  # (n_v,) m from P1 across, in the plane
+    latitude: np.ndarray  # (n_v, n_u) degree
+    longitude: np.ndarray  # (n_v, n_u) degree
+    height: np.ndarray  # (n_v, n_u) m above mean sea level
+
+    @classmethod
+    def from_points(cls, p1, p2, p3, spacing: float = 250.0) -> "RadarPlane":
+        """
+        The plane through P1, P2, and P3, each ``(lat, lon, alt)``, with nodes every ``spacing``.
+
+        Raises
+        ------
+        ValueError
+            If the points are collinear (P3 within ``spacing`` of the line P1P2), the spacing is
+            outside the bounds of ``radar.toml``, a side is longer than ``max_length``, the altitudes
+            span more than ``max_span``, or the grid has more than ``max_cells`` nodes.
+        """
+        parameters = radar_parameters()
+        spacing = float(spacing)
+        if not parameters.min_spacing <= spacing <= parameters.max_spacing:
+            raise ValueError(
+                f"a section's spacing is {parameters.min_spacing:.0f} to {parameters.max_spacing:.0f} m, "
+                f"not {spacing:g} m"
+            )
+        points = tuple(tuple(float(value) for value in point) for point in (p1, p2, p3))
+        for lat, lon, _ in points:
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                raise ValueError(f"({lat}, {lon}) is not a latitude and a longitude in degrees")
+        proj = Proj(proj="aeqd", lat_0=points[0][0], lon_0=points[0][1], ellps="WGS84")
+        local = np.array([(*proj(lon, lat), alt) for lat, lon, alt in points], dtype=np.float64)
+        along = local[1] - local[0]
+        length_u = float(np.linalg.norm(along))
+        if length_u < spacing:
+            raise ValueError("P1 and P2 of a section are closer than its spacing")
+        unit_u = along / length_u
+        across = local[2] - local[0]
+        across = across - (across @ unit_u) * unit_u
+        length_v = float(np.linalg.norm(across))
+        if length_v < spacing:
+            raise ValueError("the three points of a section are on one line: P3 must stand off P1P2")
+        unit_v = across / length_v
+        if max(length_u, length_v) > parameters.max_length:
+            raise ValueError(
+                f"a side of the section is {max(length_u, length_v) / 1000:.1f} km; "
+                f"the longest allowed is {parameters.max_length / 1000:.0f} km"
+            )
+        u = spacing * np.arange(int(np.floor(length_u / spacing + 1e-9)) + 1)
+        v = spacing * np.arange(int(np.floor(length_v / spacing + 1e-9)) + 1)
+        if len(u) * len(v) > parameters.max_cells:
+            raise ValueError(
+                f"the section has {len(u) * len(v):,} cells; the most allowed is {parameters.max_cells:,}: "
+                "make it smaller or its spacing larger"
+            )
+        corners = [local[0] + a * unit_u + b * unit_v for a in (0, u[-1]) for b in (0, v[-1])]
+        span = max(corner[2] for corner in corners) - min(corner[2] for corner in corners)
+        if span > parameters.max_span:
+            raise ValueError(
+                f"the section spans {span / 1000:.1f} km of altitude; "
+                f"at most {parameters.max_span / 1000:.0f} km"
+            )
+        grid = local[0] + u[None, :, None] * unit_u + v[:, None, None] * unit_v
+        lon, lat = proj(grid[..., 0], grid[..., 1], inverse=True)
+        return cls(
+            points=points,
+            spacing=spacing,
+            u=u,
+            v=v,
+            latitude=np.asarray(lat),
+            longitude=np.asarray(lon),
+            height=grid[..., 2],
+        )
+
+
+@dataclass(frozen=True)
+class RadarSection:  # pylint: disable=too-many-instance-attributes
+    """The volumes of a site cut on a plane: one grid of each field per volume."""
+
+    site: str
+    name: str
+    plane: RadarPlane
+    time: np.ndarray  # (n_volume,) datetime64[ms], volume start
+    values: dict[str, np.ndarray]  # standard field name -> (n_volume, n_v, n_u) float32, NaN where none
+    elevation: np.ndarray  # (n_volume, n_v, n_u) degree: the sweep radial velocity was read on
+    nyquist_velocity: np.ndarray  # (n_volume, n_v, n_u) m/s, of that sweep
+    azimuth: np.ndarray  # (n_v, n_u) degree, from the radar to the node, clockwise from true north
+    beam_elevation: np.ndarray  # (n_v, n_u) degree, of the beam through the node
+
+
+def beam_elevation_range(ground_distance, height_above_antenna) -> tuple[np.ndarray, np.ndarray]:
+    """
+    The elevation and slant range of the beam whose centre passes over a point, with the 4/3 Earth.
+
+    The inverse of :func:`beam_height` and :func:`beam_ground_distance`: ``ground_distance`` is the
+    distance along the ground from the radar, ``height_above_antenna`` the height of the point above
+    the antenna, both in m. Returns degrees and metres.
+    """
+    s = np.asarray(ground_distance, dtype=np.float64)
+    h = np.asarray(height_above_antenna, dtype=np.float64)
+    radius = EFFECTIVE_RADIUS
+    angle = s / radius
+    elevation = np.degrees(np.arctan2((radius + h) * np.cos(angle) - radius, (radius + h) * np.sin(angle)))
+    slant = np.sqrt(radius**2 + (radius + h) ** 2 - 2 * radius * (radius + h) * np.cos(angle))
+    return elevation, slant
+
+
+def radar_cross_section(
+    h5file: h5py.File | Path | str,
+    site: str,
+    plane: RadarPlane,
+    *,
+    name: str,
+    fields: Sequence[str] | None = None,
+) -> RadarSection:
+    """
+    Every volume of a site cut on a plane.
+
+    Each node of the plane is placed in the radar's beam geometry (:func:`beam_elevation_range`),
+    then read from the nearest azimuth bin and range gate of the sweeps of each volume:
+
+    - between the two sweeps whose elevations bracket the node's, the value is linear in elevation:
+      reflectivity in linear units, the other fields as stored. It is NaN when either sweep has no
+      value there, or the two are more than ``max_elevation_gap`` (``radar.toml``) apart;
+    - below the lowest sweep or above the highest one, the value of that sweep within half a beam
+      width, NaN beyond;
+    - radial velocity is never interpolated, since it is aliased: it is the value of the nearest of
+      those sweeps, whose elevation and Nyquist velocity the section records.
+
+    A tilt scanned twice in a volume (SAILS) is read from its first scan. ``fields`` are standard
+    names; None keeps every field of the site.
+    """
+    if not isinstance(h5file, h5py.File):
+        with h5py.File(h5file, "r") as opened:
+            return radar_cross_section(opened, site, plane, name=name, fields=fields)
+    if not _SECTION_NAME.match(name):
+        raise ValueError(
+            f"a section's name is 1 to 40 lower-case letters, digits, and hyphens, not {name!r}"
+        )
+    reader = _SiteReader(h5file, site, None)
+    fields = list(reader.fields if fields is None else fields)
+    missing = [field for field in fields if field not in reader.fields]
+    if missing:
+        raise ValueError(f"{site} has no field {', '.join(missing)}; it has {', '.join(reader.fields)}")
+    lat0, lon0, alt0 = reader.origin
+    shape = plane.latitude.shape
+    forward, _, distance = _GEOD.inv(
+        np.full(plane.longitude.size, lon0),
+        np.full(plane.longitude.size, lat0),
+        plane.longitude.ravel(),
+        plane.latitude.ravel(),
+    )
+    azimuth = np.mod(np.asarray(forward), 360.0)
+    elevation, slant = beam_elevation_range(np.asarray(distance), plane.height.ravel() - alt0)
+    # The bin and gate of each node; -1 off the site's axes.
+    first_bin = int(round(float(reader.azimuth[0]) / AZIMUTH_STEP - 0.5))
+    column = np.mod(np.floor(azimuth / AZIMUTH_STEP).astype(np.int64) - first_bin, N_AZIMUTH)
+    column = np.where(column < len(reader.azimuth), column, -1)
+    gate = np.rint((slant - reader.range[0]) / GATE_SPACING).astype(np.int64)
+    gate = np.where((gate >= 0) & (gate < len(reader.range)), gate, -1)
+    on_axes = (column >= 0) & (gate >= 0)
+
+    parameters = radar_parameters()
+    half_beam = float(reader.group.attrs.get("beam_width", BEAM_WIDTH)) / 2
+    n_volumes = reader.n_volumes
+    values = {field: np.full((n_volumes, elevation.size), np.nan, dtype=np.float32) for field in fields}
+    used_elevation = np.full((n_volumes, elevation.size), np.nan, dtype=np.float32)
+    nyquist = np.full((n_volumes, elevation.size), np.nan, dtype=np.float32)
+    velocity = svn.RADAR_RADIAL_VELOCITY.value
+    sweep_nyquist = reader.group["nyquist_velocity"][()]
+    for volume in range(n_volumes):
+        rows = _first_scans(reader, volume)
+        if rows.size == 0:
+            continue
+        tilts = reader.elevation[rows]
+        above = np.searchsorted(tilts, elevation)  # first tilt at or above each node
+        low = np.clip(above - 1, 0, len(rows) - 1)
+        high = np.clip(above, 0, len(rows) - 1)
+        below_all, above_all = above == 0, above == len(rows)
+        between = ~below_all & ~above_all
+        gap = tilts[high] - tilts[low]
+        weight = np.where(between & (gap > 0), (elevation - tilts[low]) / np.where(gap > 0, gap, 1.0), 0.0)
+        covered = on_axes & (
+            (below_all & (tilts[0] - elevation <= half_beam))
+            | (above_all & (elevation - tilts[-1] <= half_beam))
+            | (between & (gap <= parameters.max_elevation_gap))
+        )
+        # Outside the sweeps, both ends are the outermost sweep.
+        low = np.where(above_all, len(rows) - 1, low)
+        high = np.where(below_all, 0, high)
+        nearest = np.where(weight <= 0.5, low, high)
+        index = np.nonzero(covered)[0]
+        if index.size == 0:
+            continue
+        cols, gates_ = column[index], gate[index]
+        for field in fields:
+            stack = np.stack([reader.group[field][row] for row in rows])
+            if field == velocity:
+                values[field][volume, index] = stack[nearest[index], cols, gates_]
+                continue
+            first, second = stack[low[index], cols, gates_], stack[high[index], cols, gates_]
+            share = weight[index]
+            if field == svn.RADAR_REFLECTIVITY.value:
+                with np.errstate(invalid="ignore"):
+                    linear = (1 - share) * 10 ** (first / 10.0) + share * 10 ** (second / 10.0)
+                    values[field][volume, index] = 10.0 * np.log10(linear)
+            else:
+                values[field][volume, index] = (1 - share) * first + share * second
+        used_elevation[volume, index] = tilts[nearest[index]]
+        nyquist[volume, index] = sweep_nyquist[rows][nearest[index]]
+    grid = (n_volumes, *shape)
+    return RadarSection(
+        site=site,
+        name=name,
+        plane=plane,
+        time=reader.volume_times(),
+        values={field: data.reshape(grid) for field, data in values.items()},
+        elevation=used_elevation.reshape(grid),
+        nyquist_velocity=nyquist.reshape(grid),
+        azimuth=azimuth.reshape(shape).astype(np.float32),
+        beam_elevation=elevation.reshape(shape).astype(np.float32),
+    )
+
+
+def _first_scans(reader: "_SiteReader", volume: int) -> np.ndarray:
+    """The rows of a volume, one per tilt (the first scan of a tilt scanned twice), by elevation."""
+    rows = reader.rows_of(volume)
+    kept: dict[float, int] = {}
+    for row in rows:
+        kept.setdefault(round(float(reader.elevation[row]), 2), int(row))
+    return np.array([kept[key] for key in sorted(kept)], dtype=np.int64)
+
+
+def write_radar_sections(
+    h5file: h5py.File, site: str, sections: Sequence[RadarSection], compression_lvl: int = 6
+) -> None:
+    """
+    Store sections under ``/spatial_3d/radar/<site>/sections/<name>``, replacing one of the same name.
+
+    ``sections/`` carries no attribute. Times are in s from the origin of the site's volumes.
+    """
+    check_std_version(h5file)
+    path = f"{GROUP}/{site}"
+    if path not in h5file:
+        raise ValueError(f"no radar site {site!r}; the file has {list_radar_sites(h5file)}")
+    site_group = h5file[path]
+    origin = _text(site_group[VOLUMES][svn.TIME.value].attrs["time_origin"])
+    parent = site_group.require_group(SECTIONS)
+    compression = hdf5plugin.Zstd(clevel=compression_lvl)
+    parameters = radar_parameters()
+    for section in sections:
+        if section.site != site:
+            raise ValueError(f"a section of {section.site} cannot be written to the group of {site}")
+        if section.name in parent:
+            del parent[section.name]
+        group = parent.create_group(section.name)
+        plane = section.plane
+        for index, point in enumerate(plane.points, start=1):
+            group.attrs[f"point_{index}"] = np.array(point, dtype=np.float64)
+            group.attrs[f"point_{index}_units"] = "degree, degree, m"
+        group.attrs["spacing"] = plane.spacing
+        group.attrs["spacing_units"] = "m"
+        group.attrs["parameters"] = f"radar {parameters.version}"
+        group.attrs["computed_by"] = "firebench.standardize.radar_cross_section"
+        group.attrs["description"] = (
+            f"{site} volumes cut on a plane through point_1, point_2, and point_3 (lat, lon, alt above "
+            "mean sea level): u along point_1 to point_2, v across towards point_3"
+        )
+        start = _utc(datetime.fromisoformat(origin))
+        seconds = (section.time - np.datetime64(start.replace(tzinfo=None), "ms")) / np.timedelta64(1, "s")
+        datasets = {
+            "u": (plane.u, {"units": "m", "description": "Distance from point_1 along point_1 to point_2"}),
+            "v": (plane.v, {"units": "m", "description": "Distance from point_1 across, towards point_3"}),
+            "position_lat": (plane.latitude, {"units": "degree"}),
+            "position_lon": (plane.longitude, {"units": "degree"}),
+            "position_alt": (plane.height, {"units": "m", "description": "Above mean sea level"}),
+            "azimuth": (
+                section.azimuth,
+                {"units": "degree", "description": "From the radar, clockwise from north"},
+            ),
+            "beam_elevation": (section.beam_elevation, {"units": "degree"}),
+            svn.TIME.value: (seconds.astype(np.float64), _time_attrs(start)),
+            "elevation": (
+                section.elevation,
+                {"units": "degree", "description": "Elevation of the sweep radial velocity was read on"},
+            ),
+            "nyquist_velocity": (
+                section.nyquist_velocity,
+                {"units": "m/s", "description": "Of that sweep"},
+            ),
+        }
+        for field, data in section.values.items():
+            units = _text(site_group[field].attrs.get("units", ""))
+            datasets[field] = (data, {"units": units})
+        for name, (data, attrs) in datasets.items():
+            data = np.asarray(data)
+            options = compression if data.ndim and data.size > 1 else {}
+            dataset = group.create_dataset(name, data=data, **options)
+            for key, value in attrs.items():
+                dataset.attrs[key] = value
+
+
+def list_radar_sections(h5file: h5py.File, site: str) -> list[str]:
+    """The sections of a site, sorted. An empty list when it has none."""
+    group = h5file.get(f"{GROUP}/{site}/{SECTIONS}")
+    if not isinstance(group, h5py.Group):
+        return []
+    return sorted(name for name, item in group.items() if isinstance(item, h5py.Group))
+
+
+def read_radar_section(h5file: h5py.File | Path | str, site: str, name: str) -> RadarSection:
+    """A section as :func:`write_radar_sections` stored it."""
+    if not isinstance(h5file, h5py.File):
+        with h5py.File(h5file, "r") as opened:
+            return read_radar_section(opened, site, name)
+    path = f"{GROUP}/{site}/{SECTIONS}/{name}"
+    group = h5file.get(path)
+    if not isinstance(group, h5py.Group):
+        raise ValueError(f"no radar section {site}/{name}; {site} has {list_radar_sections(h5file, site)}")
+    plane = RadarPlane(
+        points=tuple(tuple(float(value) for value in group.attrs[f"point_{index}"]) for index in (1, 2, 3)),
+        spacing=float(group.attrs["spacing"]),
+        u=group["u"][()],
+        v=group["v"][()],
+        latitude=group["position_lat"][()],
+        longitude=group["position_lon"][()],
+        height=group["position_alt"][()],
+    )
+    time = group[svn.TIME.value]
+    origin = _utc(datetime.fromisoformat(_text(time.attrs["time_origin"])))
+    times = np.datetime64(origin.replace(tzinfo=None), "ms") + np.round(time[()] * 1000).astype(
+        "timedelta64[ms]"
+    )
+    site_fields = json.loads(_text(h5file[f"{GROUP}/{site}"].attrs.get("fields", "[]")))
+    return RadarSection(
+        site=site,
+        name=name,
+        plane=plane,
+        time=times,
+        values={field: group[field][()] for field in site_fields if field in group},
+        elevation=group["elevation"][()],
+        nyquist_velocity=group["nyquist_velocity"][()],
+        azimuth=group["azimuth"][()],
+        beam_elevation=group["beam_elevation"][()],
+    )
 
 
 # Helpers -------------------------------------------------------------------------------------------

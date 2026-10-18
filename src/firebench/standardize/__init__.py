@@ -70,11 +70,22 @@ from .lidar import (
 from .radar import (
     EchoTopSeries,
     RadarComposite,
+    RadarParameters,
+    RadarPlane,
+    RadarPoints,
+    RadarSection,
+    beam_elevation_range,
+    list_radar_sections,
     list_radar_sites,
     radar_composite,
+    radar_cross_section,
     radar_echo_top_series,
+    radar_parameters,
+    radar_points,
     read_level2_volume,
+    read_radar_section,
     standardize_nexrad_level2,
+    write_radar_sections,
 )
 from .perimeters import list_kml_layers, read_kml_layer, standardize_perimeter_from_kml
 from .ravg import (

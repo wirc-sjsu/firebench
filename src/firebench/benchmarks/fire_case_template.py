@@ -24,6 +24,7 @@ from .. import standardize as fs
 from ..standardize.tools import REFERENCED_FILE_ATTRIBUTES
 from . import wx_common as wxc
 from .fire_case import STATION_SETS, load_case
+from .fire_case_radar import model_requirements
 from .fire_case_definition import (
     TEMPLATE_ATTRIBUTE,
     definition_sha256,
@@ -39,6 +40,7 @@ FAMILY_OF_KIND = {
     "C": "canopy_cover_loss",
     "P": "fire_perimeters",
     "W": "weather_stations",
+    "R": "radar_plume",
 }
 # Observed values a perimeter group carries beside its file reference.
 PERIMETER_VALUES = ("burnt_area", "burnt_area_units")
@@ -193,6 +195,20 @@ def _write_stations(out: h5py.File, obs: h5py.File, stations: dict[str, list[str
             _dataset(out, obs, f"{path}/{variable}", np.full(source.shape, np.nan, dtype=dtype))
 
 
+def _write_plume(out: h5py.File, entry: dict) -> None:
+    """The group of the model's plume, empty: the model writes it on its own grid."""
+    group = out.require_group(entry["model_group"])
+    group.attrs["description"] = (
+        "The model's plume on its own grid: time; position_lat and position_lon of the columns; "
+        "position_z (m above mean sea level), passive_tracer (any scale), and wind_u, wind_v, wind_w "
+        "(earth-relative, m/s), each (time, z, y, x). FireBench samples them on the radar cross sections "
+        f"{', '.join(entry['sections'])}: the nearest column, then linear in height."
+    )
+    group.attrs["required_datasets"] = json.dumps(
+        sorted(path.rsplit("/", 1)[-1] for path in model_requirements(entry["model_group"]))
+    )
+
+
 def write_model_output_template(std_file, definition: dict, out_path, *, overwrite: bool = False) -> Path:
     """
     Write the model-output template of ``definition`` on the observation file ``std_file``.
@@ -222,6 +238,9 @@ def write_model_output_template(std_file, definition: dict, out_path, *, overwri
             for entry in definition["families"]:
                 if entry["family"] in writers:
                     writers[entry["family"]](out, obs, entry)
+            plume = family(definition, "radar_plume")
+            if plume is not None:
+                _write_plume(out, plume)
             _write_stations(out, obs, stations)
         finally:
             out.close()

@@ -35,6 +35,7 @@ observation file, only the groups the case scores:
 | `canopy_cover_loss` | the RAVG canopy cover loss group, as for `burn_severity_cbi`; not the LANDFIRE layers, read from the observations | every value is the `_FillValue` |
 | `building_damage` | the buildings' `position_lat` and `position_lon` | every damage is `""`, except `"Inaccessible"`, a building that was not surveyed |
 | `weather_stations` | each station the case selects, with its attributes, its `time`, and each variable it is selected for, with `units` and the sensor height attributes | every value is NaN |
+| `radar_plume` | the model's plume group (`/spatial_3d/plume`), empty, with a `description` and the `required_datasets` | the model writes it on its own grid: `time`, `position_lat`, `position_lon`, `position_z` (m above mean sea level), `passive_tracer`, `wind_u`, `wind_v`, `wind_w` (earth-relative), each `(time, z, y, x)` |
 
 Each group keeps its licence attributes (`license`, `redistribution_allowed`,
 `public_access_level`, `data_use_restrictions`, `data_source`). Nothing else is written: satellite

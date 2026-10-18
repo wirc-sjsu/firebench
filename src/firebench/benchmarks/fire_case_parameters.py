@@ -39,6 +39,21 @@ class WeatherVariable:
 
 
 @dataclass(frozen=True)
+class RadarPlumeParameters:  # pylint: disable=too-many-instance-attributes
+    """The values of ``[radar_plume]``."""
+
+    tracer_relative_threshold: float
+    max_time_offset: float
+    min_cells: int
+    fall_speed: float
+    top_error_at_score_50: float
+    centroid_error_at_score_50: float
+    velocity_rmse_at_score_50: float
+    velocity_bias_at_score_50: float
+    kpi_weights: MappingProxyType
+
+
+@dataclass(frozen=True)
 class FireCaseParameters:  # pylint: disable=too-many-instance-attributes
     """The parameter set of the generic cases and the SHA-256 of the file it comes from."""
 
@@ -61,6 +76,7 @@ class FireCaseParameters:  # pylint: disable=too-many-instance-attributes
     tso_weight: float | int
     all_weight: float | int
     variables: tuple[WeatherVariable, ...]
+    radar_plume: RadarPlumeParameters
     sha256: str
 
     def reference(self) -> dict:
@@ -78,11 +94,26 @@ PERIMETER_WEIGHT_KEYS = (
     "final_area_bias_weight",
     "area_rmse_weight",
 )
+RADAR_KPI_WEIGHT_KEYS = (
+    "mask_iou_weight",
+    "top_error_weight",
+    "centroid_error_weight",
+    "rank_correlation_weight",
+    "velocity_rmse_weight",
+    "velocity_bias_weight",
+)
+RADAR_SCALE_KEYS = (
+    "top_error_at_score_50",
+    "centroid_error_at_score_50",
+    "velocity_rmse_at_score_50",
+    "velocity_bias_at_score_50",
+)
 FAMILIES = (
     "building_damage",
     "burn_severity_cbi",
     "canopy_cover_loss",
     "fire_perimeters",
+    "radar_plume",
     "weather_stations",
 )
 
@@ -175,6 +206,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
             "canopy_cover_loss",
             "fire_perimeters",
             "forecast_windows",
+            "radar_plume",
             "weather_stations",
         },
     )
@@ -196,6 +228,18 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
     )
     weather = _keys(
         document["weather_stations"], "[weather_stations]", {"tso_weight", "all_weight", "variables"}
+    )
+    radar = _keys(
+        document["radar_plume"],
+        "[radar_plume]",
+        {
+            "tracer_relative_threshold",
+            "max_time_offset",
+            "min_cells",
+            "fall_speed",
+            *RADAR_SCALE_KEYS,
+            *RADAR_KPI_WEIGHT_KEYS,
+        },
     )
 
     high, other = _wholes(cbi, "high_classes", "burn_severity_cbi"), _wholes(
@@ -238,7 +282,23 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         tso_weight=_number(weather, "tso_weight", "weather_stations"),
         all_weight=_number(weather, "all_weight", "weather_stations"),
         variables=_variables(weather["variables"]),
+        radar_plume=_radar_plume(radar),
         sha256=sha256,
+    )
+
+
+def _radar_plume(table: dict) -> RadarPlumeParameters:
+    label = "radar_plume"
+    scales = {key: _number(table, key, label, minimum=1e-9) for key in RADAR_SCALE_KEYS}
+    return RadarPlumeParameters(
+        tracer_relative_threshold=_number(
+            table, "tracer_relative_threshold", label, minimum=1e-9, maximum=1
+        ),
+        max_time_offset=_number(table, "max_time_offset", label),
+        min_cells=_whole(table, "min_cells", label, minimum=3),
+        fall_speed=_number(table, "fall_speed", label),
+        kpi_weights=MappingProxyType({key: _number(table, key, label) for key in RADAR_KPI_WEIGHT_KEYS}),
+        **scales,
     )
 
 

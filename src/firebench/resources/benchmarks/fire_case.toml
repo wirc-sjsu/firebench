@@ -18,6 +18,7 @@ building_damage = 1
 burn_severity_cbi = 1
 canopy_cover_loss = 1
 fire_perimeters = 1
+radar_plume = 1
 weather_stations = 1
 
 [building_damage]
@@ -60,6 +61,33 @@ min_dice_weight = 0
 max_dice_weight = 0
 final_area_bias_weight = 1
 area_rmse_weight = 1
+
+[radar_plume]
+# A model's passive tracer and wind against the radar's cross sections (firebench.standardize.radar,
+# `radar_cross_section`). The observed plume is the radar plume mask of resources/radar.toml; the
+# model's plume is where its tracer reaches this share of its largest value on the section at that
+# time, so the tracer's scale never matters. Added without raising `version`, as canopy_cover_loss
+# was: no definition of version 2026.1 holds this family, and the scores of the others are unchanged.
+tracer_relative_threshold = 0.01
+# A volume is scored against the model output time nearest its start, at most this far, in s.
+max_time_offset = 300
+# The cells of a section a rank correlation needs in one volume.
+min_cells = 20
+# Fall speed of the pyrometeors along the beam, in m s-1; not modelled yet.
+fall_speed = 0.0
+# Values of the errors at which their score is 50: plume top (m), plume centroid (m), radial
+# velocity RMSE and bias (m s-1).
+top_error_at_score_50 = 1000.0
+centroid_error_at_score_50 = 2000.0
+velocity_rmse_at_score_50 = 4.0
+velocity_bias_at_score_50 = 2.0
+# Weight of each KPI in its group.
+mask_iou_weight = 2
+top_error_weight = 1
+centroid_error_weight = 1
+rank_correlation_weight = 1
+velocity_rmse_weight = 1
+velocity_bias_weight = 0
 
 [forecast_windows]
 # The forecast windows `propose_case` offers: cycles at these UTC hours, this long, that hold at

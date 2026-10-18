@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add the `radar_plume` family of generic cases (`fire_case_radar`): a model's passive tracer and wind
+  (`/spatial_3d/plume`, namespace variable `PASSIVE_TRACER`) against the radar cross sections, per
+  section and period: the IoU of the plume masks, the errors on the plume top and centroid, the rank
+  correlation of reflectivity and log tracer, and the RMSE and bias of radial velocity folded into the
+  Nyquist interval. `[radar_plume]` in `fire_case.toml` holds its parameters, without raising its
+  `version`. `propose_case` offers it on a file with cross sections, `data_span` counts radar volumes,
+  the target `RP` and the flag `R` select it, and a KPI with nothing to score is left out of its group.
+- Add radar cross sections: `RadarPlane.from_points` (a rectangle of a plane given by three points,
+  latitude, longitude, and altitude), `radar_cross_section` (every volume of a site read on its nodes,
+  linear in elevation between the tilts that bracket a node, reflectivity in linear units, radial
+  velocity from the nearest tilt only), `beam_elevation_range` (the inverse of the beam geometry),
+  and `write_radar_sections`, `list_radar_sections`, and `read_radar_section`, which store sections
+  under `/spatial_3d/radar/<SITE>/sections/<name>`.
+- Add `radar_points` to `firebench.standardize`: the plume gates of a radar volume with their position
+  and the value of every field.
+- Add `resources/radar.toml` and `radar_parameters`: the plume mask (the defaults of
+  `radar_echo_top_series`, unchanged) and the limits of a cross section.
 - Add the ground elevation of a box to the standard format, `/spatial_2d/terrain_elevation`, from
   LANDFIRE's elevation where it has a value and the Copernicus DEM GLO-30 elsewhere, with the source
   of each cell, and the namespace variable `TERRAIN_ELEVATION`. Add `terrain_elevation_grid`,

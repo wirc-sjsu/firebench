@@ -482,7 +482,48 @@ Fields, each `(n_sweep, n_azimuth, n_range)` float32, named in the [namespace](.
 key and SHA-256 of the volume file).
 
 `firebench.standardize.radar_echo_top_series` reads the height of the plume gates of each volume,
-and `firebench.standardize.radar_composite` the column maximum of a field over them.
+`firebench.standardize.radar_composite` the column maximum of a field over them, and
+`firebench.standardize.radar_points` the gates themselves.
+
+##### Cross sections
+
+A site may hold cross sections, its volumes read on a plane, under `sections/<name>` (`name`: 1 to
+40 lower-case letters, digits, and hyphens). `sections/` carries no attribute.
+
+```
+/spatial_3d/radar/<SITE>/sections/<name>/
+├── u, v                                       (n_u), (n_v)
+├── position_lat, position_lon, position_alt   (n_v, n_u)
+├── azimuth, beam_elevation                    (n_v, n_u)
+├── time                                       (n_volume)
+├── radar_reflectivity, ...                    (n_volume, n_v, n_u)
+└── elevation, nyquist_velocity                (n_volume, n_v, n_u)
+```
+
+- **The plane.** Three points `point_1`, `point_2`, `point_3` (attributes: latitude, longitude in
+  degree, altitude in m above mean sea level). In a local frame, east and north of an azimuthal
+  equidistant projection centred on `point_1` and the altitude, the section is the rectangle from
+  `point_1` along `point_1`→`point_2` (`u`) and across towards `point_3` (`v`), with nodes every
+  `spacing` m. A vertical section has `point_1` and `point_2` at its floor and `point_3` above
+  `point_1` at its top.
+- **Nodes.** `position_*` is each node; `azimuth` (from the radar, clockwise from true north) and
+  `beam_elevation` are those of the beam through it, with the effective Earth radius of the site.
+- **Values.** Each node takes the value of the nearest azimuth bin and range gate of the tilts of a
+  volume: linear in elevation between the two tilts that bracket it (reflectivity in linear units),
+  NaN when either has no value or they are more than `max_elevation_gap` apart; the outermost tilt
+  within half a beam width outside them. Radial velocity is never interpolated: it is read on the
+  nearest tilt, whose `elevation` and `nyquist_velocity` the section stores. A tilt scanned twice in
+  a volume is read from its first scan.
+- `time` is the start of each volume (`s`, the origin of `volumes/time`). Attributes: `spacing`,
+  `parameters` (the version of `resources/radar.toml`), `computed_by`, `description`.
+
+`firebench.standardize.radar_cross_section` cuts a section, `write_radar_sections` stores it, and
+`read_radar_section` reads it back. The limits of a section are in `resources/radar.toml`.
+
+A model output scored on the sections (the `radar_plume` family of the generic cases) gives its plume
+under `/spatial_3d/plume`, on its own grid: `time`, `position_lat` and `position_lon` of the columns,
+`position_z` in m above mean sea level, `passive_tracer` (any scale), and `wind_u`, `wind_v`, and
+`wind_w`, earth-relative, each `(N_t, N_z, N_y, N_x)`.
 
 #### lidar
 

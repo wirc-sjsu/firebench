@@ -1,0 +1,25 @@
+# Parameters of the weather radar readers (firebench.standardize.radar).
+#
+# The file is read from the installed package and from nowhere else, so the FireBench version or
+# commit of a result identifies its parameters. A change that alters a reading raises `version`.
+
+set = "radar"
+version = "2026.1"
+
+[plume_mask]
+# The pyrometeor mask of Krishna et al. (2024): reflectivity at least `min_dbz`, in dBZ, and a
+# correlation coefficient strictly between the bounds of `rhohv_range`.
+min_dbz = 10.0
+rhohv_range = [0.2, 0.9]
+
+[sections]
+# Cross sections (radar_cross_section): the spacing of the grid on the plane, in m, ...
+min_spacing = 100.0
+max_spacing = 2000.0
+# ... the longest side of the rectangle, in m, the largest span of altitudes in it, in m, and the
+# most cells it may hold.
+max_length = 300000.0
+max_span = 25000.0
+max_cells = 200000
+# Two sweeps further apart than this, in degree, leave the cells between them without a value.
+max_elevation_gap = 2.0

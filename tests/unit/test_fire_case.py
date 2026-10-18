@@ -332,7 +332,7 @@ def test_propose_case_gives_the_reason_of_each_family_left_out(tmp_path):
 def test_propose_case_needs_some_time_in_the_file(tmp_path):
     path = _write_case_file(tmp_path / "empty", perimeters=False, stations=False)
 
-    with pytest.raises(definition_module.CaseDefinitionError, match="no perimeter or station"):
+    with pytest.raises(definition_module.CaseDefinitionError, match="no perimeter, station time series, or radar volume"):
         definition_module.propose_case(path)
 
 

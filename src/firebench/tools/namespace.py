@@ -96,6 +96,7 @@ class StandardVariableNames(Enum):  # pragma: no cover
     NORMAL_SPREAD_DIR_X = "normal_spread_dir_x"
     NORMAL_SPREAD_DIR_Y = "normal_spread_dir_y"
     OBSERVED_FRACTION = "observed_fraction"
+    PASSIVE_TRACER = "passive_tracer"
     PIXEL_SIZE_SCAN = "pixel_size_scan"
     PIXEL_SIZE_TRACK = "pixel_size_track"
     RADAR_CORRELATION_COEFFICIENT = "radar_correlation_coefficient"

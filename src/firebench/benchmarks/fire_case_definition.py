@@ -24,6 +24,7 @@ import numpy as np
 
 from .. import standardize as fs
 from ..tools.units import ureg
+from .fire_case_radar import MODEL_GROUP, radar_sections, radar_span
 from .fire_case_parameters import (
     FireCaseParameterError,
     FireCaseParameters,
@@ -52,6 +53,7 @@ FAMILIES = (
     "burn_severity_cbi",
     "canopy_cover_loss",
     "weather_stations",
+    "radar_plume",
 )
 FAMILY_KEYS = {
     "fire_perimeters": {"family", "periods"},
@@ -59,7 +61,10 @@ FAMILY_KEYS = {
     "burn_severity_cbi": {"family", "dataset"},
     "canopy_cover_loss": {"family", "dataset", "canopy"},
     "weather_stations": {"family", "periods", "station_sets"},
+    "radar_plume": {"family", "periods", "sections", "model_group"},
 }
+# The families scored on every period a definition names, and on the periods an edit adds.
+EVERY_PERIOD_FAMILIES = ("weather_stations", "radar_plume")
 CANOPY_COVER_REASON = (
     "canopy cover loss needs the LANDFIRE canopy height, base height, and bulk density, "
     "which the dataset does not have"
@@ -185,11 +190,14 @@ def station_span(h5: h5py.File, variables: tuple[str, ...]) -> tuple[datetime, d
 
 
 def data_span(h5: h5py.File, parameters: FireCaseParameters) -> tuple[datetime, datetime] | None:
-    """The time span of the file's perimeters and station series."""
+    """The time span of the file's perimeters, station series, and radar volumes."""
     times = list(perimeter_times(h5).values())
     stations = station_span(h5, tuple(spec.variable for spec in parameters.variables))
     if stations is not None:
         times.extend(stations)
+    radar = radar_span(h5)
+    if radar is not None:
+        times.extend(radar)
     if not times:
         return None
     return min(times), max(times)
@@ -312,6 +320,8 @@ def propose_case(
             else f"the LANDFIRE canopy layers cannot be used: {canopy_problem}"
         )
         has_stations = station_span(h5, tuple(spec.variable for spec in parameters.variables)) is not None
+        has_radar = bool(fs.list_radar_sites(h5))
+        sections = radar_sections(h5)
         title = name or _text(h5.attrs.get("description", "")) or Path(std_file).stem
 
     if window is not None:
@@ -320,7 +330,7 @@ def propose_case(
         overall = span
     else:
         raise CaseDefinitionError(
-            "The file holds no perimeter or station time series to define a period with."
+            "The file holds no perimeter, station time series, or radar volume to define a period with."
         )
 
     periods = [
@@ -378,6 +388,17 @@ def propose_case(
         )
     elif has_canopy_cover:
         left_out.append({"family": "canopy_cover_loss", "reason": canopy_reason})
+    if sections:
+        families.append(
+            {
+                "family": "radar_plume",
+                "periods": [period["name"] for period in periods],
+                "sections": sections,
+                "model_group": MODEL_GROUP,
+            }
+        )
+    elif has_radar:
+        left_out.append({"family": "radar_plume", "reason": "no radar cross section"})
 
     definition = {
         "schema": SCHEMA,
@@ -416,7 +437,7 @@ def edit_case(
     for item in edited["families"]:
         if item.get("family") == "fire_perimeters":
             item["periods"] = [entry for entry in item["periods"] if entry.get("period") not in removed]
-        elif item.get("family") == "weather_stations":
+        elif item.get("family") in EVERY_PERIOD_FAMILIES:
             item["periods"] = [name for name in item["periods"] if name not in removed]
     if add_periods:
         parameters = load_parameters()
@@ -424,7 +445,9 @@ def edit_case(
             times = perimeter_times(h5)
         taken = {period.get("name") for period in edited["periods"]}
         perimeters = family(edited, "fire_perimeters")
-        weather = family(edited, "weather_stations")
+        every = [
+            entry for entry in (family(edited, name) for name in EVERY_PERIOD_FAMILIES) if entry is not None
+        ]
         for start, end in add_periods:
             start, end = start.astimezone(timezone.utc), end.astimezone(timezone.utc)
             name = next(f"P{number:02d}" for number in range(1, 100) if f"P{number:02d}" not in taken)
@@ -435,8 +458,8 @@ def edit_case(
             inside = _perimeters_in(times, start, end, False)
             if perimeters is not None and len(inside) >= parameters.min_perimeters:
                 perimeters["periods"].append({"period": name, "perimeters": inside})
-            if weather is not None:
-                weather["periods"].append(name)
+            for entry in every:
+                entry["periods"].append(name)
     edited["families"] = [item for item in edited["families"] if "periods" not in item or item["periods"]]
     return edited
 
@@ -578,6 +601,35 @@ def _check_weather(entry: dict, bounds: dict, h5: h5py.File) -> list[str]:
     return problems
 
 
+def _check_radar(entry: dict, bounds: dict, h5: h5py.File) -> list[str]:
+    problems = []
+    periods, sections, group = entry["periods"], entry["sections"], entry["model_group"]
+    if not isinstance(periods, list) or not periods:
+        problems.append("Radar plume: the family scores no period.")
+    else:
+        unknown = [name for name in periods if name not in bounds]
+        if unknown:
+            problems.append(f"Radar plume: unknown period(s) {', '.join(map(str, unknown))}.")
+        if len(set(periods)) != len(periods):
+            problems.append("Radar plume: a period is listed twice.")
+    if (
+        not isinstance(sections, list)
+        or not sections
+        or not all(isinstance(item, str) for item in sections)
+    ):
+        problems.append("Radar plume: `sections` must list cross sections, as SITE/name.")
+    else:
+        held = set(radar_sections(h5))
+        missing = [item for item in sections if item not in held]
+        if missing:
+            problems.append(f"Radar plume: not a cross section of the file: {', '.join(missing)}.")
+        if len(set(sections)) != len(sections):
+            problems.append("Radar plume: a cross section is listed twice.")
+    if not isinstance(group, str) or not group.startswith("/"):
+        problems.append("Radar plume: `model_group` must be the path of a group of the model output.")
+    return problems
+
+
 def check_case(definition, std_file) -> list[str]:
     """
     The problems of ``definition`` against the standard file ``std_file``, in words a person reads.
@@ -615,6 +667,8 @@ def check_case(definition, std_file) -> list[str]:
                 problems += _check_perimeters(entry, bounds, times, parameters)
             elif name == "weather_stations":
                 problems += _check_weather(entry, bounds, h5)
+            elif name == "radar_plume":
+                problems += _check_radar(entry, bounds, h5)
             elif name == "building_damage" and not _has_dataset(h5, str(entry["dataset"])):
                 problems.append(f"Building damage: `{entry['dataset']}` is not in the file.")
             elif name == "burn_severity_cbi":
