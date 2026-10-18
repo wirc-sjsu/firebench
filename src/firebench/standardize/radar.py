@@ -89,7 +89,7 @@ _GEOD = Geod(ellps="WGS84")
 
 PARAMETER_FILE = "resources/radar.toml"
 SECTIONS = "sections"
-_SECTION_NAME = re.compile(r"^[a-z0-9-]{1,40}$")
+_SECTION_NAME = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 
 
 @dataclass(frozen=True)
@@ -1242,7 +1242,7 @@ def radar_cross_section(
             return radar_cross_section(opened, site, plane, name=name, fields=fields)
     if not _SECTION_NAME.match(name):
         raise ValueError(
-            f"a section's name is 1 to 40 lower-case letters, digits, and hyphens, not {name!r}"
+            f"a section's name is 1 to 40 letters, digits, hyphens, and underscores, not {name!r}"
         )
     reader = _SiteReader(h5file, site, None)
     fields = list(reader.fields if fields is None else fields)

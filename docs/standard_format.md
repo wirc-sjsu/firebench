@@ -488,7 +488,7 @@ key and SHA-256 of the volume file).
 ##### Cross sections
 
 A site may hold cross sections, its volumes read on a plane, under `sections/<name>` (`name`: 1 to
-40 lower-case letters, digits, and hyphens). `sections/` carries no attribute.
+40 letters, digits, hyphens, and underscores). `sections/` carries no attribute.
 
 ```
 /spatial_3d/radar/<SITE>/sections/<name>/

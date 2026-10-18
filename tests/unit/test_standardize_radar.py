@@ -536,8 +536,9 @@ def test_a_section_reads_between_tilts_and_never_interpolates_velocity(tmp_path,
     gap = (section.beam_elevation > 1.6) & (section.beam_elevation < 5.9)
     assert gap.any() and np.isnan(section.values["radar_reflectivity"][0][gap]).all()
     assert np.isfinite(dbz).any() and np.isnan(dbz).any()
-    with pytest.raises(ValueError, match="lower-case"):
+    with pytest.raises(ValueError, match="letters, digits"):
         radar.radar_cross_section(tmp_path / "radar.h5", "KDAX", plane, name="Axis 1")
+    assert radar.radar_cross_section(tmp_path / "radar.h5", "KDAX", plane, name="Plume_1").name == "Plume_1"
     with pytest.raises(ValueError, match="has no field"):
         radar.radar_cross_section(
             tmp_path / "radar.h5", "KDAX", plane, name="axis", fields=["radar_spectrum_width"]
