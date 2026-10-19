@@ -292,6 +292,23 @@ Units attributes must be set for each field.
 │    │    ├── wind_w                 (W wind data from sensor_3)
 ```
 
+#### fire_total
+
+A model output gives the fire radiative power it expects over an area in the group
+`/time_series/fire_total`, as a band (benchmark cases, family `fire_radiative_power`):
+
+Dataset | Units | Description
+:------ | :---: | :----------
+`time` | | Output time, absolute or relative (see Time format)
+`fire_radiative_power_lower` | power (`MW`) | Lowest FRP the model's heat release gives at that time
+`fire_radiative_power_upper` | power (`MW`) | Highest FRP; equal to the lower bound when the model computes FRP itself
+`heat_release_rate_sensible` | power (`MW`) | Optional: the sensible heat the band was derived from
+
+- The group carries the area it covers as `frame_west`, `frame_south`, `frame_east`, `frame_north`
+  (with `*_units` = `degree`), copied from the case's template.
+- An adapter that converts a heat flux records how as group attributes, e.g. `frp_conversion`,
+  `conversion_factor_min`, and `conversion_factor_max`.
+
 ### Spatial 1D
 - Contains time series data from a dataset associated with one-dimensional spatial data.
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate and the same spatial coordinate are placed in the same data group.
@@ -830,8 +847,8 @@ Dataset | Units | Description
   one benchmark case (`firebench case template`): the observation file's layout for the groups the
   case scores, with its `case_definition_sha256` and its definition at `/benchmark_case/definition`.
 - It holds no observed value: perimeter groups have their `time` and no file reference or burnt
-  area, the CBI grid is its `_FillValue`, building damage is `""` (except `"Inaccessible"`), and
-  station variables are NaN. Positions, grids, times, units, sensor heights, and licence attributes
+  area, the CBI and canopy cover loss grids are their `_FillValue`, building damage is `""` (except
+  `"Inaccessible"`), station variables are NaN, and the radar plume and FRP groups are empty. Positions, grids, times, units, sensor heights, and licence attributes
   are kept.
 - A template is never an observation file: the generic cases refuse one. A model output written on
   it is a new file, without the attribute. See

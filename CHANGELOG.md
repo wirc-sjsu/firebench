@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add the `fire_radiative_power` family of generic cases (`fire_case_frp`): the satellite FRP totals
+  of each overpass or scan in the case's frame (`frp_time_series`) against the band of FRP a model
+  gives at its own times (`/time_series/fire_total`, namespace variables `FIRE_RADIATIVE_POWER_LOWER`
+  and `FIRE_RADIATIVE_POWER_UPPER`, and `HEAT_RELEASE_RATE_SENSIBLE` for the heat it came from). Per
+  period: the share of observations inside the band for each observing system of
+  `[fire_radiative_power.systems]` (geostationary: ABI; polar orbiters: VIIRS and MODIS), pooled over
+  every stream, and above and below the band. An observation is scored when it saw most of its frame
+  and a model output time is near it; one where neither side has fire is left out. `[fire_radiative_power]`
+  in `fire_case.toml` holds its parameters, without raising its `version`. `propose_case` offers it on
+  a file whose streams saw fire, `data_span` counts fire detections, the target `FR` and the flag `F`
+  select it, and the template holds the empty group with the case's frame.
+- Add multi-class confusion matrix metrics to `firebench.metrics.confusion_matrix`: `multiclass_cm`,
+  `multiclass_accuracy`, `within_k_accuracy`, `quadratic_weighted_kappa`, `macro_f1`,
+  `mean_absolute_class_error`, and `mean_class_bias`.
+- Add `fraction_in_band`, `fraction_above_band`, and `fraction_below_band` to `firebench.metrics.stats`.
 - Add `start` and `end` to `standardize_firms_bundle`: a part of the bundle's window to write, its rows,
   overpasses, and failed days alone, recorded as the window of the group.
 - Add the `radar_plume` family of generic cases (`fire_case_radar`): a model's passive tracer and wind
@@ -226,6 +241,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The family `canopy_cover_loss` scores RAVG's five classes, on the cells with canopy where both the
+  observations and the model give a class from 1 to 5: a cell the model leaves unburnt (9) or without
+  a value (0) is left out, so the family scores how much canopy a model consumes where it burns, and
+  the perimeters score where it burns. Its KPIs are the class accuracy, the accuracy within one class,
+  the quadratic weighted kappa, the macro F1, the mean absolute class error, the mean class bias, the
+  precision, recall, and F1 of high loss (class 5), and the share of observed cells evaluated;
+  `[canopy_cover_loss]` gains their weights and scales. Its six binary KPIs are gone. The parameter
+  set keeps `version = "2026.1"`: no definition of that version holding the family was published.
 - A radar cross section's name may hold upper-case letters and underscores (`Plume_1`): 1 to 40
   letters, digits, hyphens, and underscores.
 - The KPI functions of FB001 take the dataset path of building damage, the projection of the

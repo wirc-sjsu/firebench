@@ -22,6 +22,7 @@ import numpy as np
 from .. import __version__ as fb_version
 from .. import standardize as fs
 from ..standardize.tools import REFERENCED_FILE_ATTRIBUTES
+from . import fire_case_frp as frp
 from . import wx_common as wxc
 from .fire_case import STATION_SETS, load_case
 from .fire_case_radar import model_requirements
@@ -41,6 +42,7 @@ FAMILY_OF_KIND = {
     "P": "fire_perimeters",
     "W": "weather_stations",
     "R": "radar_plume",
+    "F": "fire_radiative_power",
 }
 # Observed values a perimeter group carries beside its file reference.
 PERIMETER_VALUES = ("burnt_area", "burnt_area_units")
@@ -209,6 +211,23 @@ def _write_plume(out: h5py.File, entry: dict) -> None:
     )
 
 
+def _write_fire_total(out: h5py.File, entry: dict) -> None:
+    """The group of the model's FRP band, empty: the model writes it at its own times."""
+    group = out.require_group(entry["model_group"])
+    for key, value in zip(frp.FRAME_KEYS, entry["frame"]):
+        group.attrs[key] = float(value)
+        group.attrs[f"{key}_units"] = "degree"
+    group.attrs["description"] = (
+        "The fire radiative power the model expects over the frame (frame_west to frame_north), at its "
+        f"own output times: time (with time_origin and time_units), {frp.LOWER} and {frp.UPPER} (MW), "
+        "the lowest and highest FRP the model's heat release gives. FireBench compares them with the "
+        "FRP total of each satellite overpass or scan in the frame."
+    )
+    group.attrs["required_datasets"] = json.dumps(
+        sorted(path.rsplit("/", 1)[-1] for path in frp.model_requirements(entry["model_group"]))
+    )
+
+
 def write_model_output_template(std_file, definition: dict, out_path, *, overwrite: bool = False) -> Path:
     """
     Write the model-output template of ``definition`` on the observation file ``std_file``.
@@ -217,7 +236,8 @@ def write_model_output_template(std_file, definition: dict, out_path, *, overwri
     group with its attributes but no file reference and no burnt area; the CBI and canopy cover loss
     grids with their positions, every value its ``_FillValue``; the buildings' positions, each damage blank but
     ``"Inaccessible"``; and each station the case selects for some variable, period, and station set,
-    with its ``time`` and, for each variable it is selected for, NaN values. Licence attributes go
+    with its ``time`` and, for each variable it is selected for, NaN values; the empty groups of the
+    radar plume and of the FRP band, with what the model writes there. Licence attributes go
     with each group. The definition is written in too, so an adapter can read the case from it.
     """
     case = load_case(definition, std_file)
@@ -241,6 +261,9 @@ def write_model_output_template(std_file, definition: dict, out_path, *, overwri
             plume = family(definition, "radar_plume")
             if plume is not None:
                 _write_plume(out, plume)
+            fire_total = family(definition, "fire_radiative_power")
+            if fire_total is not None:
+                _write_fire_total(out, fire_total)
             _write_stations(out, obs, stations)
         finally:
             out.close()

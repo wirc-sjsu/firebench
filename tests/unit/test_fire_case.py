@@ -35,6 +35,17 @@ CBI_OBS = np.array([[0, 1, 4], [4, 2, 3]], dtype=np.uint8)
 CBI_MODEL = np.array([[4, 4, 4], [1, 0, 3]], dtype=np.uint8)
 CC_OBS = np.array([[0, 5, 5], [1, 9, 5]], dtype=np.uint8)
 CC_MODEL = np.array([[5, 5, 1], [5, 5, 9]], dtype=np.uint8)
+# A grid for the class KPIs. Cell (2, 3) has no canopy. Scored (both sides in 1-5, with canopy):
+# (obs, model) = (1, 1), (2, 3), (3, 3), (4, 4), (5, 5), (5, 4), (2, 2). Left out: (1, 2) and (1, 3),
+# which the model leaves unburnt (9) or without a value (0); (2, 0) and (2, 1), which the observations
+# give 9 and 0. The observations classify 9 cells with canopy.
+CC_CLASSES_OBS = np.array([[1, 2, 3, 4], [5, 5, 4, 3], [9, 0, 2, 1]], dtype=np.uint8)
+CC_CLASSES_MODEL = np.array([[1, 3, 3, 4], [5, 4, 9, 0], [5, 5, 2, 1]], dtype=np.uint8)
+CANOPY_CLASSES = {
+    "ch": np.array([[10, 10, 10, 10], [10, 10, 10, 10], [10, 10, 10, 0]], dtype=np.uint16),
+    "cbh": np.full((3, 4), 5, dtype=np.uint16),
+    "cbd": np.full((3, 4), 3, dtype=np.uint16),
+}
 # LANDFIRE canopy height, base height, and bulk density, on a grid a little off RAVG's. Cell (1, 0)
 # has no canopy height; cell (0, 2) has no base height (the fill value), which FB001 counts as canopy.
 LANDFIRE_FILL = 32767
@@ -52,7 +63,10 @@ def _write_grid(h5, path: str, values, fill, offset=0.0):  # pylint: disable=too
     dataset = group.create_dataset(variable, data=values)
     dataset.attrs["units"] = "dimensionless"
     dataset.attrs["_FillValue"] = fill
-    lat, lon = np.meshgrid([38.6 + offset, 38.5 + offset], [-120.5, -120.4, -120.3], indexing="ij")
+    rows, columns = np.shape(values)
+    lat, lon = np.meshgrid(
+        38.6 - 0.1 * np.arange(rows) + offset, -120.5 + 0.1 * np.arange(columns), indexing="ij"
+    )
     group.create_dataset("position_lat", data=lat).attrs["units"] = "degree"
     group.create_dataset("position_lon", data=lon + offset).attrs["units"] = "degree"
 
@@ -184,6 +198,9 @@ def test_parameter_file_holds_fb001_values():
     assert parameters.projections == ("EPSG:5070",)
     assert parameters.area_relative_error_at_score_50 == c001_caldor.AREA_RELATIVE_ERROR_AT_SCORE_50
     assert parameters.cbi_high_classes == (4,)
+    assert parameters.canopy_cover.classes == (1, 2, 3, 4, 5)
+    assert parameters.canopy_cover.high_classes == (5,)
+    assert set(parameters.canopy_cover.kpi_weights) == {key for _, key in fire_case.CANOPY_KPIS}
     assert [(spec.variable, spec.norm_m) for spec in parameters.variables] == [
         (spec["variable"], spec["norm_m"]) for spec in c001_caldor.cfg.WX_VARIABLE_SPECS
     ]
@@ -332,7 +349,9 @@ def test_propose_case_gives_the_reason_of_each_family_left_out(tmp_path):
 def test_propose_case_needs_some_time_in_the_file(tmp_path):
     path = _write_case_file(tmp_path / "empty", perimeters=False, stations=False)
 
-    with pytest.raises(definition_module.CaseDefinitionError, match="no perimeter, station time series, or radar volume"):
+    with pytest.raises(
+        definition_module.CaseDefinitionError, match="no perimeter, station time series, or radar volume"
+    ):
         definition_module.propose_case(path)
 
 
@@ -873,17 +892,120 @@ def test_check_case_refuses_landfire_layers_on_different_grids(canopy_files):
     assert any("Canopy cover loss" in problem and "same grid" in problem for problem in problems), problems
 
 
-def test_high_canopy_cover_loss_is_scored_where_landfire_had_canopy(canopy_files):
+def test_canopy_cover_loss_is_scored_where_both_sides_burnt_with_canopy(canopy_files):
     obs, model = canopy_files
+
+    with h5py.File(obs, "r") as obs_h5, h5py.File(model, "r") as model_h5:
+        obs_classes, model_classes, n_observed = fire_case.cc_pairs(
+            obs_h5,
+            model_h5,
+            definition_module.CANOPY_COVER_LOSS_PATH,
+            list(definition_module.CANOPY_PATHS),
+            (1, 2, 3, 4, 5),
+        )
+
+    # Cells with canopy: (0, 0), (0, 1), (1, 1), (1, 2); cell (0, 2) has the fill value as base height.
+    # The observations classify (0, 1) and (1, 2), the model leaves (1, 2) unburnt: one cell scored.
+    assert obs_classes.tolist() == [5]
+    assert model_classes.tolist() == [5]
+    assert n_observed == 2
+
+
+@pytest.fixture(name="canopy_class_files")
+def fixture_canopy_class_files(tmp_path):
+    obs = _write_case_file(tmp_path / "obs", canopy_cover_loss=CC_CLASSES_OBS, canopy=CANOPY_CLASSES)
+    model = _write_case_file(
+        tmp_path / "model",
+        squares=MODEL_SQUARES,
+        damage=DAMAGE_MODEL,
+        cbi=CBI_MODEL,
+        temperature_offset=1.5,
+        observational=False,
+        canopy_cover_loss=CC_CLASSES_MODEL,
+    )
+    return obs, model
+
+
+def _canopy_kpis(case, obs, model) -> dict:
+    ids = [f"G-CC{index:02d}" for index in range(1, len(fire_case.CANOPY_KPIS) + 1)]
+    with h5py.File(obs, "r") as obs_h5, h5py.File(model, "r") as model_h5:
+        ctx = {}
+        results = [case.BENCHMARK_FUNCTIONS[bench_id](model_h5, obs_h5, ctx) for bench_id in ids]
+    return {name: result for (name, _), result in zip(fire_case.CANOPY_KPIS, results)}
+
+
+def test_canopy_cover_loss_kpis_on_the_classes_both_sides_give(canopy_class_files):
+    obs, model = canopy_class_files
     case = fire_case.load_case(_canopy_definition(), obs)
 
-    accuracy, precision, recall = _run(case.BENCHMARK_FUNCTIONS, ["G-CC01", "G-CC02", "G-CC03"], obs, model)
+    kpis = _canopy_kpis(case, obs, model)
+    value = {name: result[name] for name, result in kpis.items()}
 
-    # Cells with canopy and an observed class: (0, 1), (1, 1), (1, 2). Observed high [1, 0, 1] (class 9
-    # is not high), modelled high [1, 1, 0]. Cell (0, 2) has the fill value as base height: left out.
-    assert accuracy[0] == pytest.approx(1 / 3)
-    assert precision[0] == pytest.approx(0.5)
-    assert recall[0] == pytest.approx(0.5)
+    assert value["Class Accuracy"] == pytest.approx(5 / 7)
+    assert value["Within-One-Class Accuracy"] == pytest.approx(1.0)
+    assert value["Mean Absolute Class Error"] == pytest.approx(2 / 7)
+    assert value["Mean Class Bias"] == pytest.approx(0.0)
+    expected_cm = fire_case.fm.confusion_matrix.multiclass_cm(
+        [1, 2, 3, 4, 5, 5, 2], [1, 3, 3, 4, 5, 4, 2], [1, 2, 3, 4, 5]
+    )
+    assert value["Quadratic Weighted Kappa"] == pytest.approx(
+        fire_case.fm.confusion_matrix.quadratic_weighted_kappa(expected_cm)
+    )
+    assert value["Macro F1 Score"] == pytest.approx(fire_case.fm.confusion_matrix.macro_f1(expected_cm))
+    # Class 5: observed twice, modelled once, on the same cell.
+    assert value["High Loss Precision"] == pytest.approx(1.0)
+    assert value["High Loss Recall"] == pytest.approx(0.5)
+    assert value["High Loss F1 Score"] == pytest.approx(2 / 3)
+    assert value["Evaluated Share"] == pytest.approx(7 / 9)
+    assert kpis["Mean Absolute Class Error"]["Score"] == pytest.approx(
+        fire_case.fm.kpi_norm_half_open_exponential(2 / 7, 0, 1.0)
+    )
+    assert kpis["Mean Class Bias"]["Score"] == pytest.approx(100)
+    assert kpis["Class Accuracy"]["Score"] == pytest.approx(500 / 7)
+
+
+def test_canopy_cover_loss_does_not_score_where_a_model_burns(canopy_class_files):
+    obs, model = canopy_class_files
+    case = fire_case.load_case(_canopy_definition(), obs)
+    before = _canopy_kpis(case, obs, model)
+    with h5py.File(model, "a") as h5:
+        values = h5[definition_module.CANOPY_COVER_LOSS_PATH]
+        # Unburnt instead of burnt where the observations say 9, and the reverse where they burnt.
+        values[2, 0] = 9
+        values[1, 2] = 0
+
+    after = _canopy_kpis(case, obs, model)
+
+    assert after == before
+
+
+def test_a_kappa_below_chance_scores_0(canopy_class_files):
+    obs, model = canopy_class_files
+    case = fire_case.load_case(_canopy_definition(), obs)
+    with h5py.File(model, "a") as h5:
+        h5[definition_module.CANOPY_COVER_LOSS_PATH][...] = 6 - CC_CLASSES_OBS.clip(1, 5)
+
+    kappa = _canopy_kpis(case, obs, model)["Quadratic Weighted Kappa"]
+
+    assert kappa["Quadratic Weighted Kappa"] < 0
+    assert kappa["Score"] == 0
+
+
+def test_canopy_cover_loss_is_left_out_when_the_model_burns_no_observed_cell(canopy_class_files, tmp_path):
+    obs, model = canopy_class_files
+    case = fire_case.load_case(_canopy_definition(), obs)
+    with h5py.File(model, "a") as h5:
+        h5[definition_module.CANOPY_COVER_LOSS_PATH][...] = 9
+
+    result = case.run_benchmark(
+        model,
+        "A",
+        obs_data=obs,
+        output_json=tmp_path / "result.json",
+        score_card_report=tmp_path / "card.pdf",
+    )
+
+    assert not [bench_id for bench_id in result["benchmarks"] if bench_id.startswith("G-CC")]
 
 
 def test_the_canopy_mask_is_fb001s_where_no_layer_holds_the_fill_value(tmp_path):
@@ -910,7 +1032,24 @@ def test_canopy_cover_loss_against_itself_scores_100(canopy_files, tmp_path):
         score_card_report=tmp_path / "card.pdf",
     )
 
-    assert set(result["benchmarks"]) == {f"G-CC{index:02d}" for index in range(1, 7)}
+    # One cell is scored, of class 5 on both sides: a kappa needs two classes.
+    assert set(result["benchmarks"]) == {f"G-CC{index:02d}" for index in range(1, 11)} - {"G-CC03"}
+    assert result["score_card"]["Score Total"] == pytest.approx(100)
+
+
+def test_canopy_cover_loss_classes_against_themselves_score_100(canopy_class_files, tmp_path):
+    obs, _ = canopy_class_files
+    case = fire_case.load_case(_canopy_definition(), obs)
+
+    result = case.run_benchmark(
+        obs,
+        "CC",
+        obs_data=obs,
+        output_json=tmp_path / "result.json",
+        score_card_report=tmp_path / "card.pdf",
+    )
+
+    assert set(result["benchmarks"]) == {f"G-CC{index:02d}" for index in range(1, 11)}
     assert result["score_card"]["Score Total"] == pytest.approx(100)
 
 

@@ -32,6 +32,8 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FIRE_BURN_SEVERITY`: Fire burn severity [-]
 - `FIRE_DETECTION_CONFIDENCE`: Product-native confidence of a fire detection (int)
 - `FIRE_RADIATIVE_POWER`: Fire radiative power [MW]
+- `FIRE_RADIATIVE_POWER_LOWER`: Lower bound of the fire radiative power a model gives [MW]
+- `FIRE_RADIATIVE_POWER_UPPER`: Upper bound of the fire radiative power a model gives [MW]
 - `FIRE_TEMPERATURE`: Fire temperature retrieved from a fire pixel [K]
 - `FOOTPRINT_LAT`: Latitude of the corners of a pixel footprint [deg]
 - `FOOTPRINT_LON`: Longitude of the corners of a pixel footprint [deg]
@@ -82,6 +84,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `FUEL_TREE_CLASS`: Fuel tree class (int)
 - `FUEL_WIND_HEIGHT`: Fuel wind height [m]
 - `FUEL_WIND_REDUCTION_FACTOR`: Fuel wind reduction factor [-]
+- `HEAT_RELEASE_RATE_SENSIBLE`: Sensible heat a fire releases per unit time, over an area [MW]
 - `IGNITION_LENGTH`: Ignition length [m]
 - `LATITUDE`: Latitude [deg]
 - `LIDAR_ATTENUATED_BACKSCATTER`: Attenuated backscatter coefficient of a Doppler wind lidar, beta [m-1 sr-1]

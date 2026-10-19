@@ -24,6 +24,7 @@ import numpy as np
 
 from .. import standardize as fs
 from ..tools.units import ureg
+from . import fire_case_frp as frp
 from .fire_case_radar import MODEL_GROUP, radar_sections, radar_span
 from .fire_case_parameters import (
     FireCaseParameterError,
@@ -54,6 +55,7 @@ FAMILIES = (
     "canopy_cover_loss",
     "weather_stations",
     "radar_plume",
+    "fire_radiative_power",
 )
 FAMILY_KEYS = {
     "fire_perimeters": {"family", "periods"},
@@ -62,9 +64,10 @@ FAMILY_KEYS = {
     "canopy_cover_loss": {"family", "dataset", "canopy"},
     "weather_stations": {"family", "periods", "station_sets"},
     "radar_plume": {"family", "periods", "sections", "model_group"},
+    "fire_radiative_power": {"family", "periods", "systems", "frame", "model_group"},
 }
 # The families scored on every period a definition names, and on the periods an edit adds.
-EVERY_PERIOD_FAMILIES = ("weather_stations", "radar_plume")
+EVERY_PERIOD_FAMILIES = ("weather_stations", "radar_plume", "fire_radiative_power")
 CANOPY_COVER_REASON = (
     "canopy cover loss needs the LANDFIRE canopy height, base height, and bulk density, "
     "which the dataset does not have"
@@ -190,14 +193,12 @@ def station_span(h5: h5py.File, variables: tuple[str, ...]) -> tuple[datetime, d
 
 
 def data_span(h5: h5py.File, parameters: FireCaseParameters) -> tuple[datetime, datetime] | None:
-    """The time span of the file's perimeters, station series, and radar volumes."""
+    """The time span of the file's perimeters, station series, radar volumes, and fire detections."""
     times = list(perimeter_times(h5).values())
     stations = station_span(h5, tuple(spec.variable for spec in parameters.variables))
-    if stations is not None:
-        times.extend(stations)
-    radar = radar_span(h5)
-    if radar is not None:
-        times.extend(radar)
+    for span in (stations, radar_span(h5), frp.detection_span(h5)):
+        if span is not None:
+            times.extend(span)
     if not times:
         return None
     return min(times), max(times)
@@ -322,6 +323,7 @@ def propose_case(
         has_stations = station_span(h5, tuple(spec.variable for spec in parameters.variables)) is not None
         has_radar = bool(fs.list_radar_sites(h5))
         sections = radar_sections(h5)
+        frp_entry, frp_reason = frp.propose_frp(h5, window or span, parameters.fire_radiative_power)
         title = name or _text(h5.attrs.get("description", "")) or Path(std_file).stem
 
     if window is not None:
@@ -399,6 +401,11 @@ def propose_case(
         )
     elif has_radar:
         left_out.append({"family": "radar_plume", "reason": "no radar cross section"})
+    if frp_entry is not None:
+        periods_frp = {"family": "fire_radiative_power", "periods": [period["name"] for period in periods]}
+        families.append({**periods_frp, **frp_entry})
+    elif frp_reason is not None:
+        left_out.append({"family": "fire_radiative_power", "reason": frp_reason})
 
     definition = {
         "schema": SCHEMA,
@@ -630,6 +637,67 @@ def _check_radar(entry: dict, bounds: dict, h5: h5py.File) -> list[str]:
     return problems
 
 
+def _check_frp(  # pylint: disable=too-many-branches
+    entry: dict, bounds: dict, h5: h5py.File, parameters: FireCaseParameters
+) -> list[str]:
+    problems = []
+    periods, systems, frame, group = (
+        entry["periods"],
+        entry["systems"],
+        entry["frame"],
+        entry["model_group"],
+    )
+    if not isinstance(periods, list) or not periods:
+        problems.append("Fire radiative power: the family scores no period.")
+    else:
+        unknown = [name for name in periods if name not in bounds]
+        if unknown:
+            problems.append(f"Fire radiative power: unknown period(s) {', '.join(map(str, unknown))}.")
+        if len(set(periods)) != len(periods):
+            problems.append("Fire radiative power: a period is listed twice.")
+    known = {system.name: system for system in parameters.fire_radiative_power.systems}
+    if (
+        not isinstance(systems, dict)
+        or not systems
+        or not all(isinstance(streams, list) and streams for streams in systems.values())
+    ):
+        problems.append("Fire radiative power: `systems` must list the streams of each observing system.")
+    else:
+        listed = [stream for streams in systems.values() for stream in streams]
+        if len(set(listed)) != len(listed):
+            problems.append("Fire radiative power: a stream is listed twice.")
+        for name, streams in systems.items():
+            if name not in known:
+                problems.append(
+                    f"Fire radiative power: unknown observing system `{name}`; the parameters have "
+                    f"{', '.join(known)}."
+                )
+                continue
+            for stream in streams:
+                instrument = frp.stream_instrument(h5, str(stream))
+                if instrument is None:
+                    problems.append(
+                        f"Fire radiative power: not a fire detection stream of the file: {stream}."
+                    )
+                elif instrument not in known[name].instruments:
+                    problems.append(
+                        f"Fire radiative power: the stream {stream} ({instrument}) is not of the observing "
+                        f"system {name}."
+                    )
+    valid_frame = (
+        isinstance(frame, list)
+        and len(frame) == 4
+        and all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in frame)
+    )
+    if not valid_frame or not (frame[0] < frame[2] and frame[1] < frame[3]):
+        problems.append("Fire radiative power: `frame` must be [west, south, east, north], in degrees.")
+    if not isinstance(group, str) or not group.startswith("/"):
+        problems.append(
+            "Fire radiative power: `model_group` must be the path of a group of the model output."
+        )
+    return problems
+
+
 def check_case(definition, std_file) -> list[str]:
     """
     The problems of ``definition`` against the standard file ``std_file``, in words a person reads.
@@ -669,6 +737,8 @@ def check_case(definition, std_file) -> list[str]:
                 problems += _check_weather(entry, bounds, h5)
             elif name == "radar_plume":
                 problems += _check_radar(entry, bounds, h5)
+            elif name == "fire_radiative_power":
+                problems += _check_frp(entry, bounds, h5, parameters)
             elif name == "building_damage" and not _has_dataset(h5, str(entry["dataset"])):
                 problems.append(f"Building damage: `{entry['dataset']}` is not in the file.")
             elif name == "burn_severity_cbi":

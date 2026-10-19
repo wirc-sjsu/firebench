@@ -54,6 +54,43 @@ class RadarPlumeParameters:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass(frozen=True)
+class CanopyCoverParameters:
+    """The values of ``[canopy_cover_loss]``."""
+
+    classes: tuple[int, ...]
+    high_classes: tuple[int, ...]
+    mae_at_score_50: float
+    bias_at_score_50: float
+    kpi_weights: MappingProxyType
+
+
+@dataclass(frozen=True)
+class ObservingSystem:
+    """A set of satellite instruments whose fire radiative power has its own KPI."""
+
+    name: str
+    label: str
+    instruments: tuple[str, ...]
+    weight: float | int
+
+
+@dataclass(frozen=True)
+class FireRadiativePowerParameters:  # pylint: disable=too-many-instance-attributes
+    """The values of ``[fire_radiative_power]``."""
+
+    min_confidence: str
+    min_observed_fraction: float
+    max_time_offset: float
+    min_observations: int
+    kpi_weights: MappingProxyType
+    systems: tuple[ObservingSystem, ...]
+
+    def system_of(self, instrument: str) -> ObservingSystem | None:
+        """The observing system that lists ``instrument``, or None."""
+        return next((system for system in self.systems if instrument in system.instruments), None)
+
+
+@dataclass(frozen=True)
 class FireCaseParameters:  # pylint: disable=too-many-instance-attributes
     """The parameter set of the generic cases and the SHA-256 of the file it comes from."""
 
@@ -64,8 +101,7 @@ class FireCaseParameters:  # pylint: disable=too-many-instance-attributes
     cbi_high_classes: tuple[int, ...]
     cbi_other_classes: tuple[int, ...]
     cbi_kpi_weight: float | int
-    canopy_high_classes: tuple[int, ...]
-    canopy_kpi_weight: float | int
+    canopy_cover: CanopyCoverParameters
     projections: tuple[str, ...]
     area_relative_error_at_score_50: float
     min_perimeters: int
@@ -77,6 +113,7 @@ class FireCaseParameters:  # pylint: disable=too-many-instance-attributes
     all_weight: float | int
     variables: tuple[WeatherVariable, ...]
     radar_plume: RadarPlumeParameters
+    fire_radiative_power: FireRadiativePowerParameters
     sha256: str
 
     def reference(self) -> dict:
@@ -108,11 +145,26 @@ RADAR_SCALE_KEYS = (
     "velocity_rmse_at_score_50",
     "velocity_bias_at_score_50",
 )
+CANOPY_KPI_WEIGHT_KEYS = (
+    "class_accuracy_weight",
+    "within_one_class_accuracy_weight",
+    "quadratic_weighted_kappa_weight",
+    "macro_f1_weight",
+    "mean_absolute_class_error_weight",
+    "mean_class_bias_weight",
+    "high_precision_weight",
+    "high_recall_weight",
+    "high_f1_weight",
+    "evaluated_share_weight",
+)
+FRP_KPI_WEIGHT_KEYS = ("all_weight", "above_weight", "below_weight")
+CONFIDENCE_LEVELS = ("low", "nominal", "high")
 FAMILIES = (
     "building_damage",
     "burn_severity_cbi",
     "canopy_cover_loss",
     "fire_perimeters",
+    "fire_radiative_power",
     "radar_plume",
     "weather_stations",
 )
@@ -205,6 +257,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
             "burn_severity_cbi",
             "canopy_cover_loss",
             "fire_perimeters",
+            "fire_radiative_power",
             "forecast_windows",
             "radar_plume",
             "weather_stations",
@@ -217,7 +270,23 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         "[burn_severity_cbi]",
         {"high_classes", "other_classes", "kpi_weight"},
     )
-    canopy = _keys(document["canopy_cover_loss"], "[canopy_cover_loss]", {"high_classes", "kpi_weight"})
+    canopy = _keys(
+        document["canopy_cover_loss"],
+        "[canopy_cover_loss]",
+        {"classes", "high_classes", "mae_at_score_50", "bias_at_score_50", *CANOPY_KPI_WEIGHT_KEYS},
+    )
+    frp = _keys(
+        document["fire_radiative_power"],
+        "[fire_radiative_power]",
+        {
+            "min_confidence",
+            "min_observed_fraction",
+            "max_time_offset",
+            "min_observations",
+            "systems",
+            *FRP_KPI_WEIGHT_KEYS,
+        },
+    )
     perimeters = _keys(
         document["fire_perimeters"],
         "[fire_perimeters]",
@@ -266,8 +335,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         cbi_high_classes=high,
         cbi_other_classes=other,
         cbi_kpi_weight=_number(cbi, "kpi_weight", "burn_severity_cbi"),
-        canopy_high_classes=_wholes(canopy, "high_classes", "canopy_cover_loss"),
-        canopy_kpi_weight=_number(canopy, "kpi_weight", "canopy_cover_loss"),
+        canopy_cover=_canopy_cover(canopy),
         projections=tuple(projections),
         area_relative_error_at_score_50=_number(
             perimeters, "area_relative_error_at_score_50", "fire_perimeters", minimum=1e-9
@@ -283,6 +351,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         all_weight=_number(weather, "all_weight", "weather_stations"),
         variables=_variables(weather["variables"]),
         radar_plume=_radar_plume(radar),
+        fire_radiative_power=_fire_radiative_power(frp),
         sha256=sha256,
     )
 
@@ -299,6 +368,69 @@ def _radar_plume(table: dict) -> RadarPlumeParameters:
         fall_speed=_number(table, "fall_speed", label),
         kpi_weights=MappingProxyType({key: _number(table, key, label) for key in RADAR_KPI_WEIGHT_KEYS}),
         **scales,
+    )
+
+
+def _canopy_cover(table: dict) -> CanopyCoverParameters:
+    label = "canopy_cover_loss"
+    classes, high = _wholes(table, "classes", label), _wholes(table, "high_classes", label)
+    if len(set(classes)) != len(classes) or len(classes) < 2:
+        raise FireCaseParameterError(
+            f"{PARAMETER_FILE}: {label}.classes must list two classes or more, once"
+        )
+    if not set(high) <= set(classes):
+        raise FireCaseParameterError(f"{PARAMETER_FILE}: {label}.high_classes must be among its classes")
+    return CanopyCoverParameters(
+        classes=classes,
+        high_classes=high,
+        mae_at_score_50=_number(table, "mae_at_score_50", label, minimum=1e-9),
+        bias_at_score_50=_number(table, "bias_at_score_50", label, minimum=1e-9),
+        kpi_weights=MappingProxyType({key: _number(table, key, label) for key in CANOPY_KPI_WEIGHT_KEYS}),
+    )
+
+
+def _fire_radiative_power(table: dict) -> FireRadiativePowerParameters:
+    label = "fire_radiative_power"
+    if table["min_confidence"] not in CONFIDENCE_LEVELS:
+        raise FireCaseParameterError(
+            f"{PARAMETER_FILE}: {label}.min_confidence must be one of {CONFIDENCE_LEVELS}"
+        )
+    systems_table = table["systems"]
+    if not isinstance(systems_table, dict) or not systems_table:
+        raise FireCaseParameterError(f"{PARAMETER_FILE}: [{label}.systems] must list observing systems")
+    systems, seen = [], set()
+    for name, spec in systems_table.items():
+        system_label = f"{label}.systems.{name}"
+        _keys(spec, f"[{system_label}]", {"label", "instruments", "weight"})
+        instruments = spec["instruments"]
+        if (
+            not isinstance(instruments, list)
+            or not instruments
+            or not all(isinstance(item, str) and item for item in instruments)
+        ):
+            raise FireCaseParameterError(
+                f"{PARAMETER_FILE}: {system_label}.instruments must list instruments"
+            )
+        if seen & set(instruments):
+            raise FireCaseParameterError(
+                f"{PARAMETER_FILE}: {system_label} lists an instrument another system lists"
+            )
+        seen |= set(instruments)
+        systems.append(
+            ObservingSystem(
+                name=name,
+                label=_text(spec, "label", system_label),
+                instruments=tuple(instruments),
+                weight=_number(spec, "weight", system_label),
+            )
+        )
+    return FireRadiativePowerParameters(
+        min_confidence=table["min_confidence"],
+        min_observed_fraction=_number(table, "min_observed_fraction", label, maximum=1),
+        max_time_offset=_number(table, "max_time_offset", label),
+        min_observations=_whole(table, "min_observations", label, minimum=1),
+        kpi_weights=MappingProxyType({key: _number(table, key, label) for key in FRP_KPI_WEIGHT_KEYS}),
+        systems=tuple(systems),
     )
 
 

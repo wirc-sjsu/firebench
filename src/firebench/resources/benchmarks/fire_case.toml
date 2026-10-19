@@ -18,6 +18,7 @@ building_damage = 1
 burn_severity_cbi = 1
 canopy_cover_loss = 1
 fire_perimeters = 1
+fire_radiative_power = 1
 radar_plume = 1
 weather_stations = 1
 
@@ -35,14 +36,31 @@ other_classes = [1, 2, 3]
 kpi_weight = 1
 
 [canopy_cover_loss]
-# RAVG's five-class canopy cover loss (CC5), on the cells where LANDFIRE had canopy before the fire:
-# the canopy height, base height, and bulk density all above 0 (FB001's mask). Class 5, 75 to 100 %
-# loss, is "high"; every other class of the model or of the observations (9, outside the burn area,
-# included) is not. Class 0 of the observations is no data and leaves its cell out, as in FB001.
-# Added without raising `version`: no definition of version 2026.1 holds this family, and the scores
-# of the other families are unchanged.
+# RAVG's five-class canopy cover loss (CC5), an ordinal scale of how much canopy the fire consumed:
+# 1 is 0 %, 2 >0-<25 %, 3 25-<50 %, 4 50-<75 %, 5 75-100 %. A cell is scored where LANDFIRE had canopy
+# before the fire (the canopy height, base height, and bulk density all above 0, FB001's mask) and
+# both the observations and the model give it one of `classes`: 9 (outside the burn area), 0 (no
+# data), and any other value leave it out, on either side. The KPIs thus ask whether the class a
+# model gives a burnt cell is right; whether it burns the right cells is the perimeters' question.
+# Redefined without raising `version`: no definition of version 2026.1 holding this family was
+# published, and the scores of the other families are unchanged.
+classes = [1, 2, 3, 4, 5]
+# Class 5 is "high" for the high-loss precision, recall, and F1, on the same cells.
 high_classes = [5]
-kpi_weight = 1
+# The mean absolute class error and the mean class bias (in classes) at which their score is 50.
+mae_at_score_50 = 1.0
+bias_at_score_50 = 1.0
+# Weight of each KPI in its group.
+class_accuracy_weight = 1
+within_one_class_accuracy_weight = 1
+quadratic_weighted_kappa_weight = 1
+macro_f1_weight = 1
+mean_absolute_class_error_weight = 1
+mean_class_bias_weight = 0
+high_precision_weight = 0
+high_recall_weight = 0
+high_f1_weight = 1
+evaluated_share_weight = 0
 
 [fire_perimeters]
 # Projections allowed for the areas and indices of a generic case (decision 3). FB001 computes its
@@ -88,6 +106,39 @@ centroid_error_weight = 1
 rank_correlation_weight = 1
 velocity_rmse_weight = 1
 velocity_bias_weight = 0
+
+[fire_radiative_power]
+# Satellite fire radiative power (firebench.standardize.frp_time_series: one total per overpass or
+# scan, in the case's frame) against the band of FRP the model gives, `fire_radiative_power_lower`
+# and `fire_radiative_power_upper` in MW. How a model turns its heat release into that band is the
+# adapter's (WRF-SFIRE: the sensible heat flux divided by 5 to 10). An observation is scored when its
+# start is in the period, it saw at least `min_observed_fraction` of its frame, it has an FRP total,
+# and a model output time is at most `max_time_offset` s from it; the model's bounds are interpolated
+# linearly in time to it. An observation where neither side has fire (an FRP total of 0 and an upper
+# bound of 0) is left out. Added without raising `version`, as radar_plume was.
+min_confidence = "nominal"
+min_observed_fraction = 0.9
+max_time_offset = 900
+# A KPI is scored on at least this many observations.
+min_observations = 5
+# Weight of the KPIs pooled over every stream, and of the shares above and below the band.
+all_weight = 0
+above_weight = 0
+below_weight = 0
+
+# Observing systems: each has its own in-band KPI, with this weight, on the streams whose
+# `instrument` it lists, so a system that looks often does not outweigh one that looks rarely. A
+# stream whose instrument no system lists is not scored. A new system (a constellation such as
+# FireSat) is a new table; moving an instrument between systems changes scores and raises `version`.
+[fire_radiative_power.systems.geostationary]
+label = "Geostationary"
+instruments = ["ABI"]
+weight = 1
+
+[fire_radiative_power.systems.polar]
+label = "Polar Orbiters"
+instruments = ["VIIRS", "MODIS"]
+weight = 1
 
 [forecast_windows]
 # The forecast windows `propose_case` offers: cycles at these UTC hours, this long, that hold at

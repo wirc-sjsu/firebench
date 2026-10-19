@@ -8,10 +8,10 @@ to a program that runs it: the registries (``REQUIREMENTS``, ``BENCHMARK_FUNCTIO
 
 The KPI functions are FB001's, with the paths, projection, and parameters of the definition and of
 ``fire_case.toml``. The one family FB001 does not have, burn severity from RAVG's composite burn
-index, is defined here, and so is FB001's canopy cover loss with paths taken from the definition; the
-radar plume family is in ``fire_case_radar``. KPI ids are ``G-`` and a family code (BD, SV, CC, FP,
-WX, RP) with a number that follows the order of families and periods in the definition, so they are
-stable for a definition.
+index, is defined here, and so is canopy cover loss, scored as RAVG's classes on the cells both sides
+burnt; the radar plume family is in ``fire_case_radar`` and the fire radiative power family in
+``fire_case_frp``. KPI ids are ``G-`` and a family code (BD, SV, CC, FP, WX, RP, FR) with a number that
+follows the order of families and periods in the definition, so they are stable for a definition.
 """
 
 import hashlib
@@ -31,6 +31,7 @@ from .. import standardize as fs
 from .. import tools as ft
 from . import c001_caldor as fb001
 from . import wx_common as wxc
+from . import fire_case_frp as frp
 from .fire_case_radar import RADAR_KPIS, bench_radar_plume, model_requirements
 from .fire_case_definition import (
     TEMPLATE_REFUSAL,
@@ -47,8 +48,8 @@ KPI_PREFIX = "G-"
 COMPOSED_TARGET_PREFIX = "C-"
 DEFAULT_OUTPUT_PATH_JSON = Path("case_rslt.json")
 DEFAULT_SCORE_CARD_REPORT_PATH = Path("case.pdf")
-PERIOD_TARGET_PATTERN = re.compile(r"^(P\d{2}|H\d{3})_([BSCPTWR]+)$")
-FLAG_ORDER = "BSCPTWR"
+PERIOD_TARGET_PATTERN = re.compile(r"^(P\d{2}|H\d{3})_([BSCPTWRF]+)$")
+FLAG_ORDER = "BSCPTWRF"
 
 BINARY_METRICS = (
     ("Accuracy", fm.confusion_matrix.binary_accuracy),
@@ -82,6 +83,7 @@ CATEGORIES = {
     "P": "Fire Perimeters",
     "W": "Weather Stations",
     "R": "Radar Plume",
+    "F": "Fire Radiative Power",
 }
 CTX_SPEC = {
     **fb001.CTX_SPEC,
@@ -91,10 +93,10 @@ CTX_SPEC = {
         "pair",
     ): "High burn severity of observations and model, on the cells both classify",
     (
-        "agg_bin",
+        "classes",
         "ravg_cc",
         "pair",
-    ): "High canopy cover loss of observations and model, on the cells with canopy before the fire",
+    ): "Canopy cover loss classes of observations and model, on the cells with canopy both classify",
 }
 
 
@@ -197,16 +199,20 @@ def canopy_mask(obs_dataset: File, dataset_path: str, canopy_paths: list[str]) -
     return on_grid & (observed != obs_dataset[dataset_path].attrs["_FillValue"])
 
 
-def cc_high_binary(
+def cc_pairs(
     obs_dataset: File,
     model_dataset: File,
     dataset_path: str,
     canopy_paths: list[str],
-    high_classes: tuple[int, ...],
-) -> tuple[np.ndarray, np.ndarray]:
+    classes: tuple[int, ...],
+) -> tuple[np.ndarray, np.ndarray, int]:
     """
-    High canopy cover loss (1) or not (0) of the observations and the model, on the cells of
-    ``canopy_mask``. A class outside ``high_classes`` is not high, in either file (FB001).
+    The canopy cover loss classes of the observations and of the model on the cells that are scored,
+    and the number of cells the observations classify where LANDFIRE had canopy.
+
+    A cell is scored where LANDFIRE had canopy (``canopy_mask``) and both files give it one of
+    ``classes``: a cell the model leaves unburnt (9) or without a value (0) is left out, so a model is
+    not scored here on where it burns, only on how much canopy it consumes where it does.
     """
     obs = np.asarray(obs_dataset[dataset_path][()])
     model = np.asarray(model_dataset[dataset_path][()])
@@ -215,44 +221,103 @@ def cc_high_binary(
             f"The model's `{dataset_path}` has the shape {model.shape}; the observations have {obs.shape}. "
             "The model must give the canopy cover loss on the observation grid."
         )
-    mask = canopy_mask(obs_dataset, dataset_path, canopy_paths)
-    high = np.array(sorted(high_classes))
-    binary_obs = np.isin(obs[mask], high).astype(np.int8)
-    binary_model = np.isin(model[mask], high).astype(np.int8)
+    known = np.array(sorted(classes))
+    observed = canopy_mask(obs_dataset, dataset_path, canopy_paths) & np.isin(obs, known)
+    scored = observed & np.isin(model, known)
+    obs_classes, model_classes = obs[scored], model[scored]
     ft.logger.info(
-        "high canopy cover loss on %d cells with canopy: %d observed, %d modelled",
-        binary_obs.size,
-        int(binary_obs.sum()),
-        int(binary_model.sum()),
+        "canopy cover loss on %d of the %d cells with canopy the observations classify; "
+        "confusion matrix (rows observed, columns model, classes %s):\n%s",
+        int(scored.sum()),
+        int(observed.sum()),
+        list(classes),
+        fm.confusion_matrix.multiclass_cm(obs_classes, model_classes, classes),
     )
-    return binary_obs, binary_model
+    return obs_classes, model_classes, int(observed.sum())
 
 
-def bench_cc_index(
+CANOPY_KPIS = (
+    ("Class Accuracy", "class_accuracy_weight"),
+    ("Within-One-Class Accuracy", "within_one_class_accuracy_weight"),
+    ("Quadratic Weighted Kappa", "quadratic_weighted_kappa_weight"),
+    ("Macro F1 Score", "macro_f1_weight"),
+    ("Mean Absolute Class Error", "mean_absolute_class_error_weight"),
+    ("Mean Class Bias", "mean_class_bias_weight"),
+    ("High Loss Precision", "high_precision_weight"),
+    ("High Loss Recall", "high_recall_weight"),
+    ("High Loss F1 Score", "high_f1_weight"),
+    ("Evaluated Share", "evaluated_share_weight"),
+)
+
+
+def _cc_value(kpi: str, obs_classes, model_classes, n_observed: int, parameters) -> tuple[float, float]:
+    """The value of a canopy cover loss KPI and its score; NaN when it cannot be computed."""
+    cmx = fm.confusion_matrix
+    cm = cmx.multiclass_cm(obs_classes, model_classes, parameters.classes)
+    high = np.array(sorted(parameters.high_classes))
+    high_cm = cmx.binary_cm(np.isin(obs_classes, high), np.isin(model_classes, high))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        value = float(
+            {
+                "Class Accuracy": lambda: cmx.multiclass_accuracy(cm),
+                "Within-One-Class Accuracy": lambda: cmx.within_k_accuracy(cm, 1),
+                "Quadratic Weighted Kappa": lambda: cmx.quadratic_weighted_kappa(cm),
+                "Macro F1 Score": lambda: cmx.macro_f1(cm),
+                "Mean Absolute Class Error": lambda: cmx.mean_absolute_class_error(cm),
+                "Mean Class Bias": lambda: cmx.mean_class_bias(cm),
+                "High Loss Precision": lambda: cmx.binary_precision(high_cm),
+                "High Loss Recall": lambda: cmx.binary_recall_rate(high_cm),
+                "High Loss F1 Score": lambda: cmx.binary_f_score(high_cm),
+                "Evaluated Share": lambda: len(obs_classes) / n_observed if n_observed else np.nan,
+            }[kpi]()
+        )
+    if np.isnan(value):
+        return value, value
+    if kpi == "Mean Absolute Class Error":
+        return value, fm.kpi_norm_half_open_exponential(value, 0, parameters.mae_at_score_50)
+    if kpi == "Mean Class Bias":
+        return value, fm.kpi_norm_symmetric_open_exponential(value, parameters.bias_at_score_50)
+    # A kappa below 0, worse than chance, scores 0 as chance does.
+    return value, fm.kpi_norm_bounded_linear(max(value, 0.0), 0, 1)
+
+
+def bench_cc_kpi(
     model_dataset: File,
     obs_dataset: File,
     ctx: dict,
     kpi_name_custom: str,
-    func_cm_index,
     dataset_path: str,
     canopy_paths: list[str],
-    high_classes: tuple[int, ...],
+    parameters,
 ):
-    """A binary index of high canopy cover loss, scored from 0 to 100 as FB001's CC KPIs are."""
-    binary_obs, binary_model = fm.ctx_get_or_compute(
+    """
+    A KPI of the canopy cover loss classes on the cells both files classify, scored from 0 to 100.
+
+    A KPI that cannot be computed returns None and is left out of its group: every KPI when no cell is
+    scored, a kappa when both sides give one class only.
+    """
+    obs_classes, model_classes, n_observed = fm.ctx_get_or_compute(
         CTX_SPEC,
         ctx,
-        ("agg_bin", "ravg_cc", "pair"),
-        cc_high_binary,
+        ("classes", "ravg_cc", "pair"),
+        cc_pairs,
         obs_dataset,
         model_dataset,
         dataset_path,
         canopy_paths,
-        high_classes,
+        parameters.classes,
     )
-    rslt = func_cm_index(fm.confusion_matrix.binary_cm(binary_obs, binary_model))
-    ft.logger.info("%s: %f", kpi_name_custom, rslt)
-    return {kpi_name_custom: rslt, "Score": fm.kpi_norm_bounded_linear(rslt, 0, 1)}
+    if obs_classes.size == 0:
+        ft.logger.warning(
+            "%s not computed: the model burns no cell the observations classify.", kpi_name_custom
+        )
+        return None
+    value, score = _cc_value(kpi_name_custom, obs_classes, model_classes, n_observed, parameters)
+    if np.isnan(value):
+        ft.logger.warning("%s not computed: no cell gives it a value.", kpi_name_custom)
+        return None
+    ft.logger.info("%s: %f", kpi_name_custom, value)
+    return {kpi_name_custom: value, "Score": score}
 
 
 def _epsg(projection: str) -> int:
@@ -402,21 +467,21 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         }
         self._requirement("R_CC", required)
         self._group("Canopy Cover Loss", "canopy_cover_loss", "C", "Canopy Cover Loss")
-        for index, (suffix, func) in enumerate(BINARY_METRICS, start=1):
+        parameters = self.parameters.canopy_cover
+        for index, (kpi_name, weight_key) in enumerate(CANOPY_KPIS, start=1):
             function = partial(
-                bench_cc_index,
-                kpi_name_custom=f"Binary High Canopy Cover Loss {suffix}",
-                func_cm_index=func,
+                bench_cc_kpi,
+                kpi_name_custom=kpi_name,
                 dataset_path=path,
                 canopy_paths=list(entry["canopy"]),
-                high_classes=self.parameters.canopy_high_classes,
+                parameters=parameters,
             )
             self._add(
                 "R_CC",
                 "Canopy Cover Loss",
                 f"{KPI_PREFIX}CC{index:02d}",
                 function,
-                self.parameters.canopy_kpi_weight,
+                parameters.kpi_weights[weight_key],
             )
 
     def _add_perimeters(self, entry: dict) -> None:
@@ -539,6 +604,41 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                     )
                     number += 1
 
+    def _add_frp(self, entry: dict) -> None:
+        parameters = self.parameters.fire_radiative_power
+        group_path = entry["model_group"]
+        systems = {system.name: system for system in parameters.systems}
+        every_stream = [stream for streams in entry["systems"].values() for stream in streams]
+        weights = parameters.kpi_weights
+        kpis = [
+            (f"In-Band Fraction {systems[name].label}", "in_band", streams, systems[name].weight)
+            for name, streams in entry["systems"].items()
+        ]
+        kpis += [
+            ("In-Band Fraction All", "in_band", every_stream, weights["all_weight"]),
+            ("Above-Band Fraction", "above", every_stream, weights["above_weight"]),
+            ("Below-Band Fraction", "below", every_stream, weights["below_weight"]),
+        ]
+        self._requirement("R_FR", frp.model_requirements(group_path))
+        number = 1
+        for period in entry["periods"]:
+            group = f"Fire Radiative Power {period}"
+            self._group(group, "fire_radiative_power", "F", "Fire Radiative Power", period=period)
+            for kpi_name, kpi, streams, weight in kpis:
+                function = partial(
+                    frp.bench_frp,
+                    kpi_name_custom=kpi_name,
+                    kpi=kpi,
+                    streams=list(streams),
+                    period_name=period,
+                    period=self.periods[period],
+                    frame=list(entry["frame"]),
+                    model_group=group_path,
+                    parameters=parameters,
+                )
+                self._add("R_FR", group, f"{KPI_PREFIX}FR{number:02d}", function, weight)
+                number += 1
+
     def build_registries(self):
         """Build the registries again from the definition. Composed targets are forgotten."""
         self.REQUIREMENTS, self.BENCHMARK_FUNCTIONS, self.GROUPS, self.AGGREGATION = {}, {}, {}, {}
@@ -550,6 +650,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
             "fire_perimeters": self._add_perimeters,
             "weather_stations": self._add_weather,
             "radar_plume": self._add_radar_plume,
+            "fire_radiative_power": self._add_frp,
         }
         for entry in self.definition["families"]:
             builders[entry["family"]](entry)
@@ -582,7 +683,15 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
 
     def _create_aggregation_schemes(self) -> None:
         self.AGGREGATION["A"] = self._copy_groups(self.GROUPS)
-        for target, kind in (("B", "B"), ("S", "S"), ("CC", "C"), ("FP", "P"), ("WX", "W"), ("RP", "R")):
+        for target, kind in (
+            ("B", "B"),
+            ("S", "S"),
+            ("CC", "C"),
+            ("FP", "P"),
+            ("WX", "W"),
+            ("RP", "R"),
+            ("FR", "F"),
+        ):
             if self._of_kind(kind):
                 self.AGGREGATION[target] = self._copy_groups(self._of_kind(kind))
 
@@ -609,6 +718,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                 ("FP", "P", "Fire Perimeters (all periods)"),
                 ("WX", "W", "Weather Stations (all periods)"),
                 ("RP", "R", "Radar Plume (all periods)"),
+                ("FR", "F", "Fire Radiative Power (all periods)"),
             ):
                 if self._of_kind(kind):
                     standalone[target] = label
@@ -621,6 +731,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                 ("T", "W", "Weather Stations (TSO only)"),
                 ("W", "W", "Weather Stations (TSO and all sources)"),
                 ("R", "R", "Radar Plume"),
+                ("F", "F", "Fire Radiative Power"),
             ):
                 if self._of_kind(kind):
                     flags[flag] = label
@@ -676,8 +787,8 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
     def resolve_benchmark_target(self, benchmark_target: str) -> str:
         """The canonical name of a target, registered in ``AGGREGATION``.
 
-        A target is a scheme (``A``, ``B``, ``S``, ``CC``, ``FP``, ``WX``, a composed one), ``0`` for every
-        KPI unaggregated, or a period and flags such as ``P02_PW`` or ``H003_T``.
+        A target is a scheme (``A``, ``B``, ``S``, ``CC``, ``FP``, ``WX``, ``RP``, ``FR``, a composed one),
+        ``0`` for every KPI unaggregated, or a period and flags such as ``P02_PW`` or ``H003_T``.
         """
         raw = str(benchmark_target).strip()
         if raw == "0" or raw in self.AGGREGATION:

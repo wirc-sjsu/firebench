@@ -32,14 +32,16 @@ observation file, only the groups the case scores:
 |---|---|---|
 | `fire_perimeters` | each perimeter group of the definition, with its `time` | no `rel_path`, `sha256`, or `file_size_bytes`, no KML file, no burnt area |
 | `burn_severity_cbi` | the CBI group: `position_lat`, `position_lon`, `crs`, `units`, `_FillValue` | every value is the `_FillValue` |
-| `canopy_cover_loss` | the RAVG canopy cover loss group, as for `burn_severity_cbi`; not the LANDFIRE layers, read from the observations | every value is the `_FillValue` |
+| `canopy_cover_loss` | the RAVG canopy cover loss group, as for `burn_severity_cbi`; not the LANDFIRE layers, read from the observations | every value is the `_FillValue`; the model writes a class from 1 to 5 where it burns, 9 where it does not, and 0 where it has no value |
 | `building_damage` | the buildings' `position_lat` and `position_lon` | every damage is `""`, except `"Inaccessible"`, a building that was not surveyed |
 | `weather_stations` | each station the case selects, with its attributes, its `time`, and each variable it is selected for, with `units` and the sensor height attributes | every value is NaN |
 | `radar_plume` | the model's plume group (`/spatial_3d/plume`), empty, with a `description` and the `required_datasets` | the model writes it on its own grid: `time`, `position_lat`, `position_lon`, `position_z` (m above mean sea level), `passive_tracer`, `wind_u`, `wind_v`, `wind_w` (earth-relative), each `(time, z, y, x)` |
+| `fire_radiative_power` | the model's FRP group (`/time_series/fire_total`), empty, with the case's frame (`frame_west`, `frame_south`, `frame_east`, `frame_north`), a `description`, and the `required_datasets` | the model writes, at its own output times, `time` (with `time_origin` and `time_units`), `fire_radiative_power_lower` and `fire_radiative_power_upper` (with `units`, a power such as `MW`) over the frame; it may add `heat_release_rate_sensible`, which FireBench does not read |
 
 Each group keeps its licence attributes (`license`, `redistribution_allowed`,
 `public_access_level`, `data_use_restrictions`, `data_source`). Nothing else is written: satellite
-detections, radar, lightning, and every other group of the observation file stay out.
+detections (their times and values), radar, lightning, and every other group of the observation
+file stay out.
 
 A template is never an observation file: `load_case`, `check_case`, and `run_benchmark` refuse one
 ("This file is a model-output template, not an observation file.").
