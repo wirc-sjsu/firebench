@@ -41,7 +41,7 @@ CASE_ALIASES = {
     "2021_caldor": "caldor",
     "caldor": "caldor",
 }
-SUPPORTED_MODELS = ("HRRR",)
+SUPPORTED_MODELS = ("HRRR", "GFS")
 # Values of the options a setup leaves out: ``resources/benchmarks/wx_forecast.toml``.
 _DEFAULTS = load_parameters().setup_defaults
 
@@ -196,11 +196,11 @@ def parse_setup(raw: dict, path: Path) -> WxSetup:  # pylint: disable=too-many-l
     qc = _parse_qc(raw.get("qc") or {}, problems)
     model = _parse_model(raw.get("model") or {}, problems)
     benchmark = _parse_benchmark(raw.get("benchmark") or {}, problems)
-    if bbox is not None:
-        _check_hrrr_domain(bbox, problems)
+    if bbox is not None and model.name in SUPPORTED_MODELS:
+        _check_model_domain(model.name, bbox, problems)
 
     cycles = []
-    if start is not None and end is not None and model is not None:
+    if start is not None and end is not None and model.name in SUPPORTED_MODELS:
         cycles = _resolve_cycles(model, start, end, problems)
     if problems:
         raise SetupError(path, problems)
@@ -518,8 +518,9 @@ def _resolve_cycles(
     model: ModelOptions, start: datetime, end: datetime, problems: list[str]
 ) -> list[CycleWindow]:
     # pylint: disable-next=import-outside-toplevel
-    from firebench.acquisition.hrrr.forecast import max_forecast_hour
+    from firebench.acquisition.forecast_models import get_model
 
+    max_forecast_hour = get_model(model.name).forecast.max_forecast_hour
     if model.cycles:
         candidates = sorted(model.cycles)
     else:
@@ -529,11 +530,18 @@ def _resolve_cycles(
             candidates.extend(day + timedelta(hours=hour) for hour in model.cycle_hours)
             day += timedelta(days=1)
     cycles = []
+    refused = []
     for cycle in candidates:
         if cycle.minute or cycle.second:
             problems.append(f"model cycle {cycle.isoformat()} is not at the top of an hour")
             continue
-        horizon = min(model.horizon_hours, max_forecast_hour(cycle))
+        try:
+            horizon = min(model.horizon_hours, max_forecast_hour(cycle))
+        except ValueError as error:
+            # A cycle the model has not (e.g. before the version FireBench reads): an explicit cycle is
+            # a problem, a cycle of the window is left out and named if no cycle remains.
+            (problems if model.cycles else refused).append(str(error))
+            continue
         if model.cycles or (start <= cycle and cycle + timedelta(hours=horizon) <= end):
             cycles.append(CycleWindow(cycle, horizon))
     if not cycles:
@@ -541,21 +549,18 @@ def _resolve_cycles(
             f"no {'/'.join(f'{hour:02d}' for hour in model.cycle_hours)}Z cycle with a full "
             f"{model.horizon_hours} h forecast fits in {start.isoformat()} .. {end.isoformat()}; widen the "
             "window, shorten model.horizon_hours, or list model.cycles explicitly"
+            + (f" ({refused[0]})" if refused else "")
         )
     return cycles
 
 
-def _check_hrrr_domain(bbox, problems: list[str]) -> None:
+def _check_model_domain(name: str, bbox, problems: list[str]) -> None:
     # pylint: disable-next=import-outside-toplevel
-    from firebench.acquisition.hrrr.grid import HRRRGrid
+    from firebench.acquisition.forecast_models import get_model
 
-    lon_min, lat_min, lon_max, lat_max = bbox
-    grid = HRRRGrid()
-    i, j = grid.ij_arrays_from_latlon(
-        [lat_min, lat_min, lat_max, lat_max], [lon_min, lon_max, lon_min, lon_max]
-    )
-    if not all(grid.contains(i, j)):
-        problems.append(f"domain.bbox {list(bbox)} is not fully inside the HRRR CONUS grid")
+    problem = get_model(name).domain_problem(bbox)
+    if problem:
+        problems.append(problem)
 
 
 def _check_mapping(value, label: str, allowed: set[str], problems: list[str]) -> bool:
@@ -642,8 +647,8 @@ qc:
   overrides: {{}}                          # QC policy tables, e.g. {{bounds: {{wind_speed: [0, 50, m/s]}}}}
 
 model:
-  name: HRRR
-  cycle_hours: [0, 6, 12, 18]            # 48 h cycles (HRRR v4)
+  name: HRRR                             # or GFS (v16, 0.25 degree, global)
+  cycle_hours: [0, 6, 12, 18]            # 48 h cycles (HRRR v4); GFS runs at these hours only
   horizon_hours: 48
   # cycles: [2021-08-20T00:00Z]          # explicit cycles instead of every cycle in the window
   download_workers: 8

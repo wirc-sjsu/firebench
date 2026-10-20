@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add GFS to the models of `firebench wx` (`model.name: GFS`): GFS v16 0.25 degree forecasts
+  downloaded as byte-range subsets from the NOAA Open Data bucket on AWS (`firebench.acquisition.gfs`,
+  cache `gfs/`, extra `firebench[gfs]`), hourly up to f120, and sampled at the stations by the
+  embedded adapter `firebench.adapters.gfs_weather` with the same declared adjustments as HRRR. Only
+  GFS v16 is read: a cycle before 2021-03-22 12Z is refused with that reason. The models are listed
+  in `firebench.acquisition.forecast_models` (`get_model`, `download_mb_per_cycle`), and the station
+  sampling shared by both adapters is `firebench.adapters.nwp_weather`.
 - Add the `fire_radiative_power` family of generic cases (`fire_case_frp`): the satellite FRP totals
   of each overpass or scan in the case's frame (`frp_time_series`) against the band of FRP a model
   gives at its own times (`/time_series/fire_total`, namespace variables `FIRE_RADIATIVE_POWER_LOWER`
@@ -241,6 +248,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- `firebench wx run`: the stage that downloads forecasts is named `model` (it was `hrrr`, still
+  accepted as an alias by `--steps` and `WxForecastWorkflow.run`), and its records and model files are
+  named after the setup's model (`gfs 2021082000`, `models/gfs_2021082000.h5`).
 - The family `canopy_cover_loss` scores RAVG's five classes, on the cells with canopy where both the
   observations and the model give a class from 1 to 5: a cell the model leaves unburnt (9) or without
   a value (0) is left out, so the family scores how much canopy a model consumes where it burns, and

@@ -118,7 +118,7 @@ def test_every_problem_is_reported_at_once():
     problems = _problems("""
 case: {id: 2021_Caldor, period: H999}
 observations: {h5: missing.h5, synoptic_json: missing.json}
-model: {name: GFS}
+model: {name: NAM}
 benchmark: {cadences: [2], obs_tolerance_min: 45, min_coverage: 2}
 extra: 1
 """)
@@ -129,7 +129,7 @@ extra: 1
         "unknown Caldor period 'H999'",
         "mutually exclusive",
         "observations.h5 does not exist",
-        "model.name 'GFS' is not supported",
+        "model.name 'NAM' is not supported",
         "benchmark.cadences",
         "min_coverage must be between 0 and 1",
     ):
@@ -221,3 +221,55 @@ def test_invalid_observation_origin_is_setup_error(origin):
             f"case: {{id: 2021_Caldor, period: H012}}\nobservations: {{origin: '{origin}'}}"
         )
     )
+
+
+def test_gfs_setup_resolves_the_caldor_cycle_and_accepts_a_box_outside_conus():
+    caldor = _parse("case: {id: 2021_Caldor, period: H012}\nmodel: {name: gfs}")
+    alaska = _parse("""
+domain: {bbox: [-150.5, 64.5, -149.5, 65.0]}
+window: {start: 2026-07-01T00:00Z, end: 2026-07-03T00:00Z}
+model: {name: GFS}
+""")
+
+    assert caldor.model.name == "GFS"
+    assert [(cycle.label, cycle.horizon_hours) for cycle in caldor.cycles] == [("2021082000", 48)]
+    assert alaska.cycles[0].label == "2026070100"
+    assert any("not fully inside the HRRR CONUS grid" in problem for problem in _problems("""
+domain: {bbox: [-150.5, 64.5, -149.5, 65.0]}
+window: {start: 2026-07-01T00:00Z, end: 2026-07-03T00:00Z}
+"""))
+
+
+def test_gfs_horizon_is_clamped_to_the_hourly_range():
+    setup = _parse("""
+case: {id: 2021_Caldor, period: H012}
+model: {name: GFS, horizon_hours: 200, cycles: [2021-08-20T00:00Z]}
+""")
+
+    assert setup.cycles[0].horizon_hours == 120
+
+
+def test_gfs_cycle_older_than_v16_is_refused_with_the_reason():
+    explicit = _problems("""
+case: {id: 2021_Caldor, period: H012}
+model: {name: GFS, cycles: [2021-03-01T00:00Z]}
+""")
+    window = _problems("""
+domain: {bbox: [-120.5, 38.5, -120.0, 38.9]}
+window: {start: 2021-03-01T00:00Z, end: 2021-03-04T00:00Z}
+model: {name: GFS}
+""")
+
+    assert any("older than GFS v16" in problem for problem in explicit)
+    assert any(
+        "list model.cycles explicitly" in problem and "older than GFS v16" in problem for problem in window
+    )
+
+
+def test_gfs_cycle_at_an_off_synoptic_hour_is_refused():
+    problems = _problems("""
+case: {id: 2021_Caldor, period: H012}
+model: {name: GFS, cycles: [2021-08-20T03:00Z]}
+""")
+
+    assert any("GFS cycles start at 00, 06, 12 or 18 UTC" in problem for problem in problems)

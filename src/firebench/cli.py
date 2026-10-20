@@ -1670,8 +1670,8 @@ def wx() -> None:
 
     A setup gives a bounding box and a UTC window (or a case preset such as
     2021_Caldor H012). 'firebench wx run' fetches and QCs the weather-station
-    observations, downloads HRRR forecasts in parallel, samples them at the
-    stations, and scores every forecast cycle on an hourly cadence.
+    observations, downloads HRRR or GFS forecasts in parallel, samples them at
+    the stations, and scores every forecast cycle on an hourly cadence.
     """
 
 
@@ -1752,9 +1752,9 @@ def wx_plan(setup_path: Path) -> None:
 @click.argument("setup_path", type=click.Path(dir_okay=False, path_type=Path))
 @click.option(
     "--steps",
-    default="obs,hrrr,adapt,score",
+    default="obs,model,adapt,score",
     show_default=True,
-    help="Comma-separated stages to run: obs, hrrr, adapt, score.",
+    help="Comma-separated stages to run: obs, model (alias: hrrr), adapt, score.",
 )
 @click.option("--force", is_flag=True, help="Re-run the selected stages even if they are up to date.")
 @click.option(
@@ -1769,10 +1769,10 @@ def wx_run(setup_path: Path, steps: str, force: bool, verbose: int) -> None:
     """Run the weather-forecast benchmark of SETUP_PATH (cached stages are skipped)."""
     workflow_module = import_module(".workflows.wx_forecast", __package__)
     requested = tuple(step.strip() for step in steps.split(",") if step.strip())
-    unknown = sorted(set(requested) - set(workflow_module.STAGES))
+    unknown = sorted(set(requested) - set(workflow_module.STAGES) - set(workflow_module.STAGE_ALIASES))
     if unknown:
         raise click.UsageError(
-            f"unknown stage(s): {', '.join(unknown)} (expected: obs, hrrr, adapt, score)"
+            f"unknown stage(s): {', '.join(unknown)} (expected: obs, model, adapt, score)"
         )
     setup = _load_wx_setup(setup_path)
     setup.output_dir.mkdir(parents=True, exist_ok=True)
@@ -1816,7 +1816,7 @@ def wx_score(setup_path: Path, model_output: Path, cycle: str, name: str) -> Non
     )
 
 
-CACHE_SOURCES = ("hrrr", "synoptic")
+CACHE_SOURCES = ("hrrr", "gfs", "synoptic")
 
 
 @main.group()

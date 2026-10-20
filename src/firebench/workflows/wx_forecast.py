@@ -6,9 +6,10 @@ Stages, each recorded in ``<output_dir>/wx_workflow.json`` with the identity of 
 1. ``obs``: Synoptic observations (download, or a saved JSON clipped to the window and domain),
    payload contract, automatic ``conservative_auto`` QC and finalization into ``obs.h5``. A
    pre-built FireBench observation file can be used instead.
-2. ``hrrr``: HRRR surface forecasts of every cycle, downloaded into the shared cache. Downloads start
-   first and run in parallel with the observation stage.
-3. ``adapt``: the embedded HRRR adapter samples each complete cycle at the QC'd stations.
+2. ``model``: forecasts of every cycle of the setup's model (HRRR or GFS, ``acquisition.forecast_models``),
+   downloaded into the shared cache. Downloads start first and run in parallel with the observation
+   stage. ``hrrr`` is an alias of this stage.
+3. ``adapt``: the model's embedded adapter samples each complete cycle at the QC'd stations.
 4. ``score``: the weather-forecast benchmark scores each cycle and writes the JSON, the score card
    and ``summary.md``.
 
@@ -17,6 +18,7 @@ downloads nothing and recomputes nothing. ``force`` re-runs the selected stages.
 """
 
 import hashlib
+import importlib
 import json
 import logging
 from collections.abc import Callable
@@ -28,13 +30,15 @@ from pathlib import Path
 from firebench import __version__ as fb_version
 from firebench.acquisition import keys as fb_keys
 from firebench.acquisition.cache import atomic_write_json, format_bytes
-from firebench.acquisition.hrrr import forecast as hrrr_forecast
+from firebench.acquisition.forecast_models import get_model
 
 from .wx_setup import CycleWindow, WxSetup
 
 logger = logging.getLogger(__name__)
 
-STAGES = ("obs", "hrrr", "adapt", "score")
+STAGES = ("obs", "model", "adapt", "score")
+# Earlier name of the `model` stage, when HRRR was the only model
+STAGE_ALIASES = {"hrrr": "model"}
 MANIFEST_NAME = "wx_workflow.json"
 DATA_TIER = "provisional"
 HRRR_FILE_MB = {0: 11.6, 1: 9.4}  # measured subset sizes (f00 carries the terrain field)
@@ -86,6 +90,7 @@ class WxForecastWorkflow:
         self.out = setup.output_dir
         self.manifest_path = self.out / MANIFEST_NAME
         self.manifest = self._load_manifest()
+        self.forecast_model = get_model(setup.model.name)
 
     # ---------------------------------------------------------------- paths
     @property
@@ -93,18 +98,19 @@ class WxForecastWorkflow:
         """Directory of the observation stage outputs."""
         return self.out / "observations"
 
-    def model_path(self, cycle: CycleWindow, model_name: str = "HRRR") -> Path:
+    def model_path(self, cycle: CycleWindow, model_name: str | None = None) -> Path:
         """Model file of one cycle."""
-        return self.out / "models" / f"{model_name.lower()}_{cycle.label}.h5"
+        return self.out / "models" / f"{(model_name or self.setup.model.name).lower()}_{cycle.label}.h5"
 
-    def score_paths(self, cycle: CycleWindow, model_name: str = "HRRR") -> tuple[Path, Path]:
+    def score_paths(self, cycle: CycleWindow, model_name: str | None = None) -> tuple[Path, Path]:
         """Result JSON and score-card PDF of one cycle."""
-        stem = f"{_slug(model_name)}_{cycle.label}"
+        stem = f"{_slug(model_name or self.setup.model.name)}_{cycle.label}"
         return self.out / "scores" / f"{stem}_rslt.json", self.out / "scores" / f"{stem}_scorecard.pdf"
 
     # ------------------------------------------------------------------ run
     def run(self, steps=STAGES) -> WorkflowResult:
         """Run the selected stages in order and return what was done."""
+        steps = {STAGE_ALIASES.get(step, step) for step in steps}
         steps = tuple(step for step in STAGES if step in steps)
         # --force re-runs the selected stages only; the others stay reusable
         self.forced_stages = steps if self.force else ()
@@ -116,24 +122,27 @@ class WxForecastWorkflow:
         obs_sha = self._stage("obs")["outputs"]["obs_sha256"] if obs_current else None
         pending_cycles = self._cycles_to_download(steps, obs_sha)
 
+        forecast = self.forecast_model.forecast
         with ThreadPoolExecutor(
-            max_workers=self.setup.model.download_workers, thread_name_prefix="hrrr"
+            max_workers=self.setup.model.download_workers, thread_name_prefix=self._label
         ) as executor:
             pending = {
-                cycle.label: hrrr_forecast.submit_cycle(
+                cycle.label: forecast.submit_cycle(
                     cycle.cycle, cycle.horizon_hours, executor, self.cache_root
                 )
                 for cycle in pending_cycles
             }
             if pending:
                 result.records.append(
-                    StageRecord("hrrr", "started", f"{len(pending)} cycle(s) downloading in the background")
+                    StageRecord(
+                        self._label, "started", f"{len(pending)} cycle(s) downloading in the background"
+                    )
                 )
 
             if "obs" in steps or any(step in steps for step in ("adapt", "score")):
                 result.obs_h5 = self._run_obs(obs_identity, obs_current, "obs" in steps, result)
-            if "adapt" in steps or "hrrr" in steps:
-                self._run_hrrr_and_adapt(pending, executor, "adapt" in steps, result)
+            if "adapt" in steps or "model" in steps:
+                self._run_model_and_adapt(pending, executor, "adapt" in steps, result)
 
         if "score" in steps:
             self._run_score(result)
@@ -175,21 +184,22 @@ class WxForecastWorkflow:
             "Observations:",
         ]
         lines += self._plan_observations()
-        lines += ["", f"Model: {setup.model.name} (NOAA Open Data on AWS, anonymous access)"]
+        model = self.forecast_model
+        lines += ["", f"Model: {model.name} ({model.source})"]
         total_mb = 0.0
         for cycle in setup.cycles:
             n_files = cycle.horizon_hours + 1
             cached = sum(
-                hrrr_forecast.is_cached(
-                    hrrr_forecast.cached_file_path(cycle.cycle, fxx, self.cache_root),
-                    hrrr_forecast.fields_for_hour(fxx),
+                model.forecast.is_cached(
+                    model.forecast.cached_file_path(cycle.cycle, fxx, self.cache_root),
+                    model.forecast.fields_for_hour(fxx),
                 )
                 for fxx in range(n_files)
             )
-            size_mb = HRRR_FILE_MB[0] + HRRR_FILE_MB[1] * cycle.horizon_hours
+            size_mb = model.download_mb(cycle.horizon_hours)
             total_mb += size_mb * (n_files - cached) / n_files
             lines.append(
-                f"  cycle {cycle.cycle:%Y-%m-%d %HZ} (HRRR v{hrrr_forecast.hrrr_version(cycle.cycle)}): "
+                f"  cycle {cycle.cycle:%Y-%m-%d %HZ} ({model.name} v{model.version(cycle.cycle)}): "
                 f"f00-f{cycle.horizon_hours:02d}, {n_files} files, {cached} cached"
             )
         lines.append(f"  download still needed: about {format_bytes(int(total_mb * 1e6))}")
@@ -380,22 +390,28 @@ class WxForecastWorkflow:
         return resolution
 
     # -------------------------------------------------------- model stages
+    @property
+    def _label(self) -> str:
+        """Lower-case model name, the label of its stage records and download threads."""
+        return self.forecast_model.name.lower()
+
     def _adapt_identity(self, cycle: CycleWindow, obs_sha: str) -> dict:
         # pylint: disable-next=import-outside-toplevel
-        from firebench.adapters.hrrr_weather import SCREEN_LEVEL_BAND_M
+        from firebench.adapters.nwp_weather import SCREEN_LEVEL_BAND_M
 
+        forecast = self.forecast_model.forecast
         return {
             "firebench_version": fb_version,
             "obs_sha256": obs_sha,
             "cycle": cycle.cycle.isoformat(),
             "horizon_hours": cycle.horizon_hours,
-            "product": hrrr_forecast.PRODUCT,
-            "fields": list(hrrr_forecast.FIELDS + hrrr_forecast.STATIC_FIELDS),
+            "product": forecast.PRODUCT,
+            "fields": list(forecast.FIELDS + forecast.STATIC_FIELDS),
             "screen_level_band_m": list(SCREEN_LEVEL_BAND_M),
         }
 
     def _cycles_to_download(self, steps, obs_sha: str | None) -> list[CycleWindow]:
-        if "hrrr" not in steps and "adapt" not in steps:
+        if "model" not in steps and "adapt" not in steps:
             return []
         if "adapt" not in steps or obs_sha is None:
             return list(self.setup.cycles)
@@ -408,7 +424,7 @@ class WxForecastWorkflow:
             )
         ]
 
-    def _run_hrrr_and_adapt(self, pending: dict, executor, adapt: bool, result: WorkflowResult) -> None:
+    def _run_model_and_adapt(self, pending: dict, executor, adapt: bool, result: WorkflowResult) -> None:
         obs_record = self._stage("obs")
         obs_sha = obs_record["outputs"]["obs_sha256"] if obs_record else None
         for cycle in self.setup.cycles:
@@ -420,18 +436,20 @@ class WxForecastWorkflow:
                     StageRecord(f"adapt {cycle.label}", "skipped", "model file up to date")
                 )
                 continue
-            submitted = pending.get(cycle.label) or hrrr_forecast.submit_cycle(
+            submitted = pending.get(cycle.label) or self.forecast_model.forecast.submit_cycle(
                 cycle.cycle, cycle.horizon_hours, executor, self.cache_root
             )
             cycle_files = submitted.result()
             if not cycle_files.complete:
                 reason = f"forecast hours missing from the archive: {cycle_files.missing}"
                 result.dropped_cycles.append({"cycle": cycle.cycle.isoformat(), "reason": reason})
-                result.records.append(StageRecord(f"hrrr {cycle.label}", "dropped", reason))
+                result.records.append(StageRecord(f"{self._label} {cycle.label}", "dropped", reason))
                 logger.warning("[wx] cycle %s dropped: %s", cycle.label, reason)
                 continue
             result.records.append(
-                StageRecord(f"hrrr {cycle.label}", "done", f"{len(cycle_files.files)} files in the cache")
+                StageRecord(
+                    f"{self._label} {cycle.label}", "done", f"{len(cycle_files.files)} files in the cache"
+                )
             )
             if not adapt:
                 continue
@@ -440,13 +458,11 @@ class WxForecastWorkflow:
             self._adapt_cycle(cycle, cycle_files, identity, result)
 
     def _adapt_cycle(self, cycle: CycleWindow, cycle_files, identity: dict, result: WorkflowResult) -> None:
-        # pylint: disable-next=import-outside-toplevel
-        from firebench.adapters.hrrr_weather import build_hrrr_station_file
-
+        adapter = importlib.import_module(self.forecast_model.adapter_module)
         model_path = self.model_path(cycle)
         obs_h5 = Path(self._stage("obs")["outputs"]["obs_h5"])
         kwargs = {"read": self.read_fields} if self.read_fields is not None else {}
-        summary = build_hrrr_station_file(obs_h5, cycle_files, model_path, **kwargs)
+        summary = adapter.build_station_file(obs_h5, cycle_files, model_path, **kwargs)
         self._record(f"adapt:{cycle.label}", identity, {"model_h5": str(model_path), "summary": summary})
         result.model_files[cycle.label] = model_path
         result.records.append(
@@ -583,7 +599,8 @@ class WxForecastWorkflow:
             lines += ["", f"Cycle comparison score card: `{comparison.relative_to(self.out)}`"]
         lines += [
             "",
-            "Caveats: HRRR values are instantaneous at the valid time while RAWS wind is a 10-min",
+            f"Caveats: {self.setup.model.name} values are instantaneous at the valid time while RAWS wind "
+            "is a 10-min",
             "average; F00 is the analysis, which assimilates surface observations (weight 0).",
         ]
         path.write_text("\n".join(lines) + "\n")

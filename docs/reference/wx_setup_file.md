@@ -40,7 +40,7 @@ benchmark:
 | `name` | file name | Workspace name: letters, digits, `.`, `_`, `-` |
 | `output_dir` | `runs/<name>` | Workspace directory |
 | `case` | none | Preset `{id, period}`: `id` is `2021_Caldor` (or `001`, `Caldor`); `period` is `H###` (HRRR cycle window) or `P##` (curated window). It sets the bounding box and window |
-| `domain.bbox` | from `case` | `[lon_min, lat_min, lon_max, lat_max]` in degrees. It must lie inside the HRRR CONUS grid and overrides the preset |
+| `domain.bbox` | from `case` | `[lon_min, lat_min, lon_max, lat_max]` in degrees. With HRRR it must lie inside the HRRR CONUS grid; GFS is global. It overrides the preset |
 | `window` | from `case` | `{start, end}` evaluation window. It overrides the preset |
 
 The curated Caldor windows (`P##`) start and end at perimeter times, so no 48-hour cycle fits
@@ -73,11 +73,11 @@ Secrets (`token`, `api_key`, ...) are rejected in every section.
 
 | Key | Default | Description |
 |---|---|---|
-| `name` | `HRRR` | Forecast model (HRRR only) |
-| `cycle_hours` | `[0, 6, 12, 18]` | UTC cycle hours. Every cycle whose full forecast fits in the window is scored |
-| `horizon_hours` | `48` | Scored horizon, clamped to the version horizon (48 h for HRRR v4, 36 h for v3) |
+| `name` | `HRRR` | Forecast model: `HRRR` (3 km, CONUS) or `GFS` (0.25 degree, global; v16 only, cycles from 2021-03-22 12Z) |
+| `cycle_hours` | `[0, 6, 12, 18]` | UTC cycle hours. Every cycle whose full forecast fits in the window is scored. GFS runs at these four hours only |
+| `horizon_hours` | `48` | Scored horizon, clamped to the version horizon (48 h for HRRR v4, 36 h for v3; 120 h for GFS, the end of its hourly output) |
 | `cycles` | none | Explicit list of cycles, used as given |
-| `download_workers` | `8` | Parallel HRRR downloads |
+| `download_workers` | `8` | Parallel forecast downloads |
 | `keep_grib` | `true` | `false` deletes the cached GRIB files once a cycle is adapted |
 
 ## `benchmark`

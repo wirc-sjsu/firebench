@@ -323,3 +323,33 @@ def test_observation_download_uses_saved_origins(tmp_path, monkeypatch):
     result = workflow.run(steps=("obs",))
     assert result.obs_h5.is_file()
     assert attempts == ["https://one.example", "https://two.example", "https://two.example"]
+
+
+def test_gfs_setup_downloads_and_adapts_gfs_with_the_hrrr_stage_alias(tmp_path, monkeypatch):
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.acquisition.gfs import forecast as gfs_forecast
+
+    def fake_fetch_file(cycle, fxx, fields=None, cache_root=None, **kwargs):
+        path = tmp_path / "cache" / f"gfs.t{cycle:%H}z.pgrb2.0p25.f{fxx:03d}.fb.grib2"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"grib")
+        return path
+
+    def fake_read(path):
+        fxx = int(re.search(r"\.f(\d{3})\.fb", Path(path).name).group(1))
+        return _fake_read(f"wrfsfcf{fxx:02d}")
+
+    monkeypatch.setattr(gfs_forecast, "fetch_file", fake_fetch_file)
+    setup_path = _write_setup(tmp_path)
+    setup_path.write_text(setup_path.read_text().replace("model: {", "model: {name: GFS, "))
+
+    workflow = WxForecastWorkflow(load_setup(setup_path), read_fields=fake_read)
+    result = workflow.run(steps=("obs", "hrrr", "adapt"))
+
+    model_path = result.model_files["2021082000"]
+    assert model_path == tmp_path / "run" / "models" / "gfs_2021082000.h5"
+    with h5py.File(model_path, "r") as h5:
+        assert h5.attrs["model_name"] == "GFS"
+        assert h5.attrs["gfs_version"] == "16"
+    assert any(record.name == "gfs 2021082000" and record.status == "done" for record in result.records)
+    assert any("Model: GFS" in line for line in workflow.plan_lines())

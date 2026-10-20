@@ -152,25 +152,28 @@ hourly, for lead hours 1 to 48.
 | `POOLED` | counted over every station and hour at once |
 | `TSO`, `ALL` | trusted-source stations, all stations |
 
-## HRRR adapter
+## HRRR and GFS adapters
 
-The embedded HRRR adapter writes the model file of a cycle from the HRRR surface product (`wrfsfc`).
-It declares every adjustment in the file:
+The embedded adapters write the model file of a cycle from the HRRR surface product (`wrfsfc`,
+`firebench.adapters.hrrr_weather`) or the GFS v16 0.25 degree product (`pgrb2.0p25`,
+`firebench.adapters.gfs_weather`). They share their sampling (`firebench.adapters.nwp_weather`) and
+declare every adjustment in the file:
 
-- **Sampling.** Values are taken at the nearest grid cell, at HRRR's native hourly valid times.
+- **Sampling.** Values are taken at the nearest grid cell, at the model's native hourly valid times.
+  A GFS cell is about 25 km wide, so its terrain can differ much more from a station's than HRRR's.
 - **Terrain.** Each station group records `model_terrain_height`, `station_elevation`, and their
   difference `terrain_height_difference`, which is a first-order temperature bias in mountains.
-- **Wind direction.** The grid-relative 10 m winds are rotated to earth-relative components. The
-  direction is assumed height-invariant in the surface layer.
+- **Wind direction.** HRRR's grid-relative 10 m winds are rotated to earth-relative components; GFS
+  winds are earth-relative already. The direction is assumed height-invariant in the surface layer.
 - **Wind speed.** It is brought from 10 m to the station sensor height with the neutral log law and
-  HRRR's surface roughness `SFCR` (`height_adjustment`, `z0_source` attributes).
+  the model's own surface roughness `SFCR` (`height_adjustment`, `z0_source` attributes).
 - **Temperature and humidity.** The 2 m values are assigned to screen-level sensors (1–3 m).
   Outside that band, the native 2 m height is declared, so the station leaves the trusted-source
   set instead of being compared at a different height.
 
 ## Caveats
 
-- HRRR values are instantaneous at the valid time, while RAWS wind is a 10-minute average.
+- HRRR and GFS values are instantaneous at the valid time, while RAWS wind is a 10-minute average.
 - Cycles missing from the model archive are omitted and listed; hours missing *inside* a scored
   cycle are penalized.
 - Minimum and maximum summaries of a signed bias select the most extreme station in each direction,
