@@ -964,6 +964,45 @@ def test_canopy_cover_loss_kpis_on_the_classes_both_sides_give(canopy_class_file
     assert kpis["Class Accuracy"]["Score"] == pytest.approx(500 / 7)
 
 
+def test_canopy_cover_values_give_the_cells_and_the_matrix_of_the_kpis(canopy_class_files):
+    obs, model = canopy_class_files
+    case = fire_case.load_case(_canopy_definition(), obs)
+
+    with h5py.File(obs, "r") as obs_h5, h5py.File(model, "r") as model_h5:
+        values = case.canopy_cover_values(model_h5, obs_h5)
+        obs_classes, model_classes, n_observed = fire_case.cc_pairs(
+            obs_h5,
+            model_h5,
+            definition_module.CANOPY_COVER_LOSS_PATH,
+            list(definition_module.CANOPY_PATHS),
+            (1, 2, 3, 4, 5),
+        )
+
+    assert values["observations"].tolist() == CC_CLASSES_OBS.tolist()
+    assert values["model"].tolist() == CC_CLASSES_MODEL.tolist()
+    assert values["observations"][values["scored"]].tolist() == obs_classes.tolist()
+    assert values["model"][values["scored"]].tolist() == model_classes.tolist()
+    assert values["n_observed"] == n_observed == 9
+    assert values["n_scored"] == 7
+    assert not values["canopy"][2, 3]
+    assert values["position_lat"].shape == CC_CLASSES_OBS.shape
+    matrix = values["confusion_matrix"]
+    assert matrix.sum() == 7
+    assert np.trace(matrix) / matrix.sum() == pytest.approx(
+        _canopy_kpis(case, obs, model)["Class Accuracy"]["Class Accuracy"]
+    )
+    assert values["classes"] == [1, 2, 3, 4, 5] and values["high_classes"] == [5]
+
+
+def test_canopy_cover_values_are_none_without_the_family(canopy_class_files):
+    obs, model = canopy_class_files
+    case = fire_case.load_case(_definition(), obs)
+
+    with h5py.File(obs, "r") as obs_h5, h5py.File(model, "r") as model_h5:
+        assert case.canopy_cover_values(model_h5, obs_h5) is None
+        assert case.frp_values(model_h5, obs_h5) is None
+
+
 def test_canopy_cover_loss_does_not_score_where_a_model_burns(canopy_class_files):
     obs, model = canopy_class_files
     case = fire_case.load_case(_canopy_definition(), obs)

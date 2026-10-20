@@ -281,3 +281,66 @@ def test_the_template_and_the_requirements_name_the_frp_band(obs, tmp_path):
         "/time_series/fire_total/fire_radiative_power_lower",
         "/time_series/fire_total/fire_radiative_power_upper",
     }
+
+
+# ---------------------------
+# Values for figures
+# ---------------------------
+def _frp_values(obs, model, definition=None):
+    case = load_case(definition or _definition(obs), obs)
+    with h5py.File(obs, "r") as obs_h5, h5py.File(model, "r") as model_h5:
+        return case.frp_values(model_h5, obs_h5)
+
+
+@pytest.mark.parametrize("band", [(60.0, 120.0), (150.0, 300.0), (20.0, 50.0)])
+def test_frp_values_give_the_positions_the_kpis_count(obs, tmp_path, band):
+    model = _model(tmp_path / "model.h5", low=band[0], high=band[1])
+    definition = edit_case(
+        _definition(obs), obs, add_periods=[(START + timedelta(hours=1), START + timedelta(hours=3))]
+    )
+    case = load_case(definition, obs)
+
+    values = _frp_values(obs, model, definition)
+
+    observations = values["observations"]
+    for period in values["periods"]:
+        folder = tmp_path / period["period"]
+        folder.mkdir()
+        result = _run(case, model, obs, folder, target=f"{period['period']}_F")
+        expected = _values(result)
+        position = observations["position"][period["scored"]]
+        assert np.all(observations["kept"][period["scored"]])
+        for name, where in (
+            ("In-Band Fraction All", "in"),
+            ("Above-Band Fraction", "above"),
+            ("Below-Band Fraction", "below"),
+        ):
+            assert np.mean(position == where) == pytest.approx(expected[name])
+        polar = period["scored"][observations["system"][period["scored"]] == "polar"]
+        if "In-Band Fraction Polar Orbiters" in expected:
+            assert np.mean(observations["position"][polar] == "in") == pytest.approx(
+                expected["In-Band Fraction Polar Orbiters"]
+            )
+
+
+def test_frp_values_say_why_an_observation_is_not_scored(obs, tmp_path):
+    values = _frp_values(obs, _model(tmp_path / "model.h5"))
+
+    observations = values["observations"]
+    reasons = dict(zip(observations["time"].tolist(), observations["reason"]))
+    ok = dict(zip(observations["time"].tolist(), observations["observation_ok"].tolist()))
+    early, late, partial_view = (
+        np.datetime64(f"2021-08-17T{clock}", "ms").item() for clock in ("00:05", "05:25", "02:10")
+    )
+    assert reasons[early] == "no fire on either side" and ok[early]
+    assert reasons[late] == "no model output time within 900 s" and ok[late]
+    assert reasons[partial_view] == "it saw 40% of its frame, less than 90%" and not ok[partial_view]
+    scored = observations["kept"]
+    assert all(reason is None for reason, kept in zip(observations["reason"], scored) if kept)
+    assert set(observations["position"][~scored]) == {""}
+    assert [system["name"] for system in values["systems"]] == ["geostationary", "polar"]
+    assert values["systems"][0]["label"] == "Geostationary"
+    assert set(observations["satellite"]) == {"GOES-17", "Suomi NPP"}
+    # The model's band at its own times, in MW.
+    assert values["model"]["upper"].max() == pytest.approx(120.0)
+    assert len(values["model"]["time"]) == len(MODEL_TIMES)

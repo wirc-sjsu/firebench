@@ -10,7 +10,12 @@ from firebench.metrics.confusion_matrix import (
     quadratic_weighted_kappa,
     within_k_accuracy,
 )
-from firebench.metrics.stats import fraction_above_band, fraction_below_band, fraction_in_band
+from firebench.metrics.stats import (
+    band_position,
+    fraction_above_band,
+    fraction_below_band,
+    fraction_in_band,
+)
 
 # Three ordinal classes, every miss one class too high: worked out by hand in the tests below.
 OFF_BY_ONE = np.array([[1, 1, 0], [0, 1, 1], [0, 0, 1]])
@@ -92,6 +97,7 @@ def test_band_fractions():
     assert fraction_in_band(x, lower, upper) == pytest.approx(2 / 4)
     assert fraction_above_band(x, lower, upper) == pytest.approx(1 / 4)
     assert fraction_below_band(x, lower, upper) == pytest.approx(1 / 4)
+    assert band_position(x, lower, upper).tolist() == ["in", "below", "above", "in", ""]
 
 
 def test_band_fractions_without_values_are_nan():

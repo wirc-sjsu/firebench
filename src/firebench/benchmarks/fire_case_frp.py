@@ -20,6 +20,9 @@ instruments, ``[fire_radiative_power.systems]`` of ``fire_case.toml``) so a syst
 does not outweigh one that looks rarely, then pooled over every stream, and the shares above and below
 the band. A KPI with fewer than ``min_observations`` observations is not computed: its function returns
 None and it is left out of its group.
+
+``frp_values`` gives what these KPIs compare, for a figure: every observation with the reason it is not
+scored, the model's band, and the position of each scored observation against it.
 """
 
 from dataclasses import dataclass
@@ -183,7 +186,114 @@ def model_band(model: File, model_group: str) -> tuple[np.ndarray, np.ndarray, n
     return times[order], lower[order], upper[order]
 
 
-def frp_pairs(  # pylint: disable=too-many-arguments,too-many-locals
+@dataclass
+class FrpObservations:  # pylint: disable=too-many-instance-attributes
+    """
+    Every observation of a stream in a period, the model's band at its start, and whether it is scored.
+
+    ``reason`` says why an observation is not scored (None when it is), and ``observation_ok`` whether
+    the observation alone allows it to be: False when it saw too little of its frame or has no FRP
+    total, whatever the model.
+    """
+
+    stream: str
+    time: np.ndarray  # datetime64[ms], UTC: observation start
+    time_end: np.ndarray
+    observed: np.ndarray  # MW: 0 without detection, NaN when no detection has an FRP
+    observed_fraction: np.ndarray
+    lower: np.ndarray  # MW, NaN where the model gives no band
+    upper: np.ndarray
+    kept: np.ndarray
+    observation_ok: np.ndarray
+    reason: list[str | None]
+
+    def pairs(self) -> FrpPairs:
+        """The observations that are scored."""
+        keep = self.kept
+        return FrpPairs(
+            self.stream, self.time[keep], self.observed[keep], self.lower[keep], self.upper[keep]
+        )
+
+
+def _reasons(checks: list[tuple[np.ndarray, str | np.ndarray]], size: int) -> list[str | None]:
+    """The first failed check of each observation, in the order of ``checks``."""
+    reasons: list[str | None] = [None] * size
+    for failed, text in checks:
+        for index in np.flatnonzero(failed):
+            if reasons[index] is None:
+                reasons[index] = text if isinstance(text, str) else str(text[index])
+    return reasons
+
+
+def frp_observations(  # pylint: disable=too-many-arguments,too-many-locals
+    model: File,
+    obs: File,
+    stream: str,
+    period: tuple[datetime, datetime],
+    frame,
+    model_group: str,
+    parameters: FireRadiativePowerParameters,
+) -> FrpObservations:
+    """Every observation of a stream and a period, and whether it is scored (see the module docstring)."""
+    series = fs.frp_time_series(
+        obs, stream, period[0], period[1], _corners(frame), min_confidence=parameters.min_confidence
+    )
+    model_times, model_lower, model_upper = model_band(model, model_group)
+    observed = np.asarray(series.frp_total, dtype=np.float64)
+    fraction = np.asarray(series.observed_fraction, dtype=np.float64)
+    seen = np.nan_to_num(fraction, nan=-1.0) >= parameters.min_observed_fraction
+    has_total = np.isfinite(observed)
+    minimum = f"{parameters.min_observed_fraction:.0%}"
+    checks = [
+        (~has_total, "no FRP total: no detection of it has an FRP"),
+        (
+            ~seen,
+            np.array(
+                [
+                    (
+                        f"it saw {value:.0%} of its frame, less than {minimum}"
+                        if np.isfinite(value)
+                        else "the share of its frame it saw is unknown"
+                    )
+                    for value in fraction
+                ],
+                dtype=object,
+            ),
+        ),
+    ]
+    if model_times.size == 0:
+        lower = upper = np.full(observed.shape, np.nan)
+        near = np.zeros(observed.shape, dtype=bool)
+        checks.append((~near, "the model gives no output time"))
+    else:
+        obs_ms = series.time.astype("datetime64[ms]").astype(np.int64).astype(np.float64)
+        model_ms = model_times.astype(np.int64).astype(np.float64)
+        after = np.clip(np.searchsorted(model_ms, obs_ms), 0, len(model_ms) - 1)
+        before = np.clip(after - 1, 0, len(model_ms) - 1)
+        offset = np.minimum(np.abs(model_ms[after] - obs_ms), np.abs(model_ms[before] - obs_ms))
+        near = offset <= parameters.max_time_offset * 1000.0
+        lower = np.interp(obs_ms, model_ms, model_lower)
+        upper = np.interp(obs_ms, model_ms, model_upper)
+        checks.append((~near, f"no model output time within {parameters.max_time_offset:g} s"))
+    has_band = np.isfinite(lower) & np.isfinite(upper)
+    no_fire = (observed == 0) & (upper == 0)
+    checks += [(~has_band, "the model gives no band at its time"), (no_fire, "no fire on either side")]
+    kept = has_total & seen & near & has_band & ~no_fire
+    return FrpObservations(
+        stream=stream,
+        time=series.time,
+        time_end=series.time_end,
+        observed=observed,
+        observed_fraction=fraction,
+        lower=lower,
+        upper=upper,
+        kept=kept,
+        observation_ok=has_total & seen,
+        reason=_reasons(checks, len(observed)),
+    )
+
+
+def frp_pairs(  # pylint: disable=too-many-arguments
     model: File,
     obs: File,
     stream: str,
@@ -193,31 +303,14 @@ def frp_pairs(  # pylint: disable=too-many-arguments,too-many-locals
     parameters: FireRadiativePowerParameters,
 ) -> FrpPairs:
     """The pairs of a stream and a period (see the module documentation)."""
-    series = fs.frp_time_series(
-        obs, stream, period[0], period[1], _corners(frame), min_confidence=parameters.min_confidence
-    )
-    model_times, model_lower, model_upper = model_band(model, model_group)
-    observed = np.asarray(series.frp_total, dtype=np.float64)
-    fraction = np.nan_to_num(np.asarray(series.observed_fraction, dtype=np.float64), nan=-1.0)
-    keep = np.isfinite(observed) & (fraction >= parameters.min_observed_fraction)
-    if model_times.size == 0:
-        keep[:] = False
-        lower = upper = np.full(observed.shape, np.nan)
-    else:
-        obs_ms = series.time.astype("datetime64[ms]").astype(np.int64).astype(np.float64)
-        model_ms = model_times.astype(np.int64).astype(np.float64)
-        after = np.clip(np.searchsorted(model_ms, obs_ms), 0, len(model_ms) - 1)
-        before = np.clip(after - 1, 0, len(model_ms) - 1)
-        offset = np.minimum(np.abs(model_ms[after] - obs_ms), np.abs(model_ms[before] - obs_ms))
-        keep &= offset <= parameters.max_time_offset * 1000.0
-        lower = np.interp(obs_ms, model_ms, model_lower)
-        upper = np.interp(obs_ms, model_ms, model_upper)
-        keep &= np.isfinite(lower) & np.isfinite(upper)
-        keep &= ~((observed == 0) & (upper == 0))
+    observations = frp_observations(model, obs, stream, period, frame, model_group, parameters)
     ft.logger.info(
-        "fire radiative power of %s: %d of %d observations scored", stream, int(keep.sum()), len(observed)
+        "fire radiative power of %s: %d of %d observations scored",
+        stream,
+        int(observations.kept.sum()),
+        len(observations.observed),
     )
-    return FrpPairs(stream, series.time[keep], observed[keep], lower[keep], upper[keep])
+    return observations.pairs()
 
 
 def _pairs(model, obs, ctx, stream, period_name, period, frame, model_group, parameters) -> FrpPairs:
@@ -274,3 +367,96 @@ def bench_frp(  # pylint: disable=too-many-arguments
     score = fm.kpi_norm_bounded_linear(1.0 - value if lower_is_better else value, 0, 1)
     ft.logger.info("%s: %f on %d observations", label, value, observed.size)
     return {kpi_name_custom: value, "Score": score}
+
+
+# ---------------------------
+# Values for figures
+# ---------------------------
+def _starts_in(times: np.ndarray, period: tuple[datetime, datetime]) -> np.ndarray:
+    """The observations whose start is in the period, bounds included, as ``frp_time_series`` keeps them."""
+    start, end = (
+        np.datetime64(value.astimezone(timezone.utc).replace(tzinfo=None), "ms") for value in period
+    )
+    return (times >= start) & (times <= end)
+
+
+def frp_values(  # pylint: disable=too-many-locals
+    model: File,
+    obs: File,
+    entry: dict,
+    periods: dict[str, tuple[datetime, datetime]],
+    parameters: FireRadiativePowerParameters,
+) -> dict:
+    """
+    What the KPIs of the family compare, for a figure: every observation of the entry's streams over
+    the span of its periods, the model's band at its own times and at each observation, and the
+    observations each period scores.
+
+    ``observations`` holds one array per field, in the order of the streams of ``entry["systems"]``,
+    then of time. ``position`` is where a scored observation lies against the band (``band_position``,
+    the rule of the KPIs: "in", "above", or "below"), and "" for one that is not scored, whose
+    ``reason`` says why. ``periods`` gives, for each period of the entry, the indices of the
+    observations it scores: the fraction KPIs of the period are the shares of their positions.
+    """
+    names = list(entry["periods"])
+    span = (min(periods[name][0] for name in names), max(periods[name][1] for name in names))
+    labels = {system.name: system.label for system in parameters.systems}
+    model_times, model_lower, model_upper = model_band(model, entry["model_group"])
+    parts, fields = [], {"stream": [], "system": [], "instrument": [], "satellite": []}
+    for system, streams in entry["systems"].items():
+        for stream in streams:
+            item = frp_observations(
+                model, obs, stream, span, entry["frame"], entry["model_group"], parameters
+            )
+            parts.append(item)
+            attrs = obs[f"{DETECTION_GROUP}/{stream}"].attrs
+            for key, value in (
+                ("stream", stream),
+                ("system", system),
+                ("instrument", _text(attrs.get("instrument", ""))),
+                ("satellite", _text(attrs.get("satellite", ""))),
+            ):
+                fields[key].extend([value] * len(item.observed))
+
+    def joined(name: str, dtype) -> np.ndarray:
+        arrays = [np.asarray(getattr(item, name)) for item in parts]
+        return np.concatenate(arrays).astype(dtype) if arrays else np.array([], dtype=dtype)
+
+    time = joined("time", "datetime64[ms]")
+    observed, lower, upper = (joined(name, np.float64) for name in ("observed", "lower", "upper"))
+    kept = joined("kept", bool)
+    position = np.full(observed.shape, "", dtype="<U5")
+    if kept.any():
+        position[kept] = fm.stats.band_position(observed[kept], lower[kept], upper[kept])
+    return {
+        "units": "MW",
+        "frame": [float(value) for value in entry["frame"]],
+        "model_group": entry["model_group"],
+        "systems": [
+            {"name": name, "label": labels.get(name, name), "streams": list(streams)}
+            for name, streams in entry["systems"].items()
+        ],
+        "model": {"time": model_times, "lower": model_lower, "upper": model_upper},
+        "observations": {
+            **{key: np.array(value, dtype=object) for key, value in fields.items()},
+            "time": time,
+            "time_end": joined("time_end", "datetime64[ms]"),
+            "frp_total": observed,
+            "observed_fraction": joined("observed_fraction", np.float64),
+            "lower": lower,
+            "upper": upper,
+            "kept": kept,
+            "observation_ok": joined("observation_ok", bool),
+            "reason": [reason for item in parts for reason in item.reason],
+            "position": position,
+        },
+        "periods": [
+            {
+                "period": name,
+                "start": periods[name][0],
+                "end": periods[name][1],
+                "scored": np.flatnonzero(kept & _starts_in(time, periods[name])),
+            }
+            for name in names
+        ],
+    }

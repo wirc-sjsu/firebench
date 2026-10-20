@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add `FireCase.frp_values` and `FireCase.canopy_cover_values`, what the `fire_radiative_power` and
+  `canopy_cover_loss` KPIs compare, for figures (None for a case without the family). `frp_values`
+  (`fire_case_frp.frp_values`) gives every observation of the entry's streams over its periods with
+  the model's band at its start, whether it is scored and why not (`frp_observations`), its position
+  against the band, the band at the model's own times, and the observations each period scores, so a
+  period's fraction KPIs are the shares of its positions. `canopy_cover_values` gives both class
+  grids on the RAVG grid, the canopy, observed, and scored masks (`cc_cells`), and the confusion
+  matrix of the KPIs. Add `band_position` to `firebench.metrics.stats`, which the three band fractions
+  now count. `frp_pairs` and `cc_pairs` return what they did.
 - Add the forecast hours a model outputs to the models of `firebench wx` (`output_hours` of each
   forecast module, every hour for HRRR and GFS): a cycle downloads those hours only, a complete cycle
   is one that holds them all (`CycleFiles.hours`, `expected_hours`), and a setup whose cadence needs

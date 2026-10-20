@@ -16,6 +16,7 @@ follows the order of families and periods in the definition, so they are stable 
 
 import hashlib
 import re
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
@@ -39,6 +40,7 @@ from .fire_case_definition import (
     _check_document,
     check_case,
     definition_sha256,
+    family,
     is_template,
     period_bounds,
     read_case_definition,
@@ -199,6 +201,44 @@ def canopy_mask(obs_dataset: File, dataset_path: str, canopy_paths: list[str]) -
     return on_grid & (observed != obs_dataset[dataset_path].attrs["_FillValue"])
 
 
+@dataclass
+class CanopyCells:
+    """
+    The canopy cover loss classes of both files on the RAVG grid, and which cells are scored.
+
+    ``canopy``: LANDFIRE had canopy there and the observations do not mark the cell as fill
+    (``canopy_mask``). ``observed``: ``canopy``, and the observations give one of the classes.
+    ``scored``: ``observed``, and the model gives one of the classes too.
+    """
+
+    observations: np.ndarray
+    model: np.ndarray
+    canopy: np.ndarray
+    observed: np.ndarray
+    scored: np.ndarray
+
+
+def cc_cells(
+    obs_dataset: File,
+    model_dataset: File,
+    dataset_path: str,
+    canopy_paths: list[str],
+    classes: tuple[int, ...],
+) -> CanopyCells:
+    """The cells of the canopy cover loss grid and which are scored (see ``cc_pairs``)."""
+    obs = np.asarray(obs_dataset[dataset_path][()])
+    model = np.asarray(model_dataset[dataset_path][()])
+    if obs.shape != model.shape:
+        raise ValueError(
+            f"The model's `{dataset_path}` has the shape {model.shape}; the observations have {obs.shape}. "
+            "The model must give the canopy cover loss on the observation grid."
+        )
+    known = np.array(sorted(classes))
+    canopy = canopy_mask(obs_dataset, dataset_path, canopy_paths)
+    observed = canopy & np.isin(obs, known)
+    return CanopyCells(obs, model, canopy, observed, observed & np.isin(model, known))
+
+
 def cc_pairs(
     obs_dataset: File,
     model_dataset: File,
@@ -214,26 +254,17 @@ def cc_pairs(
     ``classes``: a cell the model leaves unburnt (9) or without a value (0) is left out, so a model is
     not scored here on where it burns, only on how much canopy it consumes where it does.
     """
-    obs = np.asarray(obs_dataset[dataset_path][()])
-    model = np.asarray(model_dataset[dataset_path][()])
-    if obs.shape != model.shape:
-        raise ValueError(
-            f"The model's `{dataset_path}` has the shape {model.shape}; the observations have {obs.shape}. "
-            "The model must give the canopy cover loss on the observation grid."
-        )
-    known = np.array(sorted(classes))
-    observed = canopy_mask(obs_dataset, dataset_path, canopy_paths) & np.isin(obs, known)
-    scored = observed & np.isin(model, known)
-    obs_classes, model_classes = obs[scored], model[scored]
+    cells = cc_cells(obs_dataset, model_dataset, dataset_path, canopy_paths, classes)
+    obs_classes, model_classes = cells.observations[cells.scored], cells.model[cells.scored]
     ft.logger.info(
         "canopy cover loss on %d of the %d cells with canopy the observations classify; "
         "confusion matrix (rows observed, columns model, classes %s):\n%s",
-        int(scored.sum()),
-        int(observed.sum()),
+        int(cells.scored.sum()),
+        int(cells.observed.sum()),
         list(classes),
         fm.confusion_matrix.multiclass_cm(obs_classes, model_classes, classes),
     )
-    return obs_classes, model_classes, int(observed.sum())
+    return obs_classes, model_classes, int(cells.observed.sum())
 
 
 CANOPY_KPIS = (
@@ -677,6 +708,56 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         return fb001.perimeter_values_generic(
             model_dataset, obs_dataset, list_perims, projection, _epsg(projection)
         )
+
+    def frp_values(self, model_dataset: File, obs_dataset: File) -> dict | None:
+        """
+        What the fire radiative power KPIs compare, for a figure; None when the case has no such family.
+
+        See `fire_case_frp.frp_values`.
+        """
+        entry = family(self.definition, "fire_radiative_power")
+        if entry is None:
+            return None
+        periods = {name: self.periods[name] for name in entry["periods"]}
+        return frp.frp_values(
+            model_dataset, obs_dataset, entry, periods, self.parameters.fire_radiative_power
+        )
+
+    def canopy_cover_values(self, model_dataset: File, obs_dataset: File) -> dict | None:
+        """
+        What the canopy cover loss KPIs compare, for a figure; None when the case has no such family.
+
+        ``observations`` and ``model`` are the class grids of both files at ``dataset_path``, with the
+        observations' ``position_lat`` and ``position_lon`` and its group's ``crs``; ``canopy``,
+        ``observed``, and ``scored`` are the masks of ``cc_cells``. ``confusion_matrix`` is the matrix
+        of the KPIs on the scored cells, rows observed and columns model, in the order of ``classes``.
+        """
+        entry = family(self.definition, "canopy_cover_loss")
+        if entry is None:
+            return None
+        path = entry["dataset"]
+        classes = tuple(self.parameters.canopy_cover.classes)
+        cells = cc_cells(obs_dataset, model_dataset, path, list(entry["canopy"]), classes)
+        group = obs_dataset[path.rsplit("/", 1)[0]]
+        crs = group.attrs.get("crs")
+        return {
+            "dataset_path": path,
+            "classes": list(classes),
+            "high_classes": list(self.parameters.canopy_cover.high_classes),
+            "crs": crs.decode() if isinstance(crs, bytes) else (None if crs is None else str(crs)),
+            "position_lat": np.asarray(group["position_lat"][()]),
+            "position_lon": np.asarray(group["position_lon"][()]),
+            "observations": cells.observations,
+            "model": cells.model,
+            "canopy": cells.canopy,
+            "observed": cells.observed,
+            "scored": cells.scored,
+            "confusion_matrix": fm.confusion_matrix.multiclass_cm(
+                cells.observations[cells.scored], cells.model[cells.scored], classes
+            ),
+            "n_observed": int(cells.observed.sum()),
+            "n_scored": int(cells.scored.sum()),
+        }
 
     def _of_kind(self, kind: str) -> list[str]:
         return [name for name, info in self._groups.items() if info["kind"] == kind]
