@@ -202,6 +202,7 @@ def parse_setup(raw: dict, path: Path) -> WxSetup:  # pylint: disable=too-many-l
     cycles = []
     if start is not None and end is not None and model.name in SUPPORTED_MODELS:
         cycles = _resolve_cycles(model, start, end, problems)
+        _check_output_hours(model.name, benchmark, cycles, problems)
     if problems:
         raise SetupError(path, problems)
     return WxSetup(
@@ -552,6 +553,60 @@ def _resolve_cycles(
             + (f" ({refused[0]})" if refused else "")
         )
     return cycles
+
+
+def _check_output_hours(
+    name: str, benchmark: BenchmarkOptions, cycles: list[CycleWindow], problems: list[str]
+) -> None:
+    """Every cadence mark a cycle is scored on must be a forecast hour the model outputs.
+
+    The marks are those of the cadence join (``wx_cadence.mandatory_timestamps``) inside every lead
+    bin, scored or informational, clamped to the cycle's horizon. A model whose output is 3-hourly
+    cannot be scored every hour: the setup is refused rather than penalized for hours it never had.
+    """
+    # pylint: disable-next=import-outside-toplevel
+    import numpy as np
+
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.acquisition.forecast_models import get_model
+
+    # pylint: disable-next=import-outside-toplevel
+    from firebench.benchmarks.wx_cadence import mandatory_timestamps
+
+    output_hours = get_model(name).forecast.output_hours
+    bins = tuple(benchmark.lead_bins) + tuple(benchmark.informational_lead_bins)
+    for cadence in benchmark.cadences:
+        for cycle in cycles:
+            origin = np.datetime64(cycle.cycle.replace(tzinfo=None), "s")
+            needed = set()
+            for start, end in bins:
+                if start > cycle.horizon_hours:
+                    continue
+                window = (
+                    cycle.cycle + timedelta(hours=start),
+                    cycle.cycle + timedelta(hours=min(end, cycle.horizon_hours)),
+                )
+                marks = mandatory_timestamps(window, cadence)
+                needed.update(int((mark - origin) // np.timedelta64(1, "h")) for mark in marks)
+            missing = sorted(needed - set(output_hours(cycle.cycle)))
+            if missing:
+                problems.append(
+                    f"{name} outputs no forecast hour {_hour_ranges(missing)} of the "
+                    f"{cycle.cycle:%Y-%m-%d %HZ} cycle, which a {cadence} h cadence scores; choose "
+                    "benchmark.cadences its output gives"
+                )
+                break
+
+
+def _hour_ranges(hours: list[int]) -> str:
+    """``[37, 38, 40]`` as ``"37-38, 40"``."""
+    ranges = []
+    for hour in hours:
+        if ranges and hour == ranges[-1][1] + 1:
+            ranges[-1][1] = hour
+        else:
+            ranges.append([hour, hour])
+    return ", ".join(str(first) if first == last else f"{first}-{last}" for first, last in ranges)
 
 
 def _check_model_domain(name: str, bbox, problems: list[str]) -> None:

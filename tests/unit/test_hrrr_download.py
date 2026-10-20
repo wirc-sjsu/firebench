@@ -328,3 +328,36 @@ def test_read_fields_refuses_earth_relative_wind(monkeypatch, tmp_path):
 
     with pytest.raises(ValueError, match="not grid-relative"):
         read.read_fields(path)
+
+
+def test_a_cycle_downloads_only_the_hours_its_model_outputs(monkeypatch, tmp_path):
+    fake = _FakeArchive()
+    monkeypatch.setattr(forecast, "fetch_text", fake.fetch_text)
+    monkeypatch.setattr("firebench.acquisition.http.http_get", fake.http_get)
+    # A model whose output is 3-hourly from f03 on.
+    monkeypatch.setattr(forecast, "output_hours", lambda cycle: (0, 1, 2, 3, 6, 9))
+
+    cycle_files = forecast.fetch_cycle(CYCLE, 6, workers=2, cache_root=tmp_path)
+
+    assert sorted(cycle_files.files) == [0, 1, 2, 3, 6]
+    assert cycle_files.expected_hours == [0, 1, 2, 3, 6] and cycle_files.complete
+
+
+def test_hrrr_outputs_every_hour_up_to_its_horizon():
+    assert forecast.output_hours(CYCLE) == tuple(range(forecast.max_forecast_hour(CYCLE) + 1))
+
+
+def test_a_cycle_outside_the_archive_is_refused_with_the_bound():
+    first = datetime(2021, 9, 16, 0, tzinfo=timezone.utc)
+    last = datetime(2026, 6, 30, 18, tzinfo=timezone.utc)
+
+    assert (
+        forecast.check_archive("NAM", datetime(2022, 1, 1, tzinfo=timezone.utc), first, last).year == 2022
+    )
+    with pytest.raises(
+        ValueError, match="older than the first cycle of its archive FireBench reads \\(2021-09-16 00Z\\)"
+    ):
+        forecast.check_archive("NAM", datetime(2021, 8, 20, tzinfo=timezone.utc), first, last)
+    with pytest.raises(ValueError, match="newer than the last cycle of its archive \\(2026-06-30 18Z\\)"):
+        forecast.check_archive("NAM", datetime(2026, 7, 1, tzinfo=timezone.utc), first, last)
+    assert forecast.check_archive("NAM", datetime(2030, 1, 1, tzinfo=timezone.utc), first).year == 2030

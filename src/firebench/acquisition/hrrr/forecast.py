@@ -52,6 +52,25 @@ def as_utc(when: datetime) -> datetime:
     return when.astimezone(timezone.utc)
 
 
+def check_archive(
+    model: str, cycle: datetime, first: datetime | None = None, last: datetime | None = None
+) -> datetime:
+    """Refuse a cycle outside the archive FireBench reads a model from: before ``first`` or after
+    ``last`` (either may be open). The message names the bound, so a setup can say why."""
+    cycle = as_utc(cycle)
+    if first is not None and cycle < first:
+        raise ValueError(
+            f"{model} cycle {cycle:%Y-%m-%d %HZ} is older than the first cycle of its archive FireBench "
+            f"reads ({first:%Y-%m-%d %HZ})"
+        )
+    if last is not None and cycle > last:
+        raise ValueError(
+            f"{model} cycle {cycle:%Y-%m-%d %HZ} is newer than the last cycle of its archive "
+            f"({last:%Y-%m-%d %HZ})"
+        )
+    return cycle
+
+
 def validate_cycle(cycle: datetime) -> datetime:
     """An HRRR cycle is an aware datetime at the top of a UTC hour."""
     cycle = as_utc(cycle)
@@ -81,6 +100,11 @@ def max_forecast_hour(cycle: datetime) -> int:
     if version == 3:
         return MAX_FXX_V3_EXTENDED
     return MAX_FXX_STANDARD
+
+
+def output_hours(cycle: datetime) -> tuple[int, ...]:
+    """Forecast hours HRRR outputs for ``cycle``: every hour up to its horizon."""
+    return tuple(range(max_forecast_hour(cycle) + 1))
 
 
 def fields_for_hour(fxx: int) -> tuple[str, ...]:
@@ -175,17 +199,27 @@ def fetch_file(
 
 @dataclass
 class CycleFiles:
-    """Cached subset files of one HRRR cycle, by forecast hour, and the hours the archive lacks."""
+    """Cached subset files of one forecast cycle, by forecast hour, and the hours the archive lacks.
+
+    ``hours`` are the forecast hours the model outputs up to the horizon; ``None`` means every hour
+    0..horizon.
+    """
 
     cycle: datetime
     horizon: int
     files: dict[int, Path] = field(default_factory=dict)
     missing: list[int] = field(default_factory=list)
+    hours: tuple[int, ...] | None = None
+
+    @property
+    def expected_hours(self) -> list[int]:
+        """The forecast hours a complete cycle holds."""
+        return list(self.hours) if self.hours is not None else list(range(self.horizon + 1))
 
     @property
     def complete(self) -> bool:
-        """Whether every forecast hour 0..horizon was retrieved."""
-        return not self.missing and sorted(self.files) == list(range(self.horizon + 1))
+        """Whether every forecast hour the model outputs up to the horizon was retrieved."""
+        return not self.missing and sorted(self.files) == self.expected_hours
 
 
 @dataclass
@@ -198,7 +232,7 @@ class PendingCycle:
 
     def result(self) -> CycleFiles:
         """Wait for every forecast hour and gather the files and the missing hours."""
-        cycle_files = CycleFiles(self.cycle, self.horizon)
+        cycle_files = CycleFiles(self.cycle, self.horizon, hours=tuple(sorted(self.futures)))
         for fxx, future in sorted(self.futures.items()):
             path = future.result()
             if path is None:
@@ -216,10 +250,24 @@ def _fetch_or_none(cycle: datetime, fxx: int, cache_root: Path | None) -> Path |
         return None
 
 
+def submit_hours(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    cycle: datetime,
+    horizon: int,
+    hours: tuple[int, ...],
+    executor: Executor,
+    fetch,
+    cache_root: Path | None,
+) -> PendingCycle:
+    """Submit ``fetch(cycle, fxx, cache_root)`` for every hour of ``hours`` up to ``horizon``: the hours
+    the model outputs, which a cycle downloads. Shared by the forecast models' ``submit_cycle``."""
+    futures = {fxx: executor.submit(fetch, cycle, fxx, cache_root) for fxx in hours if fxx <= horizon}
+    return PendingCycle(cycle, horizon, futures)
+
+
 def submit_cycle(
     cycle: datetime, horizon: int | None, executor: Executor, cache_root: Path | None = None
 ) -> PendingCycle:
-    """Submit the downloads of forecast hours 0..horizon of ``cycle`` to ``executor``."""
+    """Submit the downloads of the forecast hours of ``cycle`` up to ``horizon`` to ``executor``."""
     cycle = validate_cycle(cycle)
     max_fxx = max_forecast_hour(cycle)
     horizon = max_fxx if horizon is None else int(horizon)
@@ -229,13 +277,12 @@ def submit_cycle(
             f"{cycle:%Y-%m-%d %HZ} (0-{max_fxx} h)"
         )
     cycle_cache_dir(cycle, cache_root).mkdir(parents=True, exist_ok=True)
-    futures = {fxx: executor.submit(_fetch_or_none, cycle, fxx, cache_root) for fxx in range(horizon + 1)}
-    return PendingCycle(cycle, horizon, futures)
+    return submit_hours(cycle, horizon, output_hours(cycle), executor, _fetch_or_none, cache_root)
 
 
 def fetch_cycle(
     cycle: datetime, horizon: int | None = None, *, workers: int = 8, cache_root: Path | None = None
 ) -> CycleFiles:
-    """Download (or find in the cache) forecast hours 0..horizon of ``cycle``."""
+    """Download (or find in the cache) the forecast hours of ``cycle`` up to ``horizon``."""
     with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="hrrr") as executor:
         return submit_cycle(cycle, horizon, executor, cache_root).result()

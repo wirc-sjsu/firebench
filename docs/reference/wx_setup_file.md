@@ -76,7 +76,7 @@ Secrets (`token`, `api_key`, ...) are rejected in every section.
 | `name` | `HRRR` | Forecast model: `HRRR` (3 km, CONUS) or `GFS` (0.25 degree, global; v16 only, cycles from 2021-03-22 12Z) |
 | `cycle_hours` | `[0, 6, 12, 18]` | UTC cycle hours. Every cycle whose full forecast fits in the window is scored. GFS runs at these four hours only |
 | `horizon_hours` | `48` | Scored horizon, clamped to the version horizon (48 h for HRRR v4, 36 h for v3; 120 h for GFS, the end of its hourly output) |
-| `cycles` | none | Explicit list of cycles, used as given |
+| `cycles` | none | Explicit list of cycles, used as given. A cycle outside the model's archive (before GFS v16, say) is a problem; a cycle of the window outside it is left out, and named when no cycle remains |
 | `download_workers` | `8` | Parallel forecast downloads |
 | `keep_grib` | `true` | `false` deletes the cached GRIB files once a cycle is adapted |
 
@@ -84,7 +84,7 @@ Secrets (`token`, `api_key`, ...) are rejected in every section.
 
 | Key | Default | Description |
 |---|---|---|
-| `cadences` | `[1]` | Scoring cadences in hours: `1` and/or `3` (UTC `hour % 3 == 0`) |
+| `cadences` | `[1]` | Scoring cadences in hours: `1` and/or `3` (UTC `hour % 3 == 0`). Every mark of a cadence inside a lead bin must be a forecast hour the model outputs: a model with 3-hourly output cannot be scored every hour, and such a setup is refused with the missing hours |
 | `obs_tolerance_min` | `10` | The observation of an hour is the nearest finite sample within this tolerance. It must be below half the cadence |
 | `model_tolerance_s` | `60` | Tolerance on the model timestamps |
 | `min_coverage` | `0.5` | Minimum share of the hours of a lead bin a station must observe to be scored |

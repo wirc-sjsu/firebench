@@ -3,9 +3,11 @@ Forecast models ``firebench wx`` downloads and brings to weather stations, one p
 
 Each entry names the module that fetches the model's cycles into the cache (``submit_cycle``,
 ``fetch_file``, ``is_cached``, ``cached_file_path``, ``fields_for_hour``, ``max_forecast_hour``,
-``PRODUCT``, ``FIELDS``, ``STATIC_FIELDS``) and the adapter module that samples them at stations
-(``build_station_file``). The forecast module is looked up when it is called, so tests can replace
-its functions.
+``output_hours``, ``PRODUCT``, ``FIELDS``, ``STATIC_FIELDS``) and the adapter module that samples them
+at stations (``build_station_file``). ``max_forecast_hour`` refuses a cycle the model's archive does
+not hold (``hrrr.forecast.check_archive``); ``output_hours`` lists the forecast hours a cycle holds,
+which a setup's cadences must find (``wx_setup``). The forecast module is looked up when it is
+called, so tests can replace its functions.
 """
 
 from collections.abc import Callable

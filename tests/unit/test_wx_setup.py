@@ -273,3 +273,72 @@ model: {name: GFS, cycles: [2021-08-20T03:00Z]}
 """)
 
     assert any("GFS cycles start at 00, 06, 12 or 18 UTC" in problem for problem in problems)
+
+
+def _three_hourly_after_f36(cycle):
+    # NBM's layout: hourly to f36, then every 3 hours.
+    return tuple(range(37)) + tuple(range(39, 121, 3))
+
+
+def test_a_cadence_the_model_output_cannot_give_is_refused_with_the_hours(monkeypatch):
+    from firebench.acquisition.gfs import forecast as gfs_forecast
+
+    monkeypatch.setattr(gfs_forecast, "output_hours", _three_hourly_after_f36)
+    hourly = _problems(
+        "case: {id: 2021_Caldor, period: H012}\nmodel: {name: GFS}\nbenchmark: {cadences: [1]}"
+    )
+    three_hourly = _parse(
+        "case: {id: 2021_Caldor, period: H012}\nmodel: {name: GFS}\nbenchmark: {cadences: [3]}"
+    )
+    short = _parse("""
+case: {id: 2021_Caldor, period: H012}
+model: {name: GFS, horizon_hours: 36}
+benchmark: {cadences: [1], lead_bins: [[1, 36]], informational_lead_bins: [[0, 0]]}
+""")
+
+    assert hourly == [
+        "GFS outputs no forecast hour 37-38, 40-41, 43-44, 46-47 of the 2021-08-20 00Z cycle, which a 1 h "
+        "cadence scores; choose benchmark.cadences its output gives"
+    ]
+    assert three_hourly.benchmark.cadences == (3,) and three_hourly.cycles[0].label == "2021082000"
+    # Hourly output within the horizon: nothing is missing.
+    assert short.cycles[0].horizon_hours == 36
+
+
+def test_the_informational_lead_bins_need_their_hours_too(monkeypatch):
+    from firebench.acquisition.gfs import forecast as gfs_forecast
+
+    monkeypatch.setattr(gfs_forecast, "output_hours", lambda cycle: tuple(range(1, 121)))
+
+    problems = _problems("""
+case: {id: 2021_Caldor, period: H012}
+model: {name: GFS}
+benchmark: {cadences: [1], lead_bins: [[1, 48]], informational_lead_bins: [[0, 0]]}
+""")
+
+    assert any("outputs no forecast hour 0 of the 2021-08-20 00Z cycle" in problem for problem in problems)
+
+
+def test_a_window_crossing_the_last_cycle_of_an_archive_keeps_the_cycles_before_it(monkeypatch):
+    from firebench.acquisition.gfs import forecast as gfs_forecast
+    from firebench.acquisition.hrrr.forecast import check_archive
+
+    last = datetime(2026, 7, 2, 0, tzinfo=UTC)
+    original = gfs_forecast.max_forecast_hour
+    monkeypatch.setattr(
+        gfs_forecast, "max_forecast_hour", lambda cycle: original(check_archive("GFS", cycle, last=last))
+    )
+    window = """
+domain: {bbox: [-120.5, 38.5, -120.0, 38.9]}
+window: {start: %s, end: %s}
+model: {name: GFS, horizon_hours: 24}
+"""
+
+    crossing = _parse(window % ("2026-07-01T00:00Z", "2026-07-04T00:00Z"))
+    after = _problems(window % ("2026-07-03T00:00Z", "2026-07-05T00:00Z"))
+
+    assert crossing.cycles[-1].label == "2026070200"
+    assert any(
+        "list model.cycles explicitly" in problem and "newer than the last cycle of its archive" in problem
+        for problem in after
+    )

@@ -159,8 +159,14 @@ The embedded adapters write the model file of a cycle from the HRRR surface prod
 `firebench.adapters.gfs_weather`). They share their sampling (`firebench.adapters.nwp_weather`) and
 declare every adjustment in the file:
 
-- **Sampling.** Values are taken at the nearest grid cell, at the model's native hourly valid times.
-  A GFS cell is about 25 km wide, so its terrain can differ much more from a station's than HRRR's.
+- **Sampling.** Values are taken at the nearest grid cell, at the model's native valid times: the
+  forecast hours the model outputs (`output_hours` of its forecast module, every hour for HRRR and
+  GFS), which are the only hours downloaded. A setup whose cadence needs an hour the model does not
+  output is refused (see `benchmark.cadences` in the setup reference). A GFS cell is about 25 km
+  wide, so its terrain can differ much more from a station's than HRRR's.
+- **Grid.** HRRR's grid is one of the shared Lambert conformal grids
+  (`firebench.acquisition.lambert`), described by the parameters of its GRIB2 grid definition. The
+  orientation longitude is taken in -180..180 even when a file gives it in 0..360.
 - **Terrain.** Each station group records `model_terrain_height`, `station_elevation`, and their
   difference `terrain_height_difference`, which is a first-order temperature bias in mountains.
 - **Wind direction.** HRRR's grid-relative 10 m winds are rotated to earth-relative components; GFS

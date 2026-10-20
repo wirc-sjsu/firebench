@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add the forecast hours a model outputs to the models of `firebench wx` (`output_hours` of each
+  forecast module, every hour for HRRR and GFS): a cycle downloads those hours only, a complete cycle
+  is one that holds them all (`CycleFiles.hours`, `expected_hours`), and a setup whose cadence needs
+  an hour the model does not output is refused with the missing hours rather than scored with
+  penalties. Add `firebench.acquisition.lambert`, the Lambert conformal grids of NCEP's
+  limited-area models built from their GRIB2 grid parameters (tangent or secant cone, orientation
+  longitude taken in -180..180, `LambertParameters.from_message` and `mismatch`), on which
+  `HRRRGrid` now rests with unchanged values, and `check_archive`, which refuses a cycle before the
+  first or after the last cycle of a model's archive with the bound.
 - Add GFS to the models of `firebench wx` (`model.name: GFS`): GFS v16 0.25 degree forecasts
   downloaded as byte-range subsets from the NOAA Open Data bucket on AWS (`firebench.acquisition.gfs`,
   cache `gfs/`, extra `firebench[gfs]`), hourly up to f120, and sampled at the stations by the

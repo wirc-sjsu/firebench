@@ -14,6 +14,7 @@ from .forecast import (
     fetch_file,
     gfs_version,
     max_forecast_hour,
+    output_hours,
     submit_cycle,
     validate_cycle,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "fetch_file",
     "gfs_version",
     "max_forecast_hour",
+    "output_hours",
     "read_fields",
     "submit_cycle",
     "validate_cycle",

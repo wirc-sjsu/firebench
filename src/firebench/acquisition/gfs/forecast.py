@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..cache import atomic_write_json, get_cache_dir
-from ..hrrr.forecast import CycleFiles, PendingCycle, as_utc, is_cached
+from ..hrrr.forecast import CycleFiles, PendingCycle, as_utc, is_cached, submit_hours
 from ..hrrr.inventory import parse_index, select_messages
 from ..http import download_subset, fetch_text
 
@@ -68,6 +68,11 @@ def max_forecast_hour(cycle: datetime) -> int:
     """Forecast horizon FireBench reads from ``cycle``: f120, the end of the hourly output."""
     validate_cycle(cycle)
     return MAX_FXX_HOURLY
+
+
+def output_hours(cycle: datetime) -> tuple[int, ...]:
+    """Forecast hours FireBench reads from a GFS cycle: every hour up to f120."""
+    return tuple(range(max_forecast_hour(cycle) + 1))
 
 
 def fields_for_hour(fxx: int) -> tuple[str, ...]:
@@ -151,7 +156,7 @@ def _fetch_or_none(cycle: datetime, fxx: int, cache_root: Path | None) -> Path |
 def submit_cycle(
     cycle: datetime, horizon: int | None, executor: Executor, cache_root: Path | None = None
 ) -> PendingCycle:
-    """Submit the downloads of forecast hours 0..horizon of ``cycle`` to ``executor``."""
+    """Submit the downloads of the forecast hours of ``cycle`` up to ``horizon`` to ``executor``."""
     max_fxx = max_forecast_hour(cycle)
     cycle = validate_cycle(cycle)
     horizon = max_fxx if horizon is None else int(horizon)
@@ -160,13 +165,12 @@ def submit_cycle(
             f"horizon {horizon} h is outside the hourly GFS forecast range FireBench reads (0-{max_fxx} h)"
         )
     cycle_cache_dir(cycle, cache_root).mkdir(parents=True, exist_ok=True)
-    futures = {fxx: executor.submit(_fetch_or_none, cycle, fxx, cache_root) for fxx in range(horizon + 1)}
-    return PendingCycle(cycle, horizon, futures)
+    return submit_hours(cycle, horizon, output_hours(cycle), executor, _fetch_or_none, cache_root)
 
 
 def fetch_cycle(
     cycle: datetime, horizon: int | None = None, *, workers: int = 8, cache_root: Path | None = None
 ) -> CycleFiles:
-    """Download (or find in the cache) forecast hours 0..horizon of ``cycle``."""
+    """Download (or find in the cache) the forecast hours of ``cycle`` up to ``horizon``."""
     with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="gfs") as executor:
         return submit_cycle(cycle, horizon, executor, cache_root).result()
