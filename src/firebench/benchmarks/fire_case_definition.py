@@ -66,6 +66,9 @@ FAMILY_KEYS = {
     "radar_plume": {"family", "periods", "sections", "model_group"},
     "fire_radiative_power": {"family", "periods", "systems", "frame", "model_group"},
 }
+# Keys a family may have beside those of FAMILY_KEYS: the radar sites whose plume top over their frame
+# is scored (``echo_top``).
+OPTIONAL_FAMILY_KEYS = {"radar_plume": {"echo_top"}}
 # The families scored on every period a definition names, and on the periods an edit adds.
 EVERY_PERIOD_FAMILIES = ("weather_stations", "radar_plume", "fire_radiative_power")
 CANOPY_COVER_REASON = (
@@ -397,6 +400,7 @@ def propose_case(
                 "periods": [period["name"] for period in periods],
                 "sections": sections,
                 "model_group": MODEL_GROUP,
+                "echo_top": sorted({section.split("/", 1)[0] for section in sections}),
             }
         )
     elif has_radar:
@@ -608,6 +612,25 @@ def _check_weather(entry: dict, bounds: dict, h5: h5py.File) -> list[str]:
     return problems
 
 
+def _keys_problem(name: str) -> str:
+    text = f"The family {name} must have exactly the keys {', '.join(sorted(FAMILY_KEYS[name]))}"
+    optional = sorted(OPTIONAL_FAMILY_KEYS.get(name, ()))
+    return f"{text}, and may have {', '.join(optional)}." if optional else f"{text}."
+
+
+def _check_echo_top(sites, h5: h5py.File) -> list[str]:
+    if not isinstance(sites, list) or not sites or not all(isinstance(item, str) for item in sites):
+        return ["Radar plume: `echo_top` must list radar sites, or be left out."]
+    problems = []
+    held = set(fs.list_radar_sites(h5))
+    missing = [item for item in sites if item not in held]
+    if missing:
+        problems.append(f"Radar plume: not a radar site of the file: {', '.join(missing)}.")
+    if len(set(sites)) != len(sites):
+        problems.append("Radar plume: a radar site is listed twice in `echo_top`.")
+    return problems
+
+
 def _check_radar(entry: dict, bounds: dict, h5: h5py.File) -> list[str]:
     problems = []
     periods, sections, group = entry["periods"], entry["sections"], entry["model_group"]
@@ -634,6 +657,8 @@ def _check_radar(entry: dict, bounds: dict, h5: h5py.File) -> list[str]:
             problems.append("Radar plume: a cross section is listed twice.")
     if not isinstance(group, str) or not group.startswith("/"):
         problems.append("Radar plume: `model_group` must be the path of a group of the model output.")
+    if "echo_top" in entry:
+        problems += _check_echo_top(entry["echo_top"], h5)
     return problems
 
 
@@ -726,10 +751,12 @@ def check_case(definition, std_file) -> list[str]:
                 problems.append(f"The family {name} is listed twice.")
                 continue
             seen.add(name)
-            if set(entry) != FAMILY_KEYS[name]:
-                problems.append(
-                    f"The family {name} must have exactly the keys {', '.join(sorted(FAMILY_KEYS[name]))}."
-                )
+            if (
+                not FAMILY_KEYS[name]
+                <= set(entry)
+                <= FAMILY_KEYS[name] | OPTIONAL_FAMILY_KEYS.get(name, set())
+            ):
+                problems.append(_keys_problem(name))
                 continue
             if name == "fire_perimeters":
                 problems += _check_perimeters(entry, bounds, times, parameters)

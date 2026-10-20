@@ -46,6 +46,7 @@ class RadarPlumeParameters:  # pylint: disable=too-many-instance-attributes
     max_time_offset: float
     min_cells: int
     fall_speed: float
+    top_bin: float
     top_error_at_score_50: float
     centroid_error_at_score_50: float
     velocity_rmse_at_score_50: float
@@ -138,6 +139,8 @@ RADAR_KPI_WEIGHT_KEYS = (
     "rank_correlation_weight",
     "velocity_rmse_weight",
     "velocity_bias_weight",
+    "top_series_error_weight",
+    "top_series_bias_weight",
 )
 RADAR_SCALE_KEYS = (
     "top_error_at_score_50",
@@ -306,6 +309,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
             "max_time_offset",
             "min_cells",
             "fall_speed",
+            "top_bin",
             *RADAR_SCALE_KEYS,
             *RADAR_KPI_WEIGHT_KEYS,
         },
@@ -366,6 +370,7 @@ def _radar_plume(table: dict) -> RadarPlumeParameters:
         max_time_offset=_number(table, "max_time_offset", label),
         min_cells=_whole(table, "min_cells", label, minimum=3),
         fall_speed=_number(table, "fall_speed", label),
+        top_bin=_number(table, "top_bin", label, minimum=10),
         kpi_weights=MappingProxyType({key: _number(table, key, label) for key in RADAR_KPI_WEIGHT_KEYS}),
         **scales,
     )

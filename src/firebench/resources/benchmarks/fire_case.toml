@@ -93,8 +93,12 @@ max_time_offset = 300
 min_cells = 20
 # Fall speed of the pyrometeors along the beam, in m s-1; not modelled yet.
 fall_speed = 0.0
-# Values of the errors at which their score is 50: plume top (m), plume centroid (m), radial
-# velocity RMSE and bias (m s-1).
+# Bins of height, in m, the model counts its plume cells over a radar's frame in, for the plume top
+# of the sites a definition lists in `echo_top`. Added without raising `version`: a definition without
+# `echo_top` scores as before.
+top_bin = 100.0
+# Values of the errors at which their score is 50: plume top (m; on a section, and the error and
+# bias of the plume top over a frame), plume centroid (m), radial velocity RMSE and bias (m s-1).
 top_error_at_score_50 = 1000.0
 centroid_error_at_score_50 = 2000.0
 velocity_rmse_at_score_50 = 4.0
@@ -106,6 +110,8 @@ centroid_error_weight = 1
 rank_correlation_weight = 1
 velocity_rmse_weight = 1
 velocity_bias_weight = 0
+top_series_error_weight = 1
+top_series_bias_weight = 0
 
 [fire_radiative_power]
 # Satellite fire radiative power (firebench.standardize.frp_time_series: one total per overpass or

@@ -538,9 +538,32 @@ A site may hold cross sections, its volumes read on a plane, under `sections/<na
 `read_radar_section` reads it back. The limits of a section are in `resources/radar.toml`.
 
 A model output scored on the sections (the `radar_plume` family of the generic cases) gives its plume
-under `/spatial_3d/plume`, on its own grid: `time`, `position_lat` and `position_lon` of the columns,
-`position_z` in m above mean sea level, `passive_tracer` (any scale), and `wind_u`, `wind_v`, and
-`wind_w`, earth-relative, each `(N_t, N_z, N_y, N_x)`.
+at the radar's own times and places, under `/spatial_3d/plume` by default
+(`firebench.benchmarks.fire_case_radar_model`):
+
+```
+/spatial_3d/plume/
+├── sections/<SITE>/<name>/
+│   ├── time                                       (n_volume)  start of each volume, as the section's
+│   ├── position_lat, position_lon, position_alt   (n_v, n_u)  the section's nodes
+│   └── passive_tracer, wind_u, wind_v, wind_w     (n_volume, n_v, n_u)
+├── frame/<SITE>/                                  (frame_west, ... attributes: the site's frame)
+│   ├── time                                       (n_volume)
+│   ├── height_bins                                (n_bin + 1)  edges, m above mean sea level
+│   └── plume_cells                                (n_volume, n_bin)  tracer_relative_threshold attribute
+└── points/                                        optional, for figures; never scored
+    ├── time, offset, count                        (n_time)
+    └── position_lon, position_lat, position_z, passive_tracer   (n_point)
+```
+
+`passive_tracer` is on any scale (its `units` are kept, never converted); the wind is earth-relative,
+in m/s. `plume_cells` counts the model's cells over the site's frame, in each bin of height, where its
+tracer reaches `tracer_relative_threshold` of its largest value over the frame. A value the model
+cannot give is NaN, and a time it cannot give is NaN throughout. The model-output template of a case
+holds these groups with NaN values; `fire_case_template.plume_targets` reads them, or computes them
+from an observation file holding the case, and the adapter fills them in with `ColumnSampler` (the
+nearest model column, then linear in height), `plume_cell_counts`, `write_plume_section`, and
+`write_plume_frame`.
 
 #### lidar
 

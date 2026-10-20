@@ -4,6 +4,7 @@ What a model output must hold to enter a benchmark case defined by a document (`
 - ``write_model_output_template`` writes the observation file's layout for one case: the groups the
   case scores, at their paths, with the grids, positions, station times, and attributes a model
   output is written on, and no observed value.
+- ``plume_targets`` gives the times and places a model is sampled on for the radar plume family.
 - ``case_requirements`` lists what ``FireCase`` will check (schema ``fb-requirements-v1``), with the
   stations it selects in each period and station set.
 
@@ -25,11 +26,18 @@ from ..standardize.tools import REFERENCED_FILE_ATTRIBUTES
 from . import fire_case_frp as frp
 from . import wx_common as wxc
 from .fire_case import STATION_SETS, load_case
-from .fire_case_radar import model_requirements
+from .fire_case_radar_model import (
+    PlumeTargets,
+    targets_from_observations,
+    targets_from_template,
+    write_target_groups,
+)
 from .fire_case_definition import (
     TEMPLATE_ATTRIBUTE,
     definition_sha256,
     family,
+    is_template,
+    read_case_definition,
     write_case_definition,
 )
 
@@ -197,17 +205,56 @@ def _write_stations(out: h5py.File, obs: h5py.File, stations: dict[str, list[str
             _dataset(out, obs, f"{path}/{variable}", np.full(source.shape, np.nan, dtype=dtype))
 
 
-def _write_plume(out: h5py.File, entry: dict) -> None:
-    """The group of the model's plume, empty: the model writes it on its own grid."""
-    group = out.require_group(entry["model_group"])
-    group.attrs["description"] = (
-        "The model's plume on its own grid: time; position_lat and position_lon of the columns; "
-        "position_z (m above mean sea level), passive_tracer (any scale), and wind_u, wind_v, wind_w "
-        "(earth-relative, m/s), each (time, z, y, x). FireBench samples them on the radar cross sections "
-        f"{', '.join(entry['sections'])}: the nearest column, then linear in height."
+def _plume_targets(obs: h5py.File, entry: dict, case) -> PlumeTargets:
+    parameters = case.parameters.radar_plume
+    return targets_from_observations(
+        obs,
+        entry,
+        [case.periods[name] for name in entry["periods"]],
+        parameters.top_bin,
+        parameters.tracer_relative_threshold,
     )
-    group.attrs["required_datasets"] = json.dumps(
-        sorted(path.rsplit("/", 1)[-1] for path in model_requirements(entry["model_group"]))
+
+
+def plume_targets(std_file) -> PlumeTargets:
+    """
+    What a model output gives the radar plume family of the case of ``std_file``: a model-output
+    template (its groups) or an observation file holding the case's definition. An adapter samples
+    its run on these (``fire_case_radar_model``).
+
+    Raises
+    ------
+    ValueError
+        If the file holds no case, or its case has no radar plume family.
+    """
+    definition = read_case_definition(std_file)
+    if definition is None:
+        raise ValueError(f"{std_file} holds no case definition")
+    entry = family(definition, "radar_plume")
+    if entry is None:
+        raise ValueError(f"the case of {std_file} has no radar plume family")
+    if is_template(std_file):
+        with h5py.File(std_file, "r") as template:
+            return targets_from_template(template, entry["model_group"])
+    case = load_case(definition, std_file)
+    with h5py.File(std_file, "r") as obs:
+        return _plume_targets(obs, entry, case)
+
+
+def _write_plume(out: h5py.File, obs: h5py.File, entry: dict, case) -> None:
+    """The model's plume at the radar's times and places, NaN: the targets the model is sampled on."""
+    targets = _plume_targets(obs, entry, case)
+    sites = ", ".join(entry.get("echo_top", [])) or "none"
+    write_target_groups(
+        out,
+        targets,
+        "The model's plume at the radar's times and places (firebench.benchmarks.fire_case_radar_model). "
+        "sections/<SITE>/<name>: passive_tracer (any scale) and wind_u, wind_v, wind_w (earth-relative, "
+        "m/s), each (time, v, u) on the nodes of the cross section (position_lat, position_lon, "
+        "position_alt above mean sea level) at the start of each volume (time). frame/<SITE> (sites: "
+        f"{sites}): plume_cells (time, bin), the count of the model's cells over the frame in each bin "
+        "of height_bins where the tracer reaches tracer_relative_threshold of its largest value over "
+        "the frame. A value the model cannot give stays NaN.",
     )
 
 
@@ -236,8 +283,9 @@ def write_model_output_template(std_file, definition: dict, out_path, *, overwri
     group with its attributes but no file reference and no burnt area; the CBI and canopy cover loss
     grids with their positions, every value its ``_FillValue``; the buildings' positions, each damage blank but
     ``"Inaccessible"``; and each station the case selects for some variable, period, and station set,
-    with its ``time`` and, for each variable it is selected for, NaN values; the empty groups of the
-    radar plume and of the FRP band, with what the model writes there. Licence attributes go
+    with its ``time`` and, for each variable it is selected for, NaN values; the radar plume's targets
+    (each section's nodes and volume times, each ``echo_top`` site's frame and bins of height), NaN;
+    the empty group of the FRP band, with what the model writes there. Licence attributes go
     with each group. The definition is written in too, so an adapter can read the case from it.
     """
     case = load_case(definition, std_file)
@@ -260,7 +308,7 @@ def write_model_output_template(std_file, definition: dict, out_path, *, overwri
                     writers[entry["family"]](out, obs, entry)
             plume = family(definition, "radar_plume")
             if plume is not None:
-                _write_plume(out, plume)
+                _write_plume(out, obs, plume, case)
             fire_total = family(definition, "fire_radiative_power")
             if fire_total is not None:
                 _write_fire_total(out, fire_total)

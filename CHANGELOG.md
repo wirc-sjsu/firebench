@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Add the plume top over a radar's frame to the `radar_plume` family: a site listed in the optional
+  key `echo_top` of the family's entry gets one group per period, "Radar Plume Top {SITE} {period}",
+  with the error (weight 1) and the bias (weight 0) of the 90th percentile of the heights of the
+  model's plume cells over the site's frame against that of the radar's plume gates
+  (`radar_echo_top_series`), per volume. `propose_case` lists every site with a cross section, the
+  requirement is `R_RT`, and its KPI ids follow those of the sections, so a definition without
+  `echo_top` keeps its groups and ids. `[radar_plume]` gains `top_bin` (100 m), the bins of height the
+  model counts its cells in, and the two weights, without raising `version`.
+- Add `fire_case_radar_model`, what a model output gives the `radar_plume` family and the helpers an
+  adapter writes it with: `ColumnSampler` and `sample_columns` (one model output time on the nodes of a
+  section, the nearest column then linear in height, as before), `plume_cell_mask`, `plume_cell_counts`
+  (with optional weights, a cell's area on grids of several resolutions), `histogram_quantile`,
+  `write_plume_section`, `write_plume_frame`, `write_plume_points` (the model's plume cells for figures,
+  never scored), and the targets of a case (`targets_from_observations`, `targets_from_template`, and
+  `fire_case_template.plume_targets`, which reads either file).
+- Add `FireCase.radar_plume_values`, what the `radar_plume` KPIs compare, for figures (None for a case
+  without the family): for each section, both sides on its nodes per volume with the observed and
+  model radial velocity, and the per-volume IoU, plume tops, and centroids the KPIs average; for each
+  site of `echo_top`, both plume tops per volume; and the model's points, if it gave some.
 - Add `FireCase.frp_values` and `FireCase.canopy_cover_values`, what the `fire_radiative_power` and
   `canopy_cover_loss` KPIs compare, for figures (None for a case without the family). `frp_values`
   (`fire_case_frp.frp_values`) gives every observation of the entry's streams over its periods with
@@ -265,6 +284,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   read-only audit findings.
 
 ### Changed
+
+- The `radar_plume` family reads the model at the radar's own times and places, not on its own grid:
+  `/spatial_3d/plume/sections/<SITE>/<name>` holds `passive_tracer`, `wind_u`, `wind_v`, and `wind_w`
+  on the nodes of each section at the start of each volume, which the model-output template lists
+  with NaN values. The raw output of a model stays where it ran; its adapter interpolates between its
+  output times. `model_requirements` takes the family's entry; the 4D group of `position_lat`,
+  `position_lon`, `position_z`, and the fields is no longer read.
 
 - `firebench wx run`: the stage that downloads forecasts is named `model` (it was `hrrr`, still
   accepted as an alias by `--steps` and `WxForecastWorkflow.run`), and its records and model files are

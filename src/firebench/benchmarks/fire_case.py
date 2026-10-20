@@ -33,7 +33,9 @@ from .. import tools as ft
 from . import c001_caldor as fb001
 from . import wx_common as wxc
 from . import fire_case_frp as frp
-from .fire_case_radar import RADAR_KPIS, bench_radar_plume, model_requirements
+from . import fire_case_radar as radar
+from .fire_case_radar import RADAR_KPIS, RADAR_TOP_KPIS, bench_radar_plume, bench_radar_top
+from .fire_case_radar_model import model_requirements, top_requirements
 from .fire_case_definition import (
     TEMPLATE_REFUSAL,
     CaseDefinitionError,
@@ -609,7 +611,7 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
     def _add_radar_plume(self, entry: dict) -> None:
         parameters = self.parameters.radar_plume
         group_path = entry["model_group"]
-        self._requirement("R_RP", model_requirements(group_path))
+        self._requirement("R_RP", model_requirements(group_path, entry))
         number = 1
         for section in entry["sections"]:
             for period in entry["periods"]:
@@ -628,6 +630,33 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                     )
                     self._add(
                         "R_RP",
+                        group,
+                        f"{KPI_PREFIX}RP{number:02d}",
+                        function,
+                        parameters.kpi_weights[weight_key],
+                    )
+                    number += 1
+        # The plume top over a radar's frame, after the sections, so their KPI ids stay those of a
+        # definition without `echo_top`.
+        if entry.get("echo_top"):
+            self._requirement("R_RT", top_requirements(group_path, entry))
+        for site in entry.get("echo_top", []):
+            for period in entry["periods"]:
+                group = f"Radar Plume Top {site} {period}"
+                self._group(group, "radar_plume", "R", "Radar Plume Top", period=period)
+                for kpi_name, kpi, weight_key in RADAR_TOP_KPIS:
+                    function = partial(
+                        bench_radar_top,
+                        kpi_name_custom=kpi_name,
+                        kpi=kpi,
+                        site=site,
+                        period_name=period,
+                        period=self.periods[period],
+                        model_group=group_path,
+                        parameters=parameters,
+                    )
+                    self._add(
+                        "R_RT",
                         group,
                         f"{KPI_PREFIX}RP{number:02d}",
                         function,
@@ -721,6 +750,20 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         periods = {name: self.periods[name] for name in entry["periods"]}
         return frp.frp_values(
             model_dataset, obs_dataset, entry, periods, self.parameters.fire_radiative_power
+        )
+
+    def radar_plume_values(self, model_dataset: File, obs_dataset: File) -> dict | None:
+        """
+        What the radar plume KPIs compare, for a figure; None when the case has no such family.
+
+        See `fire_case_radar.radar_plume_values`.
+        """
+        entry = family(self.definition, "radar_plume")
+        if entry is None:
+            return None
+        periods = {name: self.periods[name] for name in entry["periods"]}
+        return radar.radar_plume_values(
+            model_dataset, obs_dataset, entry, periods, self.parameters.radar_plume
         )
 
     def canopy_cover_values(self, model_dataset: File, obs_dataset: File) -> dict | None:
