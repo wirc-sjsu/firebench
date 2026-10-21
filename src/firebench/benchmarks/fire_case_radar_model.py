@@ -12,11 +12,17 @@ or an observation file), interpolates its run onto them, and writes, under the e
   ``(n_volume, n_v, n_u)`` on the nodes of the section. ``ColumnSampler`` puts one model output time on
   the nodes: the nearest model column, then linear in height. The adapter interpolates between output
   times and records how.
-- ``frame/<SITE>/``: ``time`` (the start of each volume of the site in the periods), ``height_bins``
-  (edges, m above mean sea level), and ``plume_cells`` ``(n_time, n_bins)``, the count of model cells
-  over the site's frame in each bin of height where the tracer reaches ``tracer_relative_threshold`` of
-  its largest value over the frame (``plume_cell_counts``; a model on grids of several resolutions
-  weights each cell by its area). Only when the entry lists the site in ``echo_top``.
+- ``frame/<SITE>/``: only when the entry lists the site in ``echo_top``. The model's plume there is its
+  cells over the site's frame that the radar can see (between the lowest and the highest beam over
+  their map cell, ``visible_cells``) where the tracer reaches ``tracer_relative_threshold`` of its
+  largest value over those cells. It holds ``time`` (the start of each volume of the site in the
+  periods), ``height_bins`` (edges, m above mean sea level), ``plume_cells`` ``(n_time, n_bins)``, the
+  count of plume cells in each bin of height (``plume_cell_counts``; a model on grids of several
+  resolutions weights each cell by its area), and ``plume_top`` ``(n_time, n_lat, n_lon)``, the
+  highest plume cell of the columns under each cell of the radar's map grid (``position_lat`` from
+  north to south, ``position_lon``; ``column_tops``, ``tops_on_map``), NaN where there is none. The
+  template adds ``lowest_beam`` and ``highest_beam`` over each map cell at each time, which the model
+  output does not repeat. A time the model cannot give is NaN in ``plume_cells``.
 - ``points/`` (optional, never scored): the model's plume cells at some times, for a figure
   (``write_plume_points``).
 
@@ -44,6 +50,13 @@ FRAME = "frame"
 POINTS = "points"
 HEIGHT_BINS = "height_bins"
 PLUME_CELLS = "plume_cells"
+PLUME_TOP = "plume_top"
+LOWEST_BEAM = "lowest_beam"
+HIGHEST_BEAM = "highest_beam"
+OLD_TEMPLATE = (
+    "The template was made by a FireBench before the radar plume maps of the frames: download the kit "
+    "again."
+)
 THRESHOLD_ATTRIBUTE = "tracer_relative_threshold"
 _EARTH_RADIUS = 6_371_000.0
 _RADAR = f"/{fs.SPATIAL_3D}/radar"
@@ -106,6 +119,8 @@ def top_requirements(group: str, entry: dict) -> dict[str, list[str]]:
         required[f"{path}/time"] = []
         required[f"{path}/{HEIGHT_BINS}"] = ["units"]
         required[f"{path}/{PLUME_CELLS}"] = [THRESHOLD_ATTRIBUTE]
+        for name in ("position_lat", "position_lon", PLUME_TOP):
+            required[f"{path}/{name}"] = ["units"]
     return required
 
 
@@ -223,6 +238,99 @@ def plume_cell_counts(heights, tracer, inside, bins, threshold: float, weights=N
     return counts
 
 
+def visible_cells(heights, lowest, highest) -> np.ndarray:
+    """The cells the radar can see: at or above the lowest beam and at or below the highest over their
+    column (``lowest`` and ``highest`` broadcast to ``heights``); none where the band is NaN."""
+    heights = np.asarray(heights, dtype=np.float64)
+    with np.errstate(invalid="ignore"):
+        return (heights >= lowest) & (heights <= highest)
+
+
+def column_tops(heights, mask, column, n_columns: int) -> np.ndarray:
+    """
+    The highest cell of ``mask`` in each column: ``heights``, ``mask``, and ``column`` (the index of
+    each cell's column) are flat arrays of the same length, so columns of grids with different
+    numbers of levels go through one call. NaN for a column with no cell of the mask.
+    """
+    heights = np.ravel(np.asarray(heights, dtype=np.float64))
+    mask = np.ravel(np.asarray(mask, dtype=bool))
+    column = np.ravel(np.asarray(column, dtype=np.int64))
+    tops = np.full(n_columns, -np.inf)
+    np.maximum.at(tops, column[mask], heights[mask])
+    tops[~np.isfinite(tops)] = np.nan
+    return tops
+
+
+def _map_cell(latitude, longitude, lat, lon) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The row and column of the map cell under each point, and whether the point is on the map: inside
+    its outer edges, which belong to the cells along them, as the radar's gates do."""
+    latitude, longitude = np.asarray(latitude, dtype=np.float64), np.asarray(longitude, dtype=np.float64)
+    step_lat = abs(latitude[0] - latitude[1]) if len(latitude) > 1 else 1.0
+    step_lon = abs(longitude[1] - longitude[0]) if len(longitude) > 1 else 1.0
+    north, west = latitude[0] + step_lat / 2, longitude[0] - step_lon / 2
+    lat, lon = np.asarray(lat, dtype=np.float64), np.asarray(lon, dtype=np.float64)
+    tolerance = 1e-9
+    on_map = (
+        (lat <= north + tolerance)
+        & (lat >= north - len(latitude) * step_lat - tolerance)
+        & (lon >= west - tolerance)
+        & (lon <= west + len(longitude) * step_lon + tolerance)
+    )
+    row = np.clip(np.floor((north - lat) / step_lat).astype(np.int64), 0, len(latitude) - 1)
+    col = np.clip(np.floor((lon - west) / step_lon).astype(np.int64), 0, len(longitude) - 1)
+    return np.where(on_map, row, 0), np.where(on_map, col, 0), on_map
+
+
+def beam_band_at(target: "FrameTarget", index: int, lat, lon) -> tuple[np.ndarray, np.ndarray]:
+    """The lowest and highest beam over points at the target's time ``index``, from the map cell under
+    each; NaN off the map or where the radar sees nothing."""
+    row, col, on_map = _map_cell(target.latitude, target.longitude, lat, lon)
+    lowest = np.where(on_map, np.asarray(target.lowest_beam[index], dtype=np.float64)[row, col], np.nan)
+    highest = np.where(on_map, np.asarray(target.highest_beam[index], dtype=np.float64)[row, col], np.nan)
+    return lowest, highest
+
+
+def tops_on_map(  # pylint: disable=too-many-arguments
+    column_lat, column_lon, column_top, column_size, latitude, longitude
+) -> np.ndarray:
+    """
+    The plume top over each cell of a map (``latitude`` from north to south, ``longitude``, the cell
+    centres): a cell holding the centres of model columns takes the highest of their tops; a cell
+    holding none takes the top of the nearest column, when that column is less than 0.75 of its size
+    (``column_size``, m) away, so a column larger than a cell fills every cell it covers. NaN where
+    no column gives a top. Columns of several grids go through one call.
+    """
+    latitude, longitude = np.asarray(latitude, dtype=np.float64), np.asarray(longitude, dtype=np.float64)
+    column_lat = np.ravel(np.asarray(column_lat, dtype=np.float64))
+    column_lon = np.ravel(np.asarray(column_lon, dtype=np.float64))
+    column_top = np.ravel(np.asarray(column_top, dtype=np.float64))
+    column_size = np.broadcast_to(np.asarray(column_size, dtype=np.float64), column_top.shape).ravel()
+    n_lat, n_lon = len(latitude), len(longitude)
+    tops = np.full(n_lat * n_lon, -np.inf)
+    row, col, on_map = _map_cell(latitude, longitude, column_lat, column_lon)
+    flat = row * n_lon + col
+    held = np.zeros(n_lat * n_lon, dtype=bool)
+    held[flat[on_map]] = True
+    given = on_map & np.isfinite(column_top)
+    np.maximum.at(tops, flat[given], column_top[given])
+    tops[held & ~np.isfinite(tops)] = np.nan
+    empty = np.flatnonzero(~held)
+    if empty.size and column_top.size:
+        reference = np.radians(float(np.mean(latitude)))
+
+        def plane(lon_, lat_):
+            return np.column_stack([np.radians(lon_) * np.cos(reference), np.radians(lat_)]) * _EARTH_RADIUS
+
+        grid_lon, grid_lat = np.meshgrid(longitude, latitude)
+        distance, nearest = cKDTree(plane(column_lon, column_lat)).query(
+            plane(grid_lon.ravel()[empty], grid_lat.ravel()[empty])
+        )
+        near = distance <= 0.75 * column_size[nearest]
+        tops[empty[near]] = column_top[nearest[near]]
+    tops[~np.isfinite(tops)] = np.nan
+    return tops.reshape(n_lat, n_lon)
+
+
 def histogram_quantile(edges, counts, level: float) -> float:
     """The ``level`` quantile of values counted in bins, linear inside its bin; NaN when none is counted."""
     counts = np.asarray(counts, dtype=np.float64)
@@ -256,8 +364,9 @@ class SectionTarget:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass(frozen=True)
-class FrameTarget:
-    """The frame of a site the model counts its plume cells over, at the volume times of the site."""
+class FrameTarget:  # pylint: disable=too-many-instance-attributes
+    """The frame of a site the model counts its plume cells over, at the volume times of the site, the
+    radar's map grid over it, and what the radar can see over each map cell at each time."""
 
     site: str
     path: str
@@ -266,6 +375,10 @@ class FrameTarget:
     frame: tuple[float, float, float, float]  # west, south, east, north, degree
     height_bins: np.ndarray  # edges, m above mean sea level
     threshold: float  # tracer_relative_threshold
+    latitude: np.ndarray  # (n_lat,) degree, cell centres from north to south
+    longitude: np.ndarray  # (n_lon,) degree, cell centres from west to east
+    lowest_beam: np.ndarray  # (n_volume, n_lat, n_lon) m above mean sea level, NaN where unseen
+    highest_beam: np.ndarray
 
 
 @dataclass(frozen=True)
@@ -299,13 +412,14 @@ def _site_times(obs: h5py.File, site: str) -> tuple[np.ndarray, str]:
     return _times(dataset), _text(dataset.attrs["time_origin"])
 
 
-def targets_from_observations(
-    obs: h5py.File, entry: dict, periods, height_bin: float, threshold: float
+def targets_from_observations(  # pylint: disable=too-many-arguments
+    obs: h5py.File, entry: dict, periods, height_bin: float, threshold: float, map_resolution: float = 0.01
 ) -> PlumeTargets:
     """
     The targets of an entry of the family on the observation file: every section, at the starts of its
     volumes in ``periods`` (``(start, end)`` pairs), and the frame of each site of ``echo_top``, with
-    bins of ``height_bin`` m from 0 to the site's ``max_height``.
+    bins of ``height_bin`` m from 0 to the site's ``max_height``, its map grid of ``map_resolution``
+    degree, and the radar's beam band over each map cell at each of those volumes.
     """
     group = entry["model_group"]
     sections = []
@@ -330,15 +444,22 @@ def targets_from_observations(
         attrs = obs[f"{_RADAR}/{site}"].attrs
         times, origin = _site_times(obs, site)
         top = float(attrs["max_height"])
+        volumes = np.flatnonzero(_in_periods(times, periods))
+        latitude, longitude = fs.radar_map_axes(obs, site, resolution=map_resolution)
+        lowest, highest = fs.radar_beam_bands(obs, site, resolution=map_resolution, volumes=volumes)
         frames.append(
             FrameTarget(
                 site=site,
                 path=frame_path(group, site),
-                time=times[_in_periods(times, periods)],
+                time=times[volumes],
                 time_origin=origin,
                 frame=tuple(float(attrs[f"frame_{key}"]) for key in ("west", "south", "east", "north")),
                 height_bins=np.arange(0.0, top + height_bin, height_bin),
                 threshold=float(threshold),
+                latitude=latitude,
+                longitude=longitude,
+                lowest_beam=lowest,
+                highest_beam=highest,
             )
         )
     return PlumeTargets(model_group=group, sections=sections, frames=frames)
@@ -363,6 +484,8 @@ def targets_from_template(template: h5py.File, model_group: str) -> PlumeTargets
             )
     base = template.get(f"{model_group}/{FRAME}")
     for site, group in (base.items() if isinstance(base, h5py.Group) else []):
+        if LOWEST_BEAM not in group:
+            raise ValueError(OLD_TEMPLATE)
         frames.append(
             FrameTarget(
                 site=site,
@@ -374,6 +497,10 @@ def targets_from_template(template: h5py.File, model_group: str) -> PlumeTargets
                 ),
                 height_bins=group[HEIGHT_BINS][()],
                 threshold=float(group[PLUME_CELLS].attrs[THRESHOLD_ATTRIBUTE]),
+                latitude=group["position_lat"][()],
+                longitude=group["position_lon"][()],
+                lowest_beam=group[LOWEST_BEAM][()],
+                highest_beam=group[HIGHEST_BEAM][()],
             )
         )
     return PlumeTargets(model_group=model_group, sections=sections, frames=frames)
@@ -450,14 +577,29 @@ def write_plume_section(
         )
 
 
-def write_plume_frame(
-    h5: h5py.File, target: FrameTarget, counts, *, attrs: dict | None = None, compression_lvl: int = 3
+def write_plume_frame(  # pylint: disable=too-many-arguments
+    h5: h5py.File,
+    target: FrameTarget,
+    counts,
+    tops,
+    *,
+    beams: bool = False,
+    attrs: dict | None = None,
+    compression_lvl: int = 3,
 ) -> None:
-    """The model's plume cells over the frame of a site, ``(n_time, n_bins)``, NaN at a time it has none."""
+    """
+    The model's plume over the frame of a site: its cells by height, ``(n_time, n_bins)``, NaN at a
+    time it has none, and its plume top on the radar's map grid, ``(n_time, n_lat, n_lon)``, NaN where
+    it has none. ``beams`` also writes the radar's beam band over the map, as a template does.
+    """
     counts = np.asarray(counts, dtype=np.float64)
     shape = (len(target.time), len(target.height_bins) - 1)
     if counts.shape != shape:
         raise ValueError(f"the counts have the shape {counts.shape}; the frame needs {shape}")
+    tops = np.asarray(tops, dtype=np.float32)
+    map_shape = (len(target.time), len(target.latitude), len(target.longitude))
+    if tops.shape != map_shape:
+        raise ValueError(f"the plume tops have the shape {tops.shape}; the map needs {map_shape}")
     group = _fresh_group(h5, target.path)
     group.attrs["description"] = (
         f"The count of the model's plume cells over the frame of {target.site} in each bin of height, "
@@ -483,11 +625,47 @@ def write_plume_frame(
         {
             "units": "1",
             THRESHOLD_ATTRIBUTE: float(target.threshold),
-            "description": "Cells whose tracer reaches tracer_relative_threshold of its largest value "
-            "over the frame",
+            "description": "Cells the radar can see whose tracer reaches tracer_relative_threshold of "
+            "its largest value over those cells",
         },
         compression_lvl,
     )
+    _create(
+        group,
+        "position_lat",
+        np.asarray(target.latitude, dtype=np.float64),
+        {"units": "degree"},
+        compression_lvl,
+    )
+    _create(
+        group,
+        "position_lon",
+        np.asarray(target.longitude, dtype=np.float64),
+        {"units": "degree"},
+        compression_lvl,
+    )
+    _create(
+        group,
+        PLUME_TOP,
+        tops,
+        {
+            "units": "m",
+            "description": "Highest plume cell of the columns under each map cell, above mean sea level",
+        },
+        compression_lvl,
+    )
+    if beams:
+        for name, values in ((LOWEST_BEAM, target.lowest_beam), (HIGHEST_BEAM, target.highest_beam)):
+            _create(
+                group,
+                name,
+                np.asarray(values, dtype=np.float32),
+                {
+                    "units": "m",
+                    "description": "Beam-centre height over each map cell, above mean sea level",
+                },
+                compression_lvl,
+            )
 
 
 def write_plume_points(  # pylint: disable=too-many-arguments
@@ -541,11 +719,20 @@ def write_target_groups(out: h5py.File, targets: PlumeTargets, description: str)
         )
         required[target.section] = sorted(("time", *FIELDS))
     for target in targets.frames:
-        write_plume_frame(out, target, np.full((len(target.time), len(target.height_bins) - 1), np.nan))
+        write_plume_frame(
+            out,
+            target,
+            np.full((len(target.time), len(target.height_bins) - 1), np.nan),
+            np.full((len(target.time), len(target.latitude), len(target.longitude)), np.nan),
+            beams=True,
+        )
     group.attrs["required_datasets"] = json.dumps(
         {
             SECTIONS: required,
-            FRAME: {target.site: ["time", HEIGHT_BINS, PLUME_CELLS] for target in targets.frames},
+            FRAME: {
+                target.site: ["time", HEIGHT_BINS, PLUME_CELLS, "position_lat", "position_lon", PLUME_TOP]
+                for target in targets.frames
+            },
         }
     )
 
@@ -602,3 +789,20 @@ def model_frame(
         raise ValueError(f"{frame.name}/{PLUME_CELLS} must be (time, {len(edges) - 1} bins)")
     threshold = float(frame[PLUME_CELLS].attrs[THRESHOLD_ATTRIBUTE])
     return _times(frame["time"]), edges, counts, threshold
+
+
+def model_top_maps(
+    model: h5py.File, group: str, site: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """``time``, the map axes (latitude, longitude), and the plume tops (m) of a site in the model."""
+    frame = model[frame_path(group, site)]
+    tops = frame[PLUME_TOP]
+    values = np.asarray(tops[()], dtype=np.float64)
+    stored = _text(tops.attrs.get("units", "m"))
+    if stored != "m":
+        values = ureg.Quantity(values, stored).to("m").magnitude
+    latitude = np.asarray(frame["position_lat"][()], dtype=np.float64)
+    longitude = np.asarray(frame["position_lon"][()], dtype=np.float64)
+    if values.ndim != 3 or values.shape[1:] != (len(latitude), len(longitude)):
+        raise ValueError(f"{frame.name}/{PLUME_TOP} must be (time, {len(latitude)}, {len(longitude)})")
+    return _times(frame["time"]), latitude, longitude, values

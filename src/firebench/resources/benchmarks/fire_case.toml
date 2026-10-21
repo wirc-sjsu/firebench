@@ -97,12 +97,18 @@ fall_speed = 0.0
 # of the sites a definition lists in `echo_top`. Added without raising `version`: a definition without
 # `echo_top` scores as before.
 top_bin = 100.0
+# The radar's map grid over a frame, in degrees, both sides' plume top are put on (the grid of
+# radar_composite): footprint and plume top map KPIs of the sites in `echo_top`.
+map_resolution = 0.01
 # Values of the errors at which their score is 50: plume top (m; on a section, and the error and
 # bias of the plume top over a frame), plume centroid (m), radial velocity RMSE and bias (m s-1).
 top_error_at_score_50 = 1000.0
 centroid_error_at_score_50 = 2000.0
 velocity_rmse_at_score_50 = 4.0
 velocity_bias_at_score_50 = 2.0
+# Distance between the plume-top-weighted centroids of both footprints on the map, in m, at which
+# its score is 50.
+footprint_centroid_at_score_50 = 5000.0
 # Weight of each KPI in its group.
 mask_iou_weight = 2
 top_error_weight = 1
@@ -112,6 +118,10 @@ velocity_rmse_weight = 1
 velocity_bias_weight = 0
 top_series_error_weight = 1
 top_series_bias_weight = 0
+footprint_iou_weight = 2
+top_map_mae_weight = 1
+top_map_bias_weight = 0
+footprint_centroid_weight = 1
 
 [fire_radiative_power]
 # Satellite fire radiative power (firebench.standardize.frp_time_series: one total per overpass or

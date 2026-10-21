@@ -213,6 +213,7 @@ def _plume_targets(obs: h5py.File, entry: dict, case) -> PlumeTargets:
         [case.periods[name] for name in entry["periods"]],
         parameters.top_bin,
         parameters.tracer_relative_threshold,
+        parameters.map_resolution,
     )
 
 

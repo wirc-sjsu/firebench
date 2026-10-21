@@ -636,14 +636,14 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
                         parameters.kpi_weights[weight_key],
                     )
                     number += 1
-        # The plume top over a radar's frame, after the sections, so their KPI ids stay those of a
-        # definition without `echo_top`.
+        # The plume over a radar's frame (its top, footprint, and top map), after the sections, so
+        # their KPI ids stay those of a definition without `echo_top`.
         if entry.get("echo_top"):
             self._requirement("R_RT", top_requirements(group_path, entry))
         for site in entry.get("echo_top", []):
             for period in entry["periods"]:
-                group = f"Radar Plume Top {site} {period}"
-                self._group(group, "radar_plume", "R", "Radar Plume Top", period=period)
+                group = f"Radar Plume Frame {site} {period}"
+                self._group(group, "radar_plume", "R", "Radar Plume Frame", period=period)
                 for kpi_name, kpi, weight_key in RADAR_TOP_KPIS:
                     function = partial(
                         bench_radar_top,

@@ -550,20 +550,28 @@ at the radar's own times and places, under `/spatial_3d/plume` by default
 ├── frame/<SITE>/                                  (frame_west, ... attributes: the site's frame)
 │   ├── time                                       (n_volume)
 │   ├── height_bins                                (n_bin + 1)  edges, m above mean sea level
-│   └── plume_cells                                (n_volume, n_bin)  tracer_relative_threshold attribute
+│   ├── plume_cells                                (n_volume, n_bin)  tracer_relative_threshold attribute
+│   ├── position_lat, position_lon                 (n_lat), (n_lon)  the radar's map grid, north to south
+│   ├── plume_top                                  (n_volume, n_lat, n_lon)  m above mean sea level
+│   └── lowest_beam, highest_beam                  (n_volume, n_lat, n_lon)  template only
 └── points/                                        optional, for figures; never scored
     ├── time, offset, count                        (n_time)
     └── position_lon, position_lat, position_z, passive_tracer   (n_point)
 ```
 
 `passive_tracer` is on any scale (its `units` are kept, never converted); the wind is earth-relative,
-in m/s. `plume_cells` counts the model's cells over the site's frame, in each bin of height, where its
-tracer reaches `tracer_relative_threshold` of its largest value over the frame. A value the model
-cannot give is NaN, and a time it cannot give is NaN throughout. The model-output template of a case
+in m/s. Over a site's frame, the model's plume is its cells the radar can see, between the lowest and
+the highest beam over their map cell (`lowest_beam`, `highest_beam`, from
+`firebench.standardize.radar_beam_bands`; `visible_cells`), where its tracer reaches
+`tracer_relative_threshold` of its largest value over those cells. `plume_cells` counts them in each
+bin of height (each cell weighted by its area when the model's grids differ in resolution), and
+`plume_top` is the highest of them over each cell of the radar's map grid (`radar_map_axes`,
+`map_resolution` of `[radar_plume]`; `column_tops`, `tops_on_map`), NaN where there is none. A value
+the model cannot give is NaN, and a time it cannot give is NaN throughout `plume_cells`. The model-output template of a case
 holds these groups with NaN values; `fire_case_template.plume_targets` reads them, or computes them
 from an observation file holding the case, and the adapter fills them in with `ColumnSampler` (the
-nearest model column, then linear in height), `plume_cell_counts`, `write_plume_section`, and
-`write_plume_frame`.
+nearest model column, then linear in height), `beam_band_at`, `visible_cells`, `plume_cell_counts`,
+`column_tops`, `tops_on_map`, `write_plume_section`, and `write_plume_frame`.
 
 #### lidar
 

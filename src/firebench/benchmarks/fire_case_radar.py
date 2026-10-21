@@ -20,7 +20,12 @@ reflectivity:
 - over the frame of a site, the plume top of a volume is the 90th percentile of the heights of the
   radar's plume gates (``radar_echo_top_series``) and of the model's plume cells (its counts, linear
   inside a bin), the model's plume being where its tracer reaches the same share of its largest value
-  over the frame.
+  over the cells of the frame the radar can see;
+- on the radar's map grid over the frame, each side's plume top is the highest plume gate, or model
+  plume cell, over each map cell (``radar_plume_top_maps``; the model's ``plume_top``). Where the
+  radar sees (its beam band, ``radar_beam_bands``), the footprints are the cells with a top: their
+  IoU, the error of the tops where both have one, and the distance between their centroids weighted
+  by the top.
 
 Every number is in ``fire_case.toml`` (``[radar_plume]``) or ``radar.toml``. A KPI no volume of its
 period can give is not computed: its function returns None and it is left out of its group.
@@ -44,12 +49,14 @@ from .fire_case_radar_model import (  # pylint: disable=unused-import
     POINTS,
     TRACER,
     WIND,
+    _EARTH_RADIUS,
     ModelSection,
     _text,
     _times,
     histogram_quantile,
     model_frame,
     model_requirements,
+    model_top_maps,
     top_requirements,
 )
 
@@ -374,6 +381,119 @@ RADAR_KPIS = (
 )
 
 
+@dataclass
+class MapPairs:  # pylint: disable=too-many-instance-attributes
+    """Both sides' plume top on the radar's map grid over a site's frame, per volume of a period."""
+
+    site: str
+    latitude: np.ndarray  # (n_lat,) from north to south
+    longitude: np.ndarray
+    times: list[np.datetime64]
+    model_times: list[np.datetime64]
+    observed: list[np.ndarray]  # (n_lat, n_lon) m above mean sea level, NaN where no plume
+    modelled: list[np.ndarray]
+    visible: list[np.ndarray]  # (n_lat, n_lon) the cells the radar sees
+    problem: str | None = None
+
+
+def _observed_maps(obs: File, site: str, volumes, resolution: float, ctx: dict | None) -> dict:
+    """The radar's plume top and visible cells of each volume, read once per site and volume."""
+    cache = {} if ctx is None else ctx.setdefault("radar_plume_maps", {})
+    known = cache.setdefault(site, {})
+    missing = [int(volume) for volume in volumes if int(volume) not in known]
+    if missing:
+        tops = fs.radar_plume_top_maps(obs, site, resolution=resolution, volumes=missing)
+        lowest, _ = fs.radar_beam_bands(obs, site, resolution=resolution, volumes=missing)
+        for position, volume in enumerate(missing):
+            known[volume] = (tops[position].astype(np.float64), np.isfinite(lowest[position]))
+    return known
+
+
+def map_pairs(  # pylint: disable=too-many-arguments,too-many-locals
+    model: File,
+    obs: File,
+    site: str,
+    period: tuple[datetime, datetime],
+    model_group: str,
+    parameters: RadarPlumeParameters,
+    ctx: dict | None = None,
+) -> MapPairs:
+    """Both sides' plume top over the map of ``site`` for the volumes of ``period``."""
+    latitude, longitude = fs.radar_map_axes(obs, site, resolution=parameters.map_resolution)
+    pairs = MapPairs(site, latitude, longitude, [], [], [], [], [])
+    frame_times, _, counts, _ = model_frame(model, model_group, site)
+    model_times, model_lat, model_lon, model_tops = model_top_maps(model, model_group, site)
+    if model_tops.shape[1:] != (len(latitude), len(longitude)) or not (
+        np.allclose(model_lat, latitude) and np.allclose(model_lon, longitude)
+    ):
+        pairs.problem = "the model's plume top map is not on the radar's map grid of this case"
+        return pairs
+    volume_times = _observed_volume_times(obs, site)
+    start, end = (_utc64(moment) for moment in period)
+    chosen = [volume for volume, time in enumerate(volume_times) if start <= time <= end]
+    maps = _observed_maps(obs, site, chosen, parameters.map_resolution, ctx)
+    for volume in chosen:
+        time = volume_times[volume]
+        index = _nearest(model_times, time, parameters.max_time_offset)
+        given = _nearest(frame_times, time, parameters.max_time_offset)
+        if index is None or given is None or not np.all(np.isfinite(counts[given])):
+            continue
+        observed, visible = maps[volume]
+        pairs.times.append(time)
+        pairs.model_times.append(model_times[index])
+        pairs.observed.append(np.where(visible, observed, np.nan))
+        pairs.modelled.append(np.where(visible, model_tops[index], np.nan))
+        pairs.visible.append(visible)
+    return pairs
+
+
+def _observed_volume_times(obs: File, site: str) -> np.ndarray:
+    return _times(obs[f"/{fs.SPATIAL_3D}/radar/{site}/volumes/time"])
+
+
+def map_metrics(observed: np.ndarray, modelled: np.ndarray, latitude, longitude) -> dict[str, float | None]:
+    """
+    The values the map KPIs average, for one volume: the IoU of the footprints (cells with a top; None
+    when neither has one), the error and bias of the tops where both have one, and the distance in m
+    between the footprints' centroids weighted by the top (None unless both have a footprint).
+    """
+    seen, given = np.isfinite(observed), np.isfinite(modelled)
+    union = int((seen | given).sum())
+    both = seen & given
+    differences = modelled[both] - observed[both]
+    values: dict[str, float | None] = {
+        "iou": float((seen & given).sum() / union) if union else None,
+        "mae": float(np.mean(np.abs(differences))) if differences.size else None,
+        "bias": float(np.mean(differences)) if differences.size else None,
+        "centroid_distance": None,
+    }
+    if seen.any() and given.any():
+        lat, lon = np.meshgrid(
+            np.asarray(latitude, dtype=np.float64), np.asarray(longitude, dtype=np.float64), indexing="ij"
+        )
+        reference = np.radians(float(np.mean(latitude)))
+        x = np.radians(lon) * np.cos(reference) * _EARTH_RADIUS
+        y = np.radians(lat) * _EARTH_RADIUS
+
+        def centroid(mask, tops):
+            weight = tops[mask]
+            return np.array([np.sum(weight * x[mask]), np.sum(weight * y[mask])]) / np.sum(weight)
+
+        values["centroid_distance"] = float(
+            np.hypot(*(centroid(given, modelled) - centroid(seen, observed)))
+        )
+    return values
+
+
+def _maps(model: File, obs: File, ctx: dict, site: str, period_name: str, period, model_group, parameters):
+    """The map pairs of a site and a period, computed once for every KPI of their group."""
+    cache = ctx.setdefault("radar_plume_map_pairs", {})
+    key = (site, period_name)
+    if key not in cache:
+        cache[key] = map_pairs(model, obs, site, period, model_group, parameters, ctx)
+    return cache[key]
+
+
 def _tops(model: File, obs: File, ctx: dict, site: str, period_name: str, period, model_group, parameters):
     """The plume tops of a site and a period, computed once for every KPI of their group."""
     cache = ctx.setdefault("radar_plume_top", {})
@@ -395,9 +515,12 @@ def bench_radar_top(  # pylint: disable=too-many-arguments
     model_group: str,
     parameters: RadarPlumeParameters,
 ):
-    """One KPI of the plume top over the frame of a site, on one period, scored from 0 to 100."""
-    pairs = _tops(model_dataset, obs_dataset, ctx, site, period_name, period, model_group, parameters)
+    """One KPI of the plume over the frame of a site, on one period, scored from 0 to 100."""
     label = f"{kpi_name_custom} {site} {period_name}"
+    if kpi in MAP_KPIS:
+        maps = _maps(model_dataset, obs_dataset, ctx, site, period_name, period, model_group, parameters)
+        return _map_kpi(maps, kpi, label, parameters)
+    pairs = _tops(model_dataset, obs_dataset, ctx, site, period_name, period, model_group, parameters)
     if pairs.problem is not None:
         return _skipped(label, pairs.problem)
     differences = [
@@ -419,11 +542,57 @@ def bench_radar_top(  # pylint: disable=too-many-arguments
     return {label: value, "Score": score}
 
 
-# The KPIs of the plume top over the frame of a site: name, the key of `bench_radar_top`, and the key
-# of its weight.
+def _map_kpi(maps: MapPairs, kpi: str, label: str, parameters: RadarPlumeParameters):
+    if maps.problem is not None:
+        return _skipped(label, maps.problem)
+    if not maps.times:
+        return _skipped(label, "no volume of the period has a model output time near it")
+    key = MAP_KPIS[kpi]
+    values = [
+        value
+        for value in (
+            map_metrics(observed, modelled, maps.latitude, maps.longitude)[key]
+            for observed, modelled in zip(maps.observed, maps.modelled)
+        )
+        if value is not None
+    ]
+    if not values:
+        reason = (
+            "neither side has a plume the radar sees in any volume"
+            if key == "iou"
+            else ("no volume has a plume on both sides")
+        )
+        return _skipped(label, reason)
+    value = float(np.mean(values))
+    if kpi == "footprint_iou":
+        score = fm.kpi_norm_bounded_linear(value, 0, 1)
+    elif kpi == "top_map_mae":
+        score = fm.kpi_norm_half_open_exponential(value, 0, parameters.top_error_at_score_50)
+    elif kpi == "top_map_bias":
+        score = fm.kpi_norm_symmetric_open_exponential(value, parameters.top_error_at_score_50)
+    else:
+        score = fm.kpi_norm_half_open_exponential(value, 0, parameters.footprint_centroid_at_score_50)
+    ft.logger.info("%s: %f", label, value)
+    return {label: value, "Score": score}
+
+
+# The map KPIs of `bench_radar_top`, and the value of `map_metrics` each averages.
+MAP_KPIS = {
+    "footprint_iou": "iou",
+    "top_map_mae": "mae",
+    "top_map_bias": "bias",
+    "footprint_centroid": "centroid_distance",
+}
+
+# The KPIs of the plume over the frame of a site: name, the key of `bench_radar_top`, and the key of
+# its weight.
 RADAR_TOP_KPIS = (
     ("Plume Top Series Error", "top_series_error", "top_series_error_weight"),
     ("Plume Top Series Bias", "top_series_bias", "top_series_bias_weight"),
+    ("Plume Footprint IoU", "footprint_iou", "footprint_iou_weight"),
+    ("Plume Top Map MAE", "top_map_mae", "top_map_mae_weight"),
+    ("Plume Top Map Bias", "top_map_bias", "top_map_bias_weight"),
+    ("Footprint Centroid Distance", "footprint_centroid", "footprint_centroid_weight"),
 )
 
 
@@ -495,12 +664,44 @@ def _section_values(model: File, obs: File, section: str, span, periods, model_g
     }
 
 
+def _map_values(model: File, obs: File, site: str, span, periods, model_group, parameters) -> dict:
+    try:
+        maps = map_pairs(model, obs, site, span, model_group, parameters)
+    except (KeyError, ValueError) as error:
+        return {"problem": str(error)}
+    if maps.problem is not None:
+        return {"problem": maps.problem}
+    shape = (len(maps.latitude), len(maps.longitude))
+    metrics = [
+        map_metrics(observed, modelled, maps.latitude, maps.longitude)
+        for observed, modelled in zip(maps.observed, maps.modelled)
+    ]
+    return {
+        "problem": None,
+        "latitude": maps.latitude,
+        "longitude": maps.longitude,
+        "time": [_iso(time) for time in maps.times],
+        "model_time": [_iso(time) for time in maps.model_times],
+        "periods": _in_periods(maps.times, periods),
+        "observed": _stack(maps.observed, shape, np.float32),
+        "modelled": _stack(maps.modelled, shape, np.float32),
+        "visible": _stack(maps.visible, shape, bool),
+        **{
+            name: np.array(
+                [np.nan if item[name] is None else item[name] for item in metrics], dtype=np.float64
+            )
+            for name in ("iou", "mae", "bias", "centroid_distance")
+        },
+    }
+
+
 def _top_values(model: File, obs: File, site: str, span, periods, model_group, parameters) -> dict:
     try:
         pairs = top_pairs(model, obs, site, span, model_group, parameters)
     except (KeyError, ValueError) as error:
         return {"site": site, "problem": str(error)}
     return {
+        "map": _map_values(model, obs, site, span, periods, model_group, parameters),
         "site": site,
         "problem": pairs.problem,
         "time": [_iso(time) for time in pairs.times],
@@ -545,7 +746,10 @@ def radar_plume_values(  # pylint: disable=too-many-arguments
     None when the radar kept no velocity), and the values the KPIs average: ``iou`` (NaN when neither
     side has a plume), ``top_observed`` and ``top_modelled``, ``centroid_observed`` and
     ``centroid_modelled`` (u, v in m; NaN when a side has none). ``tops`` holds one item per site of
-    ``echo_top``, the plume top of both sides over its frame per volume. ``periods`` gives, in each,
+    ``echo_top``, the plume top of both sides over its frame per volume, and ``map``, both sides' plume
+    top on the radar's map grid per volume (``observed``, ``modelled``, the cells the radar sees
+    ``visible``) with the values the map KPIs average (``iou``, ``mae``, ``bias``,
+    ``centroid_distance``; NaN where a volume gives none). ``periods`` gives, in each,
     the indices of the volumes each period scores. An item that cannot be read has its reason in
     ``problem``. ``points`` is the model's plume cells kept for figures, or None.
     """

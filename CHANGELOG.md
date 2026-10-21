@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add the plume over a radar's frame on the radar's map grid to the `radar_plume` family: the group of
+  a site of `echo_top` is now "Radar Plume Frame {SITE} {period}" and adds the IoU of both plume
+  footprints (weight 2), the MAE (weight 1) and bias (weight 0) of the plume top where both have one,
+  and the distance between the footprints' centroids weighted by the top (weight 1, 5000 m at score
+  50). The model is judged where the radar sees: its plume cells and its plume top over the frame are
+  those between the lowest and highest beam over their map cell, for the plume top series too.
+  `[radar_plume]` gains `map_resolution` (0.01 degree), `footprint_centroid_at_score_50`, and the
+  weights, without raising `version`. The model output's `frame/<SITE>` gains `plume_top` on the
+  radar's map grid, and the template the beam band over each map cell (`lowest_beam`,
+  `highest_beam`); a template without them is refused, saying to download the kit again.
+- Add `radar_map_axes`, `radar_plume_top_maps` (the highest plume gate over each map cell of each
+  volume), and `radar_beam_bands` (the lowest and highest beam over each map cell) to
+  `firebench.standardize`, and `visible_cells`, `beam_band_at`, `column_tops`, `tops_on_map`, and
+  `model_top_maps` to `fire_case_radar_model`. `radar_plume_values` gives each site's maps per volume.
 
 - Add the plume top over a radar's frame to the `radar_plume` family: a site listed in the optional
   key `echo_top` of the family's entry gets one group per period, "Radar Plume Top {SITE} {period}",

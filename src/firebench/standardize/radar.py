@@ -11,7 +11,9 @@ at standardization; a reader grids or cuts what it needs.
   volume at a time.
 - :func:`radar_echo_top_series` gives the height of the plume gates of each volume,
   :func:`radar_composite` the column maximum of a field over the plume gates on a lon/lat grid, and
-  :func:`radar_points` the plume gates of a volume as points.
+  :func:`radar_points` the plume gates of a volume as points. On the lon/lat grid of
+  :func:`radar_map_axes`, :func:`radar_plume_top_maps` gives the highest plume gate over each cell of
+  each volume and :func:`radar_beam_bands` the lowest and highest beam over it: what the radar can see.
 - :func:`radar_cross_section` cuts every volume on a plane given by three points
   (:class:`RadarPlane`); :func:`write_radar_sections` stores sections beside the sweeps, under
   ``sections/``, and :func:`read_radar_section` reads one back.
@@ -939,6 +941,110 @@ def radar_composite(
         resolution=resolution,
         values=grid.reshape(n_lat, n_lon).astype(np.float32),
     )
+
+
+def _map_shape(box, resolution: float) -> tuple[int, int]:
+    west, south, east, north = box
+    n_lon = max(1, int(np.ceil((east - west) / resolution - 1e-9)))
+    n_lat = max(1, int(np.ceil((north - south) / resolution - 1e-9)))
+    return n_lat, n_lon
+
+
+def radar_map_axes(
+    h5file: h5py.File | Path | str, site: str, *, resolution: float = 0.01, corners=None
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    The centres of the cells of the lon/lat grid of a site's frame (or ``corners``), the grid of
+    :func:`radar_composite`: latitudes from north to south (row 0 is the northern edge), longitudes
+    from west to east, in degrees.
+    """
+    if not isinstance(h5file, h5py.File):
+        with h5py.File(h5file, "r") as opened:
+            return radar_map_axes(opened, site, resolution=resolution, corners=corners)
+    west, _, _, north = box = _SiteReader(h5file, site, corners).box
+    n_lat, n_lon = _map_shape(box, resolution)
+    return north - (np.arange(n_lat) + 0.5) * resolution, west + (np.arange(n_lon) + 0.5) * resolution
+
+
+def _cells_of(reader: "_SiteReader", row: int, resolution: float, n_lat: int, n_lon: int):
+    """The heights of a sweep's gates over the box and the flat index of the map cell under each."""
+    # pylint: disable-next=protected-access
+    height, lat, lon, inside = reader._cells(float(reader.elevation[row]))
+    west, _, _, north = reader.box
+    col = np.clip(((lon[inside] - west) / resolution).astype(np.int64), 0, n_lon - 1)
+    line = np.clip(((north - lat[inside]) / resolution).astype(np.int64), 0, n_lat - 1)
+    return height[inside], line * n_lon + col, inside
+
+
+def radar_plume_top_maps(
+    h5file: h5py.File | Path | str,
+    site: str,
+    *,
+    resolution: float = 0.01,
+    volumes=None,
+    min_dbz: float = DEFAULT_MIN_DBZ,
+    rhohv_range: tuple[float, float] | None = DEFAULT_RHOHV_RANGE,
+    corners=None,
+) -> np.ndarray:
+    """
+    The plume top over each cell of :func:`radar_map_axes`, for each volume (all, or ``volumes``):
+    the highest beam-centre height, in m above mean sea level, of the plume gates (the mask of
+    :func:`radar_echo_top_series`) whose ground point falls in the cell. NaN where none does.
+    ``(n_volume, n_lat, n_lon)``, float32.
+    """
+    if not isinstance(h5file, h5py.File):
+        with h5py.File(h5file, "r") as opened:
+            return radar_plume_top_maps(
+                opened,
+                site,
+                resolution=resolution,
+                volumes=volumes,
+                min_dbz=min_dbz,
+                rhohv_range=rhohv_range,
+                corners=corners,
+            )
+    reader = _SiteReader(h5file, site, corners)
+    n_lat, n_lon = _map_shape(reader.box, resolution)
+    chosen = range(reader.n_volumes) if volumes is None else list(volumes)
+    maps = np.full((len(chosen), n_lat * n_lon), -np.inf)
+    for position, volume in enumerate(chosen):
+        for row in reader.rows_of(volume):
+            mask = reader.plume_mask(row, min_dbz, rhohv_range)
+            heights, cells, inside = _cells_of(reader, row, resolution, n_lat, n_lon)
+            plume = mask[inside]
+            if plume.any():
+                np.maximum.at(maps[position], cells[plume], heights[plume])
+    maps[~np.isfinite(maps)] = np.nan
+    return maps.reshape(len(chosen), n_lat, n_lon).astype(np.float32)
+
+
+def radar_beam_bands(
+    h5file: h5py.File | Path | str, site: str, *, resolution: float = 0.01, volumes=None, corners=None
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    What the radar can see over each cell of :func:`radar_map_axes`, for each volume (all, or
+    ``volumes``): the lowest and the highest beam-centre height, in m above mean sea level, of the
+    gates of its sweeps whose ground point falls in the cell, whatever they measured. NaN where no
+    gate does (beyond the range, or in the cone of silence above the radar). Two arrays
+    ``(n_volume, n_lat, n_lon)``, float32.
+    """
+    if not isinstance(h5file, h5py.File):
+        with h5py.File(h5file, "r") as opened:
+            return radar_beam_bands(opened, site, resolution=resolution, volumes=volumes, corners=corners)
+    reader = _SiteReader(h5file, site, corners)
+    n_lat, n_lon = _map_shape(reader.box, resolution)
+    chosen = range(reader.n_volumes) if volumes is None else list(volumes)
+    low = np.full((len(chosen), n_lat * n_lon), np.inf)
+    high = np.full((len(chosen), n_lat * n_lon), -np.inf)
+    for position, volume in enumerate(chosen):
+        for row in reader.rows_of(volume):
+            heights, cells, _ = _cells_of(reader, row, resolution, n_lat, n_lon)
+            np.minimum.at(low[position], cells, heights)
+            np.maximum.at(high[position], cells, heights)
+    low[~np.isfinite(low)] = np.nan
+    high[~np.isfinite(high)] = np.nan
+    shape = (len(chosen), n_lat, n_lon)
+    return low.reshape(shape).astype(np.float32), high.reshape(shape).astype(np.float32)
 
 
 class _SiteReader:

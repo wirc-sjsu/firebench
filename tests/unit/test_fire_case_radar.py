@@ -116,11 +116,12 @@ def _section_fields(section: radar.RadarSection, shift_tracer: bool = False) -> 
     }
 
 
-def _model(
-    path: Path, obs: Path, section: radar.RadarSection, shift_tracer: bool = False, counts=None
+def _model(  # pylint: disable=too-many-arguments
+    path: Path, obs: Path, section: radar.RadarSection, shift_tracer: bool = False, counts=None, tops=None
 ) -> Path:
     """A model output that gives the radar's own section, and its plume cells over the frame of KDAX
-    (``counts``, at each volume time; the radar's own gates by default)."""
+    (``counts``, at each volume time; the radar's own gates by default) and its plume top on the map
+    (``tops``, a function of the radar's own top maps; those by default)."""
     entry = {
         "sections": ["KDAX/axis"],
         "model_group": model_targets.MODEL_GROUP,
@@ -139,9 +140,11 @@ def _model(
                 for volume in range(len(frame.time))
             ]
         )
+    maps = radar.radar_plume_top_maps(obs, "KDAX", resolution=0.01)
+    maps = maps if tops is None else tops(maps)
     with new_std_file(str(path), "model") as h5:
         model_targets.write_plume_section(h5, target, _section_fields(section, shift_tracer))
-        model_targets.write_plume_frame(h5, frame, counts)
+        model_targets.write_plume_frame(h5, frame, counts, maps)
     return path
 
 
@@ -184,9 +187,12 @@ def test_a_model_that_is_the_radar_scores_every_kpi_at_its_best(observations, tm
     definition = propose_case(obs)["definition"]
     case = load_case(definition, obs)
     groups = case.describe_composable_groups()
-    assert [group["name"] for group in groups] == ["Radar Plume KDAX/axis P01", "Radar Plume Top KDAX P01"]
+    assert [group["name"] for group in groups] == [
+        "Radar Plume KDAX/axis P01",
+        "Radar Plume Frame KDAX P01",
+    ]
     assert len(groups[0]["kpis"]) == 6
-    assert len(groups[1]["kpis"]) == 2
+    assert len(groups[1]["kpis"]) == 6
     values = _scores(case, _model(tmp_path / "model.h5", obs, section), obs)
     assert values["Plume Mask IoU KDAX/axis P01"] == pytest.approx(1.0)
     assert values["Plume Top Error KDAX/axis P01"] == pytest.approx(0.0, abs=1e-6)
@@ -198,6 +204,10 @@ def test_a_model_that_is_the_radar_scores_every_kpi_at_its_best(observations, tm
     # The model counts the radar's own gates in bins of 100 m: its 90th percentile is within a bin.
     assert values["Plume Top Series Error KDAX P01"] < 100.0
     assert abs(values["Plume Top Series Bias KDAX P01"]) < 100.0
+    # Its plume top map is the radar's own.
+    assert values["Plume Footprint IoU KDAX P01"] == pytest.approx(1.0)
+    assert values["Plume Top Map MAE KDAX P01"] == pytest.approx(0.0, abs=1e-3)
+    assert values["Footprint Centroid Distance KDAX P01"] == pytest.approx(0.0, abs=1e-3)
 
 
 def test_a_plume_in_the_wrong_place_scores_less(observations, tmp_path):
@@ -368,3 +378,76 @@ def test_the_values_of_a_figure_are_those_the_kpis_compare(observations, tmp_pat
     assert top["problem"] is None
     assert np.all(np.abs(top["modelled"] - top["observed"]) < 100.0)
     assert values["points"] is None
+
+
+def test_a_footprint_cut_in_half_scores_its_overlap_and_its_shift(observations, tmp_path):
+    obs, section = observations
+
+    def east_half(maps):
+        cut = maps.copy()
+        cut[:, :, : maps.shape[2] // 2] = np.nan
+        return cut + 500.0
+
+    model = _model(tmp_path / "model.h5", obs, section, tops=east_half)
+    case = load_case(propose_case(obs)["definition"], obs)
+    values = _scores(case, model, obs)
+    # The radar sees plume over the whole frame; the model over its eastern half, 500 m higher.
+    assert 0.3 < values["Plume Footprint IoU KDAX P01"] < 0.7
+    assert values["Plume Top Map MAE KDAX P01"] == pytest.approx(500.0, abs=1.0)
+    assert values["Plume Top Map Bias KDAX P01"] == pytest.approx(500.0, abs=1.0)
+    assert values["Footprint Centroid Distance KDAX P01"] > 10_000.0
+
+
+def test_the_radar_s_plume_top_map_is_the_highest_plume_gate_over_each_cell(observations):
+    obs, _ = observations
+    latitude, longitude = radar.radar_map_axes(obs, "KDAX", resolution=0.01)
+    tops = radar.radar_plume_top_maps(obs, "KDAX", resolution=0.01)
+    lowest, highest = radar.radar_beam_bands(obs, "KDAX", resolution=0.01)
+    assert tops.shape == lowest.shape == (2, len(latitude), len(longitude))
+    assert latitude[0] > latitude[-1] and longitude[0] < longitude[-1]
+    points = radar.radar_points(obs, "KDAX", 0)
+    assert np.nanmax(tops[0]) == pytest.approx(points.height.max(), rel=1e-6)
+    # Every gate is a plume gate here: the top is the highest beam over the cell.
+    seen = np.isfinite(tops[0])
+    assert np.allclose(tops[0][seen], highest[0][seen])
+    assert (lowest[0][seen] <= highest[0][seen]).all()
+
+
+def test_the_model_s_columns_go_onto_the_map_and_into_the_beam_band():
+    latitude = np.array([39.025, 39.015, 39.005])
+    longitude = np.array([-120.995, -120.985, -120.975])
+    # Two fine columns in the north-west cell, one coarse column 2 km across in the south-east.
+    column_lat = np.array([39.027, 39.022, 39.005])
+    column_lon = np.array([-120.997, -120.992, -120.975])
+    heights = np.array([1000.0, 2000.0, 3000.0, 1000.0, 2000.0, 1000.0, 2000.0, 3000.0])
+    column = np.array([0, 0, 0, 1, 1, 2, 2, 2])
+    plume = np.array([True, True, False, True, False, True, True, True])
+    tops = model_targets.column_tops(heights, plume, column, 3)
+    assert tops.tolist() == [2000.0, 1000.0, 3000.0]
+    grid = model_targets.tops_on_map(
+        column_lat, column_lon, tops, [500.0, 500.0, 2000.0], latitude, longitude
+    )
+    assert grid[0, 0] == 2000.0  # the higher of the two fine columns in the cell
+    assert grid[2, 2] == 3000.0 and grid[1, 2] == 3000.0  # the coarse column fills its neighbours
+    assert np.isnan(grid[0, 2])  # too far from every column
+    # A column on the map's outer edge belongs to the cell along it.
+    edge = model_targets.tops_on_map([39.0], [-120.97], [500.0], [100.0], latitude, longitude)
+    assert edge[2, 2] == 500.0
+    assert np.isnan(model_targets.column_tops(heights, np.zeros(8, dtype=bool), column, 3)).all()
+    seen = model_targets.visible_cells(np.array([500.0, 1500.0, 2500.0]), 1000.0, 2000.0)
+    assert seen.tolist() == [False, True, False]
+    assert not model_targets.visible_cells(np.array([1500.0]), np.nan, np.nan).any()
+
+
+def test_a_template_from_before_the_maps_is_refused(observations, tmp_path):
+    obs, _ = observations
+    template = write_model_output_template(obs, propose_case(obs)["definition"], tmp_path / "template.h5")
+    with h5py.File(template, "a") as h5:
+        frame = h5["spatial_3d/plume/frame/KDAX"]
+        assert frame["lowest_beam"].shape == frame["plume_top"].shape
+        target = model_targets.targets_from_template(h5, "/spatial_3d/plume").frames[0]
+        low, high = model_targets.beam_band_at(target, 0, target.latitude[:2], target.longitude[:2])
+        assert np.array_equal(low, frame["lowest_beam"][0][[0, 1], [0, 1]], equal_nan=True)
+        del frame["lowest_beam"]
+    with pytest.raises(ValueError, match="download the kit again"):
+        plume_targets(template)

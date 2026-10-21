@@ -47,10 +47,12 @@ class RadarPlumeParameters:  # pylint: disable=too-many-instance-attributes
     min_cells: int
     fall_speed: float
     top_bin: float
+    map_resolution: float
     top_error_at_score_50: float
     centroid_error_at_score_50: float
     velocity_rmse_at_score_50: float
     velocity_bias_at_score_50: float
+    footprint_centroid_at_score_50: float
     kpi_weights: MappingProxyType
 
 
@@ -141,12 +143,17 @@ RADAR_KPI_WEIGHT_KEYS = (
     "velocity_bias_weight",
     "top_series_error_weight",
     "top_series_bias_weight",
+    "footprint_iou_weight",
+    "top_map_mae_weight",
+    "top_map_bias_weight",
+    "footprint_centroid_weight",
 )
 RADAR_SCALE_KEYS = (
     "top_error_at_score_50",
     "centroid_error_at_score_50",
     "velocity_rmse_at_score_50",
     "velocity_bias_at_score_50",
+    "footprint_centroid_at_score_50",
 )
 CANOPY_KPI_WEIGHT_KEYS = (
     "class_accuracy_weight",
@@ -310,6 +317,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
             "min_cells",
             "fall_speed",
             "top_bin",
+            "map_resolution",
             *RADAR_SCALE_KEYS,
             *RADAR_KPI_WEIGHT_KEYS,
         },
@@ -371,6 +379,7 @@ def _radar_plume(table: dict) -> RadarPlumeParameters:
         min_cells=_whole(table, "min_cells", label, minimum=3),
         fall_speed=_number(table, "fall_speed", label),
         top_bin=_number(table, "top_bin", label, minimum=10),
+        map_resolution=_number(table, "map_resolution", label, minimum=0.001, maximum=0.1),
         kpi_weights=MappingProxyType({key: _number(table, key, label) for key in RADAR_KPI_WEIGHT_KEYS}),
         **scales,
     )
