@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add the log error to the `fire_radiative_power` family: per observing system, the mean of how far
+  each observation lies outside the model's band, in decades (`log10(observed / upper)` above it,
+  `log10(lower / observed)` below it), each counted up to `log_error_cap` (1), scored 100 at 0 and 0 at
+  the cap, with weight `log_error_weight` (1) beside the share inside the band. Its KPI ids follow
+  those of the family's other KPIs, so theirs do not change. `frp_values` gives each observation's
+  `log_error` and `limit`.
+- Add detection limits to the `fire_radiative_power` family (`detection_limits`: ABI 50 MW, MODIS
+  10 MW, VIIRS 5 MW): an observation and both bounds are raised to its instrument's limit before they
+  are compared, so an observation of 0 is inside a band whose lower bound is under it. Every
+  instrument of an observing system needs a limit.
+- Add `band_log_errors` and `mean_band_log_error` to `firebench.metrics.stats`, and an optional
+  detection `limit` to `band_position` and the three band fractions (0 by default: no change).
+
 - Add the plume over a radar's frame on the radar's map grid to the `radar_plume` family: the group of
   a site of `echo_top` is now "Radar Plume Frame {SITE} {period}" and adds the IoU of both plume
   footprints (weight 2), the MAE (weight 1) and bias (weight 0) of the plume top where both have one,
@@ -298,6 +311,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   read-only audit findings.
 
 ### Changed
+- The `fire_radiative_power` family scores every observation that reports fire, whatever share of its
+  frame it saw; `min_observed_fraction` now applies to observations of 0 only ("no fire seen, and it
+  saw ..."). An observation of 0 is left out when the model's upper bound is at most the detection
+  limit ("no detectable fire on either side"), where it was left out at an upper bound of exactly 0.
+  These changes and the two above change FRP scores; `[fire_radiative_power]` gains
+  `detection_limits`, `log_error_cap`, and `log_error_weight` without raising `version` (2026.1).
 - Lower the reflectivity of the radar plume mask (`min_dbz` of `resources/radar.toml`) from 10 to
   5 dBZ and raise the file's version to 2026.2. The plume of a weak, smoky column was cut at its
   edges: on the Hawk Fire's KRGX cross sections most cells where the model saw a plume and the radar
@@ -352,6 +371,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
+- A VIIRS or MODIS detection timed up to one granule before the overpass CMR lists for the box now
+  belongs to that overpass (`standardize_firms_bundle`); it got an observation of its own, with an
+  unknown share of the frame, and the overpass counted as one without fire. `frp_time_series` counts
+  such an observation of a file written before in the overpass whose span it overlaps.
 
 - Store the positions of gridded data standardized from a GeoTIFF (RAVG, MTBS, LANDFIRE) at the
   center of each pixel. They were at its upper-left corner, half a pixel off on both axes (15 m

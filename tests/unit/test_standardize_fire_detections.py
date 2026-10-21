@@ -21,6 +21,7 @@ from firebench.standardize import (
     standardize_goes_fdc,
     validate_h5_std,
 )
+from firebench.standardize import fire_detections as fd
 from firebench.standardize.fire_detections import GROUP
 
 BOX = (-120.8, 38.4, -119.7, 39.0)
@@ -209,6 +210,66 @@ def test_a_detection_outside_every_overpass_gets_an_observation_of_its_own(std_f
     assert group.attrs["observation_source"] == "cmr" and not group.attrs["observations_complete"]
     assert list(group["observations/time"][()]) == [33120.0, 54000.0]
     assert list(group["detections/observation_index"][()]) == [0, 1]  # 09:18 is within 60 s of the pass end
+
+
+def test_a_detection_a_granule_before_an_overpass_belongs_to_it(std_file, tmp_path):
+    # 09:34 is two minutes before the pass CMR lists (one VIIRS granule is six); 09:20 is not.
+    csv = VIIRS_HEADER + _viirs("2021-08-01", "0920") + _viirs("2021-08-01", "0934", frp="1606")
+    path = _bundle(
+        tmp_path,
+        [_request("VIIRS_SNPP_SP", ["viirs_snpp"], "2021-08-01", 2, csv)],
+        {
+            "viirs_snpp": {
+                "status": "ok",
+                "error": None,
+                "collections": [],
+                "items": [_pass("2021-08-01T09:36:00+00:00")],
+            }
+        },
+        ["viirs_snpp"],
+    )
+
+    standardize_firms_bundle(path, std_file)
+
+    group = std_file[f"{GROUP}/viirs_snpp"]
+    assert list(group["observations/time"][()]) == [33600.0, 34560.0]
+    assert list(group["detections/observation_index"][()]) == [0, 1]
+    series = frp_time_series(std_file, "viirs_snpp")
+    assert series.frp_total.tolist() == [pytest.approx(4.35), pytest.approx(1606.0)]
+    assert series.observed_fraction[1] == 1.0
+
+
+def test_frp_series_counts_a_rebuilt_observation_in_the_overpass_it_overlaps(std_file):
+    # A file written before detections were matched one granule ahead: the 09:34 detection has an
+    # observation of its own (09:34 to 09:40, no granule) beside the pass of 09:36 to 09:42, which
+    # saw no fire. The 15:00 one overlaps nothing.
+    stamps = np.array(["2021-08-01T09:34", "2021-08-01T09:36", "2021-08-01T15:00"], dtype="datetime64[ms]")
+    rows = [
+        (stamps[0], stamps[0] + np.timedelta64(360, "s"), "", math.nan),
+        (stamps[1], stamps[1] + np.timedelta64(360, "s"), "G", 1.0),
+        (stamps[2], stamps[2] + np.timedelta64(360, "s"), "", math.nan),
+    ]
+    detections = {
+        "time": (fd._seconds_since(stamps[[0, 2]], START), fd._time_attrs(START)),
+        "position_lat": (np.full(2, 38.7), {"units": "degree"}),
+        "position_lon": (np.full(2, -120.2), {"units": "degree"}),
+        "fire_radiative_power": (np.array([1606.0, 7.0]), {"units": "MW"}),
+        "fire_detection_confidence": (
+            np.full(2, 1, dtype=np.int16),
+            {"confidence_scale": "viirs_lnh", "_FillValue": -1},
+        ),
+        "observation_index": (np.array([0, 2], dtype=np.int32), {}),
+    }
+    attrs = {"satellite": "Suomi NPP", "instrument": "VIIRS", **fd._frame_attrs(BOX, START, END)}
+    fd._write_stream(
+        std_file, "viirs_snpp", attrs, detections, fd._observation_columns(rows, START, "swath"), 1
+    )
+
+    series = frp_time_series(std_file, "viirs_snpp")
+
+    assert series.time.tolist() == [datetime(2021, 8, 1, 9, 36), datetime(2021, 8, 1, 15)]
+    assert series.frp_total.tolist() == [1606.0, 7.0]
+    assert series.observed_fraction[0] == 1.0 and math.isnan(series.observed_fraction[1])
 
 
 def test_a_failed_day_loses_its_observations_and_detections(std_file, tmp_path):

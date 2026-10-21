@@ -9,17 +9,22 @@ gives, at its own times, the lowest and highest FRP it expects over the same fra
 default. The band is the model's uncertainty on how its heat release becomes FRP, chosen by its
 adapter (WRF-SFIRE: the sensible heat flux divided by 5 to 10); FireBench converts nothing.
 
-An observation is scored when its start is in the period, it saw at least ``min_observed_fraction`` of
-its frame, it has an FRP total, and a model output time is at most ``max_time_offset`` from it. The
-model's bounds are interpolated linearly in time to the observation's start, and held at the first or
-last output time. An observation where neither side has fire (an FRP total of 0 and an upper bound of
-0) is left out: it would agree whatever the model.
+An observation is scored when its start is in the period, it has an FRP total, and a model output time
+is at most ``max_time_offset`` from it. An FRP total of 0 is scored only when the observation saw at
+least ``min_observed_fraction`` of its frame: a sensor that did not see the fire reports none. A total
+above 0 is scored whatever share it saw. The model's bounds are interpolated linearly in time to the
+observation's start, and held at the first or last output time. An observation where neither side has
+detectable fire (an FRP total of 0 and an upper bound at most the instrument's detection limit) is left
+out: it would agree whatever the model.
 
-The KPIs are the share of observations inside the band, one per observing system (a set of
-instruments, ``[fire_radiative_power.systems]`` of ``fire_case.toml``) so a system that looks often
-does not outweigh one that looks rarely, then pooled over every stream, and the shares above and below
-the band. A KPI with fewer than ``min_observations`` observations is not computed: its function returns
-None and it is left out of its group.
+The observation and both bounds are raised to the detection limit of the instrument
+(``detection_limits``) before they are compared. Per observing system (a set of instruments,
+``[fire_radiative_power.systems]`` of ``fire_case.toml``, so a system that looks often does not
+outweigh one that looks rarely) the KPIs are the share of observations inside the band and the log
+error: the mean of how far each observation lies outside the band, in decades, each counted up to
+``log_error_cap``. The share inside the band pooled over every stream and the shares above and below
+it follow. A KPI with fewer than ``min_observations`` observations is not computed: its function
+returns None and it is left out of its group.
 
 ``frp_values`` gives what these KPIs compare, for a figure: every observation with the reason it is not
 scored, the model's band, and the position of each scored observation against it.
@@ -160,6 +165,7 @@ class FrpPairs:
     observed: np.ndarray  # MW
     lower: np.ndarray  # MW
     upper: np.ndarray  # MW
+    limit: np.ndarray  # MW: the detection limit of the stream's instrument
 
 
 def model_band(model: File, model_group: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -192,8 +198,8 @@ class FrpObservations:  # pylint: disable=too-many-instance-attributes
     Every observation of a stream in a period, the model's band at its start, and whether it is scored.
 
     ``reason`` says why an observation is not scored (None when it is), and ``observation_ok`` whether
-    the observation alone allows it to be: False when it saw too little of its frame or has no FRP
-    total, whatever the model.
+    the observation alone allows it to be: False when it has no FRP total, or a total of 0 and saw too
+    little of its frame, whatever the model.
     """
 
     stream: str
@@ -203,6 +209,7 @@ class FrpObservations:  # pylint: disable=too-many-instance-attributes
     observed_fraction: np.ndarray
     lower: np.ndarray  # MW, NaN where the model gives no band
     upper: np.ndarray
+    limit: np.ndarray  # MW: the detection limit of the stream's instrument
     kept: np.ndarray
     observation_ok: np.ndarray
     reason: list[str | None]
@@ -211,7 +218,12 @@ class FrpObservations:  # pylint: disable=too-many-instance-attributes
         """The observations that are scored."""
         keep = self.kept
         return FrpPairs(
-            self.stream, self.time[keep], self.observed[keep], self.lower[keep], self.upper[keep]
+            self.stream,
+            self.time[keep],
+            self.observed[keep],
+            self.lower[keep],
+            self.upper[keep],
+            self.limit[keep],
         )
 
 
@@ -241,8 +253,11 @@ def frp_observations(  # pylint: disable=too-many-arguments,too-many-locals
     model_times, model_lower, model_upper = model_band(model, model_group)
     observed = np.asarray(series.frp_total, dtype=np.float64)
     fraction = np.asarray(series.observed_fraction, dtype=np.float64)
-    seen = np.nan_to_num(fraction, nan=-1.0) >= parameters.min_observed_fraction
+    limit = np.full(
+        observed.shape, float(parameters.detection_limits.get(stream_instrument(obs, stream), 0))
+    )
     has_total = np.isfinite(observed)
+    seen = (np.nan_to_num(fraction, nan=-1.0) >= parameters.min_observed_fraction) | (observed > 0)
     minimum = f"{parameters.min_observed_fraction:.0%}"
     checks = [
         (~has_total, "no FRP total: no detection of it has an FRP"),
@@ -251,9 +266,9 @@ def frp_observations(  # pylint: disable=too-many-arguments,too-many-locals
             np.array(
                 [
                     (
-                        f"it saw {value:.0%} of its frame, less than {minimum}"
+                        f"no fire seen, and it saw {value:.0%} of its frame, less than {minimum}"
                         if np.isfinite(value)
-                        else "the share of its frame it saw is unknown"
+                        else "no fire seen, and the share of its frame it saw is unknown"
                     )
                     for value in fraction
                 ],
@@ -276,8 +291,11 @@ def frp_observations(  # pylint: disable=too-many-arguments,too-many-locals
         upper = np.interp(obs_ms, model_ms, model_upper)
         checks.append((~near, f"no model output time within {parameters.max_time_offset:g} s"))
     has_band = np.isfinite(lower) & np.isfinite(upper)
-    no_fire = (observed == 0) & (upper == 0)
-    checks += [(~has_band, "the model gives no band at its time"), (no_fire, "no fire on either side")]
+    no_fire = (observed == 0) & (upper <= limit)
+    checks += [
+        (~has_band, "the model gives no band at its time"),
+        (no_fire, "no detectable fire on either side"),
+    ]
     kept = has_total & seen & near & has_band & ~no_fire
     return FrpObservations(
         stream=stream,
@@ -287,6 +305,7 @@ def frp_observations(  # pylint: disable=too-many-arguments,too-many-locals
         observed_fraction=fraction,
         lower=lower,
         upper=upper,
+        limit=limit,
         kept=kept,
         observation_ok=has_total & seen,
         reason=_reasons(checks, len(observed)),
@@ -332,6 +351,19 @@ FRP_FRACTIONS = {
 }
 
 
+def frp_kpi(
+    kpi: str, observed, lower, upper, limit, parameters: FireRadiativePowerParameters
+) -> tuple[float, float]:
+    """A KPI of the family (``log_error`` or one of ``FRP_FRACTIONS``) and its share of the best score."""
+    if kpi == "log_error":
+        cap = parameters.log_error_cap
+        value = fm.stats.mean_band_log_error(observed, lower, upper, limit, cap)
+        return value, 1.0 - value / cap
+    func, lower_is_better = FRP_FRACTIONS[kpi]
+    value = func(observed, lower, upper, limit)
+    return value, 1.0 - value if lower_is_better else value
+
+
 def bench_frp(  # pylint: disable=too-many-arguments
     model_dataset: File,
     obs_dataset: File,
@@ -350,9 +382,10 @@ def bench_frp(  # pylint: disable=too-many-arguments
         _pairs(model_dataset, obs_dataset, ctx, stream, period_name, period, frame, model_group, parameters)
         for stream in streams
     ]
-    observed = np.concatenate([item.observed for item in pairs])
-    lower = np.concatenate([item.lower for item in pairs])
-    upper = np.concatenate([item.upper for item in pairs])
+    observed, lower, upper, limit = (
+        np.concatenate([getattr(item, name) for item in pairs])
+        for name in ("observed", "lower", "upper", "limit")
+    )
     label = f"{kpi_name_custom} {period_name}"
     if observed.size < parameters.min_observations:
         ft.logger.warning(
@@ -362,9 +395,8 @@ def bench_frp(  # pylint: disable=too-many-arguments
             parameters.min_observations,
         )
         return None
-    func, lower_is_better = FRP_FRACTIONS[kpi]
-    value = func(observed, lower, upper)
-    score = fm.kpi_norm_bounded_linear(1.0 - value if lower_is_better else value, 0, 1)
+    value, share = frp_kpi(kpi, observed, lower, upper, limit, parameters)
+    score = fm.kpi_norm_bounded_linear(share, 0, 1)
     ft.logger.info("%s: %f on %d observations", label, value, observed.size)
     return {kpi_name_custom: value, "Score": score}
 
@@ -393,10 +425,13 @@ def frp_values(  # pylint: disable=too-many-locals
     observations each period scores.
 
     ``observations`` holds one array per field, in the order of the streams of ``entry["systems"]``,
-    then of time. ``position`` is where a scored observation lies against the band (``band_position``,
-    the rule of the KPIs: "in", "above", or "below"), and "" for one that is not scored, whose
-    ``reason`` says why. ``periods`` gives, for each period of the entry, the indices of the
-    observations it scores: the fraction KPIs of the period are the shares of their positions.
+    then of time. ``position`` is where a scored observation lies against the band (``band_position``
+    with the instrument's detection limit, ``limit``, the rule of the KPIs: "in", "above", or "below"),
+    and "" for one that is not scored, whose ``reason`` says why; ``log_error`` is how far a scored
+    observation lies outside the band in decades, up to ``log_error_cap`` (NaN for one not scored).
+    ``periods`` gives, for each period of the entry, the indices of the observations it scores: the
+    fraction KPIs of the period are the shares of their positions, the log error KPIs the means of
+    their ``log_error``.
     """
     names = list(entry["periods"])
     span = (min(periods[name][0] for name in names), max(periods[name][1] for name in names))
@@ -423,11 +458,16 @@ def frp_values(  # pylint: disable=too-many-locals
         return np.concatenate(arrays).astype(dtype) if arrays else np.array([], dtype=dtype)
 
     time = joined("time", "datetime64[ms]")
-    observed, lower, upper = (joined(name, np.float64) for name in ("observed", "lower", "upper"))
+    observed, lower, upper, limit = (
+        joined(name, np.float64) for name in ("observed", "lower", "upper", "limit")
+    )
     kept = joined("kept", bool)
     position = np.full(observed.shape, "", dtype="<U5")
+    log_error = np.full(observed.shape, np.nan)
     if kept.any():
-        position[kept] = fm.stats.band_position(observed[kept], lower[kept], upper[kept])
+        band = (observed[kept], lower[kept], upper[kept], limit[kept])
+        position[kept] = fm.stats.band_position(*band)
+        log_error[kept] = fm.stats.band_log_errors(*band, cap=parameters.log_error_cap)
     return {
         "units": "MW",
         "frame": [float(value) for value in entry["frame"]],
@@ -445,10 +485,12 @@ def frp_values(  # pylint: disable=too-many-locals
             "observed_fraction": joined("observed_fraction", np.float64),
             "lower": lower,
             "upper": upper,
+            "limit": limit,
             "kept": kept,
             "observation_ok": joined("observation_ok", bool),
             "reason": [reason for item in parts for reason in item.reason],
             "position": position,
+            "log_error": log_error,
         },
         "periods": [
             {

@@ -87,6 +87,8 @@ class FireRadiativePowerParameters:  # pylint: disable=too-many-instance-attribu
     min_observations: int
     kpi_weights: MappingProxyType
     systems: tuple[ObservingSystem, ...]
+    detection_limits: MappingProxyType  # instrument: MW
+    log_error_cap: float
 
     def system_of(self, instrument: str) -> ObservingSystem | None:
         """The observing system that lists ``instrument``, or None."""
@@ -167,7 +169,7 @@ CANOPY_KPI_WEIGHT_KEYS = (
     "high_f1_weight",
     "evaluated_share_weight",
 )
-FRP_KPI_WEIGHT_KEYS = ("all_weight", "above_weight", "below_weight")
+FRP_KPI_WEIGHT_KEYS = ("all_weight", "above_weight", "below_weight", "log_error_weight")
 CONFIDENCE_LEVELS = ("low", "nominal", "high")
 FAMILIES = (
     "building_damage",
@@ -294,6 +296,8 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
             "max_time_offset",
             "min_observations",
             "systems",
+            "detection_limits",
+            "log_error_cap",
             *FRP_KPI_WEIGHT_KEYS,
         },
     )
@@ -438,6 +442,14 @@ def _fire_radiative_power(table: dict) -> FireRadiativePowerParameters:
                 weight=_number(spec, "weight", system_label),
             )
         )
+    limits = table["detection_limits"]
+    if not isinstance(limits, dict):
+        raise FireCaseParameterError(f"{PARAMETER_FILE}: {label}.detection_limits must be a table")
+    missing = sorted(seen - set(limits))
+    if missing:
+        raise FireCaseParameterError(
+            f"{PARAMETER_FILE}: {label}.detection_limits has no limit for {', '.join(missing)}"
+        )
     return FireRadiativePowerParameters(
         min_confidence=table["min_confidence"],
         min_observed_fraction=_number(table, "min_observed_fraction", label, maximum=1),
@@ -445,6 +457,10 @@ def _fire_radiative_power(table: dict) -> FireRadiativePowerParameters:
         min_observations=_whole(table, "min_observations", label, minimum=1),
         kpi_weights=MappingProxyType({key: _number(table, key, label) for key in FRP_KPI_WEIGHT_KEYS}),
         systems=tuple(systems),
+        detection_limits=MappingProxyType(
+            {name: _number(limits, name, f"{label}.detection_limits") for name in limits}
+        ),
+        log_error_cap=_number(table, "log_error_cap", label, minimum=1e-9),
     )
 
 

@@ -405,6 +405,10 @@ def _match_overpasses(times: np.ndarray, overpasses: list, granule_seconds: int)
     """
     Observations and the observation index of each detection.
 
+    A detection belongs to the overpass whose span holds it, give or take ``_MATCH_SLACK_S``, else to
+    the next overpass when that starts at most one granule later: FIRMS can time a pixel in a
+    granule CMR did not list for the box, just before those it did.
+
     Returns ``(observations, index, rebuilt)``: observations as ``(start, end, granule_ids,
     observed_fraction)`` sorted by start, the row of each detection, and how many observations were
     rebuilt from detections.
@@ -430,6 +434,10 @@ def _match_overpasses(times: np.ndarray, overpasses: list, granule_seconds: int)
         hit = valid.copy()
         hit[valid] = times[valid] <= ends[candidate[valid]] + slack
         owner[hit] = candidate[hit]
+        following = np.searchsorted(starts, times, side="left")
+        ahead = (owner < 0) & (following < len(rows))
+        ahead[ahead] = starts[following[ahead]] - times[ahead] <= np.timedelta64(granule_seconds, "s")
+        owner[ahead] = following[ahead]
     unmatched = sorted(set(times[owner < 0].tolist()))
     rebuilt = len(unmatched)
     for minute in unmatched:
@@ -748,7 +756,8 @@ def frp_time_series(
     One entry per observation whose start is in ``[start, end]``; a time the sensor did not look at
     has no entry. ``frp_total`` is the sum of the FRP of the detections kept: 0 when none is kept,
     NaN when some are kept and every one lacks FRP. A missing FRP is left out of a sum that has
-    others.
+    others. An observation rebuilt from detections whose span overlaps an overpass of the stream is
+    counted in that overpass (see ``_merged_into``).
 
     Parameters
     ----------
@@ -782,14 +791,15 @@ def frp_time_series(
     obs_start = _absolute_times(observations[svn.TIME.value])
     obs_end = _absolute_times(observations["time_end"])
     fraction = observations[svn.OBSERVED_FRACTION.value][()].astype(np.float64)
-    keep_obs = np.ones(len(obs_start), dtype=bool)
+    merged_into = _merged_into(observations, obs_start, obs_end, fraction)
+    keep_obs = merged_into == np.arange(len(obs_start))
     if start is not None:
         keep_obs &= obs_start >= np.datetime64(_utc(start).replace(tzinfo=None), "ms")
     if end is not None:
         keep_obs &= obs_start <= np.datetime64(_utc(end).replace(tzinfo=None), "ms")
 
     frp = detections[svn.FIRE_RADIATIVE_POWER.value][()].astype(np.float64)
-    owner = detections["observation_index"][()].astype(np.int64)
+    owner = merged_into[detections["observation_index"][()].astype(np.int64)]
     keep = np.ones(len(frp), dtype=bool)
     if min_confidence is not None:
         confidence = detections[svn.FIRE_DETECTION_CONFIDENCE.value]
@@ -815,6 +825,25 @@ def frp_time_series(
         n_detections=count[keep_obs],
         observed_fraction=fraction[keep_obs],
     )
+
+
+def _merged_into(observations: h5py.Group, start: np.ndarray, end: np.ndarray, fraction) -> np.ndarray:
+    """
+    The observation each observation of a swath stream counts as: itself, or for one rebuilt from
+    detections (no granule, unknown fraction) the overpass whose span overlaps its own, the nearest
+    by start. A file written before ``_match_overpasses`` looked one granule ahead keeps such pairs.
+    """
+    target = np.arange(len(start))
+    if "granule_ids" not in observations:
+        return target
+    granules = observations["granule_ids"][()]
+    rebuilt = np.array([not _text(item) for item in granules], dtype=bool) & np.isnan(fraction)
+    listed = np.flatnonzero(~rebuilt)
+    for index in np.flatnonzero(rebuilt):
+        overlap = listed[(start[listed] <= end[index]) & (end[listed] >= start[index])]
+        if overlap.size:
+            target[index] = overlap[np.argmin(np.abs(start[overlap] - start[index]))]
+    return target
 
 
 # Writing -------------------------------------------------------------------------------------------

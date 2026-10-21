@@ -216,6 +216,15 @@ def test_parameter_file_refuses_an_unknown_key():
         parameters_module.parse_parameters(document)
 
 
+def test_parameter_file_refuses_an_frp_instrument_without_a_detection_limit():
+    content = parameters_module.files("firebench").joinpath(parameters_module.PARAMETER_FILE).read_text()
+    document = parameters_module.tomllib.loads(content)
+    del document["fire_radiative_power"]["detection_limits"]["MODIS"]
+
+    with pytest.raises(parameters_module.FireCaseParameterError, match="no limit for MODIS"):
+        parameters_module.parse_parameters(document)
+
+
 @pytest.mark.parametrize(
     ("reference", "message"),
     [

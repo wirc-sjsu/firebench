@@ -11,10 +11,12 @@ from firebench.metrics.confusion_matrix import (
     within_k_accuracy,
 )
 from firebench.metrics.stats import (
+    band_log_errors,
     band_position,
     fraction_above_band,
     fraction_below_band,
     fraction_in_band,
+    mean_band_log_error,
 )
 
 # Three ordinal classes, every miss one class too high: worked out by hand in the tests below.
@@ -107,3 +109,34 @@ def test_band_fractions_without_values_are_nan():
 def test_band_refuses_inverted_bounds():
     with pytest.raises(ValueError):
         fraction_in_band(np.array([1.0]), np.array([2.0]), np.array([1.0]))
+
+
+def test_a_band_compares_at_the_detection_limit():
+    x = np.array([0.0, 0.0, 0.0, 3.0])
+    lower = np.array([3.0, 20.0, 0.0, 0.0])
+    upper = np.array([6.0, 40.0, 0.0, 1.0])
+    # Under the limit of 5, 0 and 3 are the same value: in a band whose lower bound is under it too.
+    assert band_position(x, lower, upper, limit=5.0).tolist() == ["in", "below", "in", "in"]
+    assert band_position(x, lower, upper).tolist() == ["below", "below", "in", "above"]
+    assert fraction_in_band(x, lower, upper, limit=np.array([5.0, 5.0, 0.0, 0.0])) == pytest.approx(2 / 4)
+    with pytest.raises(ValueError, match="0 or more"):
+        band_position(x, lower, upper, limit=-1.0)
+
+
+def test_band_log_errors_are_decades_outside_the_band_up_to_the_cap():
+    x = np.array([5.0, 100.0, 1.0, 1000.0, 0.0, 3.0, np.nan])
+    lower = np.array([1.0, 1.0, 10.0, 1.0, 1.0, 0.0, 1.0])
+    upper = np.array([10.0, 10.0, 20.0, 1.0, 2.0, 0.0, 2.0])
+
+    errors = band_log_errors(x, lower, upper, cap=2.0)
+
+    assert errors[:4] == pytest.approx([0.0, 1.0, 1.0, 2.0])
+    # Without a limit, 0 under a band above 0 and a value over a band of 0 are as far as the cap.
+    assert errors[4:6].tolist() == [2.0, 2.0] and np.isnan(errors[6])
+    assert band_log_errors(x[4:6], lower[4:6], upper[4:6], limit=1.0, cap=2.0) == pytest.approx(
+        [0.0, np.log10(3)]
+    )
+    assert mean_band_log_error(x, lower, upper, cap=2.0) == pytest.approx(8 / 6)
+    assert np.isnan(mean_band_log_error(x[6:], lower[6:], upper[6:]))
+    with pytest.raises(ValueError, match="cap"):
+        band_log_errors(x, lower, upper, cap=0)

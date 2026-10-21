@@ -679,25 +679,33 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
             ("Above-Band Fraction", "above", every_stream, weights["above_weight"]),
             ("Below-Band Fraction", "below", every_stream, weights["below_weight"]),
         ]
+        # The log error came after the KPIs above: its ids follow theirs, so theirs did not change.
+        log_errors = [
+            (f"Band Log Error {systems[name].label}", "log_error", streams, weights["log_error_weight"])
+            for name, streams in entry["systems"].items()
+        ]
         self._requirement("R_FR", frp.model_requirements(group_path))
-        number = 1
         for period in entry["periods"]:
             group = f"Fire Radiative Power {period}"
             self._group(group, "fire_radiative_power", "F", "Fire Radiative Power", period=period)
-            for kpi_name, kpi, streams, weight in kpis:
-                function = partial(
-                    frp.bench_frp,
-                    kpi_name_custom=kpi_name,
-                    kpi=kpi,
-                    streams=list(streams),
-                    period_name=period,
-                    period=self.periods[period],
-                    frame=list(entry["frame"]),
-                    model_group=group_path,
-                    parameters=parameters,
-                )
-                self._add("R_FR", group, f"{KPI_PREFIX}FR{number:02d}", function, weight)
-                number += 1
+        order = [
+            (period, item) for items in (kpis, log_errors) for period in entry["periods"] for item in items
+        ]
+        for number, (period, (kpi_name, kpi, streams, weight)) in enumerate(order, start=1):
+            function = partial(
+                frp.bench_frp,
+                kpi_name_custom=kpi_name,
+                kpi=kpi,
+                streams=list(streams),
+                period_name=period,
+                period=self.periods[period],
+                frame=list(entry["frame"]),
+                model_group=group_path,
+                parameters=parameters,
+            )
+            self._add(
+                "R_FR", f"Fire Radiative Power {period}", f"{KPI_PREFIX}FR{number:02d}", function, weight
+            )
 
     def build_registries(self):
         """Build the registries again from the definition. Composed targets are forgotten."""

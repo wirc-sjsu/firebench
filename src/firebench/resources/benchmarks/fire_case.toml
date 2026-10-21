@@ -128,15 +128,27 @@ footprint_centroid_weight = 1
 # scan, in the case's frame) against the band of FRP the model gives, `fire_radiative_power_lower`
 # and `fire_radiative_power_upper` in MW. How a model turns its heat release into that band is the
 # adapter's (WRF-SFIRE: the sensible heat flux divided by 5 to 10). An observation is scored when its
-# start is in the period, it saw at least `min_observed_fraction` of its frame, it has an FRP total,
-# and a model output time is at most `max_time_offset` s from it; the model's bounds are interpolated
-# linearly in time to it. An observation where neither side has fire (an FRP total of 0 and an upper
-# bound of 0) is left out. Added without raising `version`, as radar_plume was.
+# start is in the period, it has an FRP total, and a model output time is at most `max_time_offset` s
+# from it; the model's bounds are interpolated linearly in time to it. A total of 0 is scored only
+# when the observation saw at least `min_observed_fraction` of its frame, since a sensor that did not
+# see the fire reports none; a total above 0 is scored whatever it saw. An observation where neither
+# side has detectable fire (a total of 0 and an upper bound at most the detection limit) is left out.
+# Added without raising `version`, as radar_plume was; the rule on coverage, the detection limits,
+# and the log error changed scores without raising it either.
 min_confidence = "nominal"
 min_observed_fraction = 0.9
 max_time_offset = 900
 # A KPI is scored on at least this many observations.
 min_observations = 5
+# The smallest FRP total each instrument tells apart from none, in MW (about one pixel at its
+# detection threshold). Observations and both bounds are raised to it before they are compared, so an
+# observation of 0 is in a band whose lower bound is under it. Every instrument of a system needs one.
+detection_limits = { ABI = 50, MODIS = 10, VIIRS = 5 }
+# The log error KPI of a system: the mean, over its observations, of how far each lies outside the
+# band in decades (log10 of observed over upper, or of lower over observed), each counted up to
+# `log_error_cap`; score 100 at 0 and 0 at the cap.
+log_error_cap = 1.0
+log_error_weight = 1
 # Weight of the KPIs pooled over every stream, and of the shares above and below the band.
 all_weight = 0
 above_weight = 0

@@ -24,7 +24,7 @@ The proposal holds every family the file allows, and says why it left out the ot
 | `burn_severity_cbi` | `/spatial_2d/ravg_cbi/ravg_composite_burn_index_severity` | the six binary metrics of high severity, where high is RAVG's class 4 (CBI ≥ 2.25) |
 | `canopy_cover_loss` | `/spatial_2d/ravg_cc/ravg_canopy_cover_loss`, and the LANDFIRE canopy height, base height, and bulk density (`/spatial_2d/landfire_ch`, `landfire_cbh`, `landfire_cbd`, written by `standardize_landfire_canopy`) | RAVG's five classes (1: 0 %, 2: >0-<25 %, 3: 25-<50 %, 4: 50-<75 %, 5: 75-100 %) compared on the cells where every LANDFIRE layer is above 0 and not its fill value, and both the observations and the model give a class from 1 to 5: a cell either side leaves unburnt (9) or without a value (0) is left out, so the family scores how much canopy a model consumes where it burns, not where it burns. Class accuracy, accuracy within one class, quadratic weighted kappa, macro F1, mean absolute class error, mean class bias, the precision, recall, and F1 of high loss (class 5), and the share of the observed cells the model gives a class |
 | `weather_stations` | `/time_series/station_*` | MAE, RMSE, and bias (circular for wind direction) of each station variable, min, mean, and max over stations, on trusted (TSO) and all stations |
-| `fire_radiative_power` | the fire detection streams, `/unstructured/fire_detections/<stream>` (`standardize_firms_bundle`, `standardize_goes_fdc`); the model's `/time_series/fire_total` | per period: the share of the satellite FRP totals (one per overpass or scan in the case's frame, `frp_time_series`) inside the band of FRP the model gives, `fire_radiative_power_lower` to `fire_radiative_power_upper`, one KPI per observing system (geostationary, polar orbiters) and one pooled; the shares above and below the band (see `fire_case_frp`) |
+| `fire_radiative_power` | the fire detection streams, `/unstructured/fire_detections/<stream>` (`standardize_firms_bundle`, `standardize_goes_fdc`); the model's `/time_series/fire_total` | per period: the share of the satellite FRP totals (one per overpass or scan in the case's frame, `frp_time_series`) inside the band of FRP the model gives, `fire_radiative_power_lower` to `fire_radiative_power_upper`, and how far outside it they lie in decades (log error), both per observing system (geostationary, polar orbiters); the share inside pooled, and the shares above and below the band (see `fire_case_frp`) |
 | `radar_plume` | the radar cross sections, `/spatial_3d/radar/<SITE>/sections/<name>` (`radar_cross_section`), and the sweeps of the sites of `echo_top`; the model's `/spatial_3d/plume` at the radar's times and places (`fire_case_radar_model`) | per section and period: the IoU of the plume masks (radar: the plume mask of `radar.toml`; model: its tracer above a share of its largest value), the error on the plume top (90th percentile of heights) and on the plume centroid, the rank correlation of reflectivity and log tracer, and the RMSE and bias of radial velocity folded into the Nyquist interval; per site of `echo_top` and period, over the part of the site's frame the radar sees: the error and bias of the plume top, the 90th percentile of the heights of the radar's plume gates (`radar_echo_top_series`) against that of the model's plume cells; and on the radar's map grid, the IoU of both plume footprints, the error and bias of the plume top where both have one, and the distance between the footprints' centroids weighted by the top (see `fire_case_radar`). `echo_top` is optional; `propose_case` lists every site with a section |
 
 and these periods:
@@ -101,13 +101,25 @@ when the model burns no cell the observations classify.
 A model gives the FRP it expects over the frame of the case's `fire_radiative_power` entry as a band,
 because how its heat release becomes radiated power is uncertain. WRF-SFIRE's adapter integrates the
 sensible heat flux over the frame and divides it by 10 and by 5 (the sensible heat flux is taken to
-be 5 to 10 times the FRP). The KPI is the share of satellite observations inside the band, between 0
-and 1: an instantaneous observation against a continuous range. FireBench converts nothing; a model
-that computes FRP itself gives the same value as both bounds.
+be 5 to 10 times the FRP). FireBench converts nothing; a model that computes FRP itself gives the same
+value as both bounds.
+
+Two KPIs compare each instantaneous observation with the continuous range. The share of observations
+inside the band, between 0 and 1, says how often the model is right. The log error says how far it is
+when it is not: for each observation, `log10(observed / upper)` above the band or
+`log10(lower / observed)` below it, in decades, counted up to `log_error_cap` (1: ten times off), and
+its mean scores 100 at 0 and 0 at the cap. Before either, the observation and both bounds are raised
+to the detection limit of the instrument (`detection_limits`: ABI 50 MW, MODIS 10 MW, VIIRS 5 MW), so
+an observation of 0 is inside a band whose lower bound is under the limit.
+
+Every observation that reports fire is scored, whatever share of its frame it saw. An observation of 0
+is scored only when it saw at least `min_observed_fraction` of its frame, since a sensor that did not
+see the fire reports none; one where the model's upper bound is under the detection limit too is left
+out, as it would agree whatever the model.
 
 Each observing system of `[fire_radiative_power.systems]` in `fire_case.toml` (geostationary: ABI;
-polar orbiters: VIIRS and MODIS) has its own KPI, so GOES, which looks every few minutes, does not
-outweigh the polar orbiters, which look a few times a day. A stream whose instrument no system lists
+polar orbiters: VIIRS and MODIS) has its own pair of KPIs, so GOES, which looks every few minutes, does
+not outweigh the polar orbiters, which look a few times a day. A stream whose instrument no system lists
 is not scored; a new instrument (a constellation such as FireSat) is a new system in the parameter
 file.
 

@@ -22,12 +22,13 @@ from firebench.standardize import new_std_file
 
 START = datetime(2021, 8, 17, tzinfo=timezone.utc)
 CALDOR = (-120.8, 38.4, -119.7, 39.0)
-# GOES every 10 min from 00:05, no fire until 00:45, 100 MW after. Five VIIRS overpasses of 100 MW
-# and one that saw 40 % of the frame.
+# GOES every 10 min from 00:05, no fire until 00:45, 100 MW after. Six VIIRS overpasses of 100 MW,
+# one of which saw 40 % of the frame, and one at 03:50 that saw no fire and 30 % of the frame.
 GOES_TIMES = [START + timedelta(minutes=5 + 10 * index) for index in range(36)]
 GOES_FRP = [0.0 if time <= START + timedelta(minutes=45) else 100.0 for time in GOES_TIMES]
-VIIRS_TIMES = [START + timedelta(minutes=minutes) for minutes in (90, 130, 170, 210, 250, 290)]
-VIIRS_FRACTIONS = [1.0, 0.4, 1.0, 1.0, 1.0, 1.0]
+VIIRS_TIMES = [START + timedelta(minutes=minutes) for minutes in (90, 130, 170, 210, 230, 250, 290)]
+VIIRS_FRP = [100.0, 100.0, 100.0, 100.0, 0.0, 100.0, 100.0]
+VIIRS_FRACTIONS = [1.0, 0.4, 1.0, 1.0, 0.3, 1.0, 1.0]
 # The model every 15 min until 05:00, without fire until 00:45, then the band [low, high].
 MODEL_TIMES = [START + timedelta(minutes=15 * index) for index in range(21)]
 
@@ -75,16 +76,17 @@ def _observations(path, extra_stream=False):
             "Suomi NPP",
             "VIIRS",
             VIIRS_TIMES,
-            [100.0] * 6,
+            VIIRS_FRP,
             VIIRS_FRACTIONS,
             ("viirs_lnh", 1),
         )
         if extra_stream:
-            _stream(h5, "other", "Elsewhere", "XYZ", VIIRS_TIMES, [100.0] * 6, [1.0] * 6, ("viirs_lnh", 1))
+            _stream(h5, "other", "Elsewhere", "XYZ", VIIRS_TIMES, VIIRS_FRP, [1.0] * 7, ("viirs_lnh", 1))
     return path
 
 
-def _model(path, low=60.0, high=120.0, times=MODEL_TIMES):
+def _model(path, low=60.0, high=120.0, times=MODEL_TIMES, before=(0.0, 0.0)):
+    """The band [low, high] from 00:45 on, ``before`` until then."""
     with new_std_file(path, "tester") as h5:
         group = h5.create_group(fire_case_frp.MODEL_GROUP)
         seconds = np.array([(time - START).total_seconds() for time in times])
@@ -92,8 +94,11 @@ def _model(path, low=60.0, high=120.0, times=MODEL_TIMES):
         time.attrs["time_origin"] = START.isoformat()
         time.attrs["time_units"] = "s"
         fire = np.array([time > START + timedelta(minutes=45) for time in times])
-        for name, value in ((fire_case_frp.LOWER, low), (fire_case_frp.UPPER, high)):
-            values = np.where(fire, value, 0.0)
+        for name, value, early in (
+            (fire_case_frp.LOWER, low, before[0]),
+            (fire_case_frp.UPPER, high, before[1]),
+        ):
+            values = np.where(fire, value, early)
             group.create_dataset(name, data=values * 1e6).attrs["units"] = "W"
     return path
 
@@ -153,7 +158,7 @@ def test_a_stream_of_an_instrument_no_system_lists_is_not_scored(tmp_path):
 def test_the_family_is_left_out_with_its_reason(tmp_path):
     path = tmp_path / "obs.h5"
     with new_std_file(path, "tester") as h5:
-        _stream(h5, "other", "Elsewhere", "XYZ", VIIRS_TIMES, [100.0] * 6, [1.0] * 6, ("viirs_lnh", 1))
+        _stream(h5, "other", "Elsewhere", "XYZ", VIIRS_TIMES, VIIRS_FRP, [1.0] * 7, ("viirs_lnh", 1))
 
     proposal = propose_case(path)
 
@@ -174,14 +179,16 @@ def test_the_observations_scored_and_the_band_at_their_time(obs, tmp_path):
             model_h5, obs_h5, "viirs_snpp", period, CALDOR, "/time_series/fire_total", parameters
         )
 
-    # GOES: no fire on either side until 00:45 (5 scans left out); nothing within 15 min of a model time
-    # after 05:15 (4 left out). VIIRS: the overpass that saw 40 % of the frame is left out.
+    # GOES: no detectable fire on either side until 00:45 (5 scans left out); nothing within 15 min of a
+    # model time after 05:15 (4 left out). VIIRS: the overpass that saw 40 % of the frame has fire and is
+    # scored; the one that saw no fire and 30 % of it is left out.
     assert len(goes.observed) == 27
     assert goes.time[0] == np.datetime64("2021-08-17T00:55:00", "ms")
     # 00:55 is two thirds of the way from 00:45 (0) to 01:00 (60, 120).
     assert goes.lower[0] == pytest.approx(40.0) and goes.upper[0] == pytest.approx(80.0)
     assert goes.upper[-1] == pytest.approx(120.0)
-    assert len(viirs.observed) == 5
+    assert len(viirs.observed) == 6
+    assert set(goes.limit) == {50.0} and set(viirs.limit) == {5.0}
 
 
 def test_a_band_holding_the_observations(obs, tmp_path):
@@ -190,14 +197,29 @@ def test_a_band_holding_the_observations(obs, tmp_path):
     result = _run(case, _model(tmp_path / "model.h5"), obs, tmp_path)
 
     values = _values(result)
-    # The GOES scan at 00:55 has 100 MW while the model's fire is starting (band 40 to 80): above.
+    # The GOES scan at 00:55 has 100 MW while the model's fire is starting (band 40 to 80, raised to 50
+    # to 80 by ABI's detection limit): above, by log10(100 / 80) decades.
+    above = np.log10(100 / 80)
     assert values["In-Band Fraction Geostationary"] == pytest.approx(26 / 27)
     assert values["In-Band Fraction Polar Orbiters"] == 1.0
-    assert values["In-Band Fraction All"] == pytest.approx(31 / 32)
-    assert values["Above-Band Fraction"] == pytest.approx(1 / 32)
+    assert values["In-Band Fraction All"] == pytest.approx(32 / 33)
+    assert values["Above-Band Fraction"] == pytest.approx(1 / 33)
     assert values["Below-Band Fraction"] == 0.0
-    assert set(result["benchmarks"]) == {f"G-FR{index:02d}" for index in range(1, 6)}
-    assert result["score_card"]["Score Total"] == pytest.approx((100 * 26 / 27 + 100) / 2)
+    assert values["Band Log Error Geostationary"] == pytest.approx(above / 27)
+    assert values["Band Log Error Polar Orbiters"] == 0.0
+    # The log error KPIs follow the others, so the ids of those did not change.
+    assert {kpi: next(iter(item)) for kpi, item in result["benchmarks"].items()} == {
+        "G-FR01": "In-Band Fraction Geostationary",
+        "G-FR02": "In-Band Fraction Polar Orbiters",
+        "G-FR03": "In-Band Fraction All",
+        "G-FR04": "Above-Band Fraction",
+        "G-FR05": "Below-Band Fraction",
+        "G-FR06": "Band Log Error Geostationary",
+        "G-FR07": "Band Log Error Polar Orbiters",
+    }
+    assert result["score_card"]["Score Total"] == pytest.approx(
+        (100 * 26 / 27 + 100 + 100 * (1 - above / 27) + 100) / 4
+    )
 
 
 def test_a_model_too_strong_is_below_its_band(obs, tmp_path):
@@ -206,23 +228,42 @@ def test_a_model_too_strong_is_below_its_band(obs, tmp_path):
     result = _run(case, _model(tmp_path / "model.h5", low=150.0, high=300.0), obs, tmp_path)
 
     values = _values(result)
-    # Only the GOES scan at 00:55 (band 100 to 200) holds its 100 MW.
+    # Only the GOES scan at 00:55 (band 100 to 200) holds its 100 MW; the others are 150 to 300.
+    below = np.log10(150 / 100)
     assert values["In-Band Fraction Geostationary"] == pytest.approx(1 / 27)
     assert values["In-Band Fraction Polar Orbiters"] == 0.0
-    assert values["Below-Band Fraction"] == pytest.approx(31 / 32)
+    assert values["Below-Band Fraction"] == pytest.approx(32 / 33)
     assert values["Above-Band Fraction"] == 0.0
-    # The group weighs the two systems equally; the pooled and side KPIs weigh 0.
-    assert result["score_card"]["Score Total"] == pytest.approx(100 / 27 / 2)
+    assert values["Band Log Error Geostationary"] == pytest.approx(26 * below / 27)
+    assert values["Band Log Error Polar Orbiters"] == pytest.approx(below)
+    # The group weighs the two systems and their two KPIs equally; the pooled and side KPIs weigh 0.
+    assert result["score_card"]["Score Total"] == pytest.approx(
+        (100 / 27 + 0 + 100 * (1 - 26 * below / 27) + 100 * (1 - below)) / 4
+    )
+
+
+def test_a_log_error_counts_ten_times_off_as_the_cap(obs, tmp_path):
+    case = load_case(_definition(obs), obs)
+
+    result = _run(case, _model(tmp_path / "model.h5", low=0.5, high=1.0), obs, tmp_path)
+
+    # 100 MW against a band raised to the detection limit (50 MW for ABI, 5 MW for VIIRS): log10(2)
+    # decades for GOES, more than the cap of 1 for VIIRS.
+    values = _values(result)
+    assert values["Band Log Error Geostationary"] == pytest.approx(np.log10(2))
+    assert values["Band Log Error Polar Orbiters"] == 1.0
+    assert values["In-Band Fraction Geostationary"] == 0.0
 
 
 def test_a_system_with_too_few_observations_is_left_out(obs, tmp_path):
     case = load_case(_definition(obs), obs)
-    # The model stops at 03:00: the VIIRS overpasses kept are 01:30 and 02:50.
     model = _model(tmp_path / "model.h5", times=MODEL_TIMES[:13])
 
     result = _run(case, model, obs, tmp_path)
 
+    # The model stops at 03:00: the VIIRS overpasses kept are 01:30, 02:10, and 02:50.
     assert "In-Band Fraction Polar Orbiters" not in _values(result)
+    assert "Band Log Error Polar Orbiters" not in _values(result)
     assert _values(result)["In-Band Fraction Geostationary"] == pytest.approx(14 / 15)
 
 
@@ -316,11 +357,15 @@ def test_frp_values_give_the_positions_the_kpis_count(obs, tmp_path, band):
             ("Below-Band Fraction", "below"),
         ):
             assert np.mean(position == where) == pytest.approx(expected[name])
-        polar = period["scored"][observations["system"][period["scored"]] == "polar"]
-        if "In-Band Fraction Polar Orbiters" in expected:
-            assert np.mean(observations["position"][polar] == "in") == pytest.approx(
-                expected["In-Band Fraction Polar Orbiters"]
-            )
+        for system, label in (("polar", "Polar Orbiters"), ("geostationary", "Geostationary")):
+            scored = period["scored"][observations["system"][period["scored"]] == system]
+            if f"In-Band Fraction {label}" in expected:
+                assert np.mean(observations["position"][scored] == "in") == pytest.approx(
+                    expected[f"In-Band Fraction {label}"]
+                )
+                assert np.mean(observations["log_error"][scored]) == pytest.approx(
+                    expected[f"Band Log Error {label}"]
+                )
 
 
 def test_frp_values_say_why_an_observation_is_not_scored(obs, tmp_path):
@@ -329,18 +374,44 @@ def test_frp_values_say_why_an_observation_is_not_scored(obs, tmp_path):
     observations = values["observations"]
     reasons = dict(zip(observations["time"].tolist(), observations["reason"]))
     ok = dict(zip(observations["time"].tolist(), observations["observation_ok"].tolist()))
-    early, late, partial_view = (
-        np.datetime64(f"2021-08-17T{clock}", "ms").item() for clock in ("00:05", "05:25", "02:10")
+    early, late, partial_fire, partial_none = (
+        np.datetime64(f"2021-08-17T{clock}", "ms").item() for clock in ("00:05", "05:25", "02:10", "03:50")
     )
-    assert reasons[early] == "no fire on either side" and ok[early]
+    assert reasons[early] == "no detectable fire on either side" and ok[early]
     assert reasons[late] == "no model output time within 900 s" and ok[late]
-    assert reasons[partial_view] == "it saw 40% of its frame, less than 90%" and not ok[partial_view]
+    # A sensor that saw a part of its frame and fire there is scored; one that saw no fire is not.
+    assert reasons[partial_fire] is None and ok[partial_fire]
+    assert reasons[partial_none] == "no fire seen, and it saw 30% of its frame, less than 90%"
+    assert not ok[partial_none]
     scored = observations["kept"]
     assert all(reason is None for reason, kept in zip(observations["reason"], scored) if kept)
     assert set(observations["position"][~scored]) == {""}
+    assert np.all(np.isnan(observations["log_error"][~scored]))
+    assert set(observations["limit"][observations["system"] == "geostationary"]) == {50.0}
     assert [system["name"] for system in values["systems"]] == ["geostationary", "polar"]
     assert values["systems"][0]["label"] == "Geostationary"
     assert set(observations["satellite"]) == {"GOES-17", "Suomi NPP"}
     # The model's band at its own times, in MW.
     assert values["model"]["upper"].max() == pytest.approx(120.0)
     assert len(values["model"]["time"]) == len(MODEL_TIMES)
+
+
+@pytest.mark.parametrize(
+    ("before", "reason", "position"),
+    [
+        # Both under ABI's 50 MW: neither side has detectable fire.
+        ((10.0, 40.0), "no detectable fire on either side", ""),
+        # The band reaches above the limit and its lower bound is under it: 0 MW is in.
+        ((20.0, 80.0), None, "in"),
+        # The whole band is above the limit: 0 MW is below it.
+        ((60.0, 120.0), None, "below"),
+    ],
+)
+def test_no_fire_seen_is_compared_at_the_detection_limit(obs, tmp_path, before, reason, position):
+    values = _frp_values(obs, _model(tmp_path / "model.h5", before=before))
+
+    observations = values["observations"]
+    index = observations["time"].tolist().index(np.datetime64("2021-08-17T00:15", "ms").item())
+    assert observations["frp_total"][index] == 0.0
+    assert observations["reason"][index] == reason
+    assert observations["position"][index] == position
