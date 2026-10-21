@@ -67,8 +67,8 @@ for site in list_radar_sites("radar.h5"):
     image = radar_composite("radar.h5", site, volume=0)
 ```
 
-A gate counts as plume when its reflectivity is at least 10 dBZ and its correlation coefficient is
-between 0.2 and 0.9 (Krishna et al., 2024), over the domain. `radar_echo_top_series` gives, for each
+A gate counts as plume when its reflectivity is at least 5 dBZ and its correlation coefficient is
+between 0.2 and 0.9 (adapted from Krishna et al., 2024), over the domain. `radar_echo_top_series` gives, for each
 volume, the highest plume gate and the 75th and 90th percentiles of their heights, in m above mean
 sea level; a volume with no plume gate has NaN heights. `radar_composite` gives the column maximum of
 a field over the plume gates on a longitude–latitude grid. Both take other thresholds.

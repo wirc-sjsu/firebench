@@ -18,10 +18,10 @@ at standardization; a reader grids or cuts what it needs.
   (:class:`RadarPlane`); :func:`write_radar_sections` stores sections beside the sweeps, under
   ``sections/``, and :func:`read_radar_section` reads one back.
 
-The plume mask is the pyrometeor mask of Krishna et al. (2024): reflectivity at least ``min_dbz``
-and a correlation coefficient strictly between the bounds of ``rhohv_range``; its defaults and the
-limits of a section are in ``resources/radar.toml``. Licence attributes are not written: the caller
-sets them.
+The plume mask is adapted from the pyrometeor mask of Krishna et al. (2024): reflectivity at least
+``min_dbz`` and a correlation coefficient strictly between the bounds of ``rhohv_range``; its defaults
+and the limits of a section are in ``resources/radar.toml``. Licence attributes are not written: the
+caller sets them.
 """
 
 import gzip

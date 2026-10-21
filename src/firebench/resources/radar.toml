@@ -4,12 +4,15 @@
 # commit of a result identifies its parameters. A change that alters a reading raises `version`.
 
 set = "radar"
-version = "2026.1"
+version = "2026.2"
 
 [plume_mask]
-# The pyrometeor mask of Krishna et al. (2024): reflectivity at least `min_dbz`, in dBZ, and a
-# correlation coefficient strictly between the bounds of `rhohv_range`.
-min_dbz = 10.0
+# Adapted from the pyrometeor mask of Krishna et al. (2024): reflectivity at least `min_dbz`, in dBZ,
+# and a correlation coefficient strictly between the bounds of `rhohv_range`. `min_dbz` was 10 before
+# version 2026.2: on the Hawk Fire's KRGX sections, 93 % of the cells where a WRF-SFIRE tracer saw a
+# plume and the mask did not were below 10 dBZ, half of them below 5, and the IoU of both masks levels
+# off near 0 dBZ, below which the radar's plume grows faster than its overlap with the model's.
+min_dbz = 5.0
 rhohv_range = [0.2, 0.9]
 
 [sections]

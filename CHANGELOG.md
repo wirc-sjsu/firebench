@@ -298,6 +298,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   read-only audit findings.
 
 ### Changed
+- Lower the reflectivity of the radar plume mask (`min_dbz` of `resources/radar.toml`) from 10 to
+  5 dBZ and raise the file's version to 2026.2. The plume of a weak, smoky column was cut at its
+  edges: on the Hawk Fire's KRGX cross sections most cells where the model saw a plume and the radar
+  mask did not were below 10 dBZ, and the section mask IoU of a WRF-SFIRE run rises from
+  0.19 to 0.26. The mask's other bounds are unchanged; plume composites, echo tops, plume top maps,
+  and every `radar_plume` KPI follow it.
 
 - The `radar_plume` family reads the model at the radar's own times and places, not on its own grid:
   `/spatial_3d/plume/sections/<SITE>/<name>` holds `passive_tracer`, `wind_u`, `wind_v`, and `wind_w`
