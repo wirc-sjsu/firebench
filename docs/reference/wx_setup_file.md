@@ -40,7 +40,7 @@ benchmark:
 | `name` | file name | Workspace name: letters, digits, `.`, `_`, `-` |
 | `output_dir` | `runs/<name>` | Workspace directory |
 | `case` | none | Preset `{id, period}`: `id` is `2021_Caldor` (or `001`, `Caldor`); `period` is `H###` (HRRR cycle window) or `P##` (curated window). It sets the bounding box and window |
-| `domain.bbox` | from `case` | `[lon_min, lat_min, lon_max, lat_max]` in degrees. With HRRR or NAM it must lie inside the HRRR CONUS grid or the NAM CONUS nest; GFS is global. It overrides the preset |
+| `domain.bbox` | from `case` | `[lon_min, lat_min, lon_max, lat_max]` in degrees. With HRRR, NAM, or RRFS it must lie inside the HRRR CONUS grid, the NAM CONUS nest, or the RRFS CONUS grid; GFS is global. It overrides the preset |
 | `window` | from `case` | `{start, end}` evaluation window. It overrides the preset |
 
 The curated Caldor windows (`P##`) start and end at perimeter times, so no 48-hour cycle fits
@@ -73,10 +73,10 @@ Secrets (`token`, `api_key`, ...) are rejected in every section.
 
 | Key | Default | Description |
 |---|---|---|
-| `name` | `HRRR` | Forecast model: `HRRR` (3 km, CONUS), `GFS` (0.25 degree, global; v16 only, cycles from 2021-03-22 12Z), or `NAM` (3 km CONUS nest; cycles from 2021-09-16 00Z, the start of its AWS archive) |
-| `cycle_hours` | `[0, 6, 12, 18]` | UTC cycle hours. Every cycle whose full forecast fits in the window is scored. GFS and NAM run at these four hours only |
-| `horizon_hours` | `48` | Scored horizon, clamped to the version horizon (48 h for HRRR v4, 36 h for v3; 120 h for GFS, the end of its hourly output; 60 h for NAM) |
-| `cycles` | none | Explicit list of cycles, used as given. A cycle outside the model's archive (before GFS v16 or NAM's archive, say) is a problem; a cycle of the window outside it is left out, and named when no cycle remains |
+| `name` | `HRRR` | Forecast model: `HRRR` (3 km, CONUS), `GFS` (0.25 degree, global; v16 only, cycles from 2021-03-22 12Z), `NAM` (3 km CONUS nest; cycles from 2021-09-16 00Z, the start of its AWS archive), or `RRFS` (3 km CONUS; cycles from 2026-08-13 06Z, the parallel feed of v1.0 before its operations) |
+| `cycle_hours` | `[0, 6, 12, 18]` | UTC cycle hours. Every cycle whose full forecast fits in the window is scored. GFS and NAM run at these four hours only, and RRFS is read at them only |
+| `horizon_hours` | `48` | Scored horizon, clamped to the version horizon (48 h for HRRR v4, 36 h for v3; 120 h for GFS, the end of its hourly output; 60 h for NAM; 84 h for RRFS) |
+| `cycles` | none | Explicit list of cycles, used as given. A cycle outside the model's archive (before GFS v16, NAM's archive, or RRFS's, say) is a problem; a cycle of the window outside it is left out, and named when no cycle remains |
 | `download_workers` | `8` | Parallel forecast downloads |
 | `keep_grib` | `true` | `false` deletes the cached GRIB files once a cycle is adapted |
 

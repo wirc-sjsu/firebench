@@ -72,6 +72,12 @@ SERVICES = {
         env_var=None,
         anonymous=True,
     ),
+    "rrfs": ServiceInfo(
+        name="rrfs",
+        description="NOAA RRFS forecasts on AWS Open Data (anonymous, no key needed)",
+        env_var=None,
+        anonymous=True,
+    ),
     "firms": ServiceInfo(
         name="firms",
         description="NASA FIRMS MAP_KEY (VIIRS and MODIS fire detections)",

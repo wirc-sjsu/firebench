@@ -152,31 +152,40 @@ hourly, for lead hours 1 to 48.
 | `POOLED` | counted over every station and hour at once |
 | `TSO`, `ALL` | trusted-source stations, all stations |
 
-## HRRR, GFS, and NAM adapters
+## HRRR, GFS, NAM, and RRFS adapters
 
 The embedded adapters write the model file of a cycle from the HRRR surface product (`wrfsfc`,
 `firebench.adapters.hrrr_weather`), the GFS v16 0.25 degree product (`pgrb2.0p25`,
-`firebench.adapters.gfs_weather`), or the NAM 3 km CONUS nest (`conusnest.hiresf`,
-`firebench.adapters.nam_weather`). They share their sampling (`firebench.adapters.nwp_weather`) and
+`firebench.adapters.gfs_weather`), the NAM 3 km CONUS nest (`conusnest.hiresf`,
+`firebench.adapters.nam_weather`), or the RRFS 3 km CONUS product (`2dfld.3km.conus`,
+`firebench.adapters.rrfs_weather`). They share their sampling (`firebench.adapters.nwp_weather`) and
 declare every adjustment in the file:
 
 - **Sampling.** Values are taken at the nearest grid cell, at the model's native valid times: the
   forecast hours the model outputs (`output_hours` of its forecast module, every hour for HRRR,
-  GFS, and NAM), which are the only hours downloaded. A setup whose cadence needs an hour the model does not
+  GFS, NAM, and RRFS), which are the only hours downloaded. A setup whose cadence needs an hour the model does not
   output is refused (see `benchmark.cadences` in the setup reference). A GFS cell is about 25 km
   wide, so its terrain can differ much more from a station's than HRRR's.
-- **Grid.** HRRR's and NAM's grids are shared Lambert conformal grids
+- **Grid.** HRRR's, NAM's, and RRFS's grids are shared Lambert conformal grids
   (`firebench.acquisition.lambert`), described by the parameters of their GRIB2 grid definition. The
-  orientation longitude is taken in -180..180 even when a file gives it in 0..360, as NAM's do
-  (262.5). NAM's nest has HRRR's parameters, its first point given to the millidegree; every NAM
-  message is checked against them to 0.001 degree.
+  orientation longitude is taken in -180..180 even when a file gives it in 0..360, as NAM's and
+  RRFS's do (262.5). NAM's nest has HRRR's parameters, its first point given to the millidegree;
+  every NAM message is checked against them to 0.001 degree. RRFS gives its CONUS output on HRRR's
+  grid exactly; every RRFS message is checked against it to 0.0001 degree.
 - **NAM's archive.** NOAA's AWS bucket holds the nest from the 2021-09-16 00Z cycle, hourly to f60 at
   00, 06, 12, and 18 UTC; an older cycle is refused with that bound. Its 10 m U and V are two
   sub-messages of one GRIB message, downloaded once and decoded with eccodes' multi-field support;
   each field is checked by its eccodes short name, so U and V cannot be swapped.
+- **RRFS's archive.** NOAA's AWS bucket `noaa-rrfs-ops-pds` holds RRFS v1.0 from 2026-08-12 20Z:
+  NCEP's real-time parallel feed until RRFS goes into operations (scheduled for 2026-11-03), then the
+  operational runs. FireBench reads the cycles at 00, 06, 12, and 18 UTC, hourly to f084, from
+  2026-08-13 06Z, the first cycle whose forecast hours all have an index; an older cycle is refused
+  with that bound. Each field is a GRIB message of its own, checked by its eccodes short name. A
+  forecast hour the archive misses (2026-09-14 18Z lacks f000 and f005, 2026-09-15 00Z lacks f003)
+  leaves its cycle incomplete.
 - **Terrain.** Each station group records `model_terrain_height`, `station_elevation`, and their
   difference `terrain_height_difference`, which is a first-order temperature bias in mountains.
-- **Wind direction.** HRRR's and NAM's grid-relative 10 m winds are rotated to earth-relative components; GFS
+- **Wind direction.** HRRR's, NAM's, and RRFS's grid-relative 10 m winds are rotated to earth-relative components; GFS
   winds are earth-relative already. The direction is assumed height-invariant in the surface layer.
 - **Wind speed.** It is brought from 10 m to the station sensor height with the neutral log law and
   the model's own surface roughness `SFCR` (`height_adjustment`, `z0_source` attributes).
@@ -186,7 +195,7 @@ declare every adjustment in the file:
 
 ## Caveats
 
-- HRRR, GFS, and NAM values are instantaneous at the valid time, while RAWS wind is a 10-minute average.
+- HRRR, GFS, NAM, and RRFS values are instantaneous at the valid time, while RAWS wind is a 10-minute average.
 - Cycles missing from the model archive are omitted and listed; hours missing *inside* a scored
   cycle are penalized.
 - Minimum and maximum summaries of a signed bias select the most extreme station in each direction,

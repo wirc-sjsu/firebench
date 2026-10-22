@@ -120,5 +120,5 @@ def test_registry_names_the_models_of_the_workflow():
     assert forecast_models.get_model("HRRR").version(CYCLE) == "4"
     assert forecast_models.download_mb_per_cycle("GFS", 48) == pytest.approx(4.6 + 3.7 * 48, abs=0.1)
     assert forecast_models.get_model("GFS").domain_problem((-150.0, 64.0, -149.0, 65.0)) is None
-    with pytest.raises(ValueError, match="unknown forecast model 'RRFS'"):
-        forecast_models.get_model("RRFS")
+    with pytest.raises(ValueError, match="unknown forecast model 'ICON'"):
+        forecast_models.get_model("ICON")

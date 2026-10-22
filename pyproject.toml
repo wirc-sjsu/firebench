@@ -79,6 +79,9 @@ gfs = [
 nam = [
     "eccodes>=2.37",
 ]
+rrfs = [
+    "eccodes>=2.37",
+]
 radar = [
     "xradar>=0.11, <1.0",
 ]

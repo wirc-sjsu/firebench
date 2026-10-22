@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add RRFS to the models of `firebench wx` (`model.name: RRFS`): the RRFS v1.0 3 km CONUS product
+  (`2dfld.3km.conus`) downloaded as byte-range subsets from NOAA's RRFS bucket on AWS
+  (`noaa-rrfs-ops-pds`; `firebench.acquisition.rrfs`, cache `rrfs/`, extra `firebench[rrfs]`), at 00,
+  06, 12, and 18 UTC, hourly up to f084, from the 2026-08-13 06Z cycle: the bucket holds NCEP's
+  parallel feed from 2026-08-12 20Z until RRFS goes into operations, and the 2026-08-13 00Z cycle has
+  no index for f000 to f022 (an older cycle is refused with that bound). It is sampled at the stations
+  by `firebench.adapters.rrfs_weather` with the same declared adjustments as HRRR, on HRRR's grid,
+  which every message is checked against to 0.0001 degree; its grid-relative winds are rotated to
+  earth-relative components. NAM's reader moves to `firebench.acquisition.lambert_read`
+  (`read_lambert_fields`), which RRFS shares, and every model's cached subset gets its sidecar from
+  `hrrr.forecast.write_sidecar`, which now records each message's number for HRRR and GFS too.
 - Add NAM to the models of `firebench wx` (`model.name: NAM`): the NAM 3 km CONUS nest
   (`conusnest.hiresf`) downloaded as byte-range subsets from the NOAA Open Data bucket on AWS
   (`firebench.acquisition.nam`, cache `nam/`, extra `firebench[nam]`), at 00, 06, 12, and 18 UTC,

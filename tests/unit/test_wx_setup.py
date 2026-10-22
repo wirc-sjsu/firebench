@@ -118,7 +118,7 @@ def test_every_problem_is_reported_at_once():
     problems = _problems("""
 case: {id: 2021_Caldor, period: H999}
 observations: {h5: missing.h5, synoptic_json: missing.json}
-model: {name: RRFS}
+model: {name: ICON}
 benchmark: {cadences: [2], obs_tolerance_min: 45, min_coverage: 2}
 extra: 1
 """)
@@ -129,7 +129,7 @@ extra: 1
         "unknown Caldor period 'H999'",
         "mutually exclusive",
         "observations.h5 does not exist",
-        "model.name 'RRFS' is not supported",
+        "model.name 'ICON' is not supported",
         "benchmark.cadences",
         "min_coverage must be between 0 and 1",
     ):
@@ -375,3 +375,36 @@ model: {name: NAM}
         for problem in caldor
     )
     assert any("not fully inside the NAM CONUS nest grid" in problem for problem in alaska)
+
+
+def test_rrfs_setup_resolves_its_cycles_and_scores_every_1_or_3_hours():
+    window = """
+domain: {bbox: [-118.4, 44.7, -118.0, 45.0]}
+window: {start: 2026-08-28T00:00Z, end: 2026-08-30T06:00Z}
+model: {name: rrfs}
+benchmark: {cadences: [%d]}
+"""
+
+    for cadence in (1, 3):
+        setup = _parse(window % cadence)
+        assert setup.model.name == "RRFS"
+        assert [(cycle.label, cycle.horizon_hours) for cycle in setup.cycles] == [
+            ("2026082800", 48),
+            ("2026082806", 48),
+        ]
+
+
+def test_rrfs_refuses_caldor_h012_which_is_before_its_archive_and_a_box_outside_its_grid():
+    caldor = _problems("case: {id: 2021_Caldor, period: H012}\nmodel: {name: RRFS}")
+    alaska = _problems("""
+domain: {bbox: [-150.5, 64.5, -149.5, 65.0]}
+window: {start: 2026-09-01T00:00Z, end: 2026-09-03T00:00Z}
+model: {name: RRFS}
+""")
+
+    assert any(
+        "list model.cycles explicitly" in problem
+        and "older than the first cycle of its archive FireBench reads (2026-08-13 06Z)" in problem
+        for problem in caldor
+    )
+    assert any("not fully inside the RRFS CONUS grid" in problem for problem in alaska)

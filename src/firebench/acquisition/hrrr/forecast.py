@@ -153,6 +153,30 @@ def is_cached(path: Path, fields) -> bool:
     )
 
 
+def write_sidecar(dest: Path, url: str, cycle: datetime, fxx: int, messages, size: int) -> None:
+    """Write the JSON sidecar of a cached subset: its source, and its fields in decode order."""
+    atomic_write_json(
+        dest.with_suffix(".json"),
+        {
+            "source_url": url,
+            "cycle": cycle.isoformat(),
+            "forecast_hour": fxx,
+            "fields": [message.field for message in messages],
+            "messages": [
+                {
+                    "number": message.number,
+                    "field": message.field,
+                    "level": message.level,
+                    "forecast": message.forecast,
+                }
+                for message in messages
+            ],
+            "size": size,
+            "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        },
+    )
+
+
 def fetch_file(
     cycle: datetime, fxx: int, fields=None, cache_root: Path | None = None, **http_kwargs
 ) -> Path:
@@ -178,21 +202,7 @@ def fetch_file(
 
     messages = select_messages(index, fields)
     size = download_subset(url, messages, dest, **http_kwargs)
-    atomic_write_json(
-        dest.with_suffix(".json"),
-        {
-            "source_url": url,
-            "cycle": cycle.isoformat(),
-            "forecast_hour": fxx,
-            "fields": [message.field for message in messages],
-            "messages": [
-                {"field": message.field, "level": message.level, "forecast": message.forecast}
-                for message in messages
-            ],
-            "size": size,
-            "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        },
-    )
+    write_sidecar(dest, url, cycle, fxx, messages, size)
     logger.info("[hrrr] downloaded %s (%.1f MB)", dest.name, size / 1e6)
     return dest
 

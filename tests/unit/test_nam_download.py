@@ -209,8 +209,6 @@ def _write_subset(eccodes, path, fields):
 def small_nest(monkeypatch):
     eccodes = pytest.importorskip("eccodes")
     monkeypatch.setattr(read, "NAM_PARAMETERS", SMALL)
-    monkeypatch.setattr(read, "NX", SMALL.nx)
-    monkeypatch.setattr(read, "NY", SMALL.ny)
     return eccodes
 
 

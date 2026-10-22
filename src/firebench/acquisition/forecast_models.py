@@ -18,6 +18,7 @@ from types import ModuleType
 from .gfs import forecast as gfs_forecast
 from .hrrr import forecast as hrrr_forecast
 from .nam import forecast as nam_forecast
+from .rrfs import forecast as rrfs_forecast
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,13 @@ def _nam_domain_problem(bbox) -> str | None:
     return _outside_grid(NAMGrid(), "NAM CONUS nest grid", bbox)
 
 
+def _rrfs_domain_problem(bbox) -> str | None:
+    # pylint: disable-next=import-outside-toplevel
+    from .rrfs.grid import RRFSGrid
+
+    return _outside_grid(RRFSGrid(), "RRFS CONUS grid", bbox)
+
+
 MODELS = {
     "HRRR": ForecastModel(
         name="HRRR",
@@ -90,6 +98,15 @@ MODELS = {
         adapter_module="firebench.adapters.nam_weather",
         file_mb=(10.5, 8.9),
         domain_problem=_nam_domain_problem,
+    ),
+    "RRFS": ForecastModel(
+        name="RRFS",
+        source="NOAA Open Data on AWS, anonymous access",
+        forecast=rrfs_forecast,
+        version=rrfs_forecast.rrfs_version,
+        adapter_module="firebench.adapters.rrfs_weather",
+        file_mb=(10.0, 8.3),
+        domain_problem=_rrfs_domain_problem,
     ),
 }
 

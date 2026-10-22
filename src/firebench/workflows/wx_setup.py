@@ -41,7 +41,7 @@ CASE_ALIASES = {
     "2021_caldor": "caldor",
     "caldor": "caldor",
 }
-SUPPORTED_MODELS = ("HRRR", "GFS", "NAM")
+SUPPORTED_MODELS = ("HRRR", "GFS", "NAM", "RRFS")
 # Values of the options a setup leaves out: ``resources/benchmarks/wx_forecast.toml``.
 _DEFAULTS = load_parameters().setup_defaults
 
@@ -702,8 +702,8 @@ qc:
   overrides: {{}}                          # QC policy tables, e.g. {{bounds: {{wind_speed: [0, 50, m/s]}}}}
 
 model:
-  name: HRRR                             # or GFS (v16, 0.25 degree, global), or NAM (3 km CONUS nest)
-  cycle_hours: [0, 6, 12, 18]            # 48 h cycles (HRRR v4); GFS and NAM run at these hours only
+  name: HRRR                             # or GFS (v16, 0.25 degree, global), NAM (3 km CONUS nest), or RRFS (3 km CONUS)
+  cycle_hours: [0, 6, 12, 18]            # 48 h cycles (HRRR v4); GFS, NAM, and RRFS are read at these hours only
   horizon_hours: 48
   # cycles: [2021-08-20T00:00Z]          # explicit cycles instead of every cycle in the window
   download_workers: 8

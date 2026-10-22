@@ -18,8 +18,16 @@ from concurrent.futures import Executor, ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..cache import atomic_write_json, get_cache_dir
-from ..hrrr.forecast import CycleFiles, PendingCycle, as_utc, check_archive, is_cached, submit_hours
+from ..cache import get_cache_dir
+from ..hrrr.forecast import (
+    CycleFiles,
+    PendingCycle,
+    as_utc,
+    check_archive,
+    is_cached,
+    submit_hours,
+    write_sidecar,
+)
 from ..hrrr.inventory import parse_index, select_messages
 from ..http import download_subset, fetch_text
 
@@ -127,26 +135,7 @@ def fetch_file(
     # U and V share a message: it is downloaded once, and the sidecar lists both in decode order.
     messages = select_messages(index, fields, shared=True)
     size = download_subset(url, messages, dest, **http_kwargs)
-    atomic_write_json(
-        dest.with_suffix(".json"),
-        {
-            "source_url": url,
-            "cycle": cycle.isoformat(),
-            "forecast_hour": fxx,
-            "fields": [message.field for message in messages],
-            "messages": [
-                {
-                    "number": message.number,
-                    "field": message.field,
-                    "level": message.level,
-                    "forecast": message.forecast,
-                }
-                for message in messages
-            ],
-            "size": size,
-            "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        },
-    )
+    write_sidecar(dest, url, cycle, fxx, messages, size)
     logger.info("[nam] downloaded %s (%.1f MB)", dest.name, size / 1e6)
     return dest
 
