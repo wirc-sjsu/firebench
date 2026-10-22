@@ -1,5 +1,6 @@
 """
-Station sampling shared by the embedded forecast adapters (``hrrr_weather``, ``gfs_weather``).
+Station sampling shared by the embedded forecast adapters (``hrrr_weather``, ``gfs_weather``,
+``nam_weather``).
 
 For one forecast cycle, an adapter writes a FireBench-standard model file with one
 ``/time_series/station_<STID>`` group per observation station. Values stay at the model's **native

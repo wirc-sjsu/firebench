@@ -1670,7 +1670,7 @@ def wx() -> None:
 
     A setup gives a bounding box and a UTC window (or a case preset such as
     2021_Caldor H012). 'firebench wx run' fetches and QCs the weather-station
-    observations, downloads HRRR or GFS forecasts in parallel, samples them at
+    observations, downloads HRRR, GFS or NAM forecasts in parallel, samples them at
     the stations, and scores every forecast cycle on an hourly cadence.
     """
 
@@ -1816,7 +1816,7 @@ def wx_score(setup_path: Path, model_output: Path, cycle: str, name: str) -> Non
     )
 
 
-CACHE_SOURCES = ("hrrr", "gfs", "synoptic")
+CACHE_SOURCES = ("hrrr", "gfs", "nam", "synoptic")
 
 
 @main.group()

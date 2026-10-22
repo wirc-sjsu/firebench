@@ -144,9 +144,16 @@ def fetch_text(url: str, **kwargs) -> str:
 
 
 def coalesce_ranges(messages: Sequence[ByteRanged]) -> list[tuple[int, int | None]]:
-    """Merge the inclusive byte ranges of adjacent messages to reduce the number of requests."""
+    """Merge the inclusive byte ranges of adjacent messages to reduce the number of requests.
+
+    Messages in byte order that share a byte range (fields of one GRIB message) are fetched once.
+    """
     ranges: list[list[int | None]] = []
+    previous = None
     for message in messages:
+        if previous is not None and (message.byte_start, message.byte_end) == previous:
+            continue
+        previous = (message.byte_start, message.byte_end)
         if ranges and ranges[-1][1] is not None and ranges[-1][1] + 1 == message.byte_start:
             ranges[-1][1] = message.byte_end
         else:

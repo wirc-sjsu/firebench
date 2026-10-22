@@ -32,6 +32,12 @@ class GribMessage:
         return f"{self.var}:{self.level}"
 
     @property
+    def sub_message(self) -> int:
+        """Rank of the field in its GRIB message: ``2`` for ``612.2``, ``0`` for ``612``."""
+        _, _, rank = self.number.partition(".")
+        return int(rank) if rank.isdigit() else 0
+
+    @property
     def instantaneous(self) -> bool:
         """Whether the message is an analysis or an instantaneous forecast (not a max/mean/accum)."""
         return bool(INSTANTANEOUS_FORECAST.match(self.forecast))
@@ -67,14 +73,20 @@ def parse_index(text: str) -> list[GribMessage]:
 
 
 def select_messages(
-    messages: list[GribMessage], fields: list[str] | tuple[str, ...], *, instantaneous: bool = True
+    messages: list[GribMessage],
+    fields: list[str] | tuple[str, ...],
+    *,
+    instantaneous: bool = True,
+    shared: bool = False,
 ) -> list[GribMessage]:
     """
     Select the messages matching the requested ``VAR:LEVEL`` fields, in byte order.
 
     With ``instantaneous=True`` only analyses and instantaneous forecasts qualify, so
     ``WIND:10 m above ground:0-1 hour max fcst`` is never mistaken for an instantaneous wind.
-    Raises ``ValueError`` if a field is missing or if two fields share one GRIB message.
+    Raises ``ValueError`` if a field is missing, or if two fields share one GRIB message unless
+    ``shared=True``: a reader that decodes sub-messages (``612.1`` and ``612.2``, NAM's U and V) then
+    gets them in sub-message order, and the download fetches the shared message once.
     """
     by_field: dict[str, list[GribMessage]] = {}
     for message in messages:
@@ -94,6 +106,6 @@ def select_messages(
         selected.append(matches[0])
 
     starts = [message.byte_start for message in selected]
-    if len(set(starts)) != len(starts):
+    if not shared and len(set(starts)) != len(starts):
         raise ValueError(f"requested fields share a GRIB message and cannot be subset separately: {fields}")
-    return sorted(selected, key=lambda message: message.byte_start)
+    return sorted(selected, key=lambda message: (message.byte_start, message.sub_message))

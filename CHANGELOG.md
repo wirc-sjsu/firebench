@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add NAM to the models of `firebench wx` (`model.name: NAM`): the NAM 3 km CONUS nest
+  (`conusnest.hiresf`) downloaded as byte-range subsets from the NOAA Open Data bucket on AWS
+  (`firebench.acquisition.nam`, cache `nam/`, extra `firebench[nam]`), at 00, 06, 12, and 18 UTC,
+  hourly up to f60, from the 2021-09-16 00Z cycle, the first of the archive (an older cycle is
+  refused with that bound). It is sampled at the stations by `firebench.adapters.nam_weather` with
+  the same declared adjustments as HRRR, on a shared Lambert grid with the parameters its messages
+  give, which every message is checked against to 0.001 degree; its grid-relative winds are rotated
+  to earth-relative components. NAM packs its 10 m U and V in one GRIB message: `select_messages`
+  takes `shared=True` to select fields of one message (in sub-message order), the download fetches a
+  shared message once (`coalesce_ranges`), and the reader decodes both with eccodes' multi-field
+  support and checks each field's eccodes short name.
 - Add the log error to the `fire_radiative_power` family: per observing system, the mean of how far
   each observation lies outside the model's band, in decades (`log10(observed / upper)` above it,
   `log10(lower / observed)` below it), each counted up to `log_error_cap` (1), scored 100 at 0 and 0 at

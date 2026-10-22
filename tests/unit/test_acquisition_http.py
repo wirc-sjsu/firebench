@@ -138,6 +138,12 @@ def test_adjacent_messages_are_coalesced_into_one_range():
     assert http.coalesce_ranges(messages) == [(0, 19), (30, None)]
 
 
+def test_fields_of_one_message_are_fetched_once():
+    messages = [_Message(0, 9), _Message(10, 29), _Message(10, 29), _Message(50, 59), _Message(50, 59)]
+
+    assert http.coalesce_ranges(messages) == [(0, 29), (50, 59)]
+
+
 def test_download_subset_writes_concatenated_ranges_atomically(tmp_path):
     opener = _Opener(_Response(b"0123456789", status=206), _Response(b"XYZ", status=206))
     dest = tmp_path / "sub" / "file.grib2"

@@ -6,7 +6,7 @@ Stages, each recorded in ``<output_dir>/wx_workflow.json`` with the identity of 
 1. ``obs``: Synoptic observations (download, or a saved JSON clipped to the window and domain),
    payload contract, automatic ``conservative_auto`` QC and finalization into ``obs.h5``. A
    pre-built FireBench observation file can be used instead.
-2. ``model``: forecasts of every cycle of the setup's model (HRRR or GFS, ``acquisition.forecast_models``),
+2. ``model``: forecasts of every cycle of the setup's model (HRRR, GFS or NAM, ``acquisition.forecast_models``),
    downloaded into the shared cache. Downloads start first and run in parallel with the observation
    stage. ``hrrr`` is an alias of this stage.
 3. ``adapt``: the model's embedded adapter samples each complete cycle at the QC'd stations.

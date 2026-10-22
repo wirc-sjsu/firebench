@@ -17,6 +17,7 @@ from types import ModuleType
 
 from .gfs import forecast as gfs_forecast
 from .hrrr import forecast as hrrr_forecast
+from .nam import forecast as nam_forecast
 
 
 @dataclass(frozen=True)
@@ -37,18 +38,29 @@ class ForecastModel:
         return round(self.file_mb[0] + self.file_mb[1] * horizon_hours, 1)
 
 
-def _hrrr_domain_problem(bbox) -> str | None:
-    # pylint: disable-next=import-outside-toplevel
-    from .hrrr.grid import HRRRGrid
-
+def _outside_grid(grid, domain: str, bbox) -> str | None:
+    """The problem of a bounding box whose corners are not all on a limited-area grid."""
     lon_min, lat_min, lon_max, lat_max = bbox
-    grid = HRRRGrid()
     i, j = grid.ij_arrays_from_latlon(
         [lat_min, lat_min, lat_max, lat_max], [lon_min, lon_max, lon_min, lon_max]
     )
     if not all(grid.contains(i, j)):
-        return f"domain.bbox {list(bbox)} is not fully inside the HRRR CONUS grid"
+        return f"domain.bbox {list(bbox)} is not fully inside the {domain}"
     return None
+
+
+def _hrrr_domain_problem(bbox) -> str | None:
+    # pylint: disable-next=import-outside-toplevel
+    from .hrrr.grid import HRRRGrid
+
+    return _outside_grid(HRRRGrid(), "HRRR CONUS grid", bbox)
+
+
+def _nam_domain_problem(bbox) -> str | None:
+    # pylint: disable-next=import-outside-toplevel
+    from .nam.grid import NAMGrid
+
+    return _outside_grid(NAMGrid(), "NAM CONUS nest grid", bbox)
 
 
 MODELS = {
@@ -69,6 +81,15 @@ MODELS = {
         adapter_module="firebench.adapters.gfs_weather",
         file_mb=(4.6, 3.7),
         domain_problem=lambda bbox: None,
+    ),
+    "NAM": ForecastModel(
+        name="NAM",
+        source="NOAA Open Data on AWS, anonymous access",
+        forecast=nam_forecast,
+        version=nam_forecast.nam_version,
+        adapter_module="firebench.adapters.nam_weather",
+        file_mb=(10.5, 8.9),
+        domain_problem=_nam_domain_problem,
     ),
 }
 
