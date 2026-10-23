@@ -12,8 +12,8 @@ one grid, and compared as masks and ranks, never as amounts, since nothing relat
 reflectivity:
 
 - the observed plume is the radar plume mask (``resources/radar.toml``); the model's, where its
-  tracer, a mass concentration, reaches ``tracer_threshold`` (``ug/m^3``). The threshold is the
-  value that best matches the radar's mask for a model, found with ``radar_plume_threshold_sweep``;
+  tracer, a mass concentration, reaches ``tracer_threshold`` (``ug/m^3``), a fixed detection limit
+  the same for every model (``radar_plume_threshold_sweep`` shows the match at other thresholds);
 - the plume top is the 90th percentile of the heights of a plume's cells, its centroid the mean of
   their position on the section weighted by linear reflectivity or by the tracer;
 - the model's radial velocity is its wind along the beam through each node, folded into the Nyquist
@@ -812,9 +812,9 @@ def radar_plume_threshold_sweep(  # pylint: disable=too-many-arguments,too-many-
     min_dbz: float | None = None,
 ) -> dict:
     """
-    The section KPIs of the family at each tracer threshold of ``thresholds`` (``ug/m^3``), to find
-    the threshold whose plume best matches the radar's for a model: the value ``tracer_threshold`` of
-    ``fire_case.toml`` is then set to.
+    The section KPIs of the family at each tracer threshold of ``thresholds`` (``ug/m^3``): how the
+    model's plume would match the radar's at other thresholds than the fixed ``tracer_threshold`` of
+    ``fire_case.toml``, for example to see how much a model's emissions would have to change.
 
     Each section and period is read once; only the model's mask changes between thresholds. The
     frames are left out: a model counts its plume cells over a frame at one threshold.

@@ -99,8 +99,9 @@ when the model burns no cell the observations classify.
 ### The radar plume threshold
 
 A model's plume is where its passive tracer, in `ug/m^3`, reaches `tracer_threshold` of
-`[radar_plume]` in `fire_case.toml`. The value is the one whose plume best matches the radar's plume
-mask (`radar.toml`) for a model, found on a case and then used for the others:
+`[radar_plume]` in `fire_case.toml`, 1 ug/m^3: a fixed detection limit, the same for every model and
+case. A model whose plume is too faint or too dense is tuned by its emissions, not by the threshold.
+To see how the masks would match at other thresholds:
 
 ```bash
 firebench case plume-sweep fire.h5 model.h5 --thresholds 0.1,0.3,1,3,10,30,100

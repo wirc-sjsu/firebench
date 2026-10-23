@@ -1521,9 +1521,9 @@ def case_plume_sweep(
     """
     Score the radar plume sections of MODEL_OUTPUT on the case of DEFINITION at each tracer threshold.
 
-    The threshold of the largest IoU of both plume masks, pooled over every section and volume, is the
-    one that best matches the radar's plume for this model: the value of `tracer_threshold` in
-    fire_case.toml to calibrate.
+    It prints the IoU of both plume masks pooled over every section and volume, and the threshold where
+    it is largest. Scores use the fixed `tracer_threshold` of fire_case.toml: a threshold far from it
+    says how much the model's plume concentration is off, for example its emissions.
     """
     definition_module, case_module = _case_modules()
     if obs_data is None:

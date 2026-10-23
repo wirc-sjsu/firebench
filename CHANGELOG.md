@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Add `radar_plume_threshold_sweep` (`fire_case_radar`, `FireCase.radar_plume_threshold_sweep`) and the
   command `firebench case plume-sweep DEFINITION MODEL_OUTPUT --thresholds ...`: the section KPIs of the
   `radar_plume` family at each tracer threshold, with the IoU of both masks pooled over every section
-  and volume and the threshold that maximises it, to calibrate `tracer_threshold` for a model against
-  the radar's plume mask (whose reflectivity `--min-dbz` replaces for the sweep). Each section is read
+  and volume and the threshold that maximises it, to see how far a model's plume concentration is from
+  the radar's plume mask at the fixed `tracer_threshold` (whose reflectivity `--min-dbz` replaces for the sweep). Each section is read
   once; the frames are left out, since a model counts its plume cells over a frame at one threshold.
 - Add RRFS to the models of `firebench wx` (`model.name: RRFS`): the RRFS v1.0 3 km CONUS product
   (`2dfld.3km.conus`) downloaded as byte-range subsets from NOAA's RRFS bucket on AWS
@@ -342,7 +342,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The model's plume of the `radar_plume` family is now where its tracer, a mass concentration, reaches
   `tracer_threshold` of `[radar_plume]` (1 ug/m^3, units in `tracer_threshold_units`), on the sections
   and over the frames alike, instead of a share (0.01) of the tracer's largest value on the section or
-  frame at that time: a value calibrated on one case carries to the others. `fire_case.toml` keeps
+  frame at that time: a fixed detection limit, the same for every model and case. `fire_case.toml` keeps
   version 2026.1, as for the earlier changes of the family. `passive_tracer` must be given in Pint
   units of mass per volume, which FireBench converts (`concentration_factor`); a tracer in other units
   (`1`, or a mixing ratio such as `ug/kg`) gives no plume, and its mask, top, centroid, and rank

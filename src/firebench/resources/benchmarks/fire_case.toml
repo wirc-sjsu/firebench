@@ -87,9 +87,9 @@ area_rmse_weight = 1
 # `tracer_threshold_units`), on a section and over a radar's frame alike. Added without raising
 # `version`, as canopy_cover_loss was: no definition of version 2026.1 holds this family, and the
 # scores of the others are unchanged. The threshold replaced a share of the tracer's largest value
-# (0.01) without raising it either, so that a value found on one case carries to the others; it is
-# the value that best matches the radar's plume mask for a model, to be calibrated
-# (`radar_plume_threshold_sweep`).
+# (0.01) without raising it either. It is a fixed detection limit, the same for every model and case:
+# a model whose plume is too faint is tuned by its emissions, never by this value.
+# `radar_plume_threshold_sweep` shows how the masks would match at other thresholds.
 tracer_threshold = 1.0
 tracer_threshold_units = "ug/m^3"
 # A volume is scored against the model output time nearest its start, at most this far, in s.
