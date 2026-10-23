@@ -774,6 +774,29 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
             model_dataset, obs_dataset, entry, periods, self.parameters.radar_plume
         )
 
+    def radar_plume_threshold_sweep(
+        self, model_dataset: File, obs_dataset: File, thresholds, min_dbz: float | None = None
+    ) -> dict | None:
+        """
+        The section KPIs of the radar plume at each tracer threshold, to calibrate
+        ``tracer_threshold``; None when the case has no such family.
+
+        See `fire_case_radar.radar_plume_threshold_sweep`.
+        """
+        entry = family(self.definition, "radar_plume")
+        if entry is None:
+            return None
+        periods = {name: self.periods[name] for name in entry["periods"]}
+        return radar.radar_plume_threshold_sweep(
+            model_dataset,
+            obs_dataset,
+            entry,
+            periods,
+            self.parameters.radar_plume,
+            thresholds,
+            min_dbz=min_dbz,
+        )
+
     def canopy_cover_values(self, model_dataset: File, obs_dataset: File) -> dict | None:
         """
         What the canopy cover loss KPIs compare, for a figure; None when the case has no such family.

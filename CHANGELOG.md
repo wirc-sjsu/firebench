@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add `radar_plume_threshold_sweep` (`fire_case_radar`, `FireCase.radar_plume_threshold_sweep`) and the
+  command `firebench case plume-sweep DEFINITION MODEL_OUTPUT --thresholds ...`: the section KPIs of the
+  `radar_plume` family at each tracer threshold, with the IoU of both masks pooled over every section
+  and volume and the threshold that maximises it, to calibrate `tracer_threshold` for a model against
+  the radar's plume mask (whose reflectivity `--min-dbz` replaces for the sweep). Each section is read
+  once; the frames are left out, since a model counts its plume cells over a frame at one threshold.
 - Add RRFS to the models of `firebench wx` (`model.name: RRFS`): the RRFS v1.0 3 km CONUS product
   (`2dfld.3km.conus`) downloaded as byte-range subsets from NOAA's RRFS bucket on AWS
   (`noaa-rrfs-ops-pds`; `firebench.acquisition.rrfs`, cache `rrfs/`, extra `firebench[rrfs]`), at 00,
@@ -333,6 +339,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   read-only audit findings.
 
 ### Changed
+- The model's plume of the `radar_plume` family is now where its tracer, a mass concentration, reaches
+  `tracer_threshold` of `[radar_plume]` (1 ug/m^3, units in `tracer_threshold_units`), on the sections
+  and over the frames alike, instead of a share (0.01) of the tracer's largest value on the section or
+  frame at that time: a value calibrated on one case carries to the others. `fire_case.toml` keeps
+  version 2026.1, as for the earlier changes of the family. `passive_tracer` must be given in Pint
+  units of mass per volume, which FireBench converts (`concentration_factor`); a tracer in other units
+  (`1`, or a mixing ratio such as `ug/kg`) gives no plume, and its mask, top, centroid, and rank
+  KPIs are not computed, with the reason. `plume_cell_mask` and `plume_cell_counts` take an absolute
+  threshold; `plume_cells` of a frame records it as `tracer_threshold` (with
+  `tracer_threshold_units`), a frame counted at another threshold or at a share is not scored (its
+  map KPIs now check it too), and a template that holds the share is refused with "download the kit
+  again". `write_plume_section` and `write_plume_points` write the tracer in `ug/m^3` by default.
+  `radar_plume_values` gives `tracer_threshold` and `tracer_threshold_units` instead of
+  `tracer_relative_threshold`, and the tracer of its sections and of the model's points in `ug/m^3`.
 - The `fire_radiative_power` family scores every observation that reports fire, whatever share of its
   frame it saw; `min_observed_fraction` now applies to observations of 0 only ("no fire seen, and it
   saw ..."). An observation of 0 is left out when the model's upper bound is at most the detection

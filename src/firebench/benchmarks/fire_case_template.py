@@ -212,7 +212,7 @@ def _plume_targets(obs: h5py.File, entry: dict, case) -> PlumeTargets:
         entry,
         [case.periods[name] for name in entry["periods"]],
         parameters.top_bin,
-        parameters.tracer_relative_threshold,
+        parameters.tracer_threshold,
         parameters.map_resolution,
     )
 
@@ -250,12 +250,13 @@ def _write_plume(out: h5py.File, obs: h5py.File, entry: dict, case) -> None:
         out,
         targets,
         "The model's plume at the radar's times and places (firebench.benchmarks.fire_case_radar_model). "
-        "sections/<SITE>/<name>: passive_tracer (any scale) and wind_u, wind_v, wind_w (earth-relative, "
-        "m/s), each (time, v, u) on the nodes of the cross section (position_lat, position_lon, "
-        "position_alt above mean sea level) at the start of each volume (time). frame/<SITE> (sites: "
+        "sections/<SITE>/<name>: passive_tracer (a mass concentration, ug/m^3) and wind_u, wind_v, "
+        "wind_w (earth-relative, m/s), each (time, v, u) on the nodes of the cross section "
+        "(position_lat, position_lon, position_alt above mean sea level) at the start of each volume "
+        "(time). frame/<SITE> (sites: "
         f"{sites}): plume_cells (time, bin), the count of the model's cells over the frame in each bin "
-        "of height_bins where the tracer reaches tracer_relative_threshold of its largest value over "
-        "the frame. A value the model cannot give stays NaN.",
+        "of height_bins where the tracer reaches the tracer_threshold of plume_cells (ug/m^3). A value "
+        "the model cannot give stays NaN.",
     )
 
 

@@ -13,17 +13,43 @@ from importlib.resources import files
 from numbers import Real
 from types import MappingProxyType
 
+import pint
+
+from ..tools.units import ureg
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python 3.10
     import tomli as tomllib
 
 PARAMETER_FILE = "resources/benchmarks/fire_case.toml"
+# The units of a model's passive tracer for the radar plume family, and of its threshold once read.
+CONCENTRATION_UNITS = "ug/m^3"
 METRIC_SETS = ("standard", "wind_direction")
 
 
 class FireCaseParameterError(ValueError):
     """The parameter file is not what the generic cases expect."""
+
+
+def concentration_factor(units: str) -> float:
+    """
+    What a value in ``units`` (Pint) is multiplied by to be a mass concentration in
+    ``CONCENTRATION_UNITS``.
+
+    Raises
+    ------
+    ValueError
+        If ``units`` are not Pint units of a mass concentration (a mixing ratio such as ``ug/kg`` is
+        not one: it needs the air's density).
+    """
+    try:
+        quantity = ureg.Quantity(1.0, units)
+    except (AttributeError, TypeError, ValueError, pint.errors.PintError) as error:
+        raise ValueError(f"the units {units!r} are not Pint units") from error
+    if not quantity.check("[mass] / [length] ** 3"):
+        raise ValueError(f"{units!r} is not a mass concentration ({CONCENTRATION_UNITS})")
+    return float(quantity.to(CONCENTRATION_UNITS).magnitude)
 
 
 @dataclass(frozen=True)
@@ -42,7 +68,7 @@ class WeatherVariable:
 class RadarPlumeParameters:  # pylint: disable=too-many-instance-attributes
     """The values of ``[radar_plume]``."""
 
-    tracer_relative_threshold: float
+    tracer_threshold: float  # ug/m^3
     max_time_offset: float
     min_cells: int
     fall_speed: float
@@ -316,7 +342,8 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         document["radar_plume"],
         "[radar_plume]",
         {
-            "tracer_relative_threshold",
+            "tracer_threshold",
+            "tracer_threshold_units",
             "max_time_offset",
             "min_cells",
             "fall_speed",
@@ -375,10 +402,15 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
 def _radar_plume(table: dict) -> RadarPlumeParameters:
     label = "radar_plume"
     scales = {key: _number(table, key, label, minimum=1e-9) for key in RADAR_SCALE_KEYS}
+    units = _text(table, "tracer_threshold_units", label)
+    try:
+        factor = concentration_factor(units)
+    except ValueError as error:
+        raise FireCaseParameterError(
+            f"{PARAMETER_FILE}: {label}.tracer_threshold_units: {error}"
+        ) from error
     return RadarPlumeParameters(
-        tracer_relative_threshold=_number(
-            table, "tracer_relative_threshold", label, minimum=1e-9, maximum=1
-        ),
+        tracer_threshold=float(_number(table, "tracer_threshold", label, minimum=1e-12)) * factor,
         max_time_offset=_number(table, "max_time_offset", label),
         min_cells=_whole(table, "min_cells", label, minimum=3),
         fall_speed=_number(table, "fall_speed", label),

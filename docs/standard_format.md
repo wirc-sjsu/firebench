@@ -550,7 +550,7 @@ at the radar's own times and places, under `/spatial_3d/plume` by default
 ├── frame/<SITE>/                                  (frame_west, ... attributes: the site's frame)
 │   ├── time                                       (n_volume)
 │   ├── height_bins                                (n_bin + 1)  edges, m above mean sea level
-│   ├── plume_cells                                (n_volume, n_bin)  tracer_relative_threshold attribute
+│   ├── plume_cells                                (n_volume, n_bin)  tracer_threshold attribute (ug/m^3)
 │   ├── position_lat, position_lon                 (n_lat), (n_lon)  the radar's map grid, north to south
 │   ├── plume_top                                  (n_volume, n_lat, n_lon)  m above mean sea level
 │   └── lowest_beam, highest_beam                  (n_volume, n_lat, n_lon)  template only
@@ -559,11 +559,15 @@ at the radar's own times and places, under `/spatial_3d/plume` by default
     └── position_lon, position_lat, position_z, passive_tracer   (n_point)
 ```
 
-`passive_tracer` is on any scale (its `units` are kept, never converted); the wind is earth-relative,
-in m/s. Over a site's frame, the model's plume is its cells the radar can see, between the lowest and
-the highest beam over their map cell (`lowest_beam`, `highest_beam`, from
-`firebench.standardize.radar_beam_bands`; `visible_cells`), where its tracer reaches
-`tracer_relative_threshold` of its largest value over those cells. `plume_cells` counts them in each
+`passive_tracer` is a mass concentration, in `ug/m^3` or other Pint units of mass per volume, which
+FireBench converts (a mixing ratio, such as WRF's tracers in `ug/kg` of dry air, is multiplied by the
+air's density first: a tracer in other units gives no plume and its mask KPIs are not computed); the
+wind is earth-relative, in m/s. The model's plume is where its tracer reaches `tracer_threshold` of
+`[radar_plume]` in `fire_case.toml`, on a section and over a frame alike. Over a site's frame, the
+model's plume is its cells the radar can see, between the lowest and the highest beam over their map
+cell (`lowest_beam`, `highest_beam`, from `firebench.standardize.radar_beam_bands`; `visible_cells`),
+where its tracer reaches that threshold, which `plume_cells` records (`tracer_threshold`,
+`tracer_threshold_units`): a frame counted at another threshold is not scored. `plume_cells` counts them in each
 bin of height (each cell weighted by its area when the model's grids differ in resolution), and
 `plume_top` is the highest of them over each cell of the radar's map grid (`radar_map_axes`,
 `map_resolution` of `[radar_plume]`; `column_tops`, `tops_on_map`), NaN where there is none. A value

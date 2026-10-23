@@ -1469,6 +1469,105 @@ def case_run(
         )
 
 
+def _thresholds(text: str) -> list[float]:
+    try:
+        values = [float(item) for item in text.split(",") if item.strip()]
+    except ValueError as exc:
+        raise click.BadParameter(f"not a list of numbers: {text}") from exc
+    if not values:
+        raise click.BadParameter("give at least one threshold")
+    return values
+
+
+def _cell(value, digits: int) -> str:
+    return "-" if value is None else f"{value:.{digits}f}"
+
+
+@case_group.command("plume-sweep")
+@click.argument("definition", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("model_output", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--obs",
+    "obs_data",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Observation standard file (default: DEFINITION, when it is a standard file).",
+)
+@click.option(
+    "--thresholds",
+    default="0.01,0.03,0.1,0.3,1,3,10,30,100,300,1000",
+    show_default=True,
+    help="Tracer thresholds to try, in ug/m^3, separated by commas.",
+)
+@click.option(
+    "--min-dbz",
+    type=float,
+    default=None,
+    help="Reflectivity of the radar's plume mask for the sweep (default: radar.toml's).",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="JSON file to write the sweep to.",
+)
+def case_plume_sweep(
+    definition: Path,
+    model_output: Path,
+    obs_data: Path | None,
+    thresholds: str,
+    min_dbz: float | None,
+    output: Path | None,
+) -> None:
+    """
+    Score the radar plume sections of MODEL_OUTPUT on the case of DEFINITION at each tracer threshold.
+
+    The threshold of the largest IoU of both plume masks, pooled over every section and volume, is the
+    one that best matches the radar's plume for this model: the value of `tracer_threshold` in
+    fire_case.toml to calibrate.
+    """
+    definition_module, case_module = _case_modules()
+    if obs_data is None:
+        if definition.suffix.lower() not in {".h5", ".hdf5"}:
+            raise click.UsageError("Give the observation file with --obs.")
+        obs_data = definition
+    import h5py  # pylint: disable=import-outside-toplevel
+
+    try:
+        case = case_module.load_case(_read_definition(definition), obs_data)
+        with h5py.File(model_output, "r") as model_h5, h5py.File(obs_data, "r") as obs_h5:
+            sweep = case.radar_plume_threshold_sweep(
+                model_h5, obs_h5, _thresholds(thresholds), min_dbz=min_dbz
+            )
+    except (definition_module.CaseDefinitionError, ValueError, KeyError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    if sweep is None:
+        raise click.ClickException("The case has no radar plume family.")
+    click.echo(f"Radar plume mask at {sweep['min_dbz']:g} dBZ; tracer thresholds in {sweep['units']}.")
+    for item in sweep["items"]:
+        click.echo(f"\n{item['section']} {item['period']}: {item['n_volumes']} volumes")
+        if item["problem"]:
+            click.echo(f"  {item['problem']}")
+            continue
+        values = item["values"]
+        click.echo(f"  {'threshold':>10} {'IoU':>6} {'top m':>8} {'centroid m':>11} {'rank rho':>9}")
+        for index, threshold in enumerate(sweep["thresholds"]):
+            click.echo(
+                f"  {threshold:>10g} {_cell(values['Plume Mask IoU'][index], 3):>6} "
+                f"{_cell(values['Plume Top Error'][index], 0):>8} "
+                f"{_cell(values['Plume Centroid Error'][index], 0):>11} "
+                f"{_cell(values['Concentration Rank Correlation'][index], 3):>9}"
+            )
+    click.echo("\nPooled IoU of every section and volume:")
+    for threshold, value in zip(sweep["thresholds"], sweep["pooled_iou"]):
+        click.echo(f"  {threshold:>10g} {_cell(value, 3):>6}")
+    click.echo(
+        f"Best: {sweep['best']} {sweep['units']}" if sweep["best"] is not None else "No mask has a node."
+    )
+    if output is not None:
+        output.write_text(json.dumps(sweep, indent=2) + "\n", encoding="utf-8")
+        click.echo(f"Wrote {output}.")
+
+
 @main.group()
 def keys() -> None:
     """

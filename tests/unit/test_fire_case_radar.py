@@ -1,17 +1,28 @@
 """The radar plume family of the generic cases, on a synthetic radar and a model built from it."""
 
+import json
+import tomllib
 from datetime import datetime, timedelta, timezone
+from importlib.resources import files
 from pathlib import Path
 
 import h5py
 import numpy as np
 import pytest
+from click.testing import CliRunner
 from pyproj import Geod
 
 from firebench.acquisition import nexrad
+from firebench.cli import main
 from firebench.benchmarks import fire_case_radar
 from firebench.benchmarks import fire_case_radar_model as model_targets
 from firebench.benchmarks.fire_case import load_case
+from firebench.benchmarks.fire_case_parameters import (
+    FireCaseParameterError,
+    concentration_factor,
+    load_parameters,
+    parse_parameters,
+)
 from firebench.benchmarks.fire_case_definition import (
     check_case,
     edit_case,
@@ -98,9 +109,13 @@ def observations(tmp_path, monkeypatch):
     return obs, radar.read_radar_section(obs, "KDAX", "axis")
 
 
+THRESHOLD = load_parameters().radar_plume.tracer_threshold
+
+
 def _section_fields(section: radar.RadarSection, shift_tracer: bool = False) -> dict:
-    """On the nodes of the section, a tracer that is the observed linear reflectivity and a wind that
-    gives the observed radial velocity at every node."""
+    """On the nodes of the section, a tracer that is the observed linear reflectivity in ug/m^3 (100 to
+    10,000, above the threshold wherever the radar has a value) and a wind that gives the observed
+    radial velocity at every node."""
     reflectivity = np.nan_to_num(section.values["radar_reflectivity"], nan=-30.0)
     tracer = 10.0 ** (reflectivity / 10.0)
     if shift_tracer:
@@ -117,7 +132,14 @@ def _section_fields(section: radar.RadarSection, shift_tracer: bool = False) -> 
 
 
 def _model(  # pylint: disable=too-many-arguments
-    path: Path, obs: Path, section: radar.RadarSection, shift_tracer: bool = False, counts=None, tops=None
+    path: Path,
+    obs: Path,
+    section: radar.RadarSection,
+    shift_tracer: bool = False,
+    counts=None,
+    tops=None,
+    tracer_units: str = "ug/m^3",
+    fields=None,
 ) -> Path:
     """A model output that gives the radar's own section, and its plume cells over the frame of KDAX
     (``counts``, at each volume time; the radar's own gates by default) and its plume top on the map
@@ -129,7 +151,7 @@ def _model(  # pylint: disable=too-many-arguments
     }
     with h5py.File(obs) as h5:
         targets = model_targets.targets_from_observations(
-            h5, entry, [(START, START + timedelta(hours=1))], 100.0, 0.01
+            h5, entry, [(START, START + timedelta(hours=1))], 100.0, THRESHOLD
         )
     (target,) = targets.sections
     (frame,) = targets.frames
@@ -143,7 +165,12 @@ def _model(  # pylint: disable=too-many-arguments
     maps = radar.radar_plume_top_maps(obs, "KDAX", resolution=0.01)
     maps = maps if tops is None else tops(maps)
     with new_std_file(str(path), "model") as h5:
-        model_targets.write_plume_section(h5, target, _section_fields(section, shift_tracer))
+        model_targets.write_plume_section(
+            h5,
+            target,
+            fields if fields is not None else _section_fields(section, shift_tracer),
+            tracer_units=tracer_units,
+        )
         model_targets.write_plume_frame(h5, frame, counts, maps)
     return path
 
@@ -259,11 +286,131 @@ def test_a_top_counted_at_another_threshold_is_left_out(observations, tmp_path):
     obs, section = observations
     model = _model(tmp_path / "model.h5", obs, section)
     with h5py.File(model, "a") as h5:
-        h5["spatial_3d/plume/frame/KDAX/plume_cells"].attrs["tracer_relative_threshold"] = 0.1
+        h5["spatial_3d/plume/frame/KDAX/plume_cells"].attrs["tracer_threshold"] = 10.0 * THRESHOLD
     case = load_case(propose_case(obs)["definition"], obs)
     values = _scores(case, model, obs)
     assert "Plume Top Series Error KDAX P01" not in values
+    assert "Plume Footprint IoU KDAX P01" not in values
     assert "Plume Mask IoU KDAX/axis P01" in values
+
+
+def test_a_frame_counted_at_a_share_of_the_largest_tracer_is_left_out(observations, tmp_path):
+    obs, section = observations
+    model = _model(tmp_path / "model.h5", obs, section)
+    with h5py.File(model, "a") as h5:
+        attrs = h5["spatial_3d/plume/frame/KDAX/plume_cells"].attrs
+        del attrs["tracer_threshold"], attrs["tracer_threshold_units"]
+        attrs["tracer_relative_threshold"] = 0.01
+    case = load_case(propose_case(obs)["definition"], obs)
+    # Its frame no longer meets the requirement R_RT, which names the attribute.
+    with pytest.raises(KeyError, match="R_RT"):
+        _scores(case, model, obs)
+    with h5py.File(model, "r") as model_h5, h5py.File(obs, "r") as obs_h5:
+        (top,) = case.radar_plume_values(model_h5, obs_h5)["tops"]
+    assert "share of its largest tracer" in top["problem"]
+
+
+def test_the_model_s_plume_is_where_its_concentration_reaches_the_threshold(observations, tmp_path):
+    obs, section = observations
+    case = load_case(propose_case(obs)["definition"], obs)
+    # The same numbers in ng/m^3 are a thousand times smaller in ug/m^3: below the threshold around
+    # the lowest tilt (100 ng/m^3 is 0.1 ug/m^3), so the masks no longer agree.
+    fields = _section_fields(section)
+    small = _scores(
+        case, _model(tmp_path / "ng.h5", obs, section, tracer_units="ng/m^3", fields=fields), obs
+    )
+    assert small["Plume Mask IoU KDAX/axis P01"] < 1.0
+    # A thousand times more ng/m^3 is the same concentration as the radar's own.
+    fields["passive_tracer"] = fields["passive_tracer"] * 1000.0
+    scaled = _scores(
+        case, _model(tmp_path / "ng-x.h5", obs, section, tracer_units="ng/m^3", fields=fields), obs
+    )
+    assert scaled["Plume Mask IoU KDAX/axis P01"] == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("units", ["1", "ug/kg", ""])
+def test_a_tracer_that_is_no_concentration_has_no_plume(observations, tmp_path, units):
+    obs, section = observations
+    case = load_case(propose_case(obs)["definition"], obs)
+    values = _scores(case, _model(tmp_path / "model.h5", obs, section, tracer_units=units), obs)
+    for name in ("Plume Mask IoU", "Plume Top Error", "Plume Centroid Error"):
+        assert f"{name} KDAX/axis P01" not in values
+    assert "Concentration Rank Correlation KDAX/axis P01" not in values
+    # The wind is still compared on the radar's plume.
+    assert values["Radial Velocity RMSE KDAX/axis P01"] == pytest.approx(0.0, abs=1e-4)
+    with h5py.File(tmp_path / "model.h5", "r") as model_h5, h5py.File(obs, "r") as obs_h5:
+        (item,) = case.radar_plume_values(model_h5, obs_h5)["sections"]
+    assert "the model's tracer" in item["problem"]
+
+
+def test_a_concentration_converts_and_a_mixing_ratio_does_not():
+    assert concentration_factor("ug/m^3") == pytest.approx(1.0)
+    assert concentration_factor("ng/m^3") == pytest.approx(1e-3)
+    assert concentration_factor("kg/m^3") == pytest.approx(1e9)
+    for units in ("ug/kg", "1", "ug m-3", ""):
+        with pytest.raises(ValueError):
+            concentration_factor(units)
+
+
+def test_the_threshold_of_the_parameter_file_is_read_in_ug_per_m3():
+    document = tomllib.loads(
+        files("firebench").joinpath("resources/benchmarks/fire_case.toml").read_text(encoding="utf-8")
+    )
+    assert load_parameters().radar_plume.tracer_threshold == pytest.approx(1.0)
+    document["radar_plume"].update(tracer_threshold=2.0, tracer_threshold_units="mg/m^3")
+    assert parse_parameters(document).radar_plume.tracer_threshold == pytest.approx(2000.0)
+    document["radar_plume"]["tracer_threshold_units"] = "ug/kg"
+    with pytest.raises(FireCaseParameterError, match="tracer_threshold_units"):
+        parse_parameters(document)
+
+
+def test_the_sweep_finds_the_threshold_that_matches_the_radar_s_mask(observations, tmp_path):
+    obs, section = observations
+    case = load_case(propose_case(obs)["definition"], obs)
+    model = _model(tmp_path / "model.h5", obs, section)
+    # The tracer is the linear reflectivity: the radar's mask at 25 dBZ is the tracer at 10^2.5.
+    thresholds = [100.0, 10**2.5, 10**3.5]
+    with h5py.File(model, "r") as model_h5, h5py.File(obs, "r") as obs_h5:
+        sweep = case.radar_plume_threshold_sweep(model_h5, obs_h5, thresholds, min_dbz=25.0)
+    assert sweep["thresholds"] == sorted(thresholds)
+    assert sweep["min_dbz"] == 25.0
+    assert sweep["best"] == pytest.approx(10**2.5)
+    pooled = sweep["pooled_iou"]
+    assert pooled[1] == pytest.approx(1.0, abs=1e-3)
+    assert pooled[0] < pooled[1] and pooled[2] < pooled[1]
+    (item,) = sweep["items"]
+    assert item["values"]["Plume Mask IoU"][1] == pytest.approx(1.0, abs=1e-3)
+    assert item["n_volumes"] == 2
+    with pytest.raises(ValueError, match="above 0"):
+        case.radar_plume_threshold_sweep(None, None, [0.0])
+
+
+def test_the_sweep_command_prints_the_best_threshold(observations, tmp_path):
+    obs, section = observations
+    definition = tmp_path / "case.json"
+    definition.write_text(json.dumps(propose_case(obs)["definition"]), encoding="utf-8")
+    model = _model(tmp_path / "model.h5", obs, section)
+    output = tmp_path / "sweep.json"
+    result = CliRunner().invoke(
+        main,
+        [
+            "case",
+            "plume-sweep",
+            str(definition),
+            str(model),
+            "--obs",
+            str(obs),
+            "--thresholds",
+            "100,316.227766,3162.27766",
+            "--min-dbz",
+            "25",
+            "-o",
+            str(output),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Best: 316.227766 ug/m^3" in result.output
+    assert json.loads(output.read_text(encoding="utf-8"))["best"] == pytest.approx(316.227766)
 
 
 def test_a_model_with_no_plume_over_the_frame_has_no_top(observations, tmp_path):
@@ -310,7 +457,7 @@ def test_plume_cells_and_their_quantile():
     tracer = np.array([[[1.0, 0.001]], [[0.5, 0.2]], [[np.nan, 0.05]]])
     bins = np.arange(0.0, 1100.0, 100.0)
     counts = model_targets.plume_cell_counts(heights, tracer, True, bins, 0.1)
-    # 0.001 and 0.05 are under a tenth of the largest, and NaN is no cell.
+    # 0.001 and 0.05 are under the threshold, and NaN is no cell.
     assert counts.tolist() == [0, 1, 0, 2, 0, 0, 0, 0, 0, 0]
     assert model_targets.histogram_quantile(bins, counts, 0.5) == pytest.approx(325.0)
     assert np.isnan(model_targets.histogram_quantile(bins, np.zeros(10), 0.9))
@@ -331,7 +478,10 @@ def test_the_template_and_the_requirements_name_the_model_s_plume(observations, 
         section = h5["spatial_3d/plume/sections/KDAX/axis"]
         assert section["passive_tracer"].shape == (2, *section["position_lat"].shape)
         assert np.isnan(section["passive_tracer"][()]).all()
-        assert h5["spatial_3d/plume/frame/KDAX/plume_cells"].attrs["tracer_relative_threshold"] == 0.01
+        cells = h5["spatial_3d/plume/frame/KDAX/plume_cells"]
+        assert cells.attrs["tracer_threshold"] == pytest.approx(THRESHOLD)
+        assert cells.attrs["tracer_threshold_units"] == "ug/m^3"
+        assert section["passive_tracer"].attrs["units"] == "ug/m^3"
     (requirement,) = [
         item for item in case_requirements(definition, obs)["requirements"] if item["name"] == "R_RP"
     ]
@@ -378,6 +528,30 @@ def test_the_values_of_a_figure_are_those_the_kpis_compare(observations, tmp_pat
     assert top["problem"] is None
     assert np.all(np.abs(top["modelled"] - top["observed"]) < 100.0)
     assert values["points"] is None
+
+
+def test_the_points_of_a_figure_are_given_in_ug_per_m3(tmp_path):
+    path = tmp_path / "points.h5"
+    times = np.array(["2021-08-17T00:05"], dtype="datetime64[ms]")
+    cloud = {
+        "position_lon": [-120.0],
+        "position_lat": [38.5],
+        "position_z": [2000.0],
+        "passive_tracer": [1500.0],
+    }
+    with h5py.File(path, "w") as h5:
+        model_targets.write_plume_points(
+            h5,
+            model_targets.MODEL_GROUP,
+            times,
+            "2021-08-17T00:00:00+00:00",
+            [cloud],
+            tracer_units="ng/m^3",
+        )
+    with h5py.File(path, "r") as h5:
+        points = fire_case_radar.model_points(h5, model_targets.MODEL_GROUP)
+    assert points["tracer_units"] == "ug/m^3"
+    assert points["passive_tracer"].tolist() == pytest.approx([1.5])
 
 
 def test_a_footprint_cut_in_half_scores_its_overlap_and_its_shift(observations, tmp_path):
@@ -450,4 +624,15 @@ def test_a_template_from_before_the_maps_is_refused(observations, tmp_path):
         assert np.array_equal(low, frame["lowest_beam"][0][[0, 1], [0, 1]], equal_nan=True)
         del frame["lowest_beam"]
     with pytest.raises(ValueError, match="download the kit again"):
+        plume_targets(template)
+
+
+def test_a_template_with_a_share_of_the_largest_tracer_is_refused(observations, tmp_path):
+    obs, _ = observations
+    template = write_model_output_template(obs, propose_case(obs)["definition"], tmp_path / "template.h5")
+    with h5py.File(template, "a") as h5:
+        attrs = h5["spatial_3d/plume/frame/KDAX/plume_cells"].attrs
+        del attrs["tracer_threshold"]
+        attrs["tracer_relative_threshold"] = 0.01
+    with pytest.raises(ValueError, match="share of the tracer's largest value"):
         plume_targets(template)

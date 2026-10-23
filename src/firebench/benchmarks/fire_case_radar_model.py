@@ -8,14 +8,15 @@ or an observation file), interpolates its run onto them, and writes, under the e
 (``/spatial_3d/plume`` by default):
 
 - ``sections/<SITE>/<name>/``: ``time`` (the start of each volume of the section in the entry's
-  periods) and ``passive_tracer``, ``wind_u``, ``wind_v``, ``wind_w`` (earth-relative, m/s), each
-  ``(n_volume, n_v, n_u)`` on the nodes of the section. ``ColumnSampler`` puts one model output time on
+  periods) and ``passive_tracer`` (a mass concentration, ``ug/m^3`` or other Pint units of mass per
+  volume), ``wind_u``, ``wind_v``, ``wind_w`` (earth-relative, m/s), each ``(n_volume, n_v, n_u)`` on
+  the nodes of the section. ``ColumnSampler`` puts one model output time on
   the nodes: the nearest model column, then linear in height. The adapter interpolates between output
   times and records how.
 - ``frame/<SITE>/``: only when the entry lists the site in ``echo_top``. The model's plume there is its
   cells over the site's frame that the radar can see (between the lowest and the highest beam over
-  their map cell, ``visible_cells``) where the tracer reaches ``tracer_relative_threshold`` of its
-  largest value over those cells. It holds ``time`` (the start of each volume of the site in the
+  their map cell, ``visible_cells``) where the tracer reaches ``tracer_threshold`` (``ug/m^3``, of
+  ``[radar_plume]`` in ``fire_case.toml``). It holds ``time`` (the start of each volume of the site in the
   periods), ``height_bins`` (edges, m above mean sea level), ``plume_cells`` ``(n_time, n_bins)``, the
   count of plume cells in each bin of height (``plume_cell_counts``; a model on grids of several
   resolutions weights each cell by its area), and ``plume_top`` ``(n_time, n_lat, n_lon)``, the
@@ -40,6 +41,7 @@ from scipy.spatial import cKDTree
 
 from .. import standardize as fs
 from ..tools.units import ureg
+from .fire_case_parameters import CONCENTRATION_UNITS, concentration_factor
 
 MODEL_GROUP = f"/{fs.SPATIAL_3D}/plume"
 TRACER = "passive_tracer"
@@ -57,7 +59,12 @@ OLD_TEMPLATE = (
     "The template was made by a FireBench before the radar plume maps of the frames: download the kit "
     "again."
 )
-THRESHOLD_ATTRIBUTE = "tracer_relative_threshold"
+OLD_THRESHOLD = (
+    "The template was made by a FireBench whose model plume was a share of the tracer's largest value: "
+    "download the kit again."
+)
+# The model's plume over a frame: its tracer at or above this, in CONCENTRATION_UNITS.
+THRESHOLD_ATTRIBUTE = "tracer_threshold"
 _EARTH_RADIUS = 6_371_000.0
 _RADAR = f"/{fs.SPATIAL_3D}/radar"
 
@@ -208,16 +215,13 @@ def sample_columns(latitude, longitude, heights, fields: dict, node_latitude, no
 # ---------------------------
 def plume_cell_mask(tracer, inside, threshold: float) -> np.ndarray:
     """
-    The model's plume cells: ``inside`` the frame and with a tracer at least ``threshold`` of its
-    largest value over the frame. Empty when that value is not above 0.
+    The model's plume cells: ``inside`` the frame and with a tracer at least ``threshold``, both in
+    the same units (``CONCENTRATION_UNITS`` for a case).
     """
     tracer = np.asarray(tracer, dtype=np.float64)
     inside = np.broadcast_to(np.asarray(inside, dtype=bool), tracer.shape)
-    kept = inside & np.isfinite(tracer)
-    largest = float(np.max(tracer[kept])) if kept.any() else 0.0
-    if largest <= 0:
-        return np.zeros(tracer.shape, dtype=bool)
-    return kept & (tracer >= threshold * largest)
+    with np.errstate(invalid="ignore"):
+        return inside & np.isfinite(tracer) & (tracer >= threshold)
 
 
 def plume_cell_counts(heights, tracer, inside, bins, threshold: float, weights=None) -> np.ndarray:
@@ -374,7 +378,7 @@ class FrameTarget:  # pylint: disable=too-many-instance-attributes
     time_origin: str
     frame: tuple[float, float, float, float]  # west, south, east, north, degree
     height_bins: np.ndarray  # edges, m above mean sea level
-    threshold: float  # tracer_relative_threshold
+    threshold: float  # tracer_threshold, CONCENTRATION_UNITS
     latitude: np.ndarray  # (n_lat,) degree, cell centres from north to south
     longitude: np.ndarray  # (n_lon,) degree, cell centres from west to east
     lowest_beam: np.ndarray  # (n_volume, n_lat, n_lon) m above mean sea level, NaN where unseen
@@ -486,6 +490,8 @@ def targets_from_template(template: h5py.File, model_group: str) -> PlumeTargets
     for site, group in (base.items() if isinstance(base, h5py.Group) else []):
         if LOWEST_BEAM not in group:
             raise ValueError(OLD_TEMPLATE)
+        if THRESHOLD_ATTRIBUTE not in group[PLUME_CELLS].attrs:
+            raise ValueError(OLD_THRESHOLD)
         frames.append(
             FrameTarget(
                 site=site,
@@ -496,7 +502,7 @@ def targets_from_template(template: h5py.File, model_group: str) -> PlumeTargets
                     float(group.attrs[f"frame_{key}"]) for key in ("west", "south", "east", "north")
                 ),
                 height_bins=group[HEIGHT_BINS][()],
-                threshold=float(group[PLUME_CELLS].attrs[THRESHOLD_ATTRIBUTE]),
+                threshold=_threshold(group[PLUME_CELLS]),
                 latitude=group["position_lat"][()],
                 longitude=group["position_lon"][()],
                 lowest_beam=group[LOWEST_BEAM][()],
@@ -541,7 +547,7 @@ def write_plume_section(
     target: SectionTarget,
     fields: dict,
     *,
-    tracer_units: str = "1",
+    tracer_units: str = CONCENTRATION_UNITS,
     attrs: dict | None = None,
     compression_lvl: int = 3,
 ) -> None:
@@ -625,8 +631,8 @@ def write_plume_frame(  # pylint: disable=too-many-arguments
         {
             "units": "1",
             THRESHOLD_ATTRIBUTE: float(target.threshold),
-            "description": "Cells the radar can see whose tracer reaches tracer_relative_threshold of "
-            "its largest value over those cells",
+            f"{THRESHOLD_ATTRIBUTE}_units": CONCENTRATION_UNITS,
+            "description": "Cells the radar can see whose tracer reaches tracer_threshold",
         },
         compression_lvl,
     )
@@ -675,7 +681,7 @@ def write_plume_points(  # pylint: disable=too-many-arguments
     time_origin: str,
     clouds: list[dict],
     *,
-    tracer_units: str = "1",
+    tracer_units: str = CONCENTRATION_UNITS,
     compression_lvl: int = 3,
 ) -> None:
     """
@@ -740,6 +746,13 @@ def write_target_groups(out: h5py.File, targets: PlumeTargets, description: str)
 # ---------------------------
 # Reading
 # ---------------------------
+def _threshold(dataset) -> float:
+    """The tracer threshold a frame's ``plume_cells`` were counted at, in ``CONCENTRATION_UNITS``."""
+    value = float(dataset.attrs[THRESHOLD_ATTRIBUTE])
+    units = _text(dataset.attrs.get(f"{THRESHOLD_ATTRIBUTE}_units", CONCENTRATION_UNITS))
+    return value * concentration_factor(units)
+
+
 class ModelSection:
     """The model's values on a section, as ``write_plume_section`` wrote them."""
 
@@ -751,6 +764,14 @@ class ModelSection:
             expected = (len(self.time), *shape)
             if self.group[name].shape != expected:
                 raise ValueError(f"{path}/{name} has the shape {self.group[name].shape}, not {expected}")
+        # Why the tracer cannot be compared with a threshold, or None; it is then kept as given.
+        self.tracer_problem: str | None = None
+        self._tracer_factor = 1.0
+        units = _text(self.group[TRACER].attrs.get("units", ""))
+        try:
+            self._tracer_factor = concentration_factor(units)
+        except ValueError as error:
+            self.tracer_problem = f"the model's tracer: {error}"
 
     def nearest(self, time: np.datetime64, max_offset_s: float) -> int | None:
         """The model time nearest ``time``, within ``max_offset_s`` seconds."""
@@ -761,12 +782,15 @@ class ModelSection:
         return index if offset[index] <= max_offset_s else None
 
     def values(self, index: int) -> dict[str, np.ndarray]:
-        """The tracer as given and the wind in m/s at one time."""
+        """The tracer in ``CONCENTRATION_UNITS`` (as given when it is no concentration) and the wind in
+        m/s at one time."""
         values = {}
         for name in FIELDS:
             dataset = self.group[name]
             data = np.asarray(dataset[index], dtype=np.float64)
-            if name != TRACER:
+            if name == TRACER:
+                data = data * self._tracer_factor
+            else:
                 stored = _text(dataset.attrs.get("units", "m/s"))
                 if stored != "m/s":
                     data = ureg.Quantity(data, stored).to("m/s").magnitude
@@ -776,8 +800,11 @@ class ModelSection:
 
 def model_frame(
     model: h5py.File, group: str, site: str
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
-    """``time``, the bin edges in m, the counts, and the threshold of the model's frame of a site."""
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float | None]:
+    """
+    ``time``, the bin edges in m, the counts, and the threshold of the model's frame of a site, in
+    ``CONCENTRATION_UNITS``; None when the frame was counted at a share of the tracer's largest value.
+    """
     frame = model[frame_path(group, site)]
     bins = frame[HEIGHT_BINS]
     edges = np.asarray(bins[()], dtype=np.float64)
@@ -787,7 +814,8 @@ def model_frame(
     counts = np.asarray(frame[PLUME_CELLS][()], dtype=np.float64)
     if counts.ndim != 2 or counts.shape[1] != len(edges) - 1:
         raise ValueError(f"{frame.name}/{PLUME_CELLS} must be (time, {len(edges) - 1} bins)")
-    threshold = float(frame[PLUME_CELLS].attrs[THRESHOLD_ATTRIBUTE])
+    attrs = frame[PLUME_CELLS].attrs
+    threshold = _threshold(frame[PLUME_CELLS]) if THRESHOLD_ATTRIBUTE in attrs else None
     return _times(frame["time"]), edges, counts, threshold
 
 

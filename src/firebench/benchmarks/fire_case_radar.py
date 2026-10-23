@@ -12,15 +12,16 @@ one grid, and compared as masks and ranks, never as amounts, since nothing relat
 reflectivity:
 
 - the observed plume is the radar plume mask (``resources/radar.toml``); the model's, where its
-  tracer reaches ``tracer_relative_threshold`` of its largest value on the section at that time;
+  tracer, a mass concentration, reaches ``tracer_threshold`` (``ug/m^3``). The threshold is the
+  value that best matches the radar's mask for a model, found with ``radar_plume_threshold_sweep``;
 - the plume top is the 90th percentile of the heights of a plume's cells, its centroid the mean of
   their position on the section weighted by linear reflectivity or by the tracer;
 - the model's radial velocity is its wind along the beam through each node, folded into the Nyquist
   interval of the sweep the observation was read on, so the aliased observation needs no dealiasing;
 - over the frame of a site, the plume top of a volume is the 90th percentile of the heights of the
   radar's plume gates (``radar_echo_top_series``) and of the model's plume cells (its counts, linear
-  inside a bin), the model's plume being where its tracer reaches the same share of its largest value
-  over the cells of the frame the radar can see;
+  inside a bin), the model's plume being where its tracer reaches the same threshold over the cells
+  of the frame the radar can see;
 - on the radar's map grid over the frame, each side's plume top is the highest plume gate, or model
   plume cell, over each map cell (``radar_plume_top_maps``; the model's ``plume_top``). Where the
   radar sees (its beam band, ``radar_beam_bands``), the footprints are the cells with a top: their
@@ -33,7 +34,7 @@ period can give is not computed: its function returns None and it is left out of
 ``radar_plume_values`` gives what these KPIs compare, for a figure.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -43,7 +44,7 @@ from scipy.stats import spearmanr
 from .. import metrics as fm
 from .. import standardize as fs
 from .. import tools as ft
-from .fire_case_parameters import RadarPlumeParameters
+from .fire_case_parameters import CONCENTRATION_UNITS, RadarPlumeParameters, concentration_factor
 from .fire_case_radar_model import (  # pylint: disable=unused-import
     MODEL_GROUP,
     POINTS,
@@ -89,6 +90,9 @@ class PlumePairs:  # pylint: disable=too-many-instance-attributes
     velocity: list[np.ndarray] | None = None
     radial: list[np.ndarray] | None = None
     nyquist: list[np.ndarray] | None = None
+    # Why the model's plume cannot be told (a tracer that is no mass concentration), or None: the KPIs
+    # that need it are then not computed.
+    problem: str | None = None
 
 
 def fold(difference: np.ndarray, nyquist: np.ndarray) -> np.ndarray:
@@ -100,18 +104,23 @@ def _utc64(moment: datetime) -> np.datetime64:
     return np.datetime64(moment.astimezone(timezone.utc).replace(tzinfo=None), "ms")
 
 
-def plume_pairs(  # pylint: disable=too-many-locals
+def plume_pairs(  # pylint: disable=too-many-locals,too-many-arguments
     model: File,
     obs: File,
     section: str,
     period: tuple[datetime, datetime],
     model_group: str,
     parameters: RadarPlumeParameters,
+    min_dbz: float | None = None,
 ) -> PlumePairs:
-    """Both sides of ``section`` (``SITE/name``) for the volumes of ``period``, on the section's nodes."""
+    """
+    Both sides of ``section`` (``SITE/name``) for the volumes of ``period``, on the section's nodes.
+    ``min_dbz`` replaces the reflectivity of the radar's plume mask, for a calibration only.
+    """
     site, name = section.split("/", 1)
     cut = fs.read_radar_section(obs, site, name)
     mask = fs.radar_parameters()
+    lowest_dbz = mask.min_dbz if min_dbz is None else float(min_dbz)
     plane = cut.plane
     sampler = ModelSection(model, model_group, section, plane.height.shape)
     start, end = (_utc64(moment) for moment in period)
@@ -131,6 +140,7 @@ def plume_pairs(  # pylint: disable=too-many-locals
         velocity=[] if with_velocity else None,
         radial=[] if with_velocity else None,
         nyquist=[] if with_velocity else None,
+        problem=sampler.tracer_problem,
     )
     for volume, time in enumerate(cut.time):
         if not start <= time <= end:
@@ -153,16 +163,11 @@ def plume_pairs(  # pylint: disable=too-many-locals
         scored = np.isfinite(reflectivity) & np.isfinite(tracer)
         low, high = mask.rhohv_range
         with np.errstate(invalid="ignore"):
-            observed = scored & (reflectivity >= mask.min_dbz)
+            observed = scored & (reflectivity >= lowest_dbz)
             if CORRELATION in cut.values:
                 correlation = cut.values[CORRELATION][volume]
                 observed &= (correlation > low) & (correlation < high)
-            largest = float(np.max(tracer[scored])) if scored.any() else 0.0
-            modelled = (
-                scored & (tracer >= parameters.tracer_relative_threshold * largest)
-                if largest > 0
-                else scored & False
-            )
+            modelled = scored & (tracer >= parameters.tracer_threshold) & (pairs.problem is None)
         pairs.times.append(time)
         pairs.volumes.append(volume)
         pairs.model_times.append(sampler.time[index])
@@ -228,11 +233,8 @@ def top_pairs(  # pylint: disable=too-many-arguments
     """The plume top of both sides over the frame of ``site``, for the volumes of ``period``."""
     pairs = TopPairs(site=site, times=[], model_times=[], observed=[], modelled=[], n_gates=[], n_cells=[])
     model_times, edges, counts, threshold = model_frame(model, model_group, site)
-    if not np.isclose(threshold, parameters.tracer_relative_threshold):
-        pairs.problem = (
-            f"the model counted its plume cells at {threshold:g} of its largest tracer, not at "
-            f"{parameters.tracer_relative_threshold:g}"
-        )
+    pairs.problem = _threshold_problem(threshold, parameters)
+    if pairs.problem is not None:
         return pairs
     series = _echo_tops(obs, site, ctx)
     start, end = (_utc64(moment) for moment in period)
@@ -250,6 +252,21 @@ def top_pairs(  # pylint: disable=too-many-arguments
         pairs.n_gates.append(int(series.n_gates[volume]))
         pairs.n_cells.append(int(np.sum(counts[index])))
     return pairs
+
+
+def _threshold_problem(threshold: float | None, parameters: RadarPlumeParameters) -> str | None:
+    """Why a frame the model counted at ``threshold`` cannot be scored with ``parameters``, or None."""
+    if threshold is None:
+        return (
+            "the model counted its plume cells at a share of its largest tracer: prepare it again with "
+            "a new kit"
+        )
+    if not np.isclose(threshold, parameters.tracer_threshold):
+        return (
+            f"the model counted its plume cells at a tracer of {threshold:g} {CONCENTRATION_UNITS}, "
+            f"not at {parameters.tracer_threshold:g}"
+        )
+    return None
 
 
 def _pairs(
@@ -304,6 +321,8 @@ def bench_radar_plume(  # pylint: disable=too-many-arguments,too-many-locals,too
     label = f"{kpi_name_custom} {section} {period_name}"
     if not pairs.times:
         return _skipped(label, "no volume of the period has a model output time near it")
+    if pairs.problem is not None and kpi not in ("velocity_rmse", "velocity_bias"):
+        return _skipped(label, pairs.problem)
     values = []
     if kpi == "mask_iou":
         values = [value for value in map(_iou, pairs.observed, pairs.modelled) if value is not None]
@@ -421,7 +440,10 @@ def map_pairs(  # pylint: disable=too-many-arguments,too-many-locals
     """Both sides' plume top over the map of ``site`` for the volumes of ``period``."""
     latitude, longitude = fs.radar_map_axes(obs, site, resolution=parameters.map_resolution)
     pairs = MapPairs(site, latitude, longitude, [], [], [], [], [])
-    frame_times, _, counts, _ = model_frame(model, model_group, site)
+    frame_times, _, counts, threshold = model_frame(model, model_group, site)
+    pairs.problem = _threshold_problem(threshold, parameters)
+    if pairs.problem is not None:
+        return pairs
     model_times, model_lat, model_lon, model_tops = model_top_maps(model, model_group, site)
     if model_tops.shape[1:] != (len(latitude), len(longitude)) or not (
         np.allclose(model_lat, latitude) and np.allclose(model_lon, longitude)
@@ -638,7 +660,7 @@ def _section_values(model: File, obs: File, section: str, span, periods, model_g
         )
     return {
         "section": section,
-        "problem": None,
+        "problem": pairs.problem,
         "u": np.asarray(plane.u),
         "v": np.asarray(plane.v),
         "position_lat": np.asarray(plane.latitude),
@@ -715,11 +737,12 @@ def _top_values(model: File, obs: File, site: str, span, periods, model_group, p
 
 
 def model_points(model: File, model_group: str) -> dict | None:
-    """The model's plume cells kept for figures (``write_plume_points``), or None when it gave none."""
+    """The model's plume cells kept for figures (``write_plume_points``), or None when it gave none; the
+    tracer in ``CONCENTRATION_UNITS``, or as given (and its units) when it is no mass concentration."""
     group = model.get(f"{model_group}/{POINTS}")
     if group is None:
         return None
-    return {
+    points = {
         "time": [_iso(time) for time in _times(group["time"])],
         **{
             name: np.asarray(group[name][()])
@@ -727,6 +750,11 @@ def model_points(model: File, model_group: str) -> dict | None:
         },
         "tracer_units": _text(group[TRACER].attrs.get("units", "")),
     }
+    try:
+        factor = concentration_factor(points["tracer_units"])
+    except ValueError:
+        return points
+    return {**points, TRACER: points[TRACER] * factor, "tracer_units": CONCENTRATION_UNITS}
 
 
 def radar_plume_values(  # pylint: disable=too-many-arguments
@@ -759,7 +787,8 @@ def radar_plume_values(  # pylint: disable=too-many-arguments
     group = entry["model_group"]
     return {
         "model_group": group,
-        "tracer_relative_threshold": parameters.tracer_relative_threshold,
+        "tracer_threshold": parameters.tracer_threshold,
+        "tracer_threshold_units": CONCENTRATION_UNITS,
         "top_level": TOP_LEVEL,
         "sections": [
             _section_values(model, obs, section, span, chosen, group, parameters)
@@ -770,6 +799,86 @@ def radar_plume_values(  # pylint: disable=too-many-arguments
             for site in entry.get("echo_top", [])
         ],
         "points": model_points(model, group),
+    }
+
+
+def radar_plume_threshold_sweep(  # pylint: disable=too-many-arguments,too-many-locals
+    model: File,
+    obs: File,
+    entry: dict,
+    periods: dict[str, tuple[datetime, datetime]],
+    parameters: RadarPlumeParameters,
+    thresholds,
+    min_dbz: float | None = None,
+) -> dict:
+    """
+    The section KPIs of the family at each tracer threshold of ``thresholds`` (``ug/m^3``), to find
+    the threshold whose plume best matches the radar's for a model: the value ``tracer_threshold`` of
+    ``fire_case.toml`` is then set to.
+
+    Each section and period is read once; only the model's mask changes between thresholds. The
+    frames are left out: a model counts its plume cells over a frame at one threshold.
+    ``min_dbz`` replaces the reflectivity of the radar's plume mask (``radar.toml``) for the sweep.
+
+    Returns ``thresholds``; ``min_dbz``, the mask's reflectivity used; ``items``, one per section and
+    period, with ``values`` and ``scores``, KPI name to a list over the thresholds (None where the KPI
+    is not computed), and ``intersection`` and ``union``, the node counts of both masks summed over
+    its volumes; ``pooled_iou``, over every item; and ``best``, the threshold of the largest pooled
+    IoU (the lowest of a tie), or None when no mask has a node.
+    """
+    chosen = sorted({float(value) for value in thresholds})
+    if not chosen or chosen[0] <= 0:
+        raise ValueError("the thresholds must be values above 0")
+    group = entry["model_group"]
+    lowest_dbz = fs.radar_parameters().min_dbz if min_dbz is None else float(min_dbz)
+    items, intersection, union = [], np.zeros(len(chosen)), np.zeros(len(chosen))
+    for section in entry["sections"]:
+        for period_name in entry["periods"]:
+            period = periods[period_name]
+            base = plume_pairs(model, obs, section, period, group, parameters, min_dbz=lowest_dbz)
+            item = {
+                "section": section,
+                "period": period_name,
+                "problem": base.problem,
+                "n_volumes": len(base.times),
+                "values": {name: [] for name, _, _ in RADAR_KPIS},
+                "scores": {name: [] for name, _, _ in RADAR_KPIS},
+                "intersection": [],
+                "union": [],
+            }
+            for threshold in chosen:
+                with np.errstate(invalid="ignore"):
+                    modelled = [
+                        np.isfinite(tracer) & (tracer >= threshold) & (base.problem is None)
+                        for tracer in base.tracer
+                    ]
+                pairs = replace(base, modelled=modelled)
+                swept = replace(parameters, tracer_threshold=threshold)
+                ctx = {"radar_plume": {(section, period_name): pairs}}
+                for kpi_name, kpi, _ in RADAR_KPIS:
+                    result = bench_radar_plume(
+                        model, obs, ctx, kpi_name, kpi, section, period_name, period, group, swept
+                    )
+                    label = f"{kpi_name} {section} {period_name}"
+                    item["values"][kpi_name].append(None if result is None else result[label])
+                    item["scores"][kpi_name].append(None if result is None else result["Score"])
+                item["intersection"].append(
+                    int(sum((o & m).sum() for o, m in zip(base.observed, modelled)))
+                )
+                item["union"].append(int(sum((o | m).sum() for o, m in zip(base.observed, modelled))))
+            intersection += item["intersection"]
+            union += item["union"]
+            items.append(item)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        pooled = np.where(union > 0, intersection / union, np.nan)
+    best = None if not np.isfinite(pooled).any() else chosen[int(np.nanargmax(pooled))]
+    return {
+        "thresholds": chosen,
+        "units": CONCENTRATION_UNITS,
+        "min_dbz": lowest_dbz,
+        "items": items,
+        "pooled_iou": [None if np.isnan(value) else float(value) for value in pooled],
+        "best": best,
     }
 
 

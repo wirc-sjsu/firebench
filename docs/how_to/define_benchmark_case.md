@@ -25,7 +25,7 @@ The proposal holds every family the file allows, and says why it left out the ot
 | `canopy_cover_loss` | `/spatial_2d/ravg_cc/ravg_canopy_cover_loss`, and the LANDFIRE canopy height, base height, and bulk density (`/spatial_2d/landfire_ch`, `landfire_cbh`, `landfire_cbd`, written by `standardize_landfire_canopy`) | RAVG's five classes (1: 0 %, 2: >0-<25 %, 3: 25-<50 %, 4: 50-<75 %, 5: 75-100 %) compared on the cells where every LANDFIRE layer is above 0 and not its fill value, and both the observations and the model give a class from 1 to 5: a cell either side leaves unburnt (9) or without a value (0) is left out, so the family scores how much canopy a model consumes where it burns, not where it burns. Class accuracy, accuracy within one class, quadratic weighted kappa, macro F1, mean absolute class error, mean class bias, the precision, recall, and F1 of high loss (class 5), and the share of the observed cells the model gives a class |
 | `weather_stations` | `/time_series/station_*` | MAE, RMSE, and bias (circular for wind direction) of each station variable, min, mean, and max over stations, on trusted (TSO) and all stations |
 | `fire_radiative_power` | the fire detection streams, `/unstructured/fire_detections/<stream>` (`standardize_firms_bundle`, `standardize_goes_fdc`); the model's `/time_series/fire_total` | per period: the share of the satellite FRP totals (one per overpass or scan in the case's frame, `frp_time_series`) inside the band of FRP the model gives, `fire_radiative_power_lower` to `fire_radiative_power_upper`, and how far outside it they lie in decades (log error), both per observing system (geostationary, polar orbiters); the share inside pooled, and the shares above and below the band (see `fire_case_frp`) |
-| `radar_plume` | the radar cross sections, `/spatial_3d/radar/<SITE>/sections/<name>` (`radar_cross_section`), and the sweeps of the sites of `echo_top`; the model's `/spatial_3d/plume` at the radar's times and places (`fire_case_radar_model`) | per section and period: the IoU of the plume masks (radar: the plume mask of `radar.toml`; model: its tracer above a share of its largest value), the error on the plume top (90th percentile of heights) and on the plume centroid, the rank correlation of reflectivity and log tracer, and the RMSE and bias of radial velocity folded into the Nyquist interval; per site of `echo_top` and period, over the part of the site's frame the radar sees: the error and bias of the plume top, the 90th percentile of the heights of the radar's plume gates (`radar_echo_top_series`) against that of the model's plume cells; and on the radar's map grid, the IoU of both plume footprints, the error and bias of the plume top where both have one, and the distance between the footprints' centroids weighted by the top (see `fire_case_radar`). `echo_top` is optional; `propose_case` lists every site with a section |
+| `radar_plume` | the radar cross sections, `/spatial_3d/radar/<SITE>/sections/<name>` (`radar_cross_section`), and the sweeps of the sites of `echo_top`; the model's `/spatial_3d/plume` at the radar's times and places (`fire_case_radar_model`) | per section and period: the IoU of the plume masks (radar: the plume mask of `radar.toml`; model: its tracer, a mass concentration, at or above `tracer_threshold` of `fire_case.toml`), the error on the plume top (90th percentile of heights) and on the plume centroid, the rank correlation of reflectivity and log tracer, and the RMSE and bias of radial velocity folded into the Nyquist interval; per site of `echo_top` and period, over the part of the site's frame the radar sees: the error and bias of the plume top, the 90th percentile of the heights of the radar's plume gates (`radar_echo_top_series`) against that of the model's plume cells; and on the radar's map grid, the IoU of both plume footprints, the error and bias of the plume top where both have one, and the distance between the footprints' centroids weighted by the top (see `fire_case_radar`). `echo_top` is optional; `propose_case` lists every site with a section |
 
 and these periods:
 
@@ -95,6 +95,22 @@ number that follows the definition. A KPI with nothing to score is left out of i
 plume KPI no volume of its period can give (no model output time within `max_time_offset`, no plume
 on either side), an FRP KPI with fewer than `min_observations` observations, a canopy cover loss KPI
 when the model burns no cell the observations classify.
+
+### The radar plume threshold
+
+A model's plume is where its passive tracer, in `ug/m^3`, reaches `tracer_threshold` of
+`[radar_plume]` in `fire_case.toml`. The value is the one whose plume best matches the radar's plume
+mask (`radar.toml`) for a model, found on a case and then used for the others:
+
+```bash
+firebench case plume-sweep fire.h5 model.h5 --thresholds 0.1,0.3,1,3,10,30,100
+```
+
+It scores the cross sections at each threshold (IoU of the masks, plume top and centroid errors, rank
+correlation) and prints the IoU pooled over every section and volume, with the threshold that
+maximises it; `--min-dbz` replaces the reflectivity of the radar's mask for the sweep, and `-o`
+writes it all as JSON. The frames are left out: a model counts its plume cells over a frame at one
+threshold, the one its kit names.
 
 ### The FRP band
 

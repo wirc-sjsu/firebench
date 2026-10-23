@@ -149,6 +149,7 @@ def test_documented_cli_commands_have_help():
         ["case", "propose"],
         ["case", "check"],
         ["case", "run"],
+        ["case", "plume-sweep"],
         ["wx"],
         ["wx", "init"],
         ["wx", "plan"],

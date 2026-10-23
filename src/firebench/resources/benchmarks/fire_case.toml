@@ -83,10 +83,15 @@ area_rmse_weight = 1
 [radar_plume]
 # A model's passive tracer and wind against the radar's cross sections (firebench.standardize.radar,
 # `radar_cross_section`). The observed plume is the radar plume mask of resources/radar.toml; the
-# model's plume is where its tracer reaches this share of its largest value on the section at that
-# time, so the tracer's scale never matters. Added without raising `version`, as canopy_cover_loss
-# was: no definition of version 2026.1 holds this family, and the scores of the others are unchanged.
-tracer_relative_threshold = 0.01
+# model's plume is where its tracer, a mass concentration, reaches `tracer_threshold` (Pint units in
+# `tracer_threshold_units`), on a section and over a radar's frame alike. Added without raising
+# `version`, as canopy_cover_loss was: no definition of version 2026.1 holds this family, and the
+# scores of the others are unchanged. The threshold replaced a share of the tracer's largest value
+# (0.01) without raising it either, so that a value found on one case carries to the others; it is
+# the value that best matches the radar's plume mask for a model, to be calibrated
+# (`radar_plume_threshold_sweep`).
+tracer_threshold = 1.0
+tracer_threshold_units = "ug/m^3"
 # A volume is scored against the model output time nearest its start, at most this far, in s.
 max_time_offset = 300
 # The cells of a section a rank correlation needs in one volume.
