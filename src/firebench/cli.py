@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import json
 import logging
 import os
@@ -1566,6 +1567,89 @@ def case_plume_sweep(
     if output is not None:
         output.write_text(json.dumps(sweep, indent=2) + "\n", encoding="utf-8")
         click.echo(f"Wrote {output}.")
+
+
+@main.group("experiment")
+def experiment_group() -> None:
+    """
+    Sensors and soundings of a field experiment in the FireBench standard file.
+
+    'template' writes a sensor table and a sensor sheet to fill; 'convert' writes a FireBench file
+    from a sheet and the sensors' files, so a lab checks its files before uploading them.
+    """
+
+
+def _experiment_module():
+    return import_module(".standardize.experiment", __package__)
+
+
+@experiment_group.command("template")
+@click.option(
+    "--kind",
+    type=click.Choice(["fixed", "array", "moving"]),
+    default="fixed",
+    show_default=True,
+    help="A sensor at one height, several heights on one time axis, or a position per sample.",
+)
+@click.option("-o", "--output", type=click.Path(file_okay=False, path_type=Path), required=True)
+def experiment_template(kind: str, output: Path) -> None:
+    """Write a sensor table of KIND and a sensor sheet to fill into OUTPUT."""
+    table, sheet = _experiment_module().write_templates(kind, output)
+    click.echo(f"Wrote {table} and {sheet}.")
+
+
+@experiment_group.command("convert")
+@click.argument(
+    "files", nargs=-1, required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.option(
+    "--sheet",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    required=True,
+    help="Sensor sheet (CSV or YAML) that names each file in its `file` column.",
+)
+@click.option(
+    "--recipe",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Recipe (JSON or YAML) for every file; without it, each file is a sensor table read as proposed.",
+)
+@click.option("-o", "--output", type=click.Path(dir_okay=False, path_type=Path), required=True)
+@click.option("--authors", default="unknown", show_default=True, help="Authors the file names.")
+@click.option("--overwrite", is_flag=True, help="Replace OUTPUT if it exists.")
+def experiment_convert(  # pylint: disable=too-many-arguments
+    files: tuple[Path, ...], sheet: Path, recipe: Path | None, output: Path, authors: str, overwrite: bool
+) -> None:
+    """Write the sensors of FILES into the FireBench file OUTPUT, and validate it."""
+    experiment = _experiment_module()
+    standardize = import_module(".standardize", __package__)
+    if output.exists() and not overwrite:
+        raise click.ClickException(f"{output} exists: give --overwrite to replace it.")
+    try:
+        sensor_sheet = experiment.read_sensor_sheet(sheet)
+        given = experiment.TableRecipe.load(recipe) if recipe else None
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    h5 = standardize.new_std_file(str(output), authors, overwrite=True)
+    try:
+        for path in files:
+            try:
+                row = sensor_sheet.row_for_file(path.name)
+                file_recipe = given
+                if file_recipe is None:
+                    sniff = experiment.sniff_table(path)
+                    if sniff.time_problem:
+                        raise ValueError(f"{sniff.time_problem} Give a recipe with --recipe.")
+                    file_recipe = sniff.recipe
+                table = experiment.read_sensor_table(path, file_recipe)
+                groups = experiment.write_sensor(h5, row, table, sensor_sheet)
+            except ValueError as exc:
+                raise click.ClickException(f"{path.name}: {exc}") from exc
+            for group in groups:
+                click.echo(f"{path.name} -> {group.name}: {len(table.time)} samples")
+        standardize.validate_h5_std(h5)
+    finally:
+        h5.close()
+    click.echo(f"Wrote {output}.")
 
 
 @main.group()

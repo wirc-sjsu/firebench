@@ -1447,3 +1447,48 @@ def test_cli_data_nexrad_writes_a_standard_file(_nexrad_cli, tmp_path):
             "volumes",
         ]
     assert again.exit_code != 0 and "already exists" in again.output
+
+
+@pytest.mark.parametrize("kind", ["fixed", "array", "moving"])
+def test_experiment_template_converts_without_a_recipe(tmp_path, kind):
+    runner = CliRunner()
+    templates = tmp_path / "templates"
+    written = runner.invoke(main, ["experiment", "template", "--kind", kind, "-o", str(templates)])
+    assert written.exit_code == 0, written.output
+    output = tmp_path / "experiment.h5"
+    arguments = [
+        "experiment",
+        "convert",
+        "--sheet",
+        str(templates / "sensor_sheet.csv"),
+        str(templates / f"sensor_{kind}.csv"),
+        "-o",
+        str(output),
+    ]
+    result = runner.invoke(main, arguments)
+    assert result.exit_code == 0, result.output
+    assert f"/main_tower/sensor_{kind}: 2 samples" in result.output
+    again = runner.invoke(main, arguments)
+    assert again.exit_code != 0 and "--overwrite" in again.output
+
+
+def test_experiment_convert_names_the_file_it_cannot_read(tmp_path):
+    runner = CliRunner()
+    templates = tmp_path / "templates"
+    runner.invoke(main, ["experiment", "template", "-o", str(templates)])
+    table = templates / "sensor_fixed.csv"
+    table.write_text("time,wind_speed_u[m/s]\n2026-02-23T12:00:00,1.0\n", encoding="utf-8")
+    result = runner.invoke(
+        main,
+        [
+            "experiment",
+            "convert",
+            "--sheet",
+            str(templates / "sensor_sheet.csv"),
+            str(table),
+            "-o",
+            str(tmp_path / "x.h5"),
+        ],
+    )
+    assert result.exit_code != 0
+    assert "sensor_fixed.csv: The file's times state no UTC offset" in result.output

@@ -10,7 +10,9 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 
 ## Standard Variable Names
 
+- `ABSOLUTE_HUMIDITY`: Absolute humidity, mass of water vapour per volume of air [kg m-3]
 - `AIR_DENSITY`: Air density [kg m-3]
+- `AIR_PRESSURE`: Air pressure [Pa]
 - `AIR_TEMPERATURE`: Air temperature [K]
 - `ALPHA`: Alpha
 - `BETA`: Beta
@@ -26,7 +28,9 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `CANOPY_HEIGHT`: Canopy height [m]
 - `CANOPY_HEIGHT_BOTTOM`: Canopy height bottom [m]
 - `CANOPY_HEIGHT_TOP`: Canopy height top [m]
+- `CO2_MASS_CONCENTRATION`: Mass concentration of carbon dioxide in air [kg m-3]
 - `DAY_NIGHT_FLAG`: Day (1) or night (0) acquisition flag (int)
+- `DEW_POINT_TEMPERATURE`: Dew point temperature [K]
 - `DIRECTION`: Direction [-]
 - `FIRE_ARRIVAL_TIME`: Fire arrival time [s]
 - `FIRE_BURN_SEVERITY`: Fire burn severity [-]
@@ -101,6 +105,7 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `PASSIVE_TRACER`: Mass concentration of a passive tracer of a model's plume [ug/m^3]
 - `PIXEL_SIZE_SCAN`: Pixel size along the scan direction [m]
 - `PIXEL_SIZE_TRACK`: Pixel size along the track direction [m]
+- `POTENTIAL_TEMPERATURE`: Potential temperature [K]
 - `RADAR_CORRELATION_COEFFICIENT`: Co-polar correlation coefficient of a weather radar, rhoHV [-]
 - `RADAR_DIFFERENTIAL_REFLECTIVITY`: Differential reflectivity of a weather radar, ZDR [dB]
 - `RADAR_RADIAL_VELOCITY`: Radial velocity of the scatterers away from a weather radar, as observed (aliased) [m s-1]
@@ -109,12 +114,15 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `RAVG_CANOPY_COVER_LOSS`: Rapid Assessment of Vegetation Condition After Wildfire canopy cover loss [%]
 - `RAVG_COMPOSITE_BURN_INDEX_SEVERITY`: Rapid Assessment of Vegetation Condition After Wildfire composite burn index severity [-]
 - `RAVG_LIVE_BASAL_AREA_LOSS`: Rapid Assessment of Vegetation Condition After Wildfire live basal area loss [%]
-- `RELATIVE_HUMIDITY`: Relative Humidity [m s-1]
+- `RELATIVE_HUMIDITY`: Relative Humidity [%]
 - `SLOPE_ANGLE`: Slope angle [deg]
 - `SOLAR_RADIATION`: Solar radiation [W m-2]
+- `SONIC_TEMPERATURE`: Sonic temperature of a sonic anemometer, uncorrected for humidity [K]
+- `SPECIFIC_HUMIDITY`: Specific humidity [kg kg-1]
 - `TEMPERATURE`: Temperature [K]
 - `TERRAIN_ELEVATION`: Ground elevation above mean sea level [m]
 - `TIME`: Time [s]
+- `WATER_VAPOR_MIXING_RATIO`: Water vapour mixing ratio [kg kg-1]
 - `WIND_DIRECTION`: Wind direction [deg]
 - `WIND_GUST`: Wind gust [m s-1]
 - `WIND_SPEED`: Wind [m s-1]
@@ -124,3 +132,6 @@ The Standard Variable Namespace `svn` is accessed in workflows using `from fireb
 - `X`: x coordinate [m]
 - `Y`: y coordinate [m]
 - `Z`: z coordinate [m]
+
+A thermocouple's reading is `AIR_TEMPERATURE`, or `TEMPERATURE` in the fuel, with the instrument
+named in the attribute `instrument` of its group.

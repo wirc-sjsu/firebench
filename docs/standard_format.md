@@ -2,7 +2,7 @@
 
 - **Version**: 1.0
 - **Status**: Pre-release
-- **Last update**: 2026-10-16
+- **Last update**: 2026-10-24
 
 This document defines the I/O format standard for benchmark datasets used in the `FireBench` benchmarking framework. The standard is based on the [HDF5 file format](https://www.hdfgroup.org/solutions/hdf5/) (`.h5`) and describes the structure, expected groups, metadata, and conventions.
 
@@ -137,6 +137,14 @@ Use when position is defined relative to a known geographic origin.
 - `position_x`: x coordinate relative to origin
 - `position_y`: y coordinate relative to origin
 - `position_z`: z coordinate relative to origin
+
+**Axes**
+- x points east, y north, and z up, in a plane tangent to the ellipsoid at the origin, unless the
+  group's attribute `position_axes_azimuth` (with `position_axes_azimuth_units`, `degree`) gives the
+  azimuth of +y, clockwise from true north: at 90, +y points east and +x south. A survey aligned on a
+  burn plot gives the azimuth of the plot's axis.
+- An optional attribute `position_origin_name` names the origin, so that several groups that start
+  from the same surveyed point say so.
 
 **Coordinate Reference System (CRS)**
 - The group containing these fields must have an attribute `crs` identifying the CRS (*e.g.*, "EPSG:4326") 
@@ -292,6 +300,46 @@ Units attributes must be set for each field.
 │    │    ├── wind_w                 (W wind data from sensor_3)
 ```
 
+#### Experiment sensors
+
+The instruments of a field experiment (`firebench.standardize.experiment`) are written as a location
+group per *platform* (a tower, a station, a launch site, a tether line) holding the platform's
+position as attributes, in geographic coordinates or relative to a reference point, and a data group
+per *sensor*, the series of one file:
+
+```
+/time_series/
+├── main_tower                  (location group: position_lat, position_lon, position_alt, crs)
+│   ├── sonic_42m               (data group: time, wind_speed_u, wind_speed_v, …)
+│   └── sonic_10m
+├── tether_line                 (location group: position_origin_*, position_x, position_y, position_z, crs)
+│   └── sonde_01                (a moving sensor: time, position_x, position_y, position_z, air_temperature, …)
+```
+
+Attribute of a data group | Type | Description
+--- | --- | ---
+`sensor_kind` | str | `fixed` (one height), `array` (several heights, under `spatial_1d`), or `moving` (a position per sample)
+`platform`, `sensor_id` | str | The names of the platform and the sensor
+`instrument` | str | The instrument, e.g. `Campbell CSAT3` or `fine-wire thermocouple`
+`averaging_period`, `sampling_interval` | float | With `*_units` (`s`): the period each value averages, and the median step between two values
+`wind_convention`, `wind_convention_source` | str | When the sensor records u or v: `u_east_v_north` (the components as stored), and how the file signed them (`u_east_v_north` or `u_west_v_south`, turned when read)
+`source_file`, `source_sha256` | str | The file the series was read from
+`license`, `redistribution_allowed`, … | | The licence of the sensor, as other groups carry it: the sensors of one platform may belong to different parties
+`description` | str | Optional
+
+- A fixed sensor's datasets carry `sensor_height`, `sensor_height_units`, and `sensor_height_source`.
+- `time` is relative (`time_origin`, `time_units` = `s`), its origin the first sample.
+- The sensors of one platform share its position: a platform has one position and one convention.
+
+#### Soundings
+
+A sounding (a radiosonde, a tethersonde) is a `moving` sensor: its data group holds its position per
+sample as datasets, `position_lat`, `position_lon`, `position_alt` with `crs`, or `position_x`,
+`position_y`, `position_z` with the origin's attributes (`position_origin_*`,
+`position_axes_azimuth`, `position_origin_name`, `crs`). A sounding that records only its height
+above its platform has `position_x` and `position_y` 0, the platform's offset from the origin
+included. The attribute `launch_time` (ISO 8601) is the time of its first sample.
+
 #### fire_total
 
 A model output gives the fire radiative power it expects over an area in the group
@@ -336,6 +384,11 @@ Dataset | Units | Description
 │    │    ├── wind_speed        (wind profiler data)
 │    │    ├── wind_direction    (wind profiler data)
 ```
+
+An array of sensors of a field experiment (a thermocouple tower) is a data group of `sensor_kind`
+`array` under its platform's location group (see *Experiment sensors*): `time`, `position_z` the
+heights of its sensors above the ground (`n_z`), and each variable `(n_t, n_z)`. Variables measured
+at different heights are written in separate data groups, `<sensor>_<variable>`.
 
 ### Spatial 2D
 - Contains time series data from a dataset associated with two-dimensional spatial data. It means any two spatial dimensions, whether horizontal, vertical, or arbitrary section, and that coordinate naming (x, y, z) will follow the Spatial Information Convention.

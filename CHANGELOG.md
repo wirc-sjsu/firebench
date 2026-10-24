@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add the sensors and soundings of a field experiment (`firebench.standardize.experiment`, extra
+  `firebench[experiment]` for `.xls` and `.xlsx`): a sensor sheet (CSV or YAML, `read_sensor_sheet`)
+  lists the experiment's reference points and its sensors, each at a platform whose position is
+  geographic or relative to a reference point (x east, y north, z up, unless the point's
+  `position_axes_azimuth` turns them); a `TableRecipe` says how to read one file (delimited text or a
+  workbook sheet, each column's variable and Pint unit, the time from an ISO column, a format, date
+  parts, a date and decimal hours, a year, day of year, and HHMM, or a counter from a start, and a
+  fixed UTC offset), `sniff_table` proposes one and gives the first and last times it yields in UTC,
+  and `read_sensor_table` applies it, refusing times that go back, a unit of the wrong kind, or a
+  variable given twice. `write_sensor` writes a platform's location group and a sensor's data group:
+  `fixed` under `time_series`, `array` as `(time, z)` under `spatial_1d`, `moving` with a position
+  per sample, the winds of a file signed `u_west_v_south` turned to eastward and northward, and
+  refuses a platform whose sensors give it two positions or two conventions. `experiment_geographic`
+  gives the longitude, latitude, and altitude of a group in either convention through a local
+  tangent plane. A file in the *sensor table* standard (a `time` column in ISO 8601 with its
+  offset, columns named `<variable>[<unit>]`, `<variable>@<height>m[<unit>]` in an array) needs no
+  recipe: `firebench experiment template` writes one with a sensor sheet, and `firebench experiment
+  convert` writes and validates a FireBench file from them. `table_recipe_schema` and
+  `experiment_variables` describe the recipe and the variables a column maps to.
+- Add `ABSOLUTE_HUMIDITY`, `AIR_PRESSURE`, `CO2_MASS_CONCENTRATION`, `DEW_POINT_TEMPERATURE`,
+  `POTENTIAL_TEMPERATURE`, `SONIC_TEMPERATURE`, `SPECIFIC_HUMIDITY`, and `WATER_VAPOR_MIXING_RATIO` to
+  the standard namespace, and document relative Cartesian axes (`position_axes_azimuth`,
+  `position_origin_name`), experiment sensors, soundings, and sensor arrays in the standard format.
 - Add `radar_plume_threshold_sweep` (`fire_case_radar`, `FireCase.radar_plume_threshold_sweep`) and the
   command `firebench case plume-sweep DEFINITION MODEL_OUTPUT --thresholds ...`: the section KPIs of the
   `radar_plume` family at each tracer threshold, with the IoU of both masks pooled over every section
@@ -413,6 +436,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
+- Give `RELATIVE_HUMIDITY` its unit, `%`, in the namespace page, which read `[m s-1]`.
 - A VIIRS or MODIS detection timed up to one granule before the overpass CMR lists for the box now
   belongs to that overpass (`standardize_firms_bundle`); it got an observation of its own, with an
   unknown share of the frame, and the overpass counted as one without fire. `frp_time_series` counts

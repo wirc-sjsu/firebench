@@ -90,6 +90,29 @@ from .radar import (
     standardize_nexrad_level2,
     write_radar_sections,
 )
+from .experiment import (
+    ColumnRecipe,
+    GeographicPosition,
+    ReaderRecipe,
+    ReferencePoint,
+    RelativePosition,
+    SensorColumn,
+    SensorRow,
+    SensorSheet,
+    SensorTable,
+    TableRecipe,
+    TableSniff,
+    TimeRecipe,
+    experiment_geographic,
+    experiment_position,
+    experiment_variables,
+    list_experiment_sensors,
+    read_sensor_sheet,
+    read_sensor_table,
+    sniff_table,
+    table_recipe_schema,
+    write_sensor,
+)
 from .perimeters import list_kml_layers, read_kml_layer, standardize_perimeter_from_kml
 from .ravg import (
     standardize_ravg_ba_from_geotiff,
