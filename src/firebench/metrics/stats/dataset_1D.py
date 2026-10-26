@@ -209,16 +209,11 @@ def circular_bias_deg(x1: np.ndarray, x2: np.ndarray) -> float:
     if not np.any(mask):
         return np.nan
 
-    # Convert to radians
-    theta1 = np.deg2rad(x1[mask])
-    theta2 = np.deg2rad(x2[mask])
+    # Difference in radians
+    diff = np.deg2rad(x1[mask] - x2[mask])
+    
+    # Circular mean wrapped to (-pi, pi]
+    mean = np.arctan2(np.mean(np.sin(diff)), np.mean(np.cos(diff)))
+    mean = (mean + np.pi) % (2 * np.pi) - np.pi
 
-    # Circular means
-    mean1 = np.arctan2(np.mean(np.sin(theta1)), np.mean(np.cos(theta1)))
-    mean2 = np.arctan2(np.mean(np.sin(theta2)), np.mean(np.cos(theta2)))
-
-    # Difference, wrapped to (-pi, pi]
-    dtheta = mean1 - mean2
-    dtheta = (dtheta + np.pi) % (2 * np.pi) - np.pi
-
-    return float(np.rad2deg(dtheta))
+    return float(np.rad2deg(mean))
