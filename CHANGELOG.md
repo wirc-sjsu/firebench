@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add the spread of the model's plume top over a radar's frame to `radar_plume_values`, for figures:
+  each item of `tops` gives `modelled_band`, the 75th and 95th percentiles of the heights of the
+  model's plume cells per volume (`TOP_BAND`, NaN when none counts), and the values give `top_band`.
+  No KPI uses it.
 - Add the sensors and soundings of a field experiment (`firebench.standardize.experiment`, extra
   `firebench[experiment]` for `.xls` and `.xlsx`): a sensor sheet (CSV or YAML, `read_sensor_sheet`)
   lists the experiment's reference points and its sensors, each at a platform whose position is

@@ -420,6 +420,9 @@ def test_a_model_with_no_plume_over_the_frame_has_no_top(observations, tmp_path)
     model = _model(tmp_path / "model.h5", obs, section, counts=np.zeros((2, n_bins)))
     case = load_case(propose_case(obs)["definition"], obs)
     assert "Plume Top Series Error KDAX P01" not in _scores(case, model, obs)
+    with h5py.File(model, "r") as model_h5, h5py.File(obs, "r") as obs_h5:
+        (top,) = case.radar_plume_values(model_h5, obs_h5)["tops"]
+    assert np.isnan(top["modelled"]).all() and np.isnan(top["modelled_band"]).all()
 
 
 def test_the_sampler_puts_a_model_grid_on_the_nodes(observations):
@@ -527,6 +530,11 @@ def test_the_values_of_a_figure_are_those_the_kpis_compare(observations, tmp_pat
     (top,) = values["tops"]
     assert top["problem"] is None
     assert np.all(np.abs(top["modelled"] - top["observed"]) < 100.0)
+    # The band of a figure brackets the model's plume top: its 75th and 95th percentiles.
+    assert values["top_band"] == (0.75, 0.95)
+    assert top["modelled_band"].shape == (len(top["time"]), 2)
+    assert np.all(top["modelled_band"][:, 0] <= top["modelled"])
+    assert np.all(top["modelled"] <= top["modelled_band"][:, 1])
     assert values["points"] is None
 
 

@@ -65,6 +65,8 @@ REFLECTIVITY = "radar_reflectivity"
 CORRELATION = "radar_correlation_coefficient"
 VELOCITY = "radar_radial_velocity"
 TOP_LEVEL = 0.9
+# The spread of the model's plume-cell heights a figure draws around its plume top over a frame; no KPI.
+TOP_BAND = (0.75, 0.95)
 
 
 @dataclass
@@ -203,6 +205,8 @@ class TopPairs:
     modelled: list[float]  # of the model's plume cells, NaN when none
     n_gates: list[int]
     n_cells: list[int]
+    # the TOP_BAND quantiles of the model's plume cells, for figures; NaN when none
+    modelled_band: list[tuple[float, float]] = field(default_factory=list)
     problem: str | None = None  # why nothing can be compared
 
 
@@ -249,6 +253,9 @@ def top_pairs(  # pylint: disable=too-many-arguments
         pairs.model_times.append(model_times[index])
         pairs.observed.append(float(series.height_quantiles[TOP_LEVEL][volume]))
         pairs.modelled.append(histogram_quantile(edges, counts[index], TOP_LEVEL))
+        pairs.modelled_band.append(
+            tuple(histogram_quantile(edges, counts[index], level) for level in TOP_BAND)
+        )
         pairs.n_gates.append(int(series.n_gates[volume]))
         pairs.n_cells.append(int(np.sum(counts[index])))
     return pairs
@@ -731,6 +738,7 @@ def _top_values(model: File, obs: File, site: str, span, periods, model_group, p
         "periods": _in_periods(pairs.times, periods),
         "observed": np.asarray(pairs.observed, dtype=np.float64),
         "modelled": np.asarray(pairs.modelled, dtype=np.float64),
+        "modelled_band": np.asarray(pairs.modelled_band, dtype=np.float64).reshape(-1, 2),
         "n_gates": np.asarray(pairs.n_gates, dtype=np.int64),
         "n_cells": np.asarray(pairs.n_cells, dtype=np.int64),
     }
@@ -774,7 +782,8 @@ def radar_plume_values(  # pylint: disable=too-many-arguments
     None when the radar kept no velocity), and the values the KPIs average: ``iou`` (NaN when neither
     side has a plume), ``top_observed`` and ``top_modelled``, ``centroid_observed`` and
     ``centroid_modelled`` (u, v in m; NaN when a side has none). ``tops`` holds one item per site of
-    ``echo_top``, the plume top of both sides over its frame per volume, and ``map``, both sides' plume
+    ``echo_top``, the plume top of both sides over its frame per volume, ``modelled_band``, the
+    ``top_band`` quantiles (``TOP_BAND``) of the model's plume cells per volume, and ``map``, both sides' plume
     top on the radar's map grid per volume (``observed``, ``modelled``, the cells the radar sees
     ``visible``) with the values the map KPIs average (``iou``, ``mae``, ``bias``,
     ``centroid_distance``; NaN where a volume gives none). ``periods`` gives, in each,
@@ -790,6 +799,7 @@ def radar_plume_values(  # pylint: disable=too-many-arguments
         "tracer_threshold": parameters.tracer_threshold,
         "tracer_threshold_units": CONCENTRATION_UNITS,
         "top_level": TOP_LEVEL,
+        "top_band": TOP_BAND,
         "sections": [
             _section_values(model, obs, section, span, chosen, group, parameters)
             for section in entry["sections"]
