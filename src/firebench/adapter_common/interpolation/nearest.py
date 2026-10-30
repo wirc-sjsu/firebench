@@ -31,7 +31,7 @@ def find_nearest_grid_point(
                 nearest_j = j
                 min_squared_distance = squared_distance
 
-            if min_squared_distance < half_min_cell_size_squared
+            if min_squared_distance < half_min_cell_size_squared:
                 found = True
                 break
 
