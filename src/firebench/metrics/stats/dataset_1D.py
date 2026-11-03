@@ -214,6 +214,5 @@ def circular_bias_deg(x1: np.ndarray, x2: np.ndarray) -> float:
     
     # Circular mean wrapped to (-pi, pi]
     mean = np.arctan2(np.mean(np.sin(diff)), np.mean(np.cos(diff)))
-    mean = (mean + np.pi) % (2 * np.pi) - np.pi
 
     return float(np.rad2deg(mean))
