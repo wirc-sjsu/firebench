@@ -10,17 +10,14 @@ default. The band is the model's uncertainty on how its heat release becomes FRP
 adapter (WRF-SFIRE: the sensible heat flux divided by 5 to 10); FireBench converts nothing.
 
 An observation is scored when its start is in the period, it has an FRP total, and a model output time
-is at most ``max_time_offset`` from it. An FRP total of 0 is scored only when the observation saw at
-least ``min_observed_fraction`` of its frame: a sensor that did not see the fire reports none. A total
-above 0 is scored whatever share it saw. The model's bounds are interpolated linearly in time to the
-observation's start, and held at the first or last output time. An observation where neither side has
-detectable fire (an FRP total of 0 and an upper bound at most the instrument's detection limit) is left
-out: it would agree whatever the model.
+is at most ``max_time_offset`` from it. An FRP total of 0, or under the detection limit of the
+instrument (``detection_limits``), is left out: the KPIs ask how right the model's FRP is where a
+satellite detected fire, not whether the model burns where none was detected. The model's bounds are
+interpolated linearly in time to the observation's start, and held at the first or last output time.
 
-The observation and both bounds are raised to the detection limit of the instrument
-(``detection_limits``) before they are compared. Per observing system (a set of instruments,
-``[fire_radiative_power.systems]`` of ``fire_case.toml``, so a system that looks often does not
-outweigh one that looks rarely) the KPIs are the share of observations inside the band and the log
+Both bounds are raised to the detection limit before they are compared. Per observing system (a set
+of instruments, ``[fire_radiative_power.systems]`` of ``fire_case.toml``, so a system that looks often
+does not outweigh one that looks rarely) the KPIs are the share of observations inside the band and the log
 error: the mean of how far each observation lies outside the band, in decades, each counted up to
 ``log_error_cap``. The share inside the band pooled over every stream and the shares above and below
 it follow. A KPI with fewer than ``min_observations`` observations is not computed: its function
@@ -198,8 +195,8 @@ class FrpObservations:  # pylint: disable=too-many-instance-attributes
     Every observation of a stream in a period, the model's band at its start, and whether it is scored.
 
     ``reason`` says why an observation is not scored (None when it is), and ``observation_ok`` whether
-    the observation alone allows it to be: False when it has no FRP total, or a total of 0 and saw too
-    little of its frame, whatever the model.
+    the observation alone allows it to be: False when it has no FRP total, or one of 0 or under the
+    detection limit, whatever the model.
     """
 
     stream: str
@@ -227,13 +224,13 @@ class FrpObservations:  # pylint: disable=too-many-instance-attributes
         )
 
 
-def _reasons(checks: list[tuple[np.ndarray, str | np.ndarray]], size: int) -> list[str | None]:
+def _reasons(checks: list[tuple[np.ndarray, str]], size: int) -> list[str | None]:
     """The first failed check of each observation, in the order of ``checks``."""
     reasons: list[str | None] = [None] * size
     for failed, text in checks:
         for index in np.flatnonzero(failed):
             if reasons[index] is None:
-                reasons[index] = text if isinstance(text, str) else str(text[index])
+                reasons[index] = text
     return reasons
 
 
@@ -253,28 +250,15 @@ def frp_observations(  # pylint: disable=too-many-arguments,too-many-locals
     model_times, model_lower, model_upper = model_band(model, model_group)
     observed = np.asarray(series.frp_total, dtype=np.float64)
     fraction = np.asarray(series.observed_fraction, dtype=np.float64)
-    limit = np.full(
-        observed.shape, float(parameters.detection_limits.get(stream_instrument(obs, stream), 0))
-    )
+    instrument = stream_instrument(obs, stream)
+    detection_limit = float(parameters.detection_limits.get(instrument, 0))
+    limit = np.full(observed.shape, detection_limit)
     has_total = np.isfinite(observed)
-    seen = (np.nan_to_num(fraction, nan=-1.0) >= parameters.min_observed_fraction) | (observed > 0)
-    minimum = f"{parameters.min_observed_fraction:.0%}"
+    detected = (observed > 0) & (observed >= limit)
     checks = [
         (~has_total, "no FRP total: no detection of it has an FRP"),
-        (
-            ~seen,
-            np.array(
-                [
-                    (
-                        f"no fire seen, and it saw {value:.0%} of its frame, less than {minimum}"
-                        if np.isfinite(value)
-                        else "no fire seen, and the share of its frame it saw is unknown"
-                    )
-                    for value in fraction
-                ],
-                dtype=object,
-            ),
-        ),
+        (observed == 0, "no fire detected"),
+        (~detected, f"under the detection limit of {instrument} ({detection_limit:g} MW)"),
     ]
     if model_times.size == 0:
         lower = upper = np.full(observed.shape, np.nan)
@@ -291,12 +275,8 @@ def frp_observations(  # pylint: disable=too-many-arguments,too-many-locals
         upper = np.interp(obs_ms, model_ms, model_upper)
         checks.append((~near, f"no model output time within {parameters.max_time_offset:g} s"))
     has_band = np.isfinite(lower) & np.isfinite(upper)
-    no_fire = (observed == 0) & (upper <= limit)
-    checks += [
-        (~has_band, "the model gives no band at its time"),
-        (no_fire, "no detectable fire on either side"),
-    ]
-    kept = has_total & seen & near & has_band & ~no_fire
+    checks.append((~has_band, "the model gives no band at its time"))
+    kept = has_total & detected & near & has_band
     return FrpObservations(
         stream=stream,
         time=series.time,
@@ -307,7 +287,7 @@ def frp_observations(  # pylint: disable=too-many-arguments,too-many-locals
         upper=upper,
         limit=limit,
         kept=kept,
-        observation_ok=has_total & seen,
+        observation_ok=has_total & detected,
         reason=_reasons(checks, len(observed)),
     )
 

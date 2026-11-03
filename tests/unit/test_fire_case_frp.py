@@ -67,9 +67,9 @@ def _stream(
     fd._write_stream(h5, stream, attrs, detections, observations, 1)
 
 
-def _observations(path, extra_stream=False):
+def _observations(path, extra_stream=False, goes_frp=GOES_FRP):
     with new_std_file(path, "tester") as h5:
-        _stream(h5, "goes17", "GOES-17", "ABI", GOES_TIMES, GOES_FRP, [1.0] * 36, ("goes_fdc_mask", 10))
+        _stream(h5, "goes17", "GOES-17", "ABI", GOES_TIMES, goes_frp, [1.0] * 36, ("goes_fdc_mask", 10))
         _stream(
             h5,
             "viirs_snpp",
@@ -179,9 +179,9 @@ def test_the_observations_scored_and_the_band_at_their_time(obs, tmp_path):
             model_h5, obs_h5, "viirs_snpp", period, CALDOR, "/time_series/fire_total", parameters
         )
 
-    # GOES: no detectable fire on either side until 00:45 (5 scans left out); nothing within 15 min of a
-    # model time after 05:15 (4 left out). VIIRS: the overpass that saw 40 % of the frame has fire and is
-    # scored; the one that saw no fire and 30 % of it is left out.
+    # GOES: no fire detected until 00:45 (5 scans left out); nothing within 15 min of a model time after
+    # 05:15 (4 left out). VIIRS: the overpass that saw 40 % of the frame has fire and is scored; the one
+    # that detected no fire is left out.
     assert len(goes.observed) == 27
     assert goes.time[0] == np.datetime64("2021-08-17T00:55:00", "ms")
     # 00:55 is two thirds of the way from 00:45 (0) to 01:00 (60, 120).
@@ -377,12 +377,11 @@ def test_frp_values_say_why_an_observation_is_not_scored(obs, tmp_path):
     early, late, partial_fire, partial_none = (
         np.datetime64(f"2021-08-17T{clock}", "ms").item() for clock in ("00:05", "05:25", "02:10", "03:50")
     )
-    assert reasons[early] == "no detectable fire on either side" and ok[early]
+    assert reasons[early] == "no fire detected" and not ok[early]
     assert reasons[late] == "no model output time within 900 s" and ok[late]
-    # A sensor that saw a part of its frame and fire there is scored; one that saw no fire is not.
+    # A sensor that saw a part of its frame and fire there is scored; one that detected none is not.
     assert reasons[partial_fire] is None and ok[partial_fire]
-    assert reasons[partial_none] == "no fire seen, and it saw 30% of its frame, less than 90%"
-    assert not ok[partial_none]
+    assert reasons[partial_none] == "no fire detected" and not ok[partial_none]
     scored = observations["kept"]
     assert all(reason is None for reason, kept in zip(observations["reason"], scored) if kept)
     assert set(observations["position"][~scored]) == {""}
@@ -396,22 +395,31 @@ def test_frp_values_say_why_an_observation_is_not_scored(obs, tmp_path):
     assert len(values["model"]["time"]) == len(MODEL_TIMES)
 
 
-@pytest.mark.parametrize(
-    ("before", "reason", "position"),
-    [
-        # Both under ABI's 50 MW: neither side has detectable fire.
-        ((10.0, 40.0), "no detectable fire on either side", ""),
-        # The band reaches above the limit and its lower bound is under it: 0 MW is in.
-        ((20.0, 80.0), None, "in"),
-        # The whole band is above the limit: 0 MW is below it.
-        ((60.0, 120.0), None, "below"),
-    ],
-)
-def test_no_fire_seen_is_compared_at_the_detection_limit(obs, tmp_path, before, reason, position):
+@pytest.mark.parametrize("before", [(10.0, 40.0), (20.0, 80.0), (60.0, 120.0)])
+def test_no_fire_detected_is_left_out_whatever_the_band(obs, tmp_path, before):
     values = _frp_values(obs, _model(tmp_path / "model.h5", before=before))
 
     observations = values["observations"]
     index = observations["time"].tolist().index(np.datetime64("2021-08-17T00:15", "ms").item())
     assert observations["frp_total"][index] == 0.0
-    assert observations["reason"][index] == reason
-    assert observations["position"][index] == position
+    assert observations["reason"][index] == "no fire detected"
+    assert observations["position"][index] == ""
+    assert not observations["observation_ok"][index]
+
+
+def test_a_total_under_the_detection_limit_is_left_out(tmp_path):
+    # GOES at 01:05 has 30 MW, under ABI's 50 MW; at 01:15 it has 50 MW, the limit itself.
+    goes_frp = [{65: 30.0, 75: 50.0}.get(5 + 10 * index, value) for index, value in enumerate(GOES_FRP)]
+    obs = _observations(tmp_path / "obs.h5", goes_frp=goes_frp)
+
+    values = _frp_values(obs, _model(tmp_path / "model.h5"))
+
+    observations = values["observations"]
+    times = observations["time"].tolist()
+    under, at = (
+        times.index(np.datetime64(f"2021-08-17T{clock}", "ms").item()) for clock in ("01:05", "01:15")
+    )
+    assert observations["reason"][under] == "under the detection limit of ABI (50 MW)"
+    assert not observations["kept"][under] and not observations["observation_ok"][under]
+    # 50 MW against the band of 60 to 120 MW.
+    assert observations["reason"][at] is None and observations["position"][at] == "below"

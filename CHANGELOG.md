@@ -366,6 +366,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   read-only audit findings.
 
 ### Changed
+- The `fire_radiative_power` family leaves out every observation with an FRP total of 0 ("no fire
+  detected") or under its instrument's detection limit ("under the detection limit of ABI (50 MW)"),
+  and `observation_ok` is False for them: the KPIs ask how right the model's FRP is where a satellite
+  detected fire, no longer whether the model burns where none was detected. `min_observed_fraction`
+  and the rule "no detectable fire on either side" go, with nothing left to decide. This raises the
+  FRP scores of a model that burns where satellites saw none; `version` stays 2026.1, as for the
+  earlier FRP changes, since FireBench refuses a published definition naming an older version.
 - The model's plume of the `radar_plume` family is now where its tracer, a mass concentration, reaches
   `tracer_threshold` of `[radar_plume]` (1 ug/m^3, units in `tracer_threshold_units`), on the sections
   and over the frames alike, instead of a share (0.01) of the tracer's largest value on the section or

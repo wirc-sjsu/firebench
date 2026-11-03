@@ -108,7 +108,6 @@ class FireRadiativePowerParameters:  # pylint: disable=too-many-instance-attribu
     """The values of ``[fire_radiative_power]``."""
 
     min_confidence: str
-    min_observed_fraction: float
     max_time_offset: float
     min_observations: int
     kpi_weights: MappingProxyType
@@ -318,7 +317,6 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         "[fire_radiative_power]",
         {
             "min_confidence",
-            "min_observed_fraction",
             "max_time_offset",
             "min_observations",
             "systems",
@@ -484,7 +482,6 @@ def _fire_radiative_power(table: dict) -> FireRadiativePowerParameters:
         )
     return FireRadiativePowerParameters(
         min_confidence=table["min_confidence"],
-        min_observed_fraction=_number(table, "min_observed_fraction", label, maximum=1),
         max_time_offset=_number(table, "max_time_offset", label),
         min_observations=_whole(table, "min_observations", label, minimum=1),
         kpi_weights=MappingProxyType({key: _number(table, key, label) for key in FRP_KPI_WEIGHT_KEYS}),
