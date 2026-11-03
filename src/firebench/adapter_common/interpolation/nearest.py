@@ -18,13 +18,13 @@ def find_nearest_grid_point(
     nearest_j = -1
     min_squared_distance = 1e9
 
-    cos_lat = np.cos(np.deg2rad(target_lat))
-    half_min_cell_size_squared = min(0.5 * grid_dlat, 0.5 * grid_dlon) ** 2
+    dlon_correction = abs(np.cos(np.deg2rad(target_lat)))
+    half_min_cell_size_squared = (0.5 * min(abs(grid_dlat), abs(grid_dlon) * dlon_correction)) ** 2
     found = False
 
     for j in range(ny):
         for i in range(nx):
-            squared_distance = (grid_lat[j, i] - target_lat) ** 2 + ((grid_lon[j, i] - target_lon) * cos_lat) ** 2
+            squared_distance = (grid_lat[j, i] - target_lat) ** 2 + ((grid_lon[j, i] - target_lon) * dlon_correction) ** 2
 
             if squared_distance <= min_squared_distance:
                 nearest_i = i
