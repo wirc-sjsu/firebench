@@ -14,6 +14,17 @@ def find_nearest_grid_point(
     grid_dlat: float,
     grid_dlon: float,
 ):
+    """
+    Precondition
+    ------------
+    grid_lat and grid_lon defines a regular latitude/longitude grid.
+    
+    Parameters
+    ----------
+    grid_lat : latitudes of grid points in degrees.
+    grid_lon : longitudes of grid points in degrees.
+    """
+
     nearest_i = -1
     nearest_j = -1
     min_squared_distance = 1e9
