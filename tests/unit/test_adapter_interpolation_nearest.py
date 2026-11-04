@@ -19,7 +19,7 @@ NX = 5
 # - Add test target outside but close enough to grid edge.
 # - Add test inside and snap to grid edge.
 # - Add edge case: with grid latitude [[80, 80]], longitude [[0, 0.1]], target (80, 0.09), and both spacings 0.1.
-# >>>>
+# START AI ---->
 @pytest.fixture(name="grid")
 def fixture_grid():
     """Regular lat/lon grid in degrees: latitude varies along j (axis 0), longitude along i (axis 1)."""
@@ -77,4 +77,4 @@ def test_two_point_grid_high_latitude_picks_closest_longitude():
     grid_lon = np.array([[0.0, 0.1]])
     i, j = find_nearest_grid_point(2, 1, 80.0, 0.09, grid_lat, grid_lon, 0.1, 0.1)
     assert (i, j) == (1, 0)
-# <<<<
+# <---- END AI
