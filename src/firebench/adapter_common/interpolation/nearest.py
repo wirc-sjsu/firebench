@@ -14,23 +14,35 @@ def find_nearest_grid_point(
     grid_dlat: float,
     grid_dlon: float,
 ):
+    """
+    Precondition
+    ------------
+    grid_lat and grid_lon defines a regular latitude/longitude grid.
+    
+    Parameters
+    ----------
+    grid_lat : latitudes of grid points in degrees.
+    grid_lon : longitudes of grid points in degrees.
+    """
+
     nearest_i = -1
     nearest_j = -1
     min_squared_distance = 1e9
 
-    half_min_cell_size = min(0.5 * grid_dlat, 0.5 * grid_dlon)
+    dlon_correction = abs(np.cos(np.deg2rad(target_lat)))
+    half_min_cell_size_squared = (0.5 * min(abs(grid_dlat), abs(grid_dlon) * dlon_correction)) ** 2
     found = False
 
     for j in range(ny):
         for i in range(nx):
-            squared_distance = (grid_lat[j, i] - target_lat) ** 2 + (grid_lon[j, i] - target_lon) ** 2
+            squared_distance = (grid_lat[j, i] - target_lat) ** 2 + ((grid_lon[j, i] - target_lon) * dlon_correction) ** 2
 
             if squared_distance <= min_squared_distance:
                 nearest_i = i
                 nearest_j = j
                 min_squared_distance = squared_distance
 
-            if min_squared_distance < half_min_cell_size:
+            if min_squared_distance < half_min_cell_size_squared:
                 found = True
                 break
 
