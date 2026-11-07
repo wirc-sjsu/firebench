@@ -34,6 +34,7 @@ from .catalogues import (
     STATE_TIME_ZONES,
     TIME_PRECISIONS,
     read_fpa_fod,
+    mtbs_ignition_point,
     read_mtbs_boundaries,
     read_wfigs_perimeters,
 )

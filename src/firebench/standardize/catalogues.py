@@ -22,6 +22,7 @@ import math
 import re
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -100,10 +101,14 @@ MTBS_COLUMNS = [
     "ignition_date_precision",
     "ignition_lat",
     "ignition_lon",
+    "centroid_lat",
+    "centroid_lon",
     "area_acres",
     "irwin_id",
     "geometry",
 ]
+# An MTBS event ID: state, the ignition latitude and west longitude in thousandths of a degree, date.
+_MTBS_ID = re.compile(r"^[A-Z]{2}(\d{5})(\d{6})\d{8}$")
 FOD_COLUMNS = [
     "fod_id",
     "mtbs_id",
@@ -235,8 +240,12 @@ def _utc_time(value) -> tuple[str, str]:
         text = _text(value).replace("Z", "+00:00")
         try:
             moment = datetime.fromisoformat(text)
-        except ValueError as error:
-            raise ValueError(f"`{value}` is not a time.") from error
+        except ValueError:
+            # The GeoJSON export of an ArcGIS service writes RFC 1123: `Wed, 18 Mar 2026 12:06:00 GMT`.
+            try:
+                moment = parsedate_to_datetime(_text(value))
+            except (TypeError, ValueError) as error:
+                raise ValueError(f"`{value}` is not a time.") from error
         if moment.tzinfo is None:
             moment = moment.replace(tzinfo=timezone.utc)
     precision = "minute" if moment.second == 0 and moment.microsecond == 0 else "second"
@@ -263,6 +272,14 @@ def _filter(
     if bbox is not None:
         keep &= frame.geometry.intersects(box(*bbox)).to_numpy()
     return frame[keep].reset_index(drop=True)
+
+
+def mtbs_ignition_point(mtbs_id: str) -> tuple[float, float]:
+    """The ignition point an MTBS event ID holds, as (lat, lon) to 0.001 degree; NaN when it holds none."""
+    match = _MTBS_ID.match(mtbs_id.strip().upper())
+    if match is None:
+        return math.nan, math.nan
+    return int(match.group(1)) / 1000.0, -int(match.group(2)) / 1000.0
 
 
 def read_mtbs_boundaries(
@@ -297,7 +314,9 @@ def read_mtbs_boundaries(
     GeoDataFrame
         In EPSG:4326, sorted by `mtbs_id`, with the columns of `MTBS_COLUMNS`. The ignition date
         is a date (`ignition_date_precision` is `day`), as MTBS records no time; the ignition
-        point is MTBS' approximate one.
+        point is the one the event ID holds (`mtbs_ignition_point`), to 0.001 degree: the source
+        fire occurrence record's. `centroid_lat` and `centroid_lon` are `BurnBndLat` and
+        `BurnBndLon`, the centroid of the perimeter, which is not where the fire started.
 
     Raises
     ------
@@ -326,6 +345,7 @@ def read_mtbs_boundaries(
     for row in raw.to_dict("records"):
         mtbs_id = _text(row[names["event"]])
         day = _date(row[names["ignition"]])
+        point = mtbs_ignition_point(mtbs_id)
         rows.append(
             {
                 "mtbs_id": mtbs_id,
@@ -335,8 +355,10 @@ def read_mtbs_boundaries(
                 "year": day.year if day else -1,
                 "ignition_date": day.isoformat() if day else "",
                 "ignition_date_precision": "day" if day else "",
-                "ignition_lat": _number(row[names["lat"]]),
-                "ignition_lon": _number(row[names["lon"]]),
+                "ignition_lat": point[0],
+                "ignition_lon": point[1],
+                "centroid_lat": _number(row[names["lat"]]),
+                "centroid_lon": _number(row[names["lon"]]),
                 "area_acres": _number(row[names["area_acres"]]),
                 "irwin_id": _irwin(row[names["irwin_id"]]) if names["irwin_id"] else "",
                 "geometry": row["geometry"],

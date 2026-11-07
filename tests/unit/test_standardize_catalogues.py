@@ -9,7 +9,12 @@ import pandas as pd
 import pytest
 from shapely.geometry import Point, box
 
-from firebench.standardize import read_fpa_fod, read_mtbs_boundaries, read_wfigs_perimeters
+from firebench.standardize import (
+    mtbs_ignition_point,
+    read_fpa_fod,
+    read_mtbs_boundaries,
+    read_wfigs_perimeters,
+)
 
 CALDOR_IRWIN = "{9A1B2C3D-0000-4000-8000-00000000CAFE}"
 
@@ -32,8 +37,9 @@ def mtbs_file(tmp_path):
             "Incid_Type": ["Wildfire", "Wildfire", "Wildfire", "Prescribed Fire"],
             "Ig_Date": ["2021-08-14", "2020-09-01", "2021-07-01", "2019-06-01"],
             "BurnBndAc": [221835.0, 1200.0, 5000.0, 900.0],
-            "BurnBndLat": ["38.586", "39.000", "44.000", "38.000"],
-            "BurnBndLon": ["-120.538", "-121.000", "-121.000", "-120.000"],
+            # The centroids of the perimeters, not where the fires started.
+            "BurnBndLat": ["38.706", "39.010", "44.010", "38.010"],
+            "BurnBndLon": ["-120.313", "-121.010", "-121.010", "-120.010"],
             "irwinID": [CALDOR_IRWIN, "", None, ""],
         },
         geometry=[_square(-120.538, 38.586), _square(-121, 39), _square(-121, 44), _square(-120, 38)],
@@ -54,7 +60,9 @@ def test_mtbs_reads_and_filters(mtbs_file):
     caldor = frame.iloc[0]
     assert caldor["state"] == "CA" and caldor["year"] == 2021
     assert caldor["ignition_date"] == "2021-08-14" and caldor["ignition_date_precision"] == "day"
-    assert caldor["ignition_lat"] == pytest.approx(38.586)
+    # The ignition point is the one the event ID holds, not the centroid of the perimeter.
+    assert (caldor["ignition_lat"], caldor["ignition_lon"]) == pytest.approx((38.586, -120.538))
+    assert (caldor["centroid_lat"], caldor["centroid_lon"]) == pytest.approx((38.706, -120.313))
     assert caldor["irwin_id"] == "9a1b2c3d-0000-4000-8000-00000000cafe"
     assert frame.crs.to_epsg() == 4326
     assert caldor.geometry.contains(Point(-120.538, 38.586))
@@ -197,3 +205,34 @@ def test_wfigs_reads_perimeters(tmp_path):
     assert caldor["discovery_time_precision"] == "minute" and caldor["year"] == 2021
     assert read_wfigs_perimeters(path, states=["OR"]).empty
     assert not math.isnan(caldor["origin_lat"])
+
+
+def test_mtbs_ignition_point_comes_from_the_event_id():
+    assert mtbs_ignition_point("CA3858612053820210815") == pytest.approx((38.586, -120.538))
+    assert mtbs_ignition_point("AK6512315012320200601") == pytest.approx((65.123, -150.123))
+    assert all(math.isnan(value) for value in mtbs_ignition_point("not an id"))
+
+
+def test_wfigs_reads_the_dates_of_an_arcgis_geojson_export(tmp_path):
+    geometry = json.loads(gpd.GeoSeries([_square(-120.5, 38.6)]).to_json())["features"][0]["geometry"]
+    properties = {
+        "poly_IRWINID": CALDOR_IRWIN,
+        "poly_IncidentName": "Caldor",
+        "attr_POOState": "US-CA",
+        "attr_FireDiscoveryDateTime": "Sun, 15 Aug 2021 01:54:00 GMT",
+        "poly_GISAcres": 221835.0,
+    }
+    path = tmp_path / "wfigs.geojson"
+    path.write_text(
+        json.dumps(
+            {
+                "type": "FeatureCollection",
+                "features": [{"type": "Feature", "geometry": geometry, "properties": properties}],
+            }
+        )
+    )
+    caldor = read_wfigs_perimeters(path).iloc[0]
+    assert (caldor["discovery_time"], caldor["discovery_time_precision"]) == (
+        "2021-08-15T01:54:00Z",
+        "minute",
+    )

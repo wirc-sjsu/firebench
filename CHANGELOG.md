@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   IDs, bad perimeters, times without a precision, and missing licences, with a warning for an
   ignition point far outside its perimeter. Event IDs are the caller's opaque strings. See
   "Event catalogue" in `docs/standard_format.md`.
+- `read_mtbs_boundaries` takes the ignition point from the MTBS event ID (`mtbs_ignition_point`,
+  to 0.001 degree), not from `BurnBndLat`/`BurnBndLon`, which are the perimeter's centroid (kept as
+  `centroid_lat`/`centroid_lon`); `read_wfigs_perimeters` reads the RFC 1123 dates of an ArcGIS
+  GeoJSON export. Checked on MTBS of 2026-11 and FPA FOD 7th edition.
 - Add `read_dins_records` (`firebench.standardize`): the records of a CAL FIRE DINS table, one row
   per inspected structure, with its incident, start date, position, and damage label.
 - Add the spread of the model's plume top over a radar's frame to `radar_plume_values`, for figures:
