@@ -22,6 +22,7 @@ Each .h5 file must adhere to the following structure:
 ├── fuel_models/    (fuel model classification or parameters)
 ├── miscellaneous/  (non-standard or project-specific data)
 ├── benchmark_case/ (the definition of a benchmark case, optional)
+├── events/         (an event catalogue: many fire events, optional)
 ├── certificates/   (FireBench certificates)
 ```
 
@@ -941,6 +942,32 @@ Dataset | Units | Description
 - A template is never an observation file: the generic cases refuse one. A model output written on
   it is a new file, without the attribute. See
   [Prepare a model output for a benchmark case](how_to/prepare_model_output.md).
+
+### Event catalogue
+
+- `/events` holds many fire events in one file. FireBench never names an event: the caller gives
+  each an opaque `event_id` of at most 40 bytes. Write it with `write_event_catalogue`, read it with
+  `read_event_catalogue`, and check it with `validate_event_catalogue`
+  (`firebench.standardize`).
+- `/events/table`: one row per event, sorted by `event_id`, as a compound dataset whose fields are
+  all **fixed-length** (the signing digest hashes a compound dataset by its raw bytes, so a
+  variable-length field would be hashed as a pointer). Fields: `event_id`, `name`, `state`,
+  `ignition_lat`, `ignition_lon`, `anchor_time`, `anchor_precision`, `discovery_time`,
+  `discovery_precision`, `containment_time`, `containment_precision`, `final_area_m2`, `cause`,
+  `source_ids` (canonical JSON). A missing text is `""` and a missing number NaN, never zero.
+- Times are ISO 8601: a date (`YYYY-MM-DD`) for precision `day`, the calendar day as the source
+  records it; otherwise UTC ending in `Z`, with precision `hour`, `minute`, or `second`. Every time
+  has its precision; a missing time has neither.
+- `/events/final_perimeter`: each event's final perimeter as WKB in EPSG:4326, a variable-length
+  `uint8` dataset in the table's order (hashed by its content). Attributes: `crs`, `encoding`
+  (`WKB`), and `area_crs`, the equal-area projection of `final_area_m2`.
+- `/events/structures` (optional): `records`, one row per inspected structure (`event_id`, `lat`,
+  `lon`, `damage` as CAL FIRE DINS labels it, `structure_type`), and `counts`, per event and damage
+  class (`destroyed`, `major`, `minor`, `affected`, `inaccessible`, `no_damage`, `other`).
+- `/events` and `/events/structures` carry `license`, `redistribution_allowed`, and `data_source`.
+  `/events` also carries `n_events` and `event_ids_sha256`, the SHA-256 of the sorted IDs joined by
+  a line feed.
+- A catalogue is signed like any standard file (`add_certificate_to_h5`).
 
 ### Certificates
 

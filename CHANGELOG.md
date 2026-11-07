@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add the event catalogue (`firebench.standardize`): `read_mtbs_boundaries`, `read_fpa_fod`
+  (SQLite, 6th edition, or Julian dates of earlier ones) and `read_wfigs_perimeters` read the
+  sources of a catalogue into GeoDataFrames in EPSG:4326, each time with its precision (`day`,
+  `hour`, `minute`, `second`; a date-only time stays a date, and FPA FOD's local times are converted
+  with the state's zone, `STATE_TIME_ZONES`), filtered by state, years, smallest area, and box; they
+  only read, and joining them is the caller's. `write_event_catalogue`, `read_event_catalogue` and
+  `validate_event_catalogue` write many events in one standard file under `/events` (a sorted table
+  of fixed-length fields, final perimeters as WKB, optional DINS structures and their counts per
+  damage class, licence attributes per group, `event_ids_sha256`), and refuse duplicate or unsorted
+  IDs, bad perimeters, times without a precision, and missing licences, with a warning for an
+  ignition point far outside its perimeter. Event IDs are the caller's opaque strings. See
+  "Event catalogue" in `docs/standard_format.md`.
 - Add the spread of the model's plume top over a radar's frame to `radar_plume_values`, for figures:
   each item of `tops` gives `modelled_band`, the 75th and 95th percentiles of the heights of the
   model's plume cells per volume (`TOP_BAND`, NaN when none counts), and the values give `top_band`.
