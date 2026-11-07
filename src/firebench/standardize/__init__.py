@@ -29,7 +29,7 @@ from .landfire import (
     standardize_landfire_canopy,
     standardize_landfire_from_geotiff,
 )
-from .building_damage import list_dins_incidents, standardize_dins_building_damage
+from .building_damage import list_dins_incidents, read_dins_records, standardize_dins_building_damage
 from .catalogues import (
     STATE_TIME_ZONES,
     TIME_PRECISIONS,

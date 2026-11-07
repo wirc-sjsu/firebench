@@ -397,6 +397,41 @@ def _assign_damage(
     return data, dins_only
 
 
+def read_dins_records(dins_csv: Path) -> pd.DataFrame:
+    """
+    Read the inspected structures of a CAL FIRE DINS table, one row per record.
+
+    Parameters
+    ----------
+    dins_csv : Path
+        The CAL FIRE DINS table, with the columns `list_dins_incidents` reads.
+
+    Returns
+    -------
+    DataFrame
+        Columns `incident_name`, `incident_number` (as in the table, without surrounding spaces),
+        `start_date` (ISO 8601 date, or None), `lat`, `lon` (NaN when unreadable), and `damage` (the
+        DINS label, or None). Rows without an incident name are left out.
+
+    Raises
+    ------
+    ValueError
+        If the table cannot be read or a column is missing.
+    """
+    dins = _read_dins(dins_csv)
+    dins = dins[dins["name"] != ""]
+    return pd.DataFrame(
+        {
+            "incident_name": dins["name"].to_numpy(),
+            "incident_number": dins["number"].to_numpy(),
+            "start_date": [_iso_date(value) for value in dins["start_date"]],
+            "lat": dins["latitude"].to_numpy(dtype=float),
+            "lon": dins["longitude"].to_numpy(dtype=float),
+            "damage": [None if pd.isna(value) else value for value in dins["damage"]],
+        }
+    )
+
+
 def _as_bytes(values) -> np.ndarray:
     return np.char.encode(np.asarray(values, dtype=str), "utf-8")
 

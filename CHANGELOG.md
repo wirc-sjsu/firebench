@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   IDs, bad perimeters, times without a precision, and missing licences, with a warning for an
   ignition point far outside its perimeter. Event IDs are the caller's opaque strings. See
   "Event catalogue" in `docs/standard_format.md`.
+- Add `read_dins_records` (`firebench.standardize`): the records of a CAL FIRE DINS table, one row
+  per inspected structure, with its incident, start date, position, and damage label.
 - Add the spread of the model's plume top over a radar's frame to `radar_plume_values`, for figures:
   each item of `tops` gives `modelled_band`, the 75th and 95th percentiles of the heights of the
   model's plume cells per volume (`TOP_BAND`, NaN when none counts), and the values give `top_band`.

@@ -359,3 +359,22 @@ def test_written_file_reads_back(inputs):
 
     with h5py.File(path, "r") as written:
         assert written["points/building_damaged/position_lat"].shape == (6,)
+
+
+def test_read_dins_records_gives_one_row_per_record(inputs):
+    dins_csv, _, _ = inputs
+
+    records = fs.read_dins_records(dins_csv)
+
+    assert list(records.columns) == [
+        "incident_name",
+        "incident_number",
+        "start_date",
+        "lat",
+        "lon",
+        "damage",
+    ]
+    assert len(records) == 13
+    twin = records[records["incident_number"] == "N-2"]
+    assert list(twin["start_date"]) == ["2020-09-04", "2020-09-05"]
+    assert twin["lat"].notna().all() and twin["lon"].notna().all()
