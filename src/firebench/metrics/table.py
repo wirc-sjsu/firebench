@@ -33,6 +33,28 @@ SCORECARD_COLORS = {
 # no eligible station), so its group carries no weight and no score exists to display.
 NOT_SCORED_TEXT = "n/a"
 
+# How a one-page comparison chooses the KPIs it shows when more count than fit: the best and the
+# worst by mean score across the models, or the largest differences between the models.
+ONE_PAGE_RULES = ("extremes", "spread")
+
+# Layout of the comparison score card, landscape A4. The drawing and the one-page selection share it.
+COMPARISON_PAGE_SIZE = landscape(A4)
+COMPARISON_MARGIN = 12 * mm
+COMPARISON_HEADER_HEIGHT = 22 * mm
+COMPARISON_ROW_HEIGHT = 7 * mm
+COMPARISON_FOOTER_HEIGHT = 7 * mm
+
+
+def comparison_rows_per_page() -> int:
+    """Rows of one comparison page, the total score included."""
+    usable = (
+        COMPARISON_PAGE_SIZE[1]
+        - 2 * COMPARISON_MARGIN
+        - COMPARISON_HEADER_HEIGHT
+        - COMPARISON_FOOTER_HEIGHT
+    )
+    return int(usable / COMPARISON_ROW_HEIGHT + 1e-9)
+
 
 def _score_to_color(score):
     """
@@ -82,15 +104,21 @@ def _scorecard_kpi_name(bench_id: str, kpi_name: str, full_name: bool = False) -
 
 
 def _scorecard_comparison_rows(
-    results: list[dict], include_kpis: bool = False, full_name: bool = False
+    results: list[dict],
+    include_kpis: bool = False,
+    full_name: bool = False,
+    groups: list[str] | None = None,
+    kpis: dict[str, list[str]] | None = None,
 ) -> list[tuple[str, list[float]]]:
+    """The total, then a row per group (``groups``, by default every group of the first result's
+    scheme), each followed by its KPIs: those of ``kpis`` when given, else all with ``include_kpis``."""
     first_result = results[0]
     score_card = first_result.get("score_card")
     if score_card is None:
         raise ValueError("Comparison scorecard requires aggregated benchmark results")
 
     rows = [("Total Score", [result["score_card"].get("Score Total") for result in results])]
-    for group_name in score_card["Scheme"].keys():
+    for group_name in score_card["Scheme"].keys() if groups is None else groups:
         group_content = score_card["Scheme"][group_name]
         rows.append(
             (
@@ -98,19 +126,117 @@ def _scorecard_comparison_rows(
                 [result["score_card"].get(f"Score {group_name}") for result in results],
             )
         )
-        if include_kpis:
-            for bench_id in group_content["benchmarks"].keys():
-                kpi_name = _comparison_kpi_name(results, bench_id)
-                if kpi_name is None:
-                    # The KPI was ignored for every model, so no result carries a name or a score.
-                    continue
-                rows.append(
-                    (
-                        _scorecard_kpi_name(bench_id, kpi_name, full_name=full_name),
-                        [result["benchmarks"].get(bench_id, {}).get("Score") for result in results],
-                    )
+        if kpis is not None:
+            bench_ids = kpis.get(group_name, [])
+        elif include_kpis:
+            bench_ids = list(group_content["benchmarks"].keys())
+        else:
+            bench_ids = []
+        for bench_id in bench_ids:
+            kpi_name = _comparison_kpi_name(results, bench_id)
+            if kpi_name is None:
+                # The KPI was ignored for every model, so no result carries a name or a score.
+                continue
+            rows.append(
+                (
+                    _scorecard_kpi_name(bench_id, kpi_name, full_name=full_name),
+                    _comparison_kpi_scores(results, bench_id),
                 )
+            )
     return rows
+
+
+def _comparison_kpi_scores(results: list[dict], bench_id: str) -> list[float | None]:
+    return [result["benchmarks"].get(bench_id, {}).get("Score") for result in results]
+
+
+def _counts(weight) -> bool:
+    """Whether a weight of the scheme (a number, or a dict holding ``weight``) counts in the total."""
+    if isinstance(weight, dict):
+        weight = weight.get("weight", 0)
+    return (weight or 0) > 0
+
+
+def _rank(items: list[str], scores: dict[str, list[float]], rule: str, room: int) -> tuple[list[str], str]:
+    """The ``room`` items of ``items`` a one-page rule keeps (ties keep the given order), and how."""
+    if rule == "extremes":
+        ranked = sorted(items, key=lambda item: sum(scores[item]) / len(scores[item]))
+        half = room // 2
+        return ranked[:half] + (ranked[-half:] if half else []), f"the {half} best and {half} worst"
+    ranked = sorted(items, key=lambda item: min(scores[item]) - max(scores[item]))
+    return ranked[:room], f"the {room} with the largest differences"
+
+
+def _comparison_selection(
+    results: list[dict], counted_only: bool = False, one_page: str | None = None, include_kpis: bool = False
+) -> tuple[list[str], dict[str, list[str]] | None, str]:
+    """The groups a comparison shows (score-card order), the KPIs under each (None: as
+    ``include_kpis`` says), and a note for the header saying what was kept (empty: everything).
+
+    ``counted_only`` keeps the groups and KPIs that count in the total: weight above 0 in the first
+    result's scheme, which leaves out informational lead bins (the analysis and the ``(info)`` bins)
+    and families shown for information.
+
+    ``one_page`` (a rule of ``ONE_PAGE_RULES``) keeps what counts and fits on one page: the total and
+    the groups that count, then their counted KPIs some model was scored on. When more KPIs count
+    than fit, the rule picks them, each staying under its group:
+
+    - ``"extremes"``: the x best and the x worst by mean score across the models;
+    - ``"spread"``: the largest differences, the highest score less the lowest (0 for a KPI only one
+      model was scored on).
+    """
+    if one_page is not None and one_page not in ONE_PAGE_RULES:
+        raise ValueError(f"Unknown one-page rule {one_page!r}: expected one of {', '.join(ONE_PAGE_RULES)}")
+    scheme = results[0]["score_card"]["Scheme"]
+    if one_page is None and not counted_only:
+        return list(scheme), None, ""
+    groups = [group for group in scheme if _counts(scheme[group].get("weight", 0))]
+    counted_kpis = {
+        group: [
+            bench_id
+            for bench_id, weight in scheme[group]["benchmarks"].items()
+            if _counts(weight) and _comparison_kpi_name(results, bench_id) is not None
+        ]
+        for group in groups
+    }
+    if one_page is None:
+        return groups, counted_kpis if include_kpis else {}, "only what counts in the total"
+
+    room = comparison_rows_per_page() - 1
+    if len(groups) >= room:
+        # More counted groups than rows: the rule picks groups, and no KPI fits.
+        scores = {
+            group: [
+                score
+                for score in (r["score_card"].get(f"Score {group}") for r in results)
+                if score is not None
+            ]
+            or [0.0]
+            for group in groups
+        }
+        chosen, how = _rank(groups, scores, one_page, room)
+        kept = [group for group in groups if group in chosen]
+        return kept, {}, f"1 page, counted only: {how} of the {len(groups)} groups"
+
+    scores = {}
+    for bench_ids in counted_kpis.values():
+        for bench_id in bench_ids:
+            scored = [score for score in _comparison_kpi_scores(results, bench_id) if score is not None]
+            if scored:
+                scores[bench_id] = scored
+    candidates = [
+        bench_id for bench_ids in counted_kpis.values() for bench_id in bench_ids if bench_id in scores
+    ]
+    free = room - len(groups)
+    if len(candidates) <= free:
+        chosen = set(candidates)
+        how = f"their {len(candidates)} counted KPIs"
+    else:
+        picked, rule = _rank(candidates, scores, one_page, free)
+        chosen = set(picked)
+        how = f"{rule} of their {len(candidates)} counted KPIs"
+    kpis = {group: [bench_id for bench_id in counted_kpis[group] if bench_id in chosen] for group in groups}
+    return groups, kpis, f"1 page: the {len(groups)} groups counted in the total, {how}"
 
 
 def _comparison_kpi_name(results: list[dict], bench_id: str) -> str | None:
@@ -166,25 +292,48 @@ def _draw_centered_text(
 
 
 def save_comparison_as_table(
-    filename: Path, results: list[dict], include_kpis: bool = False, full_name: bool = False
+    filename: Path,
+    results: list[dict],
+    include_kpis: bool = False,
+    full_name: bool = False,
+    counted_only: bool = False,
+    one_page: str | None = None,
+    event_name: str | None = None,
 ):
+    """Draw the score cards of ``results`` side by side, one column each, as a PDF.
+
+    ``event_name`` (the fire or the event the runs were scored on, e.g. ``Hawk Fire``) leads the title.
+
+    ``counted_only`` shows only the groups (and with ``include_kpis`` the KPIs) that count in the
+    total. ``one_page`` (a rule of ``ONE_PAGE_RULES``) shows what counts and fits on one page, and
+    chooses its own KPIs (see ``_comparison_selection``). The header then says what is shown.
+    """
     logger.info("Save multi-model comparison score card report pdf")
     if len(results) < 2:
         raise ValueError("Comparison scorecard requires at least two benchmark results")
+    if one_page is not None and include_kpis:
+        raise ValueError("A one-page comparison chooses its own KPIs: leave include_kpis out")
     if filename.suffix.lower() != ".pdf":
         filename = filename.with_suffix(".pdf")
 
-    rows = _scorecard_comparison_rows(results, include_kpis=include_kpis, full_name=full_name)
+    if results[0].get("score_card") is None:
+        raise ValueError("Comparison scorecard requires aggregated benchmark results")
+    groups, kpis, selection_note = _comparison_selection(
+        results, counted_only=counted_only, one_page=one_page, include_kpis=include_kpis
+    )
+    rows = _scorecard_comparison_rows(
+        results, include_kpis=include_kpis, full_name=full_name, groups=groups, kpis=kpis
+    )
     base_font = "Helvetica"
     bold_font = "Helvetica-Bold"
     base_font_size = 9
     total_font_size = 10
-    page_width, page_height = landscape(A4)
-    margin = 12 * mm
-    header_height = 22 * mm
+    page_width, page_height = COMPARISON_PAGE_SIZE
+    margin = COMPARISON_MARGIN
+    header_height = COMPARISON_HEADER_HEIGHT
     title_height = 9 * mm
-    row_height = 7 * mm
-    footer_height = 7 * mm
+    row_height = COMPARISON_ROW_HEIGHT
+    footer_height = COMPARISON_FOOTER_HEIGHT
     row_text_offset = 2.2 * mm
     footer_text_offset = 2.2 * mm
     usable_width = page_width - 2 * margin
@@ -217,10 +366,18 @@ def save_comparison_as_table(
         pdf_canvas.setFillColor(colors.HexColor(SCORECARD_COLORS["header"]))
         pdf_canvas.rect(x0, row_start, table_width, header_height, stroke=1, fill=1)
         pdf_canvas.setFillColor(colors.white)
-        pdf_canvas.setFont(bold_font, base_font_size)
-        pdf_canvas.drawString(
-            x0 + 3 * mm, y_top_page - 8 * mm, f"FireBench comparison {case_name} {scheme_name}"
+        title = f"FireBench comparison {case_name} {scheme_name}"
+        if event_name:
+            title = f"{event_name}: {title}"
+        if selection_note:
+            title += f" ({selection_note})"
+        pdf_canvas.setFont(
+            bold_font,
+            _fit_font_size(
+                pdf_canvas, title, bold_font, table_width - 6 * mm, max_size=base_font_size, min_size=6
+            ),
         )
+        pdf_canvas.drawString(x0 + 3 * mm, y_top_page - 8 * mm, title)
         pdf_canvas.line(x0, y_top_page - title_height, x0 + table_width, y_top_page - title_height)
         pdf_canvas.setFont(bold_font, base_font_size)
         pdf_canvas.drawString(x0 + 2 * mm, row_start + 5 * mm, "Score")

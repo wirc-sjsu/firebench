@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add `counted_only`, `one_page` and `event_name` to `save_comparison_as_table`. `counted_only`
+  shows only the groups, and with `include_kpis` the KPIs, that count in the total (weight above 0:
+  no analysis, no `(info)` lead bin, no family shown for information). `one_page` fits one page
+  (`comparison_rows_per_page`): the total, the counted groups, and their counted KPIs; when more
+  KPIs count than fit, the best and the worst by mean score across the models (`"extremes"`) or the
+  largest differences between them (`"spread"`), each under its group. The header says what is
+  shown, after `event_name` (the fire the runs were scored on).
 - Add the event catalogue (`firebench.standardize`): `read_mtbs_boundaries`, `read_fpa_fod`
   (SQLite, 6th edition, or Julian dates of earlier ones) and `read_wfigs_perimeters` read the
   sources of a catalogue into GeoDataFrames in EPSG:4326, each time with its precision (`day`,
