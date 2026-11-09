@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Compute wind-direction circular bias from paired angular differences rather than the
+  difference of circular means, and report exact antipodal bias as +180 degrees to match
+  the documented range.
+
 ## [0.10.0] - 2026 / 08 / 27
 
 ### Added
