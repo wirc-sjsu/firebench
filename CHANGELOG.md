@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Correct nearest-grid-point lookup on regular latitude/longitude grids by scaling longitude
   distances with latitude and comparing squared distances with a squared early-exit threshold.
+- Compute wind-direction circular bias from paired angular differences rather than the
+  difference of circular means, and report exact antipodal bias as +180 degrees to match
+  the documented range.
 
 ## [0.10.0] - 2026 / 08 / 27
 
