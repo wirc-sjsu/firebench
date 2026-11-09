@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add `firebench wx stitch` and `firebench.workflows.wx_stitch` to score a forecast model over a
+  period longer than a cycle, such as Caldor's `P01`-`P04`. A stitch rule names the UTC hours of the
+  cycles and the leads each gives (`--cycle-hours 0,6,12,18 --leads 1-6`: the freshest forecast at
+  each hour; `--cycle-hours 0 --leads 25-48`: the forecast of the day before). `stitch_plan` takes
+  every valid hour from the cycle with the shortest lead in the range, and refuses a rule that
+  leaves an hour without a cycle, a cycle the archive does not hold, or a lead beyond its horizon.
+  `fetch_segment` downloads forecast hour 0 and the leads only, and samples them with the model's
+  adapter. `stitch_station_files` joins the cycles and interpolates them linearly to the
+  observation times of the period (the wind direction through its sine and cosine), so that a case
+  target that pairs samples one by one scores the file; an observed variable the model does not
+  forecast is NaN with the attribute `not_forecast`. The rule, the cycles, the model version of each
+  cycle and the interpolation are root attributes of the file. See "Score a Forecast Model over a
+  Long Period" in the how-to guides.
 - Add `counted_only`, `one_page` and `event_name` to `save_comparison_as_table`. `counted_only`
   shows only the groups, and with `include_kpis` the KPIs, that count in the total (weight above 0:
   no analysis, no `(info)` lead bin, no family shown for information). `one_page` fits one page
