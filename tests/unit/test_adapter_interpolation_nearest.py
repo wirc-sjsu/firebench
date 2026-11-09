@@ -10,16 +10,9 @@ DLON = 0.1
 NY = 5
 NX = 5
 
-# Unit tests created with Claude AI:
-# Add unit tests for find_nearest_grid_point function.
-# Use regular latitude/longitude grid for all tests with coordinates and spacing in degree.
-# - Add test for target in the middle of the grid.
-# - Add test with target at exact grid point.
-# - Add tests for target outside grid.
-# - Add test target outside but close enough to grid edge.
-# - Add test inside and snap to grid edge.
-# - Add edge case: with grid latitude [[80, 80]], longitude [[0, 0.1]], target (80, 0.09), and both spacings 0.1.
-# START AI ---->
+# Initial unit tests created with Claude AI.
+
+
 @pytest.fixture(name="grid")
 def fixture_grid():
     """Regular lat/lon grid in degrees: latitude varies along j (axis 0), longitude along i (axis 1)."""
@@ -70,11 +63,24 @@ def test_target_inside_snaps_to_grid_edge(grid):
     assert (i, j) == (NX - 1, 0)
 
 
-def test_two_point_grid_high_latitude_picks_closest_longitude():
-    # At 80 deg N longitude degrees are shrunk by cos(lat); the second point must still win
-    # over the first one, which is only reached first in scan order.
-    grid_lat = np.array([[80.0, 80.0]])
-    grid_lon = np.array([[0.0, 0.1]])
-    i, j = find_nearest_grid_point(2, 1, 80.0, 0.09, grid_lat, grid_lon, 0.1, 0.1)
-    assert (i, j) == (1, 0)
-# <---- END AI
+@pytest.mark.parametrize("latitude", [0.0, 80.0, -80.0])
+@pytest.mark.parametrize("dlat, dlon", [(0.1, 0.1), (0.2, 1.0), (1.0, 0.2), (-0.1, -0.1)])
+@pytest.mark.parametrize("axis", ["latitude", "longitude"])
+def test_two_point_grid_picks_closest_point(latitude, dlat, dlon, axis):
+    # The first point must not trigger an early exit when the second is closer.
+    # Include both axes, unequal spacings, descending coordinates and both hemispheres.
+    if axis == "longitude":
+        grid_lat = np.array([[latitude, latitude]])
+        grid_lon = np.array([[0.0, dlon]])
+        target_lat, target_lon = latitude, 0.9 * dlon
+        expected = (1, 0)
+    else:
+        grid_lat = np.array([[latitude], [latitude + dlat]])
+        grid_lon = np.array([[0.0], [0.0]])
+        target_lat, target_lon = latitude + 0.9 * dlat, 0.0
+        expected = (0, 1)
+
+    ny, nx = grid_lat.shape
+    assert (
+        find_nearest_grid_point(nx, ny, target_lat, target_lon, grid_lat, grid_lon, dlat, dlon) == expected
+    )

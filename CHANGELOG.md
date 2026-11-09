@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Correct nearest-grid-point lookup on regular latitude/longitude grids by scaling longitude
+  distances with latitude and comparing squared distances with a squared early-exit threshold.
+
 ## [0.10.0] - 2026 / 08 / 27
 
 ### Added
