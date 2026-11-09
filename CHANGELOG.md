@@ -472,6 +472,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
+- Correct nearest-grid-point lookup on regular latitude/longitude grids by scaling longitude
+  distances with latitude and comparing squared distances with a squared early-exit threshold.
+- Compute wind-direction circular bias from paired angular differences rather than the
+  difference of circular means, and report exact antipodal bias as +180 degrees to match
+  the documented range.
 - Give `RELATIVE_HUMIDITY` its unit, `%`, in the namespace page, which read `[m s-1]`.
 - A VIIRS or MODIS detection timed up to one granule before the overpass CMR lists for the box now
   belongs to that overpass (`standardize_firms_bundle`); it got an observation of its own, with an
