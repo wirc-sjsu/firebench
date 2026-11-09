@@ -181,8 +181,8 @@ def mae(x1: np.ndarray, x2: np.ndarray) -> float:
 
 def circular_bias_deg(x1: np.ndarray, x2: np.ndarray) -> float:
     """
-    Compute the bias between two angular arrays in degrees (0-360),
-    accounting for circularity and ignoring NaNs.
+    Compute the circular mean of paired angular differences (x1 - x2)
+    in degrees, ignoring pairs with non-finite values.
 
     Parameters
     ----------
@@ -211,8 +211,9 @@ def circular_bias_deg(x1: np.ndarray, x2: np.ndarray) -> float:
 
     # Difference in radians
     diff = np.deg2rad(x1[mask] - x2[mask])
-    
-    # Circular mean wrapped to (-pi, pi]
+
+    # Circular mean of paired differences
     mean = np.arctan2(np.mean(np.sin(diff)), np.mean(np.cos(diff)))
 
-    return float(np.rad2deg(mean))
+    bias_deg = float(np.rad2deg(mean))
+    return 180.0 if bias_deg == -180.0 else bias_deg

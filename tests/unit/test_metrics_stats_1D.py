@@ -140,6 +140,17 @@ def test_mae_raises_on_shape_mismatch():
         (np.array([350]), np.array([10]), -20.0),  # wrap-around negative
         (np.array([0, 10]), np.array([350, 0]), 10.0),  # circular mean offset
         (np.array([0, np.nan, 20]), np.array([10, 30, 10]), 0.0),  # joint NaN masking
+        (np.array([0, 0, 90]), np.array([0, 90, 90]), -26.56505117707799),  # paired errors
+        (np.array([0, 90, 90]), np.array([0, 0, 90]), 26.56505117707799),  # reversed pairs
+        (np.array([170, 190]), np.array([0, 0]), 180.0),  # errors straddle 180 degrees
+        (np.array([0, 0]), np.array([170, 190]), 180.0),  # errors straddle -180 degrees
+        (np.array([0]), np.array([180]), 180.0),  # negative antipodal error
+        (np.array([180]), np.array([0]), 180.0),  # positive antipodal error
+        (
+            np.array([0, 0, 90, np.nan, 180, np.inf, 90]),
+            np.array([0, 90, 90, 180, np.nan, 90, -np.inf]),
+            -26.56505117707799,
+        ),  # jointly exclude non-finite pairs
     ],
 )
 def test_circular_bias_deg(x1, x2, expected_bias):
