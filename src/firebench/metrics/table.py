@@ -94,7 +94,13 @@ def _scorecard_footer(data: dict) -> str:
 
 
 def _scorecard_group_name(data: dict, group_name: str) -> str:
-    return data.get("score_card", {}).get("group_display_names", {}).get(group_name, group_name)
+    """The group's display name, or its own name when another group of the score card shares that
+    display name (FB001 names its five weather groups of a period "Weather Stations")."""
+    names = data.get("score_card", {}).get("group_display_names", {})
+    shown = names.get(group_name, group_name)
+    if sum(1 for name in names.values() if name == shown) > 1:
+        return group_name
+    return shown
 
 
 def _scorecard_kpi_name(bench_id: str, kpi_name: str, full_name: bool = False) -> str:

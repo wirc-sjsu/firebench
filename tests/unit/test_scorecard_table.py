@@ -56,6 +56,22 @@ def test_scorecard_group_name_uses_display_name_mapping():
     assert _scorecard_group_name(data, "Air Temp WH1") == "Air Temp WH1"
 
 
+def test_scorecard_group_name_keeps_the_group_name_when_display_names_repeat():
+    data = {
+        "score_card": {
+            "group_display_names": {
+                "Air Temp W2": "Weather Stations",
+                "RH W2": "Weather Stations",
+                "FP_H13": "Fire Perimeters",
+            }
+        }
+    }
+
+    assert _scorecard_group_name(data, "Air Temp W2") == "Air Temp W2"
+    assert _scorecard_group_name(data, "RH W2") == "RH W2"
+    assert _scorecard_group_name(data, "FP_H13") == "Fire Perimeters"
+
+
 def test_scorecard_kpi_name_defaults_to_short_label():
     assert _scorecard_kpi_name("FB001_FPH097", "Average Jaccard Index WH13") == ("Average Jaccard Index")
     assert _scorecard_kpi_name("FB001_FP02", "Average Jaccard Index W2") == ("Average Jaccard Index")
