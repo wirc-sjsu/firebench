@@ -485,6 +485,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
+- Name a composed target by its KPI groups in the title of the score card and the comparison
+  score card (`Air Temp, RH, Wind Direction, Wind Speed W2`, the shared period once; their count
+  beyond four) instead of its digest (`C-9f3363914dbe`). The result file keeps the digest.
 - Show a group's own name in the score card and the comparison score card when another group of
   the card shares its display name: every weather group of a Caldor period (FB001) read
   "Group: Weather Stations".

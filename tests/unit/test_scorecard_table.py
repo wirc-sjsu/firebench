@@ -14,6 +14,7 @@ from firebench.metrics.table import (
     _scorecard_footer,
     _scorecard_group_name,
     _scorecard_kpi_name,
+    _scorecard_scheme_name,
     _scorecard_title,
     comparison_rows_per_page,
     save_comparison_as_table,
@@ -70,6 +71,76 @@ def test_scorecard_group_name_keeps_the_group_name_when_display_names_repeat():
     assert _scorecard_group_name(data, "Air Temp W2") == "Air Temp W2"
     assert _scorecard_group_name(data, "RH W2") == "RH W2"
     assert _scorecard_group_name(data, "FP_H13") == "Fire Perimeters"
+
+
+def _composed(*group_names: str, display_names: dict[str, str] | None = None) -> dict:
+    return {
+        "score_card": {
+            "aggregation_scheme_name": "C-9f3363914dbe",
+            "Scheme": {name: {"weight": 1, "benchmarks": {}} for name in group_names},
+            "group_display_names": display_names or {},
+        }
+    }
+
+
+def test_scorecard_scheme_name_keeps_a_named_scheme():
+    assert (
+        _scorecard_scheme_name({"score_card": {"aggregation_scheme_name": "H013_P", "Scheme": {}}})
+        == "H013_P"
+    )
+
+
+def test_scorecard_scheme_name_names_the_groups_of_a_composed_target():
+    w2 = _composed(
+        "Air Temp W2",
+        "RH W2",
+        "Wind Direction W2",
+        "Wind Speed W2",
+        display_names=dict.fromkeys(
+            ["Air Temp W2", "RH W2", "Wind Direction W2", "Wind Speed W2"], "Weather Stations"
+        ),
+    )
+    assert _scorecard_scheme_name(w2) == "Air Temp, RH, Wind Direction, Wind Speed W2"
+    assert _scorecard_scheme_name(_composed("Air Temp W2", "RH W3")) == "Air Temp W2, RH W3"
+    assert _scorecard_scheme_name(_composed("Building Damage")) == "Building Damage"
+    assert (
+        _scorecard_scheme_name(_composed("FP_H13", display_names={"FP_H13": "Fire Perimeters"}))
+        == "Fire Perimeters"
+    )
+    assert _scorecard_scheme_name(_composed(*(f"Air Temp W{i}" for i in range(1, 6)))) == "5 KPI groups"
+
+
+def test_composed_target_titles_name_their_groups(monkeypatch, tmp_path):
+    data = {
+        **_composed("Air Temp W2", "RH W2"),
+        "benchmark_short_name": "2021_Caldor",
+        "evaluated_model_name": "HRRR",
+        "firebench_version": "test",
+        "case_version": "test",
+        "benchmarks": {},
+    }
+    data["score_card"]["Score Total"] = 70.0
+    titles = []
+
+    def capture_title(_data, scheme_name, _verification_level, _score):
+        titles.append(scheme_name)
+        return ["", "", "", ""]
+
+    monkeypatch.setattr("firebench.metrics.table._scorecard_title", capture_title)
+    save_as_table(tmp_path / "card.pdf", data, signed=False, certificate_name="certificate_verif_lvl")
+    assert titles == ["Air Temp, RH W2"]
+
+    drawn = []
+    draw_string = canvas.Canvas.drawString
+
+    def record(self, x, y, text, *args, **kwargs):
+        drawn.append(text)
+        return draw_string(self, x, y, text, *args, **kwargs)
+
+    monkeypatch.setattr(canvas.Canvas, "drawString", record)
+    gfs = {**data, "evaluated_model_name": "GFS"}
+    save_comparison_as_table(tmp_path / "comparison.pdf", [data, gfs], event_name="2021 Caldor Fire")
+    assert "2021 Caldor Fire: FireBench comparison 2021_Caldor Air Temp, RH W2" in drawn
 
 
 def test_scorecard_kpi_name_defaults_to_short_label():

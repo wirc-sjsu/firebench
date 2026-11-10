@@ -74,6 +74,29 @@ def _scorecard_benchmark_name(data: dict) -> str:
     return data.get("benchmark_short_name") or data.get("case_short_name") or data["case_id"]
 
 
+# A target composed of chosen KPI groups is named by a digest of them (``compose_target`` of the
+# benchmarks): a stable identifier, but no name for a reader. Titles show its groups instead.
+COMPOSED_TARGET_NAME = re.compile(r"C-[0-9a-f]{12}")
+COMPOSED_TITLE_MAX_GROUPS = 4
+
+
+def _scorecard_scheme_name(data: dict) -> str:
+    """The scheme's name for a title: a composed target's groups (a period shared by all of them
+    named once, ``Air Temp, RH W2``), or their count when more than ``COMPOSED_TITLE_MAX_GROUPS``."""
+    score_card = data["score_card"]
+    scheme_name = score_card["aggregation_scheme_name"]
+    if not COMPOSED_TARGET_NAME.fullmatch(scheme_name):
+        return scheme_name
+    names = [_scorecard_group_name(data, group_name) for group_name in score_card["Scheme"]]
+    if len(names) > COMPOSED_TITLE_MAX_GROUPS:
+        return f"{len(names)} KPI groups"
+    last_words = {name.rsplit(" ", 1)[-1] for name in names}
+    if len(names) > 1 and len(last_words) == 1 and all(" " in name for name in names):
+        (period,) = last_words
+        return f"{', '.join(name.rsplit(' ', 1)[0] for name in names)} {period}"
+    return ", ".join(names)
+
+
 def _scorecard_title(data: dict, scheme_name: str, verif_lvl: str, score: str) -> list[str]:
     return [
         f"Total Score {_scorecard_benchmark_name(data)} {scheme_name} for {data['evaluated_model_name']}",
@@ -357,7 +380,7 @@ def save_comparison_as_table(
     x0 = margin
     table_width = label_width + model_col_width * len(results)
     case_name = _scorecard_benchmark_name(results[0])
-    scheme_name = results[0]["score_card"]["aggregation_scheme_name"]
+    scheme_name = _scorecard_scheme_name(results[0])
     footer = (
         f"FireBench version: {results[0]['firebench_version']}   "
         f"Reference dataset version: {results[0]['case_version']}"
@@ -537,7 +560,7 @@ def save_as_table(
     scheme_name = "0"
     valid_scheme = False
     if "score_card" in data:
-        scheme_name = data["score_card"]["aggregation_scheme_name"]
+        scheme_name = _scorecard_scheme_name(data)
         valid_scheme = True
         total_score = data["score_card"].get("Score Total")
         text_table.append(
