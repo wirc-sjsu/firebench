@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add forecast windows (`firebench.benchmarks.fire_window`, schema `fb-window-v1`): what a model
+  output must hold before the observations exist. A window definition has one period, the frame it
+  is scored on, the frame of the fire at the opening, and two families: `fire_arrival_time` (the
+  field on the model's own grid) and `weather_stations` (station series at a fixed cadence on round
+  times). `propose_window` proposes one with the stations of the observation files known so far
+  (names, positions, variables, and sensor heights only), `check_window` lists the problems of a
+  document, `check_model_for_window` reports which families a model output can enter from the
+  definition alone (schema `fb-window-check-v1`), and `write_window_template` writes the layout a
+  model output is written on. Nothing is scored yet. See "Define a Forecast Window" in the how-to
+  guides.
 - Add `firebench wx stitch` and `firebench.workflows.wx_stitch` to score a forecast model over a
   period longer than a cycle, such as Caldor's `P01`-`P04`. A stitch rule names the UTC hours of the
   cycles and the leads each gives (`--cycle-hours 0,6,12,18 --leads 1-6`: the freshest forecast at

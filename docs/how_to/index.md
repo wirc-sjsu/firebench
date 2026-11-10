@@ -21,6 +21,7 @@ prepare_model_output.md
 select_caldor_target.md
 stitch_forecast_period.md
 define_benchmark_case.md
+define_forecast_window.md
 custom_fuel_model.md
 plot_from_toml.md
 report_skeleton.md
