@@ -170,6 +170,8 @@ def test_filled_template_enters_every_family(definition, tmp_path):
     assert arrival["frame_coverage"] == 0.25
     assert arrival["grid"] == {"cells": 20, "box": [-120.5, 38.5, -120.3, 38.7]}
     assert "25% of the window's frame" in arrival["notes"][0]
+    assert "larger domain is recommended" in arrival["notes"][0]
+    assert "evaluation on arrival time is discarded" in arrival["notes"][0]
     stations = _status(report, fw.STATIONS)
     assert [(part["name"], part["stations"], part["covered"]) for part in stations["parts"]] == [
         ("air_temperature", 2, 2),

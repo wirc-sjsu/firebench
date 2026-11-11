@@ -616,7 +616,9 @@ def _check_arrival(model: h5py.File, definition: dict) -> dict:
     if problem is None and read["frame_coverage"] < 1:
         notes.append(
             f"The grid holds {read['frame_coverage']:.0%} of the window's frame; beyond it the model "
-            "says nothing."
+            "says nothing. The file is accepted because the grid holds the fire at the opening, but a "
+            "larger domain is recommended for the next window: if the observed fire leaves the grid "
+            "during the window, the evaluation on arrival time is discarded."
         )
     return {
         "family": ARRIVAL,

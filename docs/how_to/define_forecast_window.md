@@ -69,7 +69,9 @@ family has a `status`:
 
 - `fire_arrival_time` is `eligible` when the group is whole, its `time` covers the period, and its
   grid holds `fire_frame`. `frame_coverage` is the share of `frame` the grid holds; below 1, a note
-  says the model says nothing beyond its grid.
+  says the model says nothing beyond its grid, that a larger domain is recommended for the next
+  window, and that the evaluation on arrival time is discarded if the observed fire leaves the grid
+  during the window.
 - `weather_stations` has one part per variable, `eligible` when every station asked gives it at
   every time asked, in units that convert to the parameter set's. The family is `partial` when only
   some variables are.
