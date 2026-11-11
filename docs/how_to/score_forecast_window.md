@@ -23,6 +23,24 @@ result = fws.score_window(
 )
 ```
 
+## Join the observation fragments
+
+`score_window` reads one observation file. When the observations arrive in pieces (one file per
+hour of weather stations, per hour of satellite passes, per perimeter), join them first with
+`firebench.standardize.join_std_files`:
+
+```python
+from firebench.standardize import join_std_files
+
+join_std_files(["wx_12h.h5", "wx_13h.h5", "passes_12h.h5", "perimeter_1.h5"], "observations.h5")
+```
+
+The series of a station and the passes and detections of a satellite stream are appended in time
+order, whatever the order of the list, and a perimeter goes side by side with the others. A time
+present in two pieces keeps one sample when the values agree and raises `ValueError` when they do
+not; so does an attribute that differs. The quality control is not run again: each piece keeps the
+result it was given. `merge_std_files` stays the tool for files that hold different groups.
+
 ## The window so far
 
 The window so far runs from its start to the last observation in it (`data_span` of the observation

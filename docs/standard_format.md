@@ -793,7 +793,7 @@ Attributes | Type | Description
 `crs` | str | `EPSG:4326`
 `frame_west`, `frame_south`, `frame_east`, `frame_north` | float | The frame requested, with `*_units` = `degree`
 `time_start`, `time_end` | str | The window requested, ISO 8601
-`observation_source` | str | `cmr` (NASA CMR overpasses), `goes_scans`, or `detections` (observations rebuilt from detections)
+`observation_source` | str | `cmr` (NASA CMR overpasses), `goes_scans`, or `detections` (observations rebuilt from detections). A file joined from fragments may list several, `;`-separated
 `observations_complete` | bool | False when some observations are missing or rebuilt
 `failed` | str | JSON list of what failed: FIRMS days (`day`, `reason`) or GOES scans (`key`, `reason`)
 `time_step`, `time_step_units` | int, str | GOES: the selection step, `min`

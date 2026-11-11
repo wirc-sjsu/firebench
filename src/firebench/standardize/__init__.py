@@ -24,6 +24,7 @@ from .files import (
     merge_two_std_files,
     new_std_file,
 )
+from .join import join_std_files
 from .landfire import (
     LANDFIRE_CANOPY_PRODUCTS,
     standardize_landfire_canopy,

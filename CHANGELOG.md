@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add `firebench.standardize.join_std_files`, which joins fragments of observations (one file per hour
+  of weather stations or of satellite passes, one per perimeter) along time into one standard file:
+  station series and fire-detection streams are appended in time order with their indices shifted,
+  perimeters go side by side, and the same fragments in any order give the same content. The quality
+  control is not run again.
 - Add the scoring of a forecast window (`firebench.benchmarks.fire_window_scoring`). Once observations
   exist, `prepare_window_model` writes from a model output and the observation file the file the KPIs
   read (report schema `fb-window-prepared-v1`): the model's station series interpolated linearly to
