@@ -27,9 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   those asked, and the observations used. A family with nothing to score is null with its reason.
   `FireCase.run_benchmark` takes `stations_given` (the stations a model gives, by variable; the
   others are excluded as "not in the model output") and `extra` (merged into the result before it is
-  signed); without them nothing changes. A new table `[window_preparation]` of `fire_case.toml`
-  holds `interpolation`, `max_step_minutes` (60), and `min_perimeters` (1), added without raising the
-  version: no case score changes. See "Score a Forecast Window" in the how-to guides.
+  signed; it can also be a function of the result so far); without them nothing changes. In the
+  `window` block each family has `groups` and `scores` by period: the card's groups of that family
+  and their mean weighted as the total is (`wx_common.weighted_group_mean`), empty for a null
+  family. A new table `[window_preparation]` of `fire_case.toml` holds `interpolation`,
+  `max_step_minutes` (60), and `min_perimeters` (1), added without raising the version: no case
+  score changes. See "Score a Forecast Window" in the how-to guides.
 - Add forecast windows (`firebench.benchmarks.fire_window`, schema `fb-window-v1`): what a model
   output must hold before the observations exist. A window definition has one period, the frame it
   is scored on, the frame of the fire at the opening, and two families: `fire_arrival_time` (the

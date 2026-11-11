@@ -68,6 +68,8 @@ PREPARED_SCHEMA = "fb-window-prepared-v1"
 PERIMETER_LAYER = "fire_perimeter"
 MADE, PARTIAL, NOT_MADE = "made", "partial", "not_made"
 SCORED, NULL = "scored", "null"
+# The kind of the case's groups (``FireCase.CATEGORIES``) that each family of a window is scored with.
+FAMILY_KINDS = {ARRIVAL: "P", STATIONS: "W"}
 NOT_OBSERVED = "The observation file is not a readable HDF5 file."
 
 
@@ -478,6 +480,29 @@ def _observations_used(obs: h5py.File, given: dict[str, set[str]], periods: dict
     return used
 
 
+def _with_scores(case: FireCase, output: dict, entry: dict) -> dict:
+    """
+    ``entry`` of the ``window`` block with the card's groups of its family and their scores, by period.
+
+    The groups of a family are those of its kind in the case's tables, in the order of the scheme; the
+    score of a period is the mean of their scores weighted as the total is (``weighted_group_mean``).
+    A family with no group in the card (null) has none.
+    """
+    kind = FAMILY_KINDS[entry["family"]]
+    card = output["score_card"]
+    groups: dict[str, list[str]] = {}
+    for name in card["Scheme"]:
+        info = case._groups[name]  # pylint: disable=protected-access
+        if info["kind"] == kind and f"Score {name}" in card:
+            groups.setdefault(info["period"], []).append(name)
+    scores = {
+        period: score
+        for period, names in groups.items()
+        if (score := wxc.weighted_group_mean(card, card["Scheme"], names)) is not None
+    }
+    return {**entry, "groups": groups, "scores": scores}
+
+
 def score_window(  # pylint: disable=too-many-arguments,too-many-locals
     definition: dict,
     prepared_file,
@@ -499,7 +524,11 @@ def score_window(  # pylint: disable=too-many-arguments,too-many-locals
     are scored on ``P01`` with the target perimeters, the weather stations on both periods, with the
     stations the prepared file holds for each variable. A family with nothing to score is null with
     its reason in the ``window`` block, which also names the target and the starting state, the share
-    of the period observed, the stations given of those asked, and the observations used.
+    of the period observed, the stations given of those asked, and the observations used. Each family
+    of the block also has ``groups`` (period name -> the card's groups of that family in that period, in
+    the order of the scheme) and ``scores`` (period name -> FireBench's mean of those groups' scores,
+    weighted as the total is, not rounded); both are empty for a null family, and a period without a
+    scored group of the family is absent.
     ``check_case`` is not called: its refusals (a period inside the data, two perimeters) are the ones
     a window replaces.
 
@@ -605,6 +634,15 @@ def score_window(  # pylint: disable=too-many-arguments,too-many-locals
             },
         ],
     }
+
+    def with_family_scores(output: dict) -> dict:
+        return {
+            "window": {
+                **block,
+                "families": [_with_scores(case, output, item) for item in block["families"]],
+            }
+        }
+
     return case.run_benchmark(
         prepared_file,
         "A",
@@ -615,5 +653,5 @@ def score_window(  # pylint: disable=too-many-arguments,too-many-locals
         output_json=output_json,
         score_card_report=score_card_report,
         stations_given=given,
-        extra={"window": block},
+        extra=with_family_scores,
     )

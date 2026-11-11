@@ -16,6 +16,7 @@ follows the order of families and periods in the definition, so they are stable 
 
 import hashlib
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -1110,14 +1111,15 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         score_card_full_name: bool = False,
         groups: list[str] | None = None,
         stations_given: dict[str, set[str]] | None = None,
-        extra: dict | None = None,
+        extra: dict | Callable[[dict], dict] | None = None,
     ) -> dict:
         """
         Score ``model_output`` against ``obs_data`` on ``benchmark_target``, or on ``groups`` when given.
 
         The arguments and the result file are those of ``run_caldor_benchmark``; the result names the
         definition by its hash instead of a case id. ``stations_given`` is passed on to
-        ``run_all_benchmarks``. ``extra`` is merged into the result before it is signed.
+        ``run_all_benchmarks``. ``extra`` is merged into the result before it is signed;
+        it can be a function that takes the result so far and returns what to merge.
         """
         if obs_data is None:
             raise ValueError("A generic case needs the observation file (`obs_data`).")
@@ -1154,6 +1156,8 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         output = ft.merge_dictionaries(
             output, self.run_all_benchmarks(model_output, scheme, list_bench, obs_data, stations_given)
         )
+        if callable(extra):
+            extra = extra(output)
         if extra:
             output = ft.merge_dictionaries(output, extra)
 

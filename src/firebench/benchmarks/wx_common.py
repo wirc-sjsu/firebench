@@ -256,6 +256,24 @@ def raise_if_selected_benchmarks_missing(
     )
 
 
+def weighted_group_mean(score_card: dict, scheme: dict, groups=None) -> float | None:
+    """
+    The mean of the ``Score <group>`` entries of ``score_card`` weighted by the ``scheme`` group weights.
+
+    ``groups`` restricts the mean to those group names (all of the scheme when None). A group without a
+    score in the card is left out. Returns None when no scored group has a weight, as for the total.
+    """
+    total_score = 0
+    total_sum_weight = 0
+    for group in scheme.keys():
+        score_key = f"Score {group}"
+        if score_key not in score_card or (groups is not None and group not in groups):
+            continue
+        total_score += score_card[score_key] * scheme[group]["weight"]
+        total_sum_weight += scheme[group]["weight"]
+    return total_score / total_sum_weight if total_sum_weight else None
+
+
 def aggregate_scheme_scores(
     benchmark_results: dict,
     scheme_name: str,
@@ -301,17 +319,10 @@ def aggregate_scheme_scores(
         )
 
     # Get Total Score
-    total_score = 0
-    total_sum_weight = 0
-    for group in scheme.keys():
-        score_key = f"Score {group}"
-        if score_key not in benchmark_results["score_card"]:
-            continue
-        total_score += benchmark_results["score_card"][score_key] * scheme[group]["weight"]
-        total_sum_weight += scheme[group]["weight"]
-    if total_sum_weight:
-        benchmark_results["score_card"]["Score Total"] = total_score / total_sum_weight
-        ft.logger.info("Total Score = %.2f", benchmark_results["score_card"]["Score Total"])
+    total_score = weighted_group_mean(benchmark_results["score_card"], scheme)
+    if total_score is not None:
+        benchmark_results["score_card"]["Score Total"] = total_score
+        ft.logger.info("Total Score = %.2f", total_score)
     else:
         ft.logger.warning("Total score ignored because no eligible weighted group remains.")
 

@@ -1,4 +1,5 @@
 import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 
 import geopandas as gpd
@@ -391,6 +392,8 @@ def test_a_day_scores_the_perimeters_after_the_reception(tmp_path, definition, m
         "status": "scored",
         "reason": None,
         "perimeters": 2,
+        "groups": {"P01": ["Fire Perimeters P01"]},
+        "scores": {"P01": result["score_card"]["Score Fire Perimeters P01"]},
     }
     jaccard = _kpi(result, "Average Jaccard Index P01")["Average Jaccard Index P01"]
     assert 0.9 < jaccard <= 1.0
@@ -414,6 +417,38 @@ def test_after_adds_the_period_of_the_ahead_score(tmp_path, definition, model, o
     assert without["window"]["after"] is None
     assert [item["time"] for item in without["window"]["target"]][0] == "2026-08-22T02:00:00Z"
     assert without["window"]["starting_state"] is None
+
+
+def _weighted(card, names):
+    scheme = card["Scheme"]
+    return sum(card[f"Score {n}"] * scheme[n]["weight"] for n in names) / sum(
+        scheme[n]["weight"] for n in names
+    )
+
+
+def test_each_family_has_its_groups_and_scores_by_period(tmp_path, definition, model, observed_24h):
+    _, result, _ = _score(tmp_path, definition, model, observed_24h)
+    card = result["score_card"]
+    stations = _family(result["window"], fw.STATIONS)
+    assert set(stations["groups"]) == {"P01", "P02"}
+    for period, names in stations["groups"].items():
+        assert names and all(n.endswith(period) and f"Score {n}" in card for n in names)
+        assert "Air Temp " + period in names
+        assert stations["scores"][period] == _weighted(card, names)
+    arrival = _family(result["window"], fw.ARRIVAL)
+    assert arrival["groups"] == {"P01": ["Fire Perimeters P01"]}
+    assert arrival["scores"] == {"P01": card["Score Fire Perimeters P01"]}
+    saved = json.loads((tmp_path / "run.json").read_text())
+    assert _family(saved["window"], fw.STATIONS)["scores"] == stations["scores"]
+
+
+def test_a_null_family_has_no_groups_and_p02_needs_after(tmp_path, definition, model, observed_6h):
+    _, result, _ = _score(tmp_path, definition, model, observed_6h, after=None)
+    window = result["window"]
+    arrival = _family(window, fw.ARRIVAL)
+    assert arrival["status"] == "null" and arrival["groups"] == {} and arrival["scores"] == {}
+    stations = _family(window, fw.STATIONS)
+    assert set(stations["groups"]) == {"P01"} and set(stations["scores"]) == {"P01"}
 
 
 def test_one_perimeter_is_enough(tmp_path):
