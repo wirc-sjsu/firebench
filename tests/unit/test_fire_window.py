@@ -192,8 +192,48 @@ def test_station_that_lacks_a_time_blocks_its_variable(definition, tmp_path):
     assert stations["status"] == "partial"
     part = stations["parts"][0]
     assert (part["status"], part["covered"]) == ("unavailable", 1)
-    assert "first: station_B lacks a value at 1 of the 26 times asked" in part["reason"]
+    assert "first: station_B has a step of 120 min, over the 60 min allowed" in part["reason"]
     assert stations["parts"][1]["status"] == "eligible"
+
+
+def _rewrite_series(model, station, minutes, last=None):
+    """The series of a station on its own times: every ``minutes`` from the first time of the window."""
+    first = datetime(2026, 8, 22, 2, tzinfo=timezone.utc)
+    stop = last or END + timedelta(hours=1)
+    count = int((stop - first).total_seconds() // (minutes * 60)) + 1
+    with h5py.File(model, "a") as h5:
+        group = h5[f"time_series/{station}"]
+        for name in [name for name in group if name != "time"]:
+            attrs = dict(group[name].attrs)
+            del group[name]
+            group.create_dataset(name, data=np.full(count, 290.0)).attrs.update(attrs)
+        del group["time"]
+        time = group.create_dataset("time", data=np.arange(count) * float(minutes))
+        time.attrs["time_origin"] = first.isoformat()
+        time.attrs["time_units"] = "min"
+
+
+def test_a_finer_series_enters(definition, tmp_path):
+    model = _fill(tmp_path / "model.h5", definition)
+    _rewrite_series(model, "station_B", 10)
+    stations = _status(fw.check_model_for_window(definition, model), fw.STATIONS)
+    assert stations["status"] == "eligible"
+
+
+def test_a_series_that_stops_early_does_not_cover_the_period(definition, tmp_path):
+    model = _fill(tmp_path / "model.h5", definition)
+    _rewrite_series(model, "station_B", 60, last=END - timedelta(hours=2))
+    part = _status(fw.check_model_for_window(definition, model), fw.STATIONS)["parts"][0]
+    assert (
+        "first: station_B holds values from 2026-08-22 02:00 UTC to 2026-08-23 00:00 UTC" in part["reason"]
+    )
+    assert "not the whole period" in part["reason"]
+
+
+def test_cadence_over_the_longest_step_is_a_problem(definition):
+    entry = fw.family(definition, fw.STATIONS)
+    problems = fw.check_window({**definition, "families": [{**entry, "cadence_minutes": 120}]})
+    assert any("must not be longer than 60 min" in item for item in problems), problems
 
 
 def test_units_that_do_not_convert_block_the_station(definition, tmp_path):

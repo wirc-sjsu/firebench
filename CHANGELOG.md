@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add the scoring of a forecast window (`firebench.benchmarks.fire_window_scoring`). Once observations
+  exist, `prepare_window_model` writes from a model output and the observation file the file the KPIs
+  read (report schema `fb-window-prepared-v1`): the model's station series interpolated linearly to
+  the times each station was observed in the window so far (the wind direction along the shortest
+  arc), made only where the model's samples bracket every observed time with no step over
+  `max_step_minutes`, and the burnt area of its arrival-time field, cut by `burnt_area_polygons`
+  (the contour at 0.5 of the cells that arrived by then, as the WRF-SFIRE adapter does), at the time
+  of each observed perimeter after the reception of the forecast (`after`). What cannot be made is
+  left out with its reason, never filled with NaN. `score_window` runs the KPIs of a generic case on
+  that file, with `P01` from the opening to the last observation and `P02` from `after`, and writes an
+  ordinary score card (JSON and PDF, signable) with a `window` block: the target perimeters, the
+  starting state (the last perimeter at or before `after`, used by no KPI), the stations given of
+  those asked, and the observations used. A family with nothing to score is null with its reason.
+  `FireCase.run_benchmark` takes `stations_given` (the stations a model gives, by variable; the
+  others are excluded as "not in the model output") and `extra` (merged into the result before it is
+  signed); without them nothing changes. A new table `[window_preparation]` of `fire_case.toml`
+  holds `interpolation`, `max_step_minutes` (60), and `min_perimeters` (1), added without raising the
+  version: no case score changes. See "Score a Forecast Window" in the how-to guides.
 - Add forecast windows (`firebench.benchmarks.fire_window`, schema `fb-window-v1`): what a model
   output must hold before the observations exist. A window definition has one period, the frame it
   is scored on, the frame of the fire at the opening, and two families: `fire_arrival_time` (the
@@ -414,6 +432,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   read-only audit findings.
 
 ### Changed
+- `check_model_for_window` accepts a station series of a forecast window when its finite values cover
+  the period (first at or before the start, last at or after the end) with no step over
+  `max_step_minutes` (60), instead of a value at every round time of the cadence; a finer series
+  enters, and a gap or an early stop is named in the reason. A window's `cadence_minutes` longer than
+  `max_step_minutes` is a problem of `check_window`. The report keeps its shape.
 - The `fire_radiative_power` family leaves out every observation with an FRP total of 0 ("no fire
   detected") or under its instrument's detection limit ("under the detection limit of ABI (50 MW)"),
   and `observation_ok` is False for them: the KPIs ask how right the model's FRP is where a satellite

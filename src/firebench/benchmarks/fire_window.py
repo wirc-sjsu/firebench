@@ -13,8 +13,10 @@ gives: one period, the frame it is scored on, and per family the fields and the 
 - ``write_window_definition`` and ``read_window_definition`` keep the definition inside a file.
 
 Two families so far. ``fire_arrival_time``: the fire's arrival time on the model's own grid, scored
-against satellite detections and perimeters. ``weather_stations``: station series at a fixed cadence,
-on round times, so that they can be brought to observation times nobody knows yet.
+against satellite detections and perimeters. ``weather_stations``: station series that cover the
+period with no step over ``max_step_minutes`` (``fire_case.toml``), so that they can be brought to
+observation times nobody knows yet; the cadence of the definition gives the round times a model may
+write them on.
 
 Nothing is scored here, and no observed value is read: only the names, positions, variables, and
 sensor heights of the stations. Like a case definition, a window names its parameters by reference
@@ -114,9 +116,9 @@ def family(definition: dict, name: str) -> dict | None:
 
 def window_times(definition: dict) -> list[datetime]:
     """
-    The times a station series of the window must hold: every round edge of the cadence (counted
-    from 00:00 UTC), from the last one at or before the start to the first one at or after the end,
-    so that the series can be interpolated to any time of the period.
+    The times a model may write a station series on: every round edge of the cadence (counted from
+    00:00 UTC), from the last one at or before the start to the first one at or after the end. A
+    series that holds them all covers the period, so it can be interpolated to any time of it.
     """
     entry = family(definition, STATIONS)
     if entry is None:
@@ -182,6 +184,11 @@ def _check_families(definition: dict, parameters: FireCaseParameters | None) -> 
         cadence = entry["cadence_minutes"]
         if not isinstance(cadence, int) or isinstance(cadence, bool) or cadence <= 0 or 1440 % cadence:
             problems.append("`cadence_minutes` must be a whole number of minutes that divides a day.")
+        elif parameters and cadence > (longest := parameters.window_preparation.max_step_minutes):
+            problems.append(
+                f"`cadence_minutes` must not be longer than {longest:g} min, the longest step a station "
+                "series may have."
+            )
         stations = entry["stations"]
         if not isinstance(stations, list) or not stations:
             problems.append(f"`{name}` names no station.")
@@ -373,10 +380,11 @@ def write_window_template(definition: dict, out_path, *, overwrite: bool = False
     """
     Write the model-output template of a window: the layout a model output is written on.
 
-    Each station asked has its group under ``/time_series`` with its position, ``time`` (the times
-    of ``window_times``, minutes from the first), and each variable asked, NaN, in the unit of the
-    parameter set with the sensor height the definition gives. The group of the arrival time is
-    empty and says what the model writes there, on its own grid. The definition is written in too.
+    Each station asked has its group under ``/time_series`` with its position, ``time`` (the times a
+    model may write on, ``window_times``, minutes from the first), and each variable asked, NaN, in
+    the unit of the parameter set with the sensor height the definition gives. The group of the
+    arrival time is empty and says what the model writes there, on its own grid. The definition is
+    written in too.
     The file is marked by the root attribute ``firebench_template``: a case refuses it as an
     observation file, and ``check_model_for_window`` as a model output.
     """
@@ -458,8 +466,14 @@ def _convertible(dataset: h5py.Dataset, unit: str) -> bool:
 
 
 # pylint: disable-next=too-many-return-statements
-def _station_problem(group, variable: str, unit: str, grid: np.ndarray) -> str | None:
-    """Why a station series does not give a variable on the grid, or None when it does."""
+def _station_problem(
+    group, variable: str, unit: str, period: tuple[float, float], max_step: float
+) -> str | None:
+    """
+    Why a station series does not give a variable over the period, or None when it does.
+
+    ``period`` is (start, end) and ``max_step`` the longest step, both in seconds since the epoch.
+    """
     if not isinstance(group, h5py.Group) or variable not in group or "time" not in group:
         return "is not in the file"
     dataset = group[variable]
@@ -475,21 +489,22 @@ def _station_problem(group, variable: str, unit: str, grid: np.ndarray) -> str |
     finite = np.sort(times[np.isfinite(times) & np.isfinite(values)])
     if finite.size == 0:
         return "holds no value"
-    at = (
-        np.clip(np.searchsorted(finite, grid), 1, finite.size - 1)
-        if finite.size > 1
-        else np.zeros(grid.size, int)
-    )
-    nearest = np.minimum(np.abs(finite[at] - grid), np.abs(finite[at - 1] - grid))
-    missing = int(np.sum(nearest > TIME_TOLERANCE_SECONDS))
-    if missing:
-        return f"lacks a value at {missing} of the {grid.size} times asked"
+    start, end = period
+    if finite[0] > start + TIME_TOLERANCE_SECONDS or finite[-1] < end - TIME_TOLERANCE_SECONDS:
+        return f"holds values from {_utc_text(finite[0])} to {_utc_text(finite[-1])}, not the whole period"
+    first = max(int(np.searchsorted(finite, start + TIME_TOLERANCE_SECONDS, side="right")) - 1, 0)
+    last = int(np.searchsorted(finite, end - TIME_TOLERANCE_SECONDS, side="left"))
+    steps = np.diff(finite[first : last + 1])
+    if steps.size and steps.max() > max_step:
+        return f"has a step of {steps.max() / 60:g} min, over the {max_step / 60:g} min allowed"
     return None
 
 
 def _check_stations(model: h5py.File, definition: dict, parameters: FireCaseParameters) -> dict:
     entry = family(definition, STATIONS)
     grid = np.array([time.timestamp() for time in window_times(definition)], dtype=np.float64)
+    period = tuple(time.timestamp() for time in window_period(definition))
+    max_step = parameters.window_preparation.max_step_minutes * 60
     parts = []
     for spec in parameters.variables:
         asked = [
@@ -500,7 +515,7 @@ def _check_stations(model: h5py.File, definition: dict, parameters: FireCasePara
         problems = {}
         for station in asked:
             problem = _station_problem(
-                model.get(f"/{fs.TIME_SERIES}/{station}"), spec.variable, spec.unit, grid
+                model.get(f"/{fs.TIME_SERIES}/{station}"), spec.variable, spec.unit, period, max_step
             )
             if problem:
                 problems[station] = problem
@@ -513,7 +528,7 @@ def _check_stations(model: h5py.File, definition: dict, parameters: FireCasePara
                 "stations": len(asked),
                 "covered": len(asked) - len(problems),
                 "reason": (
-                    f"`{spec.variable}` is not given on the window's times for {len(problems)} of the "
+                    f"`{spec.variable}` is not given over the window's period for {len(problems)} of the "
                     f"{len(asked)} stations asked (first: {first} {problems[first]})."
                     if problems
                     else None
@@ -528,8 +543,10 @@ def _check_stations(model: h5py.File, definition: dict, parameters: FireCasePara
         "status": status,
         "reason": None if eligible else "No variable is given for every station asked.",
         "notes": [
-            f"Asked every {entry['cadence_minutes']} min from {_utc_text(grid[0])} to "
-            f"{_utc_text(grid[-1])}: {grid.size} times."
+            "A series is accepted when its values cover the period with no step over "
+            f"{parameters.window_preparation.max_step_minutes:g} min. It may be written every "
+            f"{entry['cadence_minutes']} min from {_utc_text(grid[0])} to {_utc_text(grid[-1])}: "
+            f"{grid.size} times."
         ],
         "parts": parts,
     }
@@ -631,6 +648,18 @@ def _check_arrival(model: h5py.File, definition: dict) -> dict:
     }
 
 
+def report_header(definition: dict) -> dict:
+    """The window and the FireBench a report of a window names."""
+    return {
+        "window": {
+            "name": definition["name"],
+            "definition_sha256": definition_sha256(definition),
+            "period": dict(definition["period"]),
+        },
+        "firebench": {"version": fb_version, "commit": _firebench_commit()},
+    }
+
+
 def check_model_for_window(definition: dict, model_file) -> dict:
     """
     Which families of a window a model output can enter, from the definition alone: no observation
@@ -643,8 +672,9 @@ def check_model_for_window(definition: dict, model_file) -> dict:
     - ``fire_arrival_time``: the group holds the field with its units and time origin, its grid
       positions, and ``time``; the times cover the period; the grid holds ``fire_frame``. The share
       of ``frame`` the grid holds is ``frame_coverage``.
-    - ``weather_stations``: per variable (``parts``), every station asked gives a finite value, in
-      units that convert to the parameter set's, at every time of ``window_times``.
+    - ``weather_stations``: per variable (``parts``), every station asked gives finite values, in
+      units that convert to the parameter set's, from the start of the period to its end, with no
+      step over ``max_step_minutes``.
 
     Raises
     ------
@@ -654,12 +684,7 @@ def check_model_for_window(definition: dict, model_file) -> dict:
     parameters = _checked(definition)
     report = {
         "schema": CHECK_SCHEMA,
-        "window": {
-            "name": definition["name"],
-            "definition_sha256": definition_sha256(definition),
-            "period": dict(definition["period"]),
-        },
-        "firebench": {"version": fb_version, "commit": _firebench_commit()},
+        **report_header(definition),
         "accepted": False,
         "reason": None,
         "families": [],

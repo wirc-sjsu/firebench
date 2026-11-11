@@ -6,8 +6,8 @@ the model output second, and the observations arrive afterwards. Its definition 
 `fb-window-v1`, `firebench.benchmarks.fire_window`) says from itself alone what a model gives, so a
 forecast of an active fire can be checked before anything was observed.
 
-Nothing is scored yet: this page covers the definition, the model-output template, and the check of
-a model output.
+This page covers the definition, the model-output template, and the check of a model output; once
+observations exist, see [Score a forecast window](score_forecast_window.md).
 
 ## The definition
 
@@ -42,7 +42,7 @@ cannot be asked is in `left_out` with the reason.
 | Family | The model gives |
 |---|---|
 | `fire_arrival_time` | under `model_group` (`/spatial_2d/fire_window`): `fire_arrival_time` (n_y, n_x), a duration (`units`) after its `time_origin`, NaN where the fire did not arrive; `position_lat` and `position_lon` in degrees, each one-dimensional or the shape of the field; `time`, the times the simulation covers |
-| `weather_stations` | for each station of `stations`, `/time_series/<station>/<variable>` and `time`, with a finite value at every time of `window_times(definition)`: the round edges of `cadence_minutes` from the last one at or before the start to the first one at or after the end |
+| `weather_stations` | for each station of `stations`, `/time_series/<station>/<variable>` and `time`, with finite values from the start of the period to its end and no step over `max_step_minutes` (60, `fire_case.toml`); the template writes them on `window_times(definition)`, the round edges of `cadence_minutes` from the last one at or before the start to the first one at or after the end, which a model may keep or refine |
 
 `check_window(definition)` lists the problems of a document; an empty list means it can be used.
 The SHA-256 of its canonical JSON names it (`fire_case_definition.definition_sha256`).
@@ -72,6 +72,7 @@ family has a `status`:
   says the model says nothing beyond its grid, that a larger domain is recommended for the next
   window, and that the evaluation on arrival time is discarded if the observed fire leaves the grid
   during the window.
-- `weather_stations` has one part per variable, `eligible` when every station asked gives it at
-  every time asked, in units that convert to the parameter set's. The family is `partial` when only
-  some variables are.
+- `weather_stations` has one part per variable, `eligible` when every station asked gives it over
+  the whole period with no step over `max_step_minutes`, in units that convert to the parameter
+  set's; the reason says which rule failed. The family is `partial` when only some variables are.
+  A `cadence_minutes` longer than `max_step_minutes` is a problem of `check_window`.

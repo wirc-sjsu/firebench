@@ -179,6 +179,19 @@ cycle_hours = [0, 6, 12, 18]
 hours = 48
 min_perimeters = 2
 
+[window_preparation]
+# A forecast window (firebench.benchmarks.fire_window, fire_window_scoring) is scored on what the
+# observations hold, not on a case's fixed times. `interpolation`: how a model's station series is
+# brought to the observation times (`linear` is the only value; the wind direction goes along the
+# shortest arc). `max_step_minutes`: the longest step a series may have where the observations need
+# it, and the longest gap interpolated; a longer one is left out, never filled. `min_perimeters`: the
+# observed perimeters a window needs to score its fire perimeters (a case keeps `fire_perimeters`'s).
+# Added without raising `version`: no case score changes, and the bulletins already published
+# (`fb-window-v1`, version 2026.1) stay valid.
+interpolation = "linear"
+max_step_minutes = 60
+min_perimeters = 1
+
 [weather_stations]
 # Weight of a KPI in its group, by station set: trusted sources only, and all sources.
 tso_weight = 1

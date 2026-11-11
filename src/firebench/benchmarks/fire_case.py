@@ -1041,11 +1041,23 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
     # ---------------------------
     # Run
     # ---------------------------
-    def run_all_benchmarks(
-        self, model_output: Path, scheme: str, list_bench: list[str], obs_data: Path
+    def run_all_benchmarks(  # pylint: disable=too-many-arguments
+        self,
+        model_output: Path,
+        scheme: str,
+        list_bench: list[str],
+        obs_data: Path,
+        stations_given: dict[str, set[str]] | None = None,
     ) -> dict:
-        """Score every KPI of ``list_bench`` and aggregate them with ``scheme``."""
+        """
+        Score every KPI of ``list_bench`` and aggregate them with ``scheme``.
+
+        ``stations_given`` (variable: names of the stations) limits the weather stations scored to
+        those the model gives; without it every station the observations hold is expected.
+        """
         ctx = {"ignored_benchmarks": set()}
+        if stations_given is not None:
+            ctx["weather_stations_given"] = stations_given
         with File(obs_data, "r") as obs_dataset, File(model_output, "r") as model_dataset:
             wxc.validate_benchmark_inputs(obs_dataset, model_dataset)
             wxc.validate_selected_weather_confidence(obs_dataset, self.BENCHMARK_FUNCTIONS, list_bench, ctx)
@@ -1097,12 +1109,15 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         score_card_report=DEFAULT_SCORE_CARD_REPORT_PATH,
         score_card_full_name: bool = False,
         groups: list[str] | None = None,
+        stations_given: dict[str, set[str]] | None = None,
+        extra: dict | None = None,
     ) -> dict:
         """
         Score ``model_output`` against ``obs_data`` on ``benchmark_target``, or on ``groups`` when given.
 
         The arguments and the result file are those of ``run_caldor_benchmark``; the result names the
-        definition by its hash instead of a case id.
+        definition by its hash instead of a case id. ``stations_given`` is passed on to
+        ``run_all_benchmarks``. ``extra`` is merged into the result before it is signed.
         """
         if obs_data is None:
             raise ValueError("A generic case needs the observation file (`obs_data`).")
@@ -1137,8 +1152,10 @@ class FireCase:  # pylint: disable=too-many-instance-attributes
         if not list_bench:
             raise ValueError(f"The target `{scheme}` holds no KPI of this case.")
         output = ft.merge_dictionaries(
-            output, self.run_all_benchmarks(model_output, scheme, list_bench, obs_data)
+            output, self.run_all_benchmarks(model_output, scheme, list_bench, obs_data, stations_given)
         )
+        if extra:
+            output = ft.merge_dictionaries(output, extra)
 
         if sign:
             key, signer = sign
