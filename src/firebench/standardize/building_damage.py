@@ -214,10 +214,14 @@ def standardize_dins_building_damage(
             f"incident {incident_name!r} of {dins_csv} has no row with a position and a damage"
             + (f" inside the box ({n_outside} rows are outside)" if clip_to_box else "")
         )
-    buildings = _read_footprints(footprints)
-    buildings = buildings[buildings.intersects(frame)]
+    footprints_all = _read_footprints(footprints)
+    buildings = footprints_all[footprints_all.intersects(frame)]
     if buildings.empty:
-        raise ValueError(f"no footprint of {footprints} intersects the box")
+        raise ValueError(
+            f"no footprint of {footprints} intersects the box: the footprints cover "
+            f"{_extent(footprints_all)}, the box is {tuple(round(v, 4) for v in frame.bounds)} "
+            "(west, south, east, north)"
+        )
     if projected_crs is None:
         projected_crs = gpd.GeoSeries([frame], crs="EPSG:4326").estimate_utm_crs()
     data = _fuse(buildings, dins, _metric_crs(projected_crs), max_match_distance_m)
@@ -333,6 +337,12 @@ def _read_footprints(footprints: Path) -> gpd.GeoSeries:
     except (OSError, ValueError) as exc:
         raise ValueError(f"footprints file {footprints} could not be read: {exc}") from exc
     return gpd.GeoSeries(geometries, crs="EPSG:4326")
+
+
+def _extent(geometries: gpd.GeoSeries) -> str:
+    if geometries.empty:
+        return "nothing (the file is empty)"
+    return str(tuple(round(float(v), 4) for v in geometries.total_bounds)) + " (west, south, east, north)"
 
 
 def _metric_crs(projected_crs) -> CRS:

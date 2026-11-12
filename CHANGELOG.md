@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add `firebench.acquisition.mbf_tiles.fetch_mbf_footprints`, which writes the Microsoft Global ML
+  Building Footprints that touch a box as line-delimited GeoJSON, the input of
+  `standardize_dins_building_damage`. It reads Microsoft's tile index, downloads the zoom 9 tiles
+  the box touches, keeps them in the FireBench cache, and leaves out the footprints outside the box.
 - Add `firebench.standardize.join_std_files`, which joins fragments of observations (one file per hour
   of weather stations or of satellite passes, one per perimeter) along time into one standard file:
   station series and fire-detection streams are appended in time order with their indices shifted,
