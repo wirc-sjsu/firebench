@@ -1745,6 +1745,9 @@ def create_aggregation_schemes():
         "Canopy Cover Loss": GROUPS["Canopy Cover Loss"].copy(),
     }
     AGGREGATION["FP"] = _copy_groups([f"Fire Perimeter W{period_number}" for period_number in range(1, 5)])
+    for i in range(1, 5):
+        AGGREGATION[f"FP{i}"] = _copy_groups([f"Fire Perimeter W{i}"])
+
     AGGREGATION["CDI"] = {
         "Building Damage": GROUPS["Building Damage"].copy(),
     }
