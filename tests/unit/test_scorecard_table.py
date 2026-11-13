@@ -3,15 +3,20 @@ from io import BytesIO
 
 from reportlab.pdfgen import canvas
 
+import pytest
+
 from firebench.metrics.table import (
     SCORECARD_COLORS,
+    _comparison_selection,
     _fit_font_size,
     _scorecard_comparison_cell_colors,
     _scorecard_comparison_rows,
     _scorecard_footer,
     _scorecard_group_name,
     _scorecard_kpi_name,
+    _scorecard_scheme_name,
     _scorecard_title,
+    comparison_rows_per_page,
     save_comparison_as_table,
     save_as_table,
 )
@@ -50,6 +55,92 @@ def test_scorecard_group_name_uses_display_name_mapping():
 
     assert _scorecard_group_name(data, "FP_H13") == "Fire Perimeters"
     assert _scorecard_group_name(data, "Air Temp WH1") == "Air Temp WH1"
+
+
+def test_scorecard_group_name_keeps_the_group_name_when_display_names_repeat():
+    data = {
+        "score_card": {
+            "group_display_names": {
+                "Air Temp W2": "Weather Stations",
+                "RH W2": "Weather Stations",
+                "FP_H13": "Fire Perimeters",
+            }
+        }
+    }
+
+    assert _scorecard_group_name(data, "Air Temp W2") == "Air Temp W2"
+    assert _scorecard_group_name(data, "RH W2") == "RH W2"
+    assert _scorecard_group_name(data, "FP_H13") == "Fire Perimeters"
+
+
+def _composed(*group_names: str, display_names: dict[str, str] | None = None) -> dict:
+    return {
+        "score_card": {
+            "aggregation_scheme_name": "C-9f3363914dbe",
+            "Scheme": {name: {"weight": 1, "benchmarks": {}} for name in group_names},
+            "group_display_names": display_names or {},
+        }
+    }
+
+
+def test_scorecard_scheme_name_keeps_a_named_scheme():
+    assert (
+        _scorecard_scheme_name({"score_card": {"aggregation_scheme_name": "H013_P", "Scheme": {}}})
+        == "H013_P"
+    )
+
+
+def test_scorecard_scheme_name_names_the_groups_of_a_composed_target():
+    w2 = _composed(
+        "Air Temp W2",
+        "RH W2",
+        "Wind Direction W2",
+        "Wind Speed W2",
+        display_names=dict.fromkeys(
+            ["Air Temp W2", "RH W2", "Wind Direction W2", "Wind Speed W2"], "Weather Stations"
+        ),
+    )
+    assert _scorecard_scheme_name(w2) == "Air Temp, RH, Wind Direction, Wind Speed W2"
+    assert _scorecard_scheme_name(_composed("Air Temp W2", "RH W3")) == "Air Temp W2, RH W3"
+    assert _scorecard_scheme_name(_composed("Building Damage")) == "Building Damage"
+    assert (
+        _scorecard_scheme_name(_composed("FP_H13", display_names={"FP_H13": "Fire Perimeters"}))
+        == "Fire Perimeters"
+    )
+    assert _scorecard_scheme_name(_composed(*(f"Air Temp W{i}" for i in range(1, 6)))) == "5 KPI groups"
+
+
+def test_composed_target_titles_name_their_groups(monkeypatch, tmp_path):
+    data = {
+        **_composed("Air Temp W2", "RH W2"),
+        "benchmark_short_name": "2021_Caldor",
+        "evaluated_model_name": "HRRR",
+        "firebench_version": "test",
+        "case_version": "test",
+        "benchmarks": {},
+    }
+    data["score_card"]["Score Total"] = 70.0
+    titles = []
+
+    def capture_title(_data, scheme_name, _verification_level, _score):
+        titles.append(scheme_name)
+        return ["", "", "", ""]
+
+    monkeypatch.setattr("firebench.metrics.table._scorecard_title", capture_title)
+    save_as_table(tmp_path / "card.pdf", data, signed=False, certificate_name="certificate_verif_lvl")
+    assert titles == ["Air Temp, RH W2"]
+
+    drawn = []
+    draw_string = canvas.Canvas.drawString
+
+    def record(self, x, y, text, *args, **kwargs):
+        drawn.append(text)
+        return draw_string(self, x, y, text, *args, **kwargs)
+
+    monkeypatch.setattr(canvas.Canvas, "drawString", record)
+    gfs = {**data, "evaluated_model_name": "GFS"}
+    save_comparison_as_table(tmp_path / "comparison.pdf", [data, gfs], event_name="2021 Caldor Fire")
+    assert "2021 Caldor Fire: FireBench comparison 2021_Caldor Air Temp, RH W2" in drawn
 
 
 def test_scorecard_kpi_name_defaults_to_short_label():
@@ -418,3 +509,134 @@ def test_save_comparison_as_table_creates_pdf(tmp_path):
 
     assert output_path.exists()
     assert output_path.read_bytes().startswith(b"%PDF")
+
+
+def _wx_result(model: str, groups: dict, kpi_scores: dict[str, float | None], group_scores=None) -> dict:
+    """A weather result. ``groups`` maps a group to ``(weight, {kpi: weight})``."""
+    score_card = {
+        "Scheme": {
+            group: {"weight": weight, "benchmarks": dict(kpis)} for group, (weight, kpis) in groups.items()
+        },
+        "Score Total": 70.0,
+        "aggregation_scheme_name": "ALL",
+    }
+    for group in groups:
+        score_card[f"Score {group}"] = (group_scores or {}).get(group, 50.0)
+    return {
+        "case_id": "WXF",
+        "benchmark_short_name": "WX_Forecast",
+        "evaluated_model_name": model,
+        "firebench_version": "test",
+        "case_version": "test",
+        "benchmarks": {
+            kpi: {f"{kpi} name": 1.0, "Score": score}
+            for kpi, score in kpi_scores.items()
+            if score is not None
+        },
+        "score_card": score_card,
+    }
+
+
+def _weather(kpis_per_group: int = 9) -> tuple[list[dict], dict]:
+    """Two models over a weather scheme: two counted groups whose KPIs alternate weight 1 and 0, an
+    analysis and an (info) group of weight 0. KPI ``Gg-Kk`` scores 10k for model A and 10k + k % 4
+    for model B: the mean rises with k, and the difference is k % 4."""
+    groups = {}
+    for group, weight in (
+        ("AT F01-48", 1),
+        ("AT F00 analysis", 0),
+        ("AT F01-06 (info)", 0),
+        ("WS F01-48", 1),
+    ):
+        groups[group] = (weight, {f"{group}-K{k:02d}": k % 2 for k in range(kpis_per_group)})
+    a = {kpi: 10.0 * int(kpi[-2:]) for _, kpis in groups.values() for kpi in kpis}
+    b = {kpi: score + int(kpi[-2:]) % 4 for kpi, score in a.items()}
+    return [_wx_result("A", groups, a), _wx_result("B", groups, b)], groups
+
+
+def test_a_comparison_page_holds_22_rows():
+    assert comparison_rows_per_page() == 22
+
+
+def test_counted_only_leaves_out_what_does_not_count_in_the_total():
+    results, _ = _weather(4)
+    groups, kpis, note = _comparison_selection(results, counted_only=True)
+    # Neither the analysis nor an (info) bin counts: both have weight 0.
+    assert groups == ["AT F01-48", "WS F01-48"] and kpis == {} and note == "only what counts in the total"
+    _, kpis, _ = _comparison_selection(results, counted_only=True, include_kpis=True)
+    assert kpis == {
+        "AT F01-48": ["AT F01-48-K01", "AT F01-48-K03"],
+        "WS F01-48": ["WS F01-48-K01", "WS F01-48-K03"],
+    }
+    assert _comparison_selection(results) == (list(_weather(4)[1]), None, "")
+
+
+def test_one_page_shows_every_counted_kpi_when_they_fit():
+    results, _ = _weather(8)
+    groups, kpis, note = _comparison_selection(results, one_page="extremes")
+    assert groups == ["AT F01-48", "WS F01-48"]
+    assert kpis["AT F01-48"] == ["AT F01-48-K01", "AT F01-48-K03", "AT F01-48-K05", "AT F01-48-K07"]
+    assert note == "1 page: the 2 groups counted in the total, their 8 counted KPIs"
+
+
+def test_one_page_extremes_keeps_the_best_and_the_worst_counted_kpis_under_their_group():
+    results, groups = _weather(40)
+    _, kpis, note = _comparison_selection(results, one_page="extremes")
+    half = (comparison_rows_per_page() - 1 - 2) // 2
+    mean = {
+        kpi: (results[0]["benchmarks"][kpi]["Score"] + results[1]["benchmarks"][kpi]["Score"]) / 2
+        for items in kpis.values()
+        for kpi in items
+    }
+    counted = sorted((10.0 * k + (k % 4) / 2) for _ in ("AT", "WS") for k in range(1, 40, 2))
+    assert sorted(mean.values()) == counted[:half] + counted[-half:]
+    # Each KPI stays under its group, in the scheme's order.
+    for group, items in kpis.items():
+        assert items == [kpi for kpi in groups[group][1] if kpi in items]
+    assert (
+        note
+        == f"1 page: the 2 groups counted in the total, the {half} best and {half} worst of their 40 counted KPIs"
+    )
+
+
+def test_one_page_spread_keeps_the_largest_differences():
+    results, _ = _weather(40)
+    groups, kpis, note = _comparison_selection(results, one_page="spread")
+    kept = [kpi for items in kpis.values() for kpi in items]
+    free = comparison_rows_per_page() - 1 - 2
+    assert len(kept) == free
+    # Differences are k % 4 for odd k: 3 first (k = 3, 7, 11, ...), then 1.
+    assert all(int(kpi[-2:]) % 4 == 3 for kpi in kept[: len(kept) // 2])
+    assert note.endswith(f"the {free} with the largest differences of their 40 counted KPIs")
+
+
+def test_one_page_refuses_kpis_and_unknown_rules(tmp_path):
+    results, _ = _weather(2)
+    with pytest.raises(ValueError, match="chooses its own KPIs"):
+        save_comparison_as_table(tmp_path / "c.pdf", results, include_kpis=True, one_page="spread")
+    with pytest.raises(ValueError, match="Unknown one-page rule"):
+        save_comparison_as_table(tmp_path / "c.pdf", results, one_page="best")
+
+
+def _pages(path) -> int:
+    return len(re.findall(rb"/Type\s*/Page\b", path.read_bytes()))
+
+
+def test_a_one_page_comparison_of_many_kpis_is_one_page_and_names_the_event(tmp_path, monkeypatch):
+    results, _ = _weather(40)
+    output_path = tmp_path / "comparison.pdf"
+    drawn = []
+    draw_string = canvas.Canvas.drawString
+
+    def record(self, x, y, text, *args, **kwargs):
+        drawn.append(text)
+        return draw_string(self, x, y, text, *args, **kwargs)
+
+    monkeypatch.setattr(canvas.Canvas, "drawString", record)
+    save_comparison_as_table(output_path, results, one_page="extremes", event_name="Hawk Fire")
+    assert output_path.read_bytes().startswith(b"%PDF") and _pages(output_path) == 1
+    assert any(
+        text.startswith("Hawk Fire: FireBench comparison WX_Forecast ALL (1 page:") for text in drawn
+    )
+    save_comparison_as_table(output_path, results, include_kpis=True)
+    assert _pages(output_path) > 1

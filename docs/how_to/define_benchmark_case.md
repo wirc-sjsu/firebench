@@ -125,14 +125,12 @@ Two KPIs compare each instantaneous observation with the continuous range. The s
 inside the band, between 0 and 1, says how often the model is right. The log error says how far it is
 when it is not: for each observation, `log10(observed / upper)` above the band or
 `log10(lower / observed)` below it, in decades, counted up to `log_error_cap` (1: ten times off), and
-its mean scores 100 at 0 and 0 at the cap. Before either, the observation and both bounds are raised
-to the detection limit of the instrument (`detection_limits`: ABI 50 MW, MODIS 10 MW, VIIRS 5 MW), so
-an observation of 0 is inside a band whose lower bound is under the limit.
+its mean scores 100 at 0 and 0 at the cap. Before either, both bounds are raised to the detection
+limit of the instrument (`detection_limits`: ABI 50 MW, MODIS 10 MW, VIIRS 5 MW).
 
-Every observation that reports fire is scored, whatever share of its frame it saw. An observation of 0
-is scored only when it saw at least `min_observed_fraction` of its frame, since a sensor that did not
-see the fire reports none; one where the model's upper bound is under the detection limit too is left
-out, as it would agree whatever the model.
+Every observation that reports fire at or above the detection limit is scored, whatever share of its
+frame it saw. An observation of 0, or under the limit, is left out: the KPIs ask how right the model's
+FRP is where a satellite detected fire, not whether the model burns where none was detected.
 
 Each observing system of `[fire_radiative_power.systems]` in `fire_case.toml` (geostationary: ABI;
 polar orbiters: VIIRS and MODIS) has its own pair of KPIs, so GOES, which looks every few minutes, does

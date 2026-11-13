@@ -21,3 +21,6 @@ radar volumes.
 
 .. automodule:: firebench.acquisition.copernicus_dem
    :members:
+
+.. automodule:: firebench.acquisition.mbf_tiles
+   :members:

@@ -214,10 +214,14 @@ def standardize_dins_building_damage(
             f"incident {incident_name!r} of {dins_csv} has no row with a position and a damage"
             + (f" inside the box ({n_outside} rows are outside)" if clip_to_box else "")
         )
-    buildings = _read_footprints(footprints)
-    buildings = buildings[buildings.intersects(frame)]
+    footprints_all = _read_footprints(footprints)
+    buildings = footprints_all[footprints_all.intersects(frame)]
     if buildings.empty:
-        raise ValueError(f"no footprint of {footprints} intersects the box")
+        raise ValueError(
+            f"no footprint of {footprints} intersects the box: the footprints cover "
+            f"{_extent(footprints_all)}, the box is {tuple(round(v, 4) for v in frame.bounds)} "
+            "(west, south, east, north)"
+        )
     if projected_crs is None:
         projected_crs = gpd.GeoSeries([frame], crs="EPSG:4326").estimate_utm_crs()
     data = _fuse(buildings, dins, _metric_crs(projected_crs), max_match_distance_m)
@@ -335,6 +339,12 @@ def _read_footprints(footprints: Path) -> gpd.GeoSeries:
     return gpd.GeoSeries(geometries, crs="EPSG:4326")
 
 
+def _extent(geometries: gpd.GeoSeries) -> str:
+    if geometries.empty:
+        return "nothing (the file is empty)"
+    return str(tuple(round(float(v), 4) for v in geometries.total_bounds)) + " (west, south, east, north)"
+
+
 def _metric_crs(projected_crs) -> CRS:
     crs = CRS.from_user_input(projected_crs)
     if not crs.is_projected or crs.axis_info[0].unit_name != "metre":
@@ -395,6 +405,41 @@ def _assign_damage(
             data["damage"][building_idx] = labels[dins_idx]
             damage_rank[building_idx] = rank
     return data, dins_only
+
+
+def read_dins_records(dins_csv: Path) -> pd.DataFrame:
+    """
+    Read the inspected structures of a CAL FIRE DINS table, one row per record.
+
+    Parameters
+    ----------
+    dins_csv : Path
+        The CAL FIRE DINS table, with the columns `list_dins_incidents` reads.
+
+    Returns
+    -------
+    DataFrame
+        Columns `incident_name`, `incident_number` (as in the table, without surrounding spaces),
+        `start_date` (ISO 8601 date, or None), `lat`, `lon` (NaN when unreadable), and `damage` (the
+        DINS label, or None). Rows without an incident name are left out.
+
+    Raises
+    ------
+    ValueError
+        If the table cannot be read or a column is missing.
+    """
+    dins = _read_dins(dins_csv)
+    dins = dins[dins["name"] != ""]
+    return pd.DataFrame(
+        {
+            "incident_name": dins["name"].to_numpy(),
+            "incident_number": dins["number"].to_numpy(),
+            "start_date": [_iso_date(value) for value in dins["start_date"]],
+            "lat": dins["latitude"].to_numpy(dtype=float),
+            "lon": dins["longitude"].to_numpy(dtype=float),
+            "damage": [None if pd.isna(value) else value for value in dins["damage"]],
+        }
+    )
 
 
 def _as_bytes(values) -> np.ndarray:

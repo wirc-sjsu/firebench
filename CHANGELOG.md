@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add `firebench.acquisition.mbf_tiles.fetch_mbf_footprints`, which writes the Microsoft Global ML
+  Building Footprints that touch a box as line-delimited GeoJSON, the input of
+  `standardize_dins_building_damage`. It reads Microsoft's tile index, downloads the zoom 9 tiles
+  the box touches, keeps them in the FireBench cache, and leaves out the footprints outside the box.
+- Add `firebench.standardize.join_std_files`, which joins fragments of observations (one file per hour
+  of weather stations or of satellite passes, one per perimeter) along time into one standard file:
+  station series and fire-detection streams are appended in time order with their indices shifted,
+  perimeters go side by side, and the same fragments in any order give the same content. The quality
+  control is not run again.
+- Add the scoring of a forecast window (`firebench.benchmarks.fire_window_scoring`). Once observations
+  exist, `prepare_window_model` writes from a model output and the observation file the file the KPIs
+  read (report schema `fb-window-prepared-v1`): the model's station series interpolated linearly to
+  the times each station was observed in the window so far (the wind direction along the shortest
+  arc), made only where the model's samples bracket every observed time with no step over
+  `max_step_minutes`, and the burnt area of its arrival-time field, cut by `burnt_area_polygons`
+  (the contour at 0.5 of the cells that arrived by then, as the WRF-SFIRE adapter does), at the time
+  of each observed perimeter after the reception of the forecast (`after`). What cannot be made is
+  left out with its reason, never filled with NaN. `score_window` runs the KPIs of a generic case on
+  that file, with `P01` from the opening to the last observation and `P02` from `after`, and writes an
+  ordinary score card (JSON and PDF, signable) with a `window` block: the target perimeters, the
+  starting state (the last perimeter at or before `after`, used by no KPI), the stations given of
+  those asked, and the observations used. A family with nothing to score is null with its reason.
+  `FireCase.run_benchmark` takes `stations_given` (the stations a model gives, by variable; the
+  others are excluded as "not in the model output") and `extra` (merged into the result before it is
+  signed; it can also be a function of the result so far); without them nothing changes. In the
+  `window` block each family has `groups` and `scores` by period: the card's groups of that family
+  and their mean weighted as the total is (`wx_common.weighted_group_mean`), empty for a null
+  family. A new table `[window_preparation]` of `fire_case.toml` holds `interpolation`,
+  `max_step_minutes` (60), and `min_perimeters` (1), added without raising the version: no case
+  score changes. See "Score a Forecast Window" in the how-to guides.
+- Add forecast windows (`firebench.benchmarks.fire_window`, schema `fb-window-v1`): what a model
+  output must hold before the observations exist. A window definition has one period, the frame it
+  is scored on, the frame of the fire at the opening, and two families: `fire_arrival_time` (the
+  field on the model's own grid) and `weather_stations` (station series at a fixed cadence on round
+  times). `propose_window` proposes one with the stations of the observation files known so far
+  (names, positions, variables, and sensor heights only), `check_window` lists the problems of a
+  document, `check_model_for_window` reports which families a model output can enter from the
+  definition alone (schema `fb-window-check-v1`), and `write_window_template` writes the layout a
+  model output is written on. Nothing is scored yet. See "Define a Forecast Window" in the how-to
+  guides.
+- Add `firebench wx stitch` and `firebench.workflows.wx_stitch` to score a forecast model over a
+  period longer than a cycle, such as Caldor's `P01`-`P04`. A stitch rule names the UTC hours of the
+  cycles and the leads each gives (`--cycle-hours 0,6,12,18 --leads 1-6`: the freshest forecast at
+  each hour; `--cycle-hours 0 --leads 25-48`: the forecast of the day before). `stitch_plan` takes
+  every valid hour from the cycle with the shortest lead in the range, and refuses a rule that
+  leaves an hour without a cycle, a cycle the archive does not hold, or a lead beyond its horizon.
+  `fetch_segment` downloads forecast hour 0 and the leads only, and samples them with the model's
+  adapter. `stitch_station_files` joins the cycles and interpolates them linearly to the
+  observation times of the period (the wind direction through its sine and cosine), so that a case
+  target that pairs samples one by one scores the file; an observed variable the model does not
+  forecast is NaN with the attribute `not_forecast`. The rule, the cycles, the model version of each
+  cycle and the interpolation are root attributes of the file. See "Score a Forecast Model over a
+  Long Period" in the how-to guides.
+- Add `counted_only`, `one_page` and `event_name` to `save_comparison_as_table`. `counted_only`
+  shows only the groups, and with `include_kpis` the KPIs, that count in the total (weight above 0:
+  no analysis, no `(info)` lead bin, no family shown for information). `one_page` fits one page
+  (`comparison_rows_per_page`): the total, the counted groups, and their counted KPIs; when more
+  KPIs count than fit, the best and the worst by mean score across the models (`"extremes"`) or the
+  largest differences between them (`"spread"`), each under its group. The header says what is
+  shown, after `event_name` (the fire the runs were scored on).
+- Add the event catalogue (`firebench.standardize`): `read_mtbs_boundaries`, `read_fpa_fod`
+  (SQLite, 6th edition, or Julian dates of earlier ones) and `read_wfigs_perimeters` read the
+  sources of a catalogue into GeoDataFrames in EPSG:4326, each time with its precision (`day`,
+  `hour`, `minute`, `second`; a date-only time stays a date, and FPA FOD's local times are converted
+  with the state's zone, `STATE_TIME_ZONES`), filtered by state, years, smallest area, and box; they
+  only read, and joining them is the caller's. `write_event_catalogue`, `read_event_catalogue` and
+  `validate_event_catalogue` write many events in one standard file under `/events` (a sorted table
+  of fixed-length fields, final perimeters as WKB, optional DINS structures and their counts per
+  damage class, licence attributes per group, `event_ids_sha256`), and refuse duplicate or unsorted
+  IDs, bad perimeters, times without a precision, and missing licences, with a warning for an
+  ignition point far outside its perimeter. Event IDs are the caller's opaque strings. See
+  "Event catalogue" in `docs/standard_format.md`.
+- `read_mtbs_boundaries` takes the ignition point from the MTBS event ID (`mtbs_ignition_point`,
+  to 0.001 degree), not from `BurnBndLat`/`BurnBndLon`, which are the perimeter's centroid (kept as
+  `centroid_lat`/`centroid_lon`); `read_wfigs_perimeters` reads the RFC 1123 dates of an ArcGIS
+  GeoJSON export. Checked on MTBS of 2026-11 and FPA FOD 7th edition.
+- Add `read_dins_records` (`firebench.standardize`): the records of a CAL FIRE DINS table, one row
+  per inspected structure, with its incident, start date, position, and damage label.
 - Add the spread of the model's plume top over a radar's frame to `radar_plume_values`, for figures:
   each item of `tops` gives `modelled_band`, the 75th and 95th percentiles of the heights of the
   model's plume cells per volume (`TOP_BAND`, NaN when none counts), and the values give `top_band`.
@@ -366,6 +444,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   read-only audit findings.
 
 ### Changed
+- `check_model_for_window` accepts a station series of a forecast window when its finite values cover
+  the period (first at or before the start, last at or after the end) with no step over
+  `max_step_minutes` (60), instead of a value at every round time of the cadence; a finer series
+  enters, and a gap or an early stop is named in the reason. A window's `cadence_minutes` longer than
+  `max_step_minutes` is a problem of `check_window`. The report keeps its shape.
+- The `fire_radiative_power` family leaves out every observation with an FRP total of 0 ("no fire
+  detected") or under its instrument's detection limit ("under the detection limit of ABI (50 MW)"),
+  and `observation_ok` is False for them: the KPIs ask how right the model's FRP is where a satellite
+  detected fire, no longer whether the model burns where none was detected. `min_observed_fraction`
+  and the rule "no detectable fire on either side" go, with nothing left to decide. This raises the
+  FRP scores of a model that burns where satellites saw none; `version` stays 2026.1, as for the
+  earlier FRP changes, since FireBench refuses a published definition naming an older version.
 - The model's plume of the `radar_plume` family is now where its tracer, a mass concentration, reaches
   `tracer_threshold` of `[radar_plume]` (1 ug/m^3, units in `tracer_threshold_units`), on the sections
   and over the frames alike, instead of a share (0.01) of the tracer's largest value on the section or
@@ -440,6 +530,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
+- Name a composed target by its KPI groups in the title of the score card and the comparison
+  score card (`Air Temp, RH, Wind Direction, Wind Speed W2`, the shared period once; their count
+  beyond four) instead of its digest (`C-9f3363914dbe`). The result file keeps the digest.
+- Show a group's own name in the score card and the comparison score card when another group of
+  the card shares its display name: every weather group of a Caldor period (FB001) read
+  "Group: Weather Stations".
+- Correct nearest-grid-point lookup on regular latitude/longitude grids by scaling longitude
+  distances with latitude and comparing squared distances with a squared early-exit threshold.
+- Compute wind-direction circular bias from paired angular differences rather than the
+  difference of circular means, and report exact antipodal bias as +180 degrees to match
+  the documented range.
 - Give `RELATIVE_HUMIDITY` its unit, `%`, in the namespace page, which read `[m s-1]`.
 - A VIIRS or MODIS detection timed up to one granule before the overpass CMR lists for the box now
   belongs to that overpass (`standardize_firms_bundle`); it got an observation of its own, with an

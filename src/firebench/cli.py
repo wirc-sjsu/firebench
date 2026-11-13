@@ -1999,6 +1999,145 @@ def wx_score(setup_path: Path, model_output: Path, cycle: str, name: str) -> Non
     )
 
 
+def _parse_hours_option(value: str) -> tuple[int, ...]:
+    try:
+        return tuple(int(item) for item in value.split(",") if item.strip())
+    except ValueError:
+        raise click.UsageError("--cycle-hours must be comma-separated UTC hours, e.g. 0,6,12,18") from None
+
+
+def _parse_leads_option(value: str) -> tuple[int, int]:
+    match = re.fullmatch(r"\s*(\d+)\s*-\s*(\d+)\s*", value)
+    if match is None:
+        raise click.UsageError("--leads must be FIRST-LAST in hours, e.g. 1-6")
+    return int(match.group(1)), int(match.group(2))
+
+
+@wx.command("stitch")
+@click.argument("model_name")
+@click.argument("output", type=click.Path(dir_okay=False, path_type=Path))
+@click.option(
+    "--obs-data",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Observation file whose stations and times the series is written at.",
+)
+@click.option("--case", default=None, help="Case preset, e.g. 2021_Caldor (with --period).")
+@click.option("--period", default=None, help="Preset period, e.g. P01 (Caldor's W1) or H012.")
+@click.option("--start", default=None, help="Period start, ISO 8601 with time zone (without --case).")
+@click.option("--end", default=None, help="Period end, ISO 8601 with time zone (without --case).")
+@click.option(
+    "--cycle-hours", default="0,6,12,18", show_default=True, help="UTC hours of the cycles of the rule."
+)
+@click.option(
+    "--leads", default="1-6", show_default=True, help="Leads each cycle gives, FIRST-LAST (hours)."
+)
+@click.option(
+    "--workdir",
+    default=None,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory of the station file of each cycle (default: OUTPUT's name + _segments).",
+)
+@click.option(
+    "--cache-dir",
+    default=None,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Download cache (default: FireBench's cache).",
+)
+@click.option("--keep-grib", is_flag=True, help="Keep the downloaded GRIB files in the cache.")
+@click.option("--plan-only", is_flag=True, help="Print the cycles, leads and download, and stop.")
+@click.option("-n", "--name", default=None, help="Model name written in the file.")
+@click.option("-v", "--verbose", default=3, show_default=True, type=int, help="Verbosity 0 to 4+.")
+def wx_stitch(  # pylint: disable=too-many-arguments,too-many-locals
+    model_name: str,
+    output: Path,
+    obs_data: Path,
+    case: str | None,
+    period: str | None,
+    start: str | None,
+    end: str | None,
+    cycle_hours: str,
+    leads: str,
+    workdir: Path | None,
+    cache_dir: Path | None,
+    keep_grib: bool,
+    plan_only: bool,
+    name: str | None,
+    verbose: int,
+) -> None:
+    """
+    Stitch MODEL_NAME's forecasts over a long period into one station file, OUTPUT.
+
+    Each valid hour comes from the cycle of --cycle-hours with the shortest lead within --leads,
+    and the hourly series is interpolated to the observation times of the period, so that a case
+    target such as 2021_Caldor P01_T can score it:
+
+        firebench wx stitch HRRR hrrr_W1.h5 --obs-data Caldor.h5 --case 2021_Caldor --period P01
+
+        firebench run 2021_Caldor P01_T hrrr_W1.h5 --obs-data Caldor.h5
+    """
+    setup_module = _wx_setup_module()
+    stitch_module = import_module(".workflows.wx_stitch", __package__)
+    if case or period:
+        if start or end:
+            raise click.UsageError("give --case and --period, or --start and --end, not both")
+        problems: list[str] = []
+        preset = setup_module._parse_case(  # pylint: disable=protected-access
+            {"id": case or "2021_Caldor", "period": period or ""}, problems
+        )
+        if preset is None:
+            raise click.UsageError("; ".join(problems))
+        period_start, period_end = preset["start"], preset["end"]
+    else:
+        if not (start and end):
+            raise click.UsageError("give --case and --period, or --start and --end")
+        try:
+            period_start = setup_module.parse_utc(start, "--start")
+            period_end = setup_module.parse_utc(end, "--end")
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
+    configure_logging(verbose)
+    try:
+        plan = stitch_module.stitch_plan(
+            model_name,
+            period_start,
+            period_end,
+            _parse_hours_option(cycle_hours),
+            _parse_leads_option(leads),
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(
+        f"{plan.model} over {plan.start:%Y-%m-%d %H:%M}Z to {plan.end:%Y-%m-%d %H:%M}Z: "
+        f"{len(plan.segments)} cycles, about {plan.download_mb:.0f} MB to download"
+    )
+    for segment in plan.segments:
+        click.echo(f"  {segment.cycle:%Y-%m-%d %HZ}  leads {segment.first_lead}-{segment.last_lead} h")
+    if plan_only:
+        return
+    workdir = workdir or output.with_name(f"{output.stem}_segments")
+    files = {}
+    for segment in plan.segments:
+        path = workdir / f"{plan.model.lower()}_{segment.label}.h5"
+        try:
+            stitch_module.fetch_segment(
+                plan.model, segment, obs_data, path, cache_root=cache_dir, keep_grib=keep_grib
+            )
+        except (ValueError, OSError) as exc:
+            raise click.ClickException(str(exc)) from exc
+        files[segment.label] = path
+        click.echo(f"  {segment.label} sampled")
+    try:
+        summary = stitch_module.stitch_station_files(plan, files, obs_data, output, name=name)
+    except (ValueError, OSError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    missing = ", ".join(f"{var} ({count} stations)" for var, count in summary["not_forecast"].items())
+    click.echo(
+        f"Wrote {output}: {summary['stations']} stations, {summary['samples']} samples"
+        + (f"; NaN, not forecast: {missing}" if missing else "")
+    )
+
+
 CACHE_SOURCES = ("hrrr", "gfs", "nam", "rrfs", "synoptic")
 
 

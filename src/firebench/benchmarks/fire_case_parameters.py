@@ -26,6 +26,7 @@ PARAMETER_FILE = "resources/benchmarks/fire_case.toml"
 # The units of a model's passive tracer for the radar plume family, and of its threshold once read.
 CONCENTRATION_UNITS = "ug/m^3"
 METRIC_SETS = ("standard", "wind_direction")
+INTERPOLATIONS = ("linear",)
 
 
 class FireCaseParameterError(ValueError):
@@ -83,6 +84,15 @@ class RadarPlumeParameters:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass(frozen=True)
+class WindowPreparationParameters:
+    """The values of ``[window_preparation]``."""
+
+    interpolation: str
+    max_step_minutes: float | int
+    min_perimeters: int
+
+
+@dataclass(frozen=True)
 class CanopyCoverParameters:
     """The values of ``[canopy_cover_loss]``."""
 
@@ -108,7 +118,6 @@ class FireRadiativePowerParameters:  # pylint: disable=too-many-instance-attribu
     """The values of ``[fire_radiative_power]``."""
 
     min_confidence: str
-    min_observed_fraction: float
     max_time_offset: float
     min_observations: int
     kpi_weights: MappingProxyType
@@ -145,6 +154,7 @@ class FireCaseParameters:  # pylint: disable=too-many-instance-attributes
     variables: tuple[WeatherVariable, ...]
     radar_plume: RadarPlumeParameters
     fire_radiative_power: FireRadiativePowerParameters
+    window_preparation: WindowPreparationParameters
     sha256: str
 
     def reference(self) -> dict:
@@ -299,6 +309,7 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
             "forecast_windows",
             "radar_plume",
             "weather_stations",
+            "window_preparation",
         },
     )
     groups = _keys(document["group_weights"], "[group_weights]", set(FAMILIES))
@@ -318,7 +329,6 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         "[fire_radiative_power]",
         {
             "min_confidence",
-            "min_observed_fraction",
             "max_time_offset",
             "min_observations",
             "systems",
@@ -337,6 +347,11 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
     )
     weather = _keys(
         document["weather_stations"], "[weather_stations]", {"tso_weight", "all_weight", "variables"}
+    )
+    preparation = _keys(
+        document["window_preparation"],
+        "[window_preparation]",
+        {"interpolation", "max_step_minutes", "min_perimeters"},
     )
     radar = _keys(
         document["radar_plume"],
@@ -395,7 +410,21 @@ def parse_parameters(document: dict, sha256: str = "") -> FireCaseParameters:
         variables=_variables(weather["variables"]),
         radar_plume=_radar_plume(radar),
         fire_radiative_power=_fire_radiative_power(frp),
+        window_preparation=_window_preparation(preparation),
         sha256=sha256,
+    )
+
+
+def _window_preparation(table: dict) -> WindowPreparationParameters:
+    label = "window_preparation"
+    if table["interpolation"] not in INTERPOLATIONS:
+        raise FireCaseParameterError(
+            f"{PARAMETER_FILE}: {label}.interpolation must be one of {INTERPOLATIONS}"
+        )
+    return WindowPreparationParameters(
+        interpolation=table["interpolation"],
+        max_step_minutes=_number(table, "max_step_minutes", label, minimum=1e-9),
+        min_perimeters=_whole(table, "min_perimeters", label, minimum=1),
     )
 
 
@@ -484,7 +513,6 @@ def _fire_radiative_power(table: dict) -> FireRadiativePowerParameters:
         )
     return FireRadiativePowerParameters(
         min_confidence=table["min_confidence"],
-        min_observed_fraction=_number(table, "min_observed_fraction", label, maximum=1),
         max_time_offset=_number(table, "max_time_offset", label),
         min_observations=_whole(table, "min_observations", label, minimum=1),
         kpi_weights=MappingProxyType({key: _number(table, key, label) for key in FRP_KPI_WEIGHT_KEYS}),
