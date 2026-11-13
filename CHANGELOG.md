@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add `max_distance_from_dins_m` to `standardize_dins_building_damage`: keep only the footprints whose
+  centroid is within that distance of a DINS record of the incident, instead of every footprint of the
+  box. Far lines of the footprint file are skipped before their geometry is built, and the group gets
+  the attributes `mbf_max_distance_from_dins_m` and `mbf_footprints_in_box`. Without it, nothing changes.
+  The Accuracy, Specificity and NPV of the Binary Structure Loss count true negatives, so scores with
+  and without the distance are not comparable.
 - Add `firebench.acquisition.mbf_tiles.fetch_mbf_footprints`, which writes the Microsoft Global ML
   Building Footprints that touch a box as line-delimited GeoJSON, the input of
   `standardize_dins_building_damage`. It reads Microsoft's tile index, downloads the zoom 9 tiles

@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 
 import geopandas as gpd
@@ -133,6 +134,7 @@ def standardize_dins_building_damage(
     overwrite: bool = False,
     compression_lvl: int = 6,
     incident_numbers: list[str] | None = None,
+    max_distance_from_dins_m: float | None = None,
 ) -> h5py.Group:
     """
     Match the building damage of a CAL FIRE DINS incident to building footprints and write the
@@ -180,6 +182,16 @@ def standardize_dins_building_damage(
         Incident numbers to keep. Required when the rows of `incident_name` carry more than one
         incident number, because they may then belong to different incidents. Several numbers may
         be given when one incident carries several.
+    max_distance_from_dins_m : float | None
+        If given, keep only the footprints whose centroid is within this distance of a DINS row
+        (of the rows kept, see `clip_to_box`). Must be greater than 0 and not smaller than
+        `max_match_distance_m`, so that a row never loses the footprint it matches. Footprint lines
+        far from every row are skipped before their geometry is built. The group then holds the
+        attributes `mbf_max_distance_from_dins_m` (this value) and `mbf_footprints_in_box`, the
+        number of footprints whose bounding box intersects the box, before the distance cut (a
+        footprint that intersects the box is counted, one that only has a bounding box in it may
+        be counted too). Default: None, which keeps every footprint that intersects the box and
+        writes neither attribute.
 
     Returns
     -------
@@ -190,11 +202,20 @@ def standardize_dins_building_damage(
     ------
     ValueError
         If a file cannot be read, `incident_name` covers several incident numbers and none is given,
-        an incident number is unknown, no DINS row or no footprint is left, or the group exists and
-        `overwrite` is False.
+        an incident number is unknown, no DINS row or no footprint is left (with
+        `max_distance_from_dins_m`, no footprint within that distance of a DINS row), the group exists
+        and `overwrite` is False, or `max_distance_from_dins_m` is not greater than 0 or is smaller
+        than `max_match_distance_m`.
     """  # pylint: disable=line-too-long
     logger.debug("Standardize DINS building damage of %s from file %s", incident_name, dins_csv)
     check_std_version(h5file)
+    if max_distance_from_dins_m is not None and (
+        not max_distance_from_dins_m > 0 or max_distance_from_dins_m < max_match_distance_m
+    ):
+        raise ValueError(
+            f"max_distance_from_dins_m ({max_distance_from_dins_m}) must be greater than 0 and not smaller "
+            f"than max_match_distance_m ({max_match_distance_m})"
+        )
     group_path = f"/{POINTS}/{group_name}"
     if group_path in h5file and not overwrite:
         raise ValueError(
@@ -214,8 +235,11 @@ def standardize_dins_building_damage(
             f"incident {incident_name!r} of {dins_csv} has no row with a position and a damage"
             + (f" inside the box ({n_outside} rows are outside)" if clip_to_box else "")
         )
-    footprints_all = _read_footprints(footprints)
+    near_box = None if max_distance_from_dins_m is None else _near_box(dins, max_distance_from_dins_m)
+    footprints_all, n_in_box = _read_footprints(footprints, frame.bounds, near_box)
     buildings = footprints_all[footprints_all.intersects(frame)]
+    if buildings.empty and n_in_box:
+        raise ValueError(f"no footprint has its centroid within {max_distance_from_dins_m} m of a DINS row")
     if buildings.empty:
         raise ValueError(
             f"no footprint of {footprints} intersects the box: the footprints cover "
@@ -224,7 +248,9 @@ def standardize_dins_building_damage(
         )
     if projected_crs is None:
         projected_crs = gpd.GeoSeries([frame], crs="EPSG:4326").estimate_utm_crs()
-    data = _fuse(buildings, dins, _metric_crs(projected_crs), max_match_distance_m)
+    data = _fuse(
+        buildings, dins, _metric_crs(projected_crs), max_match_distance_m, max_distance_from_dins_m
+    )
 
     if group_path in h5file:
         del h5file[group_path]
@@ -240,6 +266,9 @@ def standardize_dins_building_damage(
     group.attrs["dins_incident_name"] = dins["name"].iloc[0]
     group.attrs["dins_incident_numbers"] = json.dumps(dins["number"].drop_duplicates().tolist())
     group.attrs["dins_incident_start_date"] = _iso_date(dins["start_date"].min()) or ""
+    if max_distance_from_dins_m is not None:
+        group.attrs["mbf_max_distance_from_dins_m"] = float(max_distance_from_dins_m)
+        group.attrs["mbf_footprints_in_box"] = n_in_box
     for name, units in _DATASET_UNITS.items():
         dataset = group.create_dataset(name, data=data[name], **hdf5plugin.Zstd(clevel=compression_lvl))
         dataset.attrs["units"] = units
@@ -322,21 +351,62 @@ def _usable_rows(dins: pd.DataFrame, frame) -> tuple[pd.DataFrame, int]:
     return dins[inside], int((~inside).sum())
 
 
-def _read_footprints(footprints: Path) -> gpd.GeoSeries:
-    """Read the geometries of a line-delimited GeoJSON file, in file order."""
+def _near_box(dins: pd.DataFrame, distance_m: float) -> tuple[float, float, float, float]:
+    """The box of the DINS rows widened by `distance_m` in degrees, (west, south, east, north)."""
+    dlat = distance_m / 110_000.0 * 1.1
+    lat_min, lat_max = dins["latitude"].min() - dlat, dins["latitude"].max() + dlat
+    dlon = dlat / max(math.cos(math.radians(min(max(abs(lat_min), abs(lat_max)), 89.0))), 0.01)
+    return dins["longitude"].min() - dlon, lat_min, dins["longitude"].max() + dlon, lat_max
+
+
+def _raw_bounds(coordinates) -> tuple[float, float, float, float]:
+    """West, south, east, north of the nested coordinates of a GeoJSON geometry."""
+    stack = [coordinates]
+    xs, ys = [], []
+    while stack:
+        item = stack.pop()
+        if isinstance(item[0], (list, tuple)):
+            stack.extend(item)
+        else:
+            xs.append(item[0])
+            ys.append(item[1])
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _bounds_meet(a, b) -> bool:
+    return a[0] <= b[2] and b[0] <= a[2] and a[1] <= b[3] and b[1] <= a[3]
+
+
+def _read_footprints(footprints: Path, frame_bounds=None, near_box=None) -> tuple[gpd.GeoSeries, int]:
+    """
+    Read the geometries of a line-delimited GeoJSON file, in file order.
+
+    If `near_box` is given (west, south, east, north), a line whose coordinates have bounds that miss
+    it or `frame_bounds` is skipped before its geometry is built. Returns the geometries and the number
+    of lines whose bounds meet `frame_bounds` (0 when `near_box` is None).
+    """
     geometries = []
+    n_in_frame = 0
     try:
         with open(footprints, encoding="utf-8") as lines:
             for number, line in enumerate(lines, start=1):
                 if not line.strip():
                     continue
                 try:
-                    geometries.append(shape(json.loads(line)["geometry"]))
-                except (ValueError, KeyError, TypeError, AttributeError, ShapelyError) as exc:
+                    feature = json.loads(line)
+                    if near_box is not None:
+                        bounds = _raw_bounds(feature["geometry"]["coordinates"])
+                        if not _bounds_meet(bounds, frame_bounds):
+                            continue
+                        n_in_frame += 1
+                        if not _bounds_meet(bounds, near_box):
+                            continue
+                    geometries.append(shape(feature["geometry"]))
+                except (ValueError, KeyError, TypeError, AttributeError, IndexError, ShapelyError) as exc:
                     raise ValueError(f"line {number} is not a GeoJSON feature: {exc}") from exc
     except (OSError, ValueError) as exc:
         raise ValueError(f"footprints file {footprints} could not be read: {exc}") from exc
-    return gpd.GeoSeries(geometries, crs="EPSG:4326")
+    return gpd.GeoSeries(geometries, crs="EPSG:4326"), n_in_frame
 
 
 def _extent(geometries: gpd.GeoSeries) -> str:
@@ -352,12 +422,29 @@ def _metric_crs(projected_crs) -> CRS:
     return crs
 
 
-def _fuse(buildings: gpd.GeoSeries, dins: pd.DataFrame, crs: CRS, max_match_distance_m: float) -> dict:
+def _fuse(
+    buildings: gpd.GeoSeries,
+    dins: pd.DataFrame,
+    crs: CRS,
+    max_match_distance_m: float,
+    max_distance_from_dins_m: float | None = None,
+) -> dict:
     """Match each DINS row to the nearest footprint centroid and return the datasets to write."""
     centroids = buildings.to_crs(crs).centroid
     dins_points = gpd.GeoSeries(
         gpd.points_from_xy(dins["longitude"], dins["latitude"]), crs="EPSG:4326"
     ).to_crs(crs)
+    if max_distance_from_dins_m is not None:
+        near, _ = cKDTree(np.column_stack((dins_points.x, dins_points.y))).query(
+            np.column_stack((centroids.x, centroids.y)), k=1, distance_upper_bound=max_distance_from_dins_m
+        )
+        kept = np.isfinite(near)
+        if not kept.any():
+            raise ValueError(
+                f"no footprint has its centroid within {max_distance_from_dins_m} m of a DINS row"
+            )
+        centroids = centroids[kept]
+        buildings = buildings[kept]
     distances, indices = cKDTree(np.column_stack((centroids.x, centroids.y))).query(
         np.column_stack((dins_points.x, dins_points.y)), k=1
     )

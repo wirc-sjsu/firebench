@@ -378,3 +378,84 @@ def test_read_dins_records_gives_one_row_per_record(inputs):
     twin = records[records["incident_number"] == "N-2"]
     assert list(twin["start_date"]) == ["2020-09-04", "2020-09-05"]
     assert twin["lat"].notna().all() and twin["lon"].notna().all()
+
+
+def test_distance_from_dins_keeps_the_footprints_near_a_row_in_file_order(inputs):
+    group = _standardize(inputs, max_distance_from_dins_m=60.0)
+
+    # footprint 4 is 1 km from the nearest Test Fire row and is dropped; 0 to 3 stay in order
+    assert _text(group["building_source"]) == ["MBF"] * 4 + ["DINS"]
+    for footprint in range(4):
+        assert group["position_lon"][footprint] == pytest.approx(_lonlat(footprint)[0], abs=1e-9)
+    assert list(group["dins_match_count"][:4]) == [2, 2, 2, 0]
+    assert _text(group["building_damage"])[:4] == [
+        "Affected (1-9%)",
+        "Destroyed (>50%)",
+        "Major (26-50%)",
+        "No Damage",
+    ]
+
+
+def test_distance_from_dins_cuts_at_the_distance(inputs):
+    # footprint 3 is 51 m from its row, its nearest: 50 m drops it, 51.5 m keeps it
+    assert _text(_standardize(inputs, max_distance_from_dins_m=50.0)["building_source"]).count("MBF") == 3
+    assert (
+        _text(_standardize(inputs, max_distance_from_dins_m=51.5, overwrite=True)["building_source"]).count(
+            "MBF"
+        )
+        == 4
+    )
+
+
+def test_distance_from_dins_attributes(inputs):
+    group = _standardize(inputs, max_distance_from_dins_m=60.0)
+
+    assert group.attrs["mbf_max_distance_from_dins_m"] == 60.0
+    # the box holds footprints 0 to 4; footprint 60 is far outside
+    assert group.attrs["mbf_footprints_in_box"] == 5
+
+
+def test_without_distance_from_dins_nothing_changes(inputs):
+    group = _standardize(inputs)
+
+    assert "mbf_max_distance_from_dins_m" not in group.attrs
+    assert "mbf_footprints_in_box" not in group.attrs
+    assert _text(group["building_source"]) == ["MBF"] * 5 + ["DINS"]
+
+
+@pytest.mark.parametrize("distance", [0.0, -5.0, 49.0, float("nan")])
+def test_distance_from_dins_below_the_match_distance_is_refused(inputs, distance):
+    with pytest.raises(ValueError, match="max_distance_from_dins_m"):
+        _standardize(inputs, max_distance_from_dins_m=distance)
+
+
+def test_distance_from_dins_with_no_footprint_left_is_refused(inputs, tmp_path):
+    dins_csv, _, h5 = inputs
+    only_far = _write_footprints(tmp_path / "far.geojsonl", footprints=(60,))
+    # footprint 60 is outside the box, so the box has no footprint at all
+    with pytest.raises(ValueError, match="intersects the box"):
+        fs.standardize_dins_building_damage(
+            dins_csv,
+            only_far,
+            h5,
+            "Test Fire",
+            *_corners(),
+            projected_crs=PROJECTED_CRS,
+            max_distance_from_dins_m=100.0,
+        )
+
+
+def test_distance_from_dins_with_every_footprint_too_far_names_the_distance(inputs, tmp_path):
+    dins_csv, _, h5 = inputs
+    # only footprint 4, 1 km from the nearest row of Test Fire
+    far = _write_footprints(tmp_path / "far.geojsonl", footprints=(4,))
+    with pytest.raises(ValueError, match="within 100.0 m"):
+        fs.standardize_dins_building_damage(
+            dins_csv,
+            far,
+            h5,
+            "Test Fire",
+            *_corners(),
+            projected_crs=PROJECTED_CRS,
+            max_distance_from_dins_m=100.0,
+        )

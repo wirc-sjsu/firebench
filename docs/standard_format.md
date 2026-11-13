@@ -233,6 +233,12 @@ Units attributes must be set for each field.
 │    │    ├── building_damage         (building status index)
 ```
 
+- The group written by `standardize_dins_building_damage` with `max_distance_from_dins_m` (only the
+  footprints within that distance of a DINS record are kept) has two more attributes:
+  `mbf_max_distance_from_dins_m` (float, metres) and `mbf_footprints_in_box` (int, number of
+  footprints whose bounding box intersects the box, before the distance cut). Without the keyword,
+  neither is written.
+
 ### Time Series
 - Contains time series data from specific points in space, for example, weather stations (RAWS) or local sensors.
 - Datasets must be grouped at the lowest common level that minimizes data duplication. Variables sharing the same time coordinate are placed in the same data group (*e.g.*, a sensor group). Multiple data groups that share the same spatial location are further grouped together in a location group (*e.g.*, a weather station).
