@@ -548,6 +548,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
+- `read_mtbs_boundaries` repairs a perimeter that is not a valid geometry in the file (a ring that
+  crosses itself: 48 of the 31,514 MTBS perimeters of November 2026, among them Detwiler 2017 and
+  North 2020) with `shapely.make_valid`, keeping its polygons, and marks it in the new column
+  `perimeter_repaired`. `validate_event_catalogue` refused a catalogue holding one. The repaired
+  areas match MTBS' `BurnBndAc` (Detwiler: 83,298 acres repaired, 83,375 recorded).
 - Name a composed target by its KPI groups in the title of the score card and the comparison
   score card (`Air Temp, RH, Wind Direction, Wind Speed W2`, the shared period once; their count
   beyond four) instead of its digest (`C-9f3363914dbe`). The result file keeps the digest.

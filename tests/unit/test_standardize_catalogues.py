@@ -7,7 +7,7 @@ import sqlite3
 import geopandas as gpd
 import pandas as pd
 import pytest
-from shapely.geometry import Point, box
+from shapely.geometry import Point, Polygon, box
 
 from firebench.standardize import (
     mtbs_ignition_point,
@@ -48,6 +48,35 @@ def mtbs_file(tmp_path):
     path = tmp_path / "mtbs_perims_DD.shp"
     frame.to_file(path)
     return path
+
+
+def test_mtbs_repairs_a_perimeter_that_crosses_itself(tmp_path):
+    # A figure eight: two squares of 0.1 degree joined at a point the ring crosses, invalid as written.
+    eight = Polygon([(-120.6, 38.5), (-120.5, 38.6), (-120.5, 38.5), (-120.6, 38.6)])
+    assert not eight.is_valid
+    frame = gpd.GeoDataFrame(
+        {
+            "Event_ID": ["CA3855012055020200801", "CA3900012100020200901"],
+            "Incid_Name": ["EIGHT", "SQUARE"],
+            "Incid_Type": ["Wildfire", "Wildfire"],
+            "Ig_Date": ["2020-08-01", "2020-09-01"],
+            "BurnBndAc": [1000.0, 1200.0],
+            "BurnBndLat": ["38.55", "39.0"],
+            "BurnBndLon": ["-120.55", "-121.0"],
+        },
+        geometry=[eight, _square(-121, 39)],
+        crs="EPSG:4326",
+    )
+    path = tmp_path / "mtbs_perims_DD.shp"
+    frame.to_file(path)
+    read = read_mtbs_boundaries(path)
+    assert list(read["perimeter_repaired"]) == [True, False]
+    assert read.geometry.is_valid.all()
+    repaired = read.geometry.iloc[0]
+    # The repair keeps the two triangles of the eight, a quarter of the square each.
+    assert repaired.geom_type == "MultiPolygon" and len(repaired.geoms) == 2
+    assert repaired.area == pytest.approx(0.005)
+    assert read.geometry.iloc[1].equals(_square(-121, 39))
 
 
 def test_mtbs_reads_and_filters(mtbs_file):

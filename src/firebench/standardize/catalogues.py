@@ -29,6 +29,7 @@ from zoneinfo import ZoneInfo
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import shapely
 from shapely.geometry import Point, box
 
 TIME_PRECISIONS = ("day", "hour", "minute", "second")
@@ -105,6 +106,7 @@ MTBS_COLUMNS = [
     "centroid_lon",
     "area_acres",
     "irwin_id",
+    "perimeter_repaired",
     "geometry",
 ]
 # An MTBS event ID: state, the ignition latitude and west longitude in thousandths of a degree, date.
@@ -274,6 +276,20 @@ def _filter(
     return frame[keep].reset_index(drop=True)
 
 
+def _polygonal(geometry):
+    """A valid perimeter: `geometry` itself when valid, else its repair (`shapely.make_valid`) without
+    the points and lines the repair may leave. None for a missing geometry."""
+    if geometry is None or geometry.is_empty or geometry.is_valid:
+        return geometry
+    repaired = shapely.make_valid(geometry)
+    if repaired.geom_type in ("Polygon", "MultiPolygon"):
+        return repaired
+    parts = [
+        part for part in getattr(repaired, "geoms", []) if part.geom_type in ("Polygon", "MultiPolygon")
+    ]
+    return shapely.union_all(parts)
+
+
 def mtbs_ignition_point(mtbs_id: str) -> tuple[float, float]:
     """The ignition point an MTBS event ID holds, as (lat, lon) to 0.001 degree; NaN when it holds none."""
     match = _MTBS_ID.match(mtbs_id.strip().upper())
@@ -316,7 +332,11 @@ def read_mtbs_boundaries(
         is a date (`ignition_date_precision` is `day`), as MTBS records no time; the ignition
         point is the one the event ID holds (`mtbs_ignition_point`), to 0.001 degree: the source
         fire occurrence record's. `centroid_lat` and `centroid_lon` are `BurnBndLat` and
-        `BurnBndLon`, the centroid of the perimeter, which is not where the fire started.
+        `BurnBndLon`, the centroid of the perimeter, which is not where the fire started. A
+        perimeter that is not a valid geometry in the file (a ring that crosses itself: 48 of the
+        31,514 of November 2026) is repaired with `shapely.make_valid`, keeping its polygons, and
+        `perimeter_repaired` is True; the repair keeps the burned area (Detwiler 2017: 83,298
+        acres repaired, 83,375 in `BurnBndAc`).
 
     Raises
     ------
@@ -361,7 +381,8 @@ def read_mtbs_boundaries(
                 "centroid_lon": _number(row[names["lon"]]),
                 "area_acres": _number(row[names["area_acres"]]),
                 "irwin_id": _irwin(row[names["irwin_id"]]) if names["irwin_id"] else "",
-                "geometry": row["geometry"],
+                "perimeter_repaired": bool(row["geometry"] is not None and not row["geometry"].is_valid),
+                "geometry": _polygonal(row["geometry"]),
             }
         )
     frame = gpd.GeoDataFrame(rows, columns=MTBS_COLUMNS, geometry="geometry", crs="EPSG:4326")
