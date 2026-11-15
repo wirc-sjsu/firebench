@@ -1,4 +1,5 @@
 import re
+from io import BytesIO
 from pathlib import Path
 
 from matplotlib import colormaps
@@ -8,7 +9,7 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from ..tools import logger
 from ..signing import verify_certificate_in_dict, DEFAULT_VL, VERIFICATION_LEVEL_COLORS
@@ -524,7 +525,16 @@ def save_as_table(
     signed: bool,
     certificate_name: str,
     full_name: bool = False,
+    catalogue_scores: dict | None = None,
 ):
+    """
+    Save a score card as a PDF.
+
+    ``catalogue_scores`` (``{kpi_id: [score of each event]}``) adds the pages of a collection score
+    card of an event catalogue after the card: per family, a table of each KPI's samples, median,
+    interquartile range, and bootstrap interval, and a box plot of the events' scores. Without it the
+    report is the card alone.
+    """
     logger.info("Save data dict as score card report pdf")
     if filename.suffix.lower() != ".pdf":
         filename = filename.with_suffix(".pdf")
@@ -746,4 +756,114 @@ def save_as_table(
     style = TableStyle(table_style)
     table.setStyle(style)
 
-    doc.build([table])
+    pages = _catalogue_flowables(data, catalogue_scores) if catalogue_scores is not None else []
+    doc.build([table, *pages])
+
+
+def _interval_text(summary: dict, digits: int = 3) -> str:
+    if summary["ci_low"] is None:
+        return "n/a"
+    return f"{summary['ci_low']:.{digits}g} to {summary['ci_high']:.{digits}g}"
+
+
+def _statistic_cells(summary: dict) -> list[str]:
+    if summary["median"] is None:
+        return ["n/a", "n/a", "n/a"]
+    return [
+        f"{summary['median']:.3g}",
+        f"{summary['q1']:.3g} to {summary['q3']:.3g}",
+        _interval_text(summary),
+    ]
+
+
+def _score_box_plot(kpi_names: list[str], scores: list[list[float]]) -> Image:
+    """A box plot of the events' scores of each KPI, as an in-memory PNG."""
+    from matplotlib.backends.backend_agg import FigureCanvasAgg  # pylint: disable=import-outside-toplevel
+    from matplotlib.figure import Figure  # pylint: disable=import-outside-toplevel
+
+    figure = Figure(figsize=(7.5, 3.2))
+    FigureCanvasAgg(figure)
+    axes = figure.add_subplot()
+    axes.boxplot(scores, showfliers=False)
+    axes.set_xticks(range(1, len(kpi_names) + 1))
+    axes.set_xticklabels(kpi_names, rotation=15, ha="right", fontsize=7)
+    axes.set_ylim(-5, 105)
+    axes.set_ylabel("Score of an event (0 to 100)")
+    figure.tight_layout()
+    buffer = BytesIO()
+    figure.savefig(buffer, format="png", dpi=130)
+    buffer.seek(0)
+    width = 180 * mm
+    return Image(buffer, width=width, height=width * figure.get_figheight() / figure.get_figwidth())
+
+
+def _catalogue_flowables(data: dict, scores: dict) -> list:
+    """The pages of a collection score card: per family, its KPIs' statistics and a box plot."""
+    collection = data.get("collection")
+    if not collection:
+        return []
+    styles = {"font": "Helvetica", "size": 8}
+    interval = f"{collection['bootstrap']['confidence']:.0%} CI"
+    flowables: list = [PageBreak()]
+    families: dict[str, list[tuple[str, dict]]] = {}
+    for kpi_id, block in collection["kpis"].items():
+        families.setdefault(block["family"], []).append((kpi_id, block))
+    for family, kpis in families.items():
+        coverage = collection["coverage"][family]
+        share = "n/a" if coverage["share"] is None else f"{coverage['share']:.1%}"
+        title = (
+            f"{family.replace('_', ' ').title()}: {coverage['n_given']} of {coverage['n_expected']} "
+            f"events ({share})"
+        )
+        flowables.append(Paragraph(title, _heading_style()))
+        rows = [
+            [
+                "KPI",
+                "n",
+                "Value median",
+                "Value IQR",
+                f"Value {interval}",
+                "Score median",
+                "Score IQR",
+                f"Score {interval}",
+            ]
+        ]
+        for kpi_id, block in kpis:
+            rows.append(
+                [
+                    _scorecard_kpi_name(kpi_id, block["name"]),
+                    str(block["n_samples"]),
+                    *_statistic_cells(block["value"]),
+                    *_statistic_cells(block["score"]),
+                ]
+            )
+        table = Table(rows, colWidths=[52 * mm, 10 * mm] + [21.3 * mm] * 6, repeatRows=1)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BOX", (0, 0), (-1, -1), 0.75, colors.black),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor(SCORECARD_COLORS["grid"])),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(SCORECARD_COLORS["subheader"])),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, -1), styles["font"]),
+                    ("FONTSIZE", (0, 0), (-1, -1), styles["size"]),
+                    ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                ]
+            )
+        )
+        flowables += [table, Spacer(1, 4 * mm)]
+        plotted = [(block["name"], scores[kpi_id]) for kpi_id, block in kpis if scores.get(kpi_id)]
+        if plotted:
+            flowables += [_score_box_plot([name for name, _ in plotted], [item for _, item in plotted])]
+        flowables.append(Spacer(1, 6 * mm))
+    if "no_total_reason" in data.get("score_card", {}):
+        flowables.append(
+            Paragraph(f"No total score: {data['score_card']['no_total_reason']}.", _heading_style())
+        )
+    return flowables
+
+
+def _heading_style():
+    from reportlab.lib.styles import getSampleStyleSheet  # pylint: disable=import-outside-toplevel
+
+    return getSampleStyleSheet()["Heading4"]

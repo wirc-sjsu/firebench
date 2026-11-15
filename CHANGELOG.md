@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add the event-catalogue benchmark: a catalogue case (`fb-catalogue-case-v1`, `propose_catalogue_case`,
+  `check_catalogue_case`, `load_catalogue_case`), the per-event template of an adapter
+  (`write_event_template`, `firebench catalogue template`), and the scoring of a bundle of model
+  outputs, one directory per event ID (`check_catalogue_bundle`, `run_catalogue_benchmark`,
+  `firebench catalogue check` and `run`). Each event is scored on its final perimeter (Jaccard,
+  Dice-Sorensen, area bias and ratio) and its structure loss (error of the lost count), in a process
+  pool; the collection score card holds, per KPI and per stratum (NWCG size class, year), the median,
+  interquartile range, and bootstrap interval of the events' values and scores, the coverage of each
+  family, and a total only when every family reaches the coverage threshold. Every number is in the
+  new parameter file `event_catalogue.toml`. The card has a catalogue layout in the PDF
+  (`save_as_table(..., catalogue_scores=)`), a per-event CSV, and can be signed. 1,000 synthetic
+  events score in 2.5 s and 10,000 in 19 s on 32 cores. Nothing else changes.
 - Add `max_distance_from_dins_m` to `standardize_dins_building_damage`: keep only the footprints whose
   centroid is within that distance of a DINS record of the incident, instead of every footprint of the
   box. Far lines of the footprint file are skipped before their geometry is built, and the group gets

@@ -1569,6 +1569,164 @@ def case_plume_sweep(
         click.echo(f"Wrote {output}.")
 
 
+@main.group("catalogue")
+def catalogue_group() -> None:
+    """
+    Benchmark cases over an event catalogue (schema fb-catalogue-case-v1): many fires, one score card.
+
+    'template' writes the per-event templates a model is run on, 'check' lists what a bundle of model
+    outputs (one directory per event ID) gets wrong, and 'run' scores the bundle and writes the
+    collection score card, its PDF, and the per-event table. DEF is a JSON file.
+    """
+
+
+def _catalogue_modules():
+    return (
+        import_module(".benchmarks.catalogue_case", __package__),
+        import_module(".benchmarks.catalogue_run", __package__),
+        import_module(".benchmarks.catalogue_template", __package__),
+    )
+
+
+def _event_id_list(path: Path | None) -> list[str] | None:
+    """The IDs of a text file, one per line (blank lines left out), or None without a file."""
+    if path is None:
+        return None
+    return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _catalogue_definition(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise click.ClickException(f"{path} is not a JSON file: {exc}") from exc
+
+
+_CATALOGUE_FILE = click.Path(exists=True, dir_okay=False, path_type=Path)
+_EVENT_IDS_OPTION = click.option(
+    "--event-ids",
+    "event_ids_file",
+    type=_CATALOGUE_FILE,
+    help="Text file of the event IDs the definition selects, one per line (a subset of the catalogue).",
+)
+
+
+@catalogue_group.command("template")
+@click.argument("catalogue", type=_CATALOGUE_FILE)
+@click.argument("outdir", type=click.Path(file_okay=False, path_type=Path))
+@click.option("--event", "events", multiple=True, help="Event ID to write a template for (default: all).")
+@click.option("--definition", type=_CATALOGUE_FILE, help="Definition (JSON) to record in each template.")
+@click.option("--window-days", type=float, help="Days of the window when the catalogue has no containment.")
+@click.option("--overwrite", is_flag=True, help="Replace existing templates.")
+def catalogue_template(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    catalogue: Path, outdir: Path, events: tuple[str, ...], definition: Path | None, window_days, overwrite
+) -> None:
+    """Write `<event_id>/template.h5` under OUTDIR for events of CATALOGUE."""
+    case_module, _, template_module = _catalogue_modules()
+    try:
+        document = _catalogue_definition(definition) if definition else None
+        paths = template_module.write_event_templates(
+            catalogue, outdir, list(events) or None, document, window_days, overwrite
+        )
+    except FileExistsError as exc:
+        raise click.ClickException("A template exists; give --overwrite to replace it.") from exc
+    except (case_module.CaseDefinitionError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Wrote {len(paths)} template(s) under {outdir}.")
+
+
+@catalogue_group.command("check")
+@click.argument("definition", metavar="DEF", type=_CATALOGUE_FILE)
+@click.argument("catalogue", type=_CATALOGUE_FILE)
+@click.argument("bundle_dir", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@_EVENT_IDS_OPTION
+@click.option("--workers", type=click.IntRange(min=1), help="Processes (default: the CPU count).")
+def catalogue_check(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    definition: Path, catalogue: Path, bundle_dir: Path, event_ids_file: Path | None, workers
+) -> None:
+    """Print, as JSON, the report on the bundle BUNDLE_DIR for the case DEF over CATALOGUE."""
+    case_module, run_module, _ = _catalogue_modules()
+    try:
+        report = run_module.check_catalogue_bundle(
+            _catalogue_definition(definition),
+            catalogue,
+            bundle_dir,
+            _event_id_list(event_ids_file),
+            workers,
+        )
+    except (case_module.CaseDefinitionError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=False))
+
+
+@catalogue_group.command("run")
+@click.argument("definition", metavar="DEF", type=_CATALOGUE_FILE)
+@click.argument("catalogue", type=_CATALOGUE_FILE)
+@click.argument("bundle_dir", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@_EVENT_IDS_OPTION
+@click.option("--family", "families", multiple=True, help="Family to score (default: all of DEF).")
+@click.option("-n", "--name", default="", help="Name of the evaluated model (default: the bundle's).")
+@click.option(
+    "-o",
+    "--output-json",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("catalogue_rslt.json"),
+)
+@click.option(
+    "-r", "--score-card", type=click.Path(dir_okay=False, path_type=Path), default=Path("catalogue.pdf")
+)
+@click.option(
+    "-t",
+    "--event-table",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("catalogue_events.csv"),
+    help="CSV of the per-event values and scores.",
+)
+@click.option("--workers", type=click.IntRange(min=1), help="Processes (default: the CPU count).")
+@click.option("--sign", nargs=2, metavar="KEY SIGNER", help="Certify the score card with a key.")
+@click.option("--overwrite", is_flag=True, help="Overwrite existing results if present.")
+def catalogue_run(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+    definition: Path,
+    catalogue: Path,
+    bundle_dir: Path,
+    event_ids_file: Path | None,
+    families: tuple[str, ...],
+    name: str,
+    output_json: Path,
+    score_card: Path,
+    event_table: Path,
+    workers,
+    sign: tuple[str, str] | None,
+    overwrite: bool,
+) -> None:
+    """Score the bundle BUNDLE_DIR on the case DEF over CATALOGUE."""
+    case_module, run_module, _ = _catalogue_modules()
+    try:
+        result = run_module.run_catalogue_benchmark(
+            _catalogue_definition(definition),
+            catalogue,
+            bundle_dir,
+            event_ids=_event_id_list(event_ids_file),
+            families=list(families) or None,
+            name=name,
+            output_json=output_json,
+            score_card_report=score_card,
+            event_table=event_table,
+            sign=tuple(sign) if sign else None,
+            overwrite=overwrite,
+            workers=workers,
+        )
+    except (case_module.CaseDefinitionError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    if result:
+        card = result["score_card"]
+        total = card.get("Score Total")
+        click.echo(
+            f"Total score {'none: ' + card['no_total_reason'] if total is None else total}; "
+            f"wrote {output_json}, {score_card}, and {event_table}."
+        )
+
+
 @main.group("experiment")
 def experiment_group() -> None:
     """

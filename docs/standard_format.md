@@ -975,6 +975,22 @@ Dataset | Units | Description
   a line feed.
 - A catalogue is signed like any standard file (`add_certificate_to_h5`).
 
+### Catalogue case and event template
+
+- A catalogue case is a JSON document (schema `fb-catalogue-case-v1`: `name`, `parameters` (the set
+  `event_catalogue` and its version), `projection`, `event_ids_sha256`, `families`, `strata`), named
+  by the SHA-256 of its canonical JSON. It names no case or set ID and carries no number that changes
+  a score: those are in `event_catalogue.toml`. See
+  [Score a model on an event catalogue](how_to/score_a_catalogue.md).
+- A file whose root has `firebench_template = "catalogue_event"` is the template of a model output for
+  one event of a catalogue (`firebench catalogue template`). `/event` holds the ignition point, the
+  anchor time, the box around the ignition point, and the window (`window_start`, `window_end`);
+  `/polygons/final_perimeter` holds the window's end as its `time`, with no file reference; when the
+  catalogue has structures for the event, `/points/building_damaged` holds their positions in the
+  catalogue's order and a blank `building_damage`, except `"Inaccessible"`. It holds no observed
+  perimeter. A model output written on it is a new file, without the attribute; a bundle refuses a
+  template submitted unchanged.
+
 ### Certificates
 
 - Reserved namespace for FireBench certificates. See the signing and verification guide.

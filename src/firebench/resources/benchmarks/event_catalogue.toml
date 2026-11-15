@@ -1,0 +1,77 @@
+# Parameters of the event-catalogue benchmark (firebench.benchmarks.catalogue_case).
+#
+# A catalogue case definition (schema fb-catalogue-case-v1) names this parameter set by `set` and
+# `version`; it never carries a number that changes a score. Every threshold, normalization, weight,
+# size class, coverage threshold, and bootstrap setting of a collection of fire events is in this
+# file, which FireBench reads from the installed package and from nowhere else.
+#
+# To change a parameter: edit this file in a FireBench commit and raise `version`, so that a case
+# definition names the parameters it was reviewed with. Every key is required and an unknown key is
+# refused when the file is read.
+
+set = "event_catalogue"
+version = "2026.1"
+
+# The equal-area projections a case may compute areas in (a global catalogue needs EPSG:6933).
+projections = ["EPSG:5070", "EPSG:6933"]
+
+[family_weights]
+# Weight of a family in the total score of a collection.
+final_perimeter = 1
+structure_loss = 1
+
+[final_perimeter]
+# Weight of each KPI in the family: Jaccard index, Dice-Sorensen index, final burnt area bias, final
+# burnt area ratio. The score of a KPI of an event is computed per event; the collection's score of a
+# KPI is the median of the events' scores.
+jaccard_weight = 2
+dice_weight = 0
+area_bias_weight = 1
+area_ratio_weight = 0
+# The relative area bias, (modelled - observed) / observed, at which its score is 50 (symmetric
+# exponential normalization).
+area_relative_error_at_score_50 = 0.20
+# The natural logarithm of the area ratio, modelled over observed, at which its score is 50 (ln 1.2:
+# a model 20 % too large or 1/1.2 as large scores 50). A ratio of 0, a model that burnt nothing,
+# scores 0.
+area_log_ratio_at_score_50 = 0.1823
+
+[structure_loss]
+# The classes of the damage of a structure (names of FireBench's DAMAGE_CLASSES) that count it as
+# lost. FB001 counts Major and Destroyed as burnt.
+lost_classes = ["destroyed", "major"]
+# The count error is the modelled minus the observed lost structures, over the larger of the observed
+# lost structures and this floor.
+count_floor = 10
+# The relative count error at which its score is 50 (symmetric exponential normalization).
+count_relative_error_at_score_50 = 0.5
+count_error_weight = 1
+
+[coverage]
+# A family reaches coverage when the share of the events with an observation that the bundle gives a
+# result for is at or above this. A collection with a family below it has no total score.
+min_coverage = 0.8
+
+[statistics]
+# Percentile bootstrap of the median: number of resamples, seed of numpy's default_rng, and the
+# confidence of the interval. With fewer samples than min_samples_interval the interval is null.
+bootstrap_resamples = 1000
+bootstrap_seed = 20261114
+confidence = 0.95
+min_samples_interval = 5
+
+[strata.size_classes]
+# NWCG size classes of a fire, by the lower bound of the observed area in acres (A first).
+A = 0
+B = 0.25
+C = 10
+D = 100
+E = 300
+F = 1000
+G = 5000
+
+[template]
+# The window a template gives a model: this many days from the anchor time when the catalogue has
+# no containment time, and the half width in kilometres of the square box around the ignition point.
+default_window_days = 14
+box_half_width_km = 50

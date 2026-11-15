@@ -23,6 +23,7 @@ stitch_forecast_period.md
 define_benchmark_case.md
 define_forecast_window.md
 score_forecast_window.md
+score_a_catalogue.md
 custom_fuel_model.md
 plot_from_toml.md
 report_skeleton.md
