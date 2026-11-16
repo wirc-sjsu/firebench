@@ -162,7 +162,12 @@ def fetch_nldn_tiles(
         rows = read_tile_rows(payload, (west, south, east, north), start, end)
         logger.info("[nldn tiles] %s: %d cells kept", name, len(rows))
         files.append(
-            {"name": name, "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload), "rows": len(rows)}
+            {
+                "name": name,
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "bytes": len(payload),
+                "rows": len(rows),
+            }
         )
         parts.append(rows)
 

@@ -116,7 +116,8 @@ def _write_setup(tmp_path) -> Path:
     source = tmp_path / "synoptic_saved.json"
     source.write_text(json.dumps(_synoptic_payload()))
     setup = tmp_path / "setup.yml"
-    setup.write_text("""
+    setup.write_text(
+        """
 name: offline_test
 output_dir: run
 domain: {bbox: [-120.5, 38.5, -120.0, 38.9]}
@@ -126,7 +127,8 @@ observations:
   context_hours: 1
 model: {cycle_hours: [0], horizon_hours: 3, download_workers: 2}
 benchmark: {lead_bins: [[1, 3]], informational_lead_bins: [[0, 0]]}
-""")
+"""
+    )
     return setup
 
 

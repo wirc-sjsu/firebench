@@ -358,7 +358,7 @@ def standardize_halo_lidar(  # pylint: disable=too-many-locals
 
     Parameters
     ----------
-    scans : Iterable of path
+    scans : iterable of pathlib.Path or str
         Raw ``.hpl`` files.
     h5file : h5py.File
         The standard file to write to.
@@ -369,10 +369,10 @@ def standardize_halo_lidar(  # pylint: disable=too-many-locals
     heading_deg : float
         The azimuth of the instrument's 0 degree, clockwise from true north. The azimuths are stored
         as recorded and the heading as the attribute ``azimuth_offset``.
-    time_sync : sequence of path
+    time_sync : sequence of pathlib.Path or str
         ``Time_Sync`` files of the lidars.
-    position : (latitude, longitude) or None
-        The position of the lidar, in degrees, instead of the GPS.
+    position : tuple[float, float] or None
+        The position of the lidar, ``(latitude, longitude)`` in degrees, instead of the GPS.
     altitude : float or None
         The altitude of the lidar, in m above mean sea level, instead of the GPS height.
     altitude_source : str

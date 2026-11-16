@@ -71,7 +71,8 @@ def _check_isolated_import(wheel: Path, expected_version: str) -> None:
             check=True,
         )
 
-        verification_code = dedent(f"""
+        verification_code = dedent(
+            f"""
             from pathlib import Path
 
             import firebench
@@ -122,7 +123,8 @@ def _check_isolated_import(wheel: Path, expected_version: str) -> None:
                 )
 
             print(f"Verified runtime data from {{data_path}}")
-            """)
+            """
+        )
         env = os.environ.copy()
         env.pop("FIREBENCH_DATA_PATH", None)
         env["PYTHONPATH"] = str(site_dir)
