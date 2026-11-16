@@ -1,7 +1,6 @@
 """The radar plume family of the generic cases, on a synthetic radar and a model built from it."""
 
 import json
-import tomllib
 from datetime import datetime, timedelta, timezone
 from importlib.resources import files
 from pathlib import Path
@@ -35,6 +34,11 @@ from firebench.benchmarks.fire_case_template import (
     write_model_output_template,
 )
 from firebench.standardize import new_std_file, radar
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
 
 START = datetime(2021, 8, 17, tzinfo=timezone.utc)
 CALDOR = (-120.8, 38.4, -119.7, 39.0)

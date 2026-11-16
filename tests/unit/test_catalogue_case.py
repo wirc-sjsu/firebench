@@ -27,6 +27,11 @@ from firebench.benchmarks.fire_case_definition import CaseDefinitionError, defin
 from firebench.cli import main
 from firebench.standardize import event_ids_sha256, read_event_catalogue
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
+
 PARAMETERS = catalogue_parameters.load_parameters()
 
 
@@ -66,7 +71,6 @@ def test_the_parameter_file_is_the_one_the_brief_names():
 
 
 def test_the_parameter_file_refuses_a_missing_or_unknown_key():
-    import tomllib
     from importlib.resources import files
 
     document = tomllib.loads(

@@ -548,6 +548,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
+- Fix Python 3.10 test collection and execution by using the existing `tomli` fallback in radar
+  and catalogue tests when `tomllib` is unavailable.
 - `read_mtbs_boundaries` repairs a perimeter that is not a valid geometry in the file (a ring that
   crosses itself: 48 of the 31,514 MTBS perimeters of November 2026, among them Detwiler 2017 and
   North 2020) with `shapely.make_valid`, keeping its polygons, and marks it in the new column
