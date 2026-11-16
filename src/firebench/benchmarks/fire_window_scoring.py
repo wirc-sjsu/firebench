@@ -454,7 +454,7 @@ def _stations_given(prepared: h5py.File, parameters) -> dict[str, set[str]]:
     """The stations that hold each variable in the prepared file: what the model gives."""
     given = {spec.variable: set() for spec in parameters.variables}
     series = prepared.get(fs.TIME_SERIES)
-    for name, group in (series.items() if isinstance(series, h5py.Group) else []):
+    for name, group in series.items() if isinstance(series, h5py.Group) else []:
         if name.startswith(STATION_PREFIX) and "time" in group:
             for variable, names in given.items():
                 if variable in group:

@@ -51,7 +51,8 @@ def test_load_plot_config_accepts_root_level_inputs(tmp_path):
     model = tmp_path / "model.h5"
     _write_h5(model, ("/polygons/A",))
     config_path = tmp_path / "plot.toml"
-    config_path.write_text(f"""
+    config_path.write_text(
+        f"""
 output_dir = "plots"
 dpi = 220
 
@@ -62,7 +63,8 @@ color = "#cc3311"
 
 [perimeter]
 satellite = false
-""")
+"""
+    )
 
     config = load_plot_config(config_path)
 
@@ -77,7 +79,8 @@ def test_load_plot_config_accepts_main_section_inputs(tmp_path):
     model = tmp_path / "model.h5"
     _write_h5(model, ("/polygons/A",))
     config_path = tmp_path / "plot.toml"
-    config_path.write_text(f"""
+    config_path.write_text(
+        f"""
 [main]
 output_dir = "plots"
 dpi = 180
@@ -86,7 +89,8 @@ dpi = 180
 path = "{model.name}"
 label = "Model"
 color = "C0"
-""")
+"""
+    )
 
     config = load_plot_config(config_path)
 
@@ -101,7 +105,8 @@ def test_common_perimeter_paths_only_returns_shared_h5_parameters(tmp_path):
     _write_h5(model_a, ("/polygons/A", "/polygons/B"))
     _write_h5(model_b, ("/polygons/A", "/polygons/C"))
     config_path = tmp_path / "plot.toml"
-    config_path.write_text(f"""
+    config_path.write_text(
+        f"""
 output_dir = "plots"
 
 [[files]]
@@ -116,7 +121,8 @@ color = "blue"
 
 [perimeter]
 satellite = false
-""")
+"""
+    )
     config = load_plot_config(config_path)
 
     assert common_perimeter_paths(config.files, config.perimeter) == ["/polygons/A"]
@@ -128,7 +134,8 @@ def test_plot_from_config_writes_one_png_per_common_perimeter(tmp_path):
     _write_h5(model_a, ("/polygons/A", "/polygons/B"))
     _write_h5(model_b, ("/polygons/A",))
     config_path = tmp_path / "plot.toml"
-    config_path.write_text(f"""
+    config_path.write_text(
+        f"""
 output_dir = "plots"
 dpi = 72
 
@@ -144,7 +151,8 @@ color = "blue"
 
 [perimeter]
 satellite = false
-""")
+"""
+    )
 
     written = plot_from_config(config_path)
 

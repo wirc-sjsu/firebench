@@ -473,7 +473,7 @@ def targets_from_template(template: h5py.File, model_group: str) -> PlumeTargets
     """The targets a model-output template holds (``write_target_groups``)."""
     sections, frames = [], []
     base = template.get(f"{model_group}/{SECTIONS}")
-    for site, site_group in (base.items() if isinstance(base, h5py.Group) else []):
+    for site, site_group in base.items() if isinstance(base, h5py.Group) else []:
         for name, group in site_group.items():
             sections.append(
                 SectionTarget(
@@ -487,7 +487,7 @@ def targets_from_template(template: h5py.File, model_group: str) -> PlumeTargets
                 )
             )
     base = template.get(f"{model_group}/{FRAME}")
-    for site, group in (base.items() if isinstance(base, h5py.Group) else []):
+    for site, group in base.items() if isinstance(base, h5py.Group) else []:
         if LOWEST_BEAM not in group:
             raise ValueError(OLD_TEMPLATE)
         if THRESHOLD_ATTRIBUTE not in group[PLUME_CELLS].attrs:

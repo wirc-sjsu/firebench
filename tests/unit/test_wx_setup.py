@@ -47,11 +47,13 @@ def test_curated_period_needs_explicit_cycles_because_no_full_cycle_fits():
 
 
 def test_explicit_domain_and_window_override_the_preset_and_are_noted():
-    setup = _parse("""
+    setup = _parse(
+        """
 case: {id: 2021_Caldor, period: H012}
 domain: {bbox: [-120.5, 38.5, -120.0, 38.9]}
 window: {start: 2021-08-20T06:00Z, end: 2021-08-22T06:00Z}
-""")
+"""
+    )
 
     assert setup.bbox == (-120.5, 38.5, -120.0, 38.9)
     assert setup.cycles[0].label == "2021082006"
@@ -59,10 +61,12 @@ window: {start: 2021-08-20T06:00Z, end: 2021-08-22T06:00Z}
 
 
 def test_window_in_another_time_zone_is_converted_to_utc():
-    setup = _parse("""
+    setup = _parse(
+        """
 domain: {bbox: [-120.5, 38.5, -120.0, 38.9]}
 window: {start: "2021-08-19T17:00:00-07:00", end: "2021-08-21T17:00:00-07:00"}
-""")
+"""
+    )
 
     assert setup.start == datetime(2021, 8, 20, 0, tzinfo=UTC)
 
@@ -115,13 +119,15 @@ def test_inline_token_is_rejected_with_the_keys_hint():
 
 
 def test_every_problem_is_reported_at_once():
-    problems = _problems("""
+    problems = _problems(
+        """
 case: {id: 2021_Caldor, period: H999}
 observations: {h5: missing.h5, synoptic_json: missing.json}
 model: {name: ICON}
 benchmark: {cadences: [2], obs_tolerance_min: 45, min_coverage: 2}
 extra: 1
-""")
+"""
+    )
 
     joined = "\n".join(problems)
     for expected in (
@@ -225,40 +231,53 @@ def test_invalid_observation_origin_is_setup_error(origin):
 
 def test_gfs_setup_resolves_the_caldor_cycle_and_accepts_a_box_outside_conus():
     caldor = _parse("case: {id: 2021_Caldor, period: H012}\nmodel: {name: gfs}")
-    alaska = _parse("""
+    alaska = _parse(
+        """
 domain: {bbox: [-150.5, 64.5, -149.5, 65.0]}
 window: {start: 2026-07-01T00:00Z, end: 2026-07-03T00:00Z}
 model: {name: GFS}
-""")
+"""
+    )
 
     assert caldor.model.name == "GFS"
     assert [(cycle.label, cycle.horizon_hours) for cycle in caldor.cycles] == [("2021082000", 48)]
     assert alaska.cycles[0].label == "2026070100"
-    assert any("not fully inside the HRRR CONUS grid" in problem for problem in _problems("""
+    assert any(
+        "not fully inside the HRRR CONUS grid" in problem
+        for problem in _problems(
+            """
 domain: {bbox: [-150.5, 64.5, -149.5, 65.0]}
 window: {start: 2026-07-01T00:00Z, end: 2026-07-03T00:00Z}
-"""))
+"""
+        )
+    )
 
 
 def test_gfs_horizon_is_clamped_to_the_hourly_range():
-    setup = _parse("""
+    setup = _parse(
+        """
 case: {id: 2021_Caldor, period: H012}
 model: {name: GFS, horizon_hours: 200, cycles: [2021-08-20T00:00Z]}
-""")
+"""
+    )
 
     assert setup.cycles[0].horizon_hours == 120
 
 
 def test_gfs_cycle_older_than_v16_is_refused_with_the_reason():
-    explicit = _problems("""
+    explicit = _problems(
+        """
 case: {id: 2021_Caldor, period: H012}
 model: {name: GFS, cycles: [2021-03-01T00:00Z]}
-""")
-    window = _problems("""
+"""
+    )
+    window = _problems(
+        """
 domain: {bbox: [-120.5, 38.5, -120.0, 38.9]}
 window: {start: 2021-03-01T00:00Z, end: 2021-03-04T00:00Z}
 model: {name: GFS}
-""")
+"""
+    )
 
     assert any("older than GFS v16" in problem for problem in explicit)
     assert any(
@@ -267,10 +286,12 @@ model: {name: GFS}
 
 
 def test_gfs_cycle_at_an_off_synoptic_hour_is_refused():
-    problems = _problems("""
+    problems = _problems(
+        """
 case: {id: 2021_Caldor, period: H012}
 model: {name: GFS, cycles: [2021-08-20T03:00Z]}
-""")
+"""
+    )
 
     assert any("GFS cycles start at 00, 06, 12 or 18 UTC" in problem for problem in problems)
 
@@ -290,11 +311,13 @@ def test_a_cadence_the_model_output_cannot_give_is_refused_with_the_hours(monkey
     three_hourly = _parse(
         "case: {id: 2021_Caldor, period: H012}\nmodel: {name: GFS}\nbenchmark: {cadences: [3]}"
     )
-    short = _parse("""
+    short = _parse(
+        """
 case: {id: 2021_Caldor, period: H012}
 model: {name: GFS, horizon_hours: 36}
 benchmark: {cadences: [1], lead_bins: [[1, 36]], informational_lead_bins: [[0, 0]]}
-""")
+"""
+    )
 
     assert hourly == [
         "GFS outputs no forecast hour 37-38, 40-41, 43-44, 46-47 of the 2021-08-20 00Z cycle, which a 1 h "
@@ -310,11 +333,13 @@ def test_the_informational_lead_bins_need_their_hours_too(monkeypatch):
 
     monkeypatch.setattr(gfs_forecast, "output_hours", lambda cycle: tuple(range(1, 121)))
 
-    problems = _problems("""
+    problems = _problems(
+        """
 case: {id: 2021_Caldor, period: H012}
 model: {name: GFS}
 benchmark: {cadences: [1], lead_bins: [[1, 48]], informational_lead_bins: [[0, 0]]}
-""")
+"""
+    )
 
     assert any("outputs no forecast hour 0 of the 2021-08-20 00Z cycle" in problem for problem in problems)
 
@@ -363,11 +388,13 @@ benchmark: {cadences: [%d]}
 
 def test_nam_refuses_caldor_h012_which_is_before_its_archive_and_a_box_outside_the_nest():
     caldor = _problems("case: {id: 2021_Caldor, period: H012}\nmodel: {name: NAM}")
-    alaska = _problems("""
+    alaska = _problems(
+        """
 domain: {bbox: [-150.5, 64.5, -149.5, 65.0]}
 window: {start: 2026-07-01T00:00Z, end: 2026-07-03T00:00Z}
 model: {name: NAM}
-""")
+"""
+    )
 
     assert any(
         "list model.cycles explicitly" in problem
@@ -396,11 +423,13 @@ benchmark: {cadences: [%d]}
 
 def test_rrfs_refuses_caldor_h012_which_is_before_its_archive_and_a_box_outside_its_grid():
     caldor = _problems("case: {id: 2021_Caldor, period: H012}\nmodel: {name: RRFS}")
-    alaska = _problems("""
+    alaska = _problems(
+        """
 domain: {bbox: [-150.5, 64.5, -149.5, 65.0]}
 window: {start: 2026-09-01T00:00Z, end: 2026-09-03T00:00Z}
 model: {name: RRFS}
-""")
+"""
+    )
 
     assert any(
         "list model.cycles explicitly" in problem
