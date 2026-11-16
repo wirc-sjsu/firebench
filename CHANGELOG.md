@@ -548,6 +548,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   station exclusion for source-wide, structural, time-axis, and empty-data failures.
 
 ### Fixed
+- Keep perimeter-area tests compatible with Pint's survey and international acre definitions by
+  using FireBench's unit registry for the conversion, while retaining strict geometry checks.
 - Fix Python 3.10 test collection and execution by using the existing `tomli` fallback in radar
   and catalogue tests when `tomllib` is unavailable.
 - `read_mtbs_boundaries` repairs a perimeter that is not a valid geometry in the file (a ring that

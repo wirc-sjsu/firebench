@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from click.testing import CliRunner
 
+from firebench import ureg
 from firebench.benchmarks import c001_caldor
 from firebench.benchmarks import fire_case
 from firebench.benchmarks import fire_case_definition as definition_module
@@ -593,7 +594,7 @@ def test_burn_areas_are_computed_in_the_case_projection(files):
             .area.sum()
         )
 
-    acre = 43560 * (1200 / 3937) ** 2
+    acre = ureg.Quantity(1, "acre").to("m^2").magnitude
     expected_bias = (area(MODEL_SQUARES[-1]) - area(OBS_SQUARES[-1])) / acre
 
     (bias,) = _run(case.BENCHMARK_FUNCTIONS, ["G-FP07"], obs, model)

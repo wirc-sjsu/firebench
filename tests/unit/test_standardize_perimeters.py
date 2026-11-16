@@ -8,6 +8,7 @@ from pyproj import Transformer
 from shapely.geometry import Polygon
 
 import firebench.standardize as fs
+from firebench import ureg
 
 TIME = "2021-08-17T20:20-07:00"
 SQUARE_A1 = [(-120.5, 38.5), (-120.4, 38.5), (-120.4, 38.6), (-120.5, 38.6), (-120.5, 38.5)]
@@ -15,7 +16,8 @@ SQUARE_A2 = [(-120.3, 38.5), (-120.2, 38.5), (-120.2, 38.6), (-120.3, 38.6), (-1
 SQUARE_B = [(-120.5, 38.7), (-120.25, 38.7), (-120.25, 38.8), (-120.5, 38.8), (-120.5, 38.7)]
 HOLE_1 = [(-120.45, 38.72), (-120.45, 38.76), (-120.4, 38.76), (-120.4, 38.72), (-120.45, 38.72)]
 HOLE_2 = [(-120.35, 38.74), (-120.35, 38.78), (-120.3, 38.78), (-120.3, 38.74), (-120.35, 38.74)]
-ACRE_IN_M2 = 43560 * (1200 / 3937) ** 2  # the US survey acre, which is the acre of pint
+# Pint 0.26.2 changed "acre" from the US survey acre to the international acre.
+ACRE_IN_M2 = ureg.Quantity(1, "acre").to("m^2").magnitude
 
 
 def _linear_ring(ring):
