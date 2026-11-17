@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add NFMDB FMC CSV standardization and station fuel-moisture scorecards with sampling-event,
+  daily, hourly, and native KPIs through `firebench run FMC ALL`, based on Abtin Olaee's converter.
 - Add the event-catalogue benchmark: a catalogue case (`fb-catalogue-case-v1`, `propose_catalogue_case`,
   `check_catalogue_case`, `load_catalogue_case`), the per-event template of an adapter
   (`write_event_template`, `firebench catalogue template`), and the scoring of a bundle of model

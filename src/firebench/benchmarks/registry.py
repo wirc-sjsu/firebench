@@ -35,7 +35,68 @@ def _create_caldor_report_figures(*args, **kwargs):
     return _call_caldor("create_report_figures", *args, **kwargs)
 
 
+def _run_fmc_benchmark(model_output, *, benchmark_target, score_card_full_name=False, **kwargs):
+    return import_module(".fmc", __package__).run_fmc_benchmark(
+        model_output, benchmark_target=benchmark_target, score_card_full_name=score_card_full_name, **kwargs
+    )
+
+
+def _normalize_fmc_target(target):
+    if target.upper() not in ("ALL", "A"):
+        raise ValueError("Unknown FMC target; use ALL.")
+    return "ALL"
+
+
+def _describe_fmc_targets(target=None, obs_data=None):
+    groups = {
+        "FMC": "Fuel moisture: sampling events for live fuels, daily means for dead fuels; "
+        "hourly and native comparisons are diagnostic"
+    }
+    if target is not None:
+        return {
+            "target": _normalize_fmc_target(target),
+            "kpi_groups": groups,
+            "kpis": [
+                {
+                    "id": "FMC-<series>-<scale>-<metric>",
+                    "name": "MAE, RMSE and bias (percentage points)",
+                    "weight": None,
+                    "value_norm_param_m_definition": "--mae-half-score-pp",
+                }
+            ],
+        }
+    return {
+        "standalone_targets": {"ALL": "All observed FMC station/fuel/variation series"},
+        "period_target_syntax": "not applicable",
+        "periods": [],
+        "kpi_groups": groups,
+    }
+
+
+def _print_fmc_registry(benchmark_target):
+    print(f"FMC target: {_normalize_fmc_target(benchmark_target)}")
+    print("All observed station/fuel/variation series: MAE, RMSE, bias.")
+    print("Primary: live sampling events, dead daily means; diagnostics: hourly and native.")
+
+
 AVAIL_BENCHMARKS = {
+    "FMC": {
+        "name": "Station Fuel Moisture",
+        "short_name": "Fuel_Moisture",
+        "url": "https://firebench.readthedocs.io/en/latest/how_to/fuel_moisture.html",
+        "func": _run_fmc_benchmark,
+        "target_normalizer": _normalize_fmc_target,
+        "target_describer": _describe_fmc_targets,
+        "debug_func": _print_fmc_registry,
+        "run_options": ("mae_half_score_pp", "event_tolerance_seconds"),
+        "required_run_options": ("mae_half_score_pp",),
+        "default_options": {
+            "verbose": 2,
+            "log_file": Path("fmc.log"),
+            "output_json": Path("fmc_results.json"),
+            "score_card_report": Path("fmc_scorecard.pdf"),
+        },
+    },
     "001": {
         "name": "2021 Caldor Fire",
         "short_name": caldor_config.BENCHMARK_SHORT_NAME,

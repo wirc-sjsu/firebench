@@ -40,3 +40,6 @@ Public standard-file creation and validation API.
 
 .. automodule:: firebench.standardize.radar
    :members:
+
+.. automodule:: firebench.standardize.fmc
+   :members: standardize_nfmdb_csv

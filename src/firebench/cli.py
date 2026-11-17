@@ -55,9 +55,7 @@ def plot_from_config(*args, **kwargs):
 REPORT_PATH = Path("firebench_report.md")
 FIGURES_DIR = Path("figures")
 
-FIREBENCH_BANNER = (
-    "\b"
-    + r"""
+FIREBENCH_BANNER = "\b" + r"""
  (     (    (                      )            )  
  )\ )  )\ ) )\ )       (        ( /(    (    ( /(  
 (()/( (()/((()/( (   ( )\  (    )\())   )\   )\()) 
@@ -67,7 +65,6 @@ FIREBENCH_BANNER = (
 | __|  | | |   /| _| | _ \| _| | .` | | (__ | __ | 
 |_|   |___||_|_\|___||___/|___||_|\_|  \___||_||_|                                                                                          
 """
-)
 
 
 @click.group(help=FIREBENCH_BANNER)
@@ -538,8 +535,25 @@ def _resolve_multirun_config(config_path: Path) -> dict:
         "full_name": bool(config.get("full_name", False)),
         "comparison_include_kpis": bool(config.get("comparison_include_kpis", False)),
         "comparison_score_card_report": comparison_report,
+        "run_options": _benchmark_run_options(
+            case_info, {key: config.get(key) for key in ("mae_half_score_pp", "event_tolerance_seconds")}
+        ),
         "models": _validate_multirun_models(config, config_dir),
     }
+
+
+def _benchmark_run_options(case_info: dict, values: dict, *, require: bool = True) -> dict:
+    """Forward only options declared by the selected benchmark."""
+    options = {key: value for key, value in values.items() if value is not None}
+    unsupported = options.keys() - set(case_info.get("run_options", ()))
+    if unsupported:
+        flags = ", ".join("--" + key.replace("_", "-") for key in sorted(unsupported))
+        raise click.UsageError(f"{flags} is not supported by this benchmark.")
+    if require:
+        for key in case_info.get("required_run_options", ()):
+            if key not in options:
+                raise click.UsageError(f"--{key.replace('_', '-')} is required for this benchmark.")
+    return options
 
 
 @main.command()
@@ -586,7 +600,7 @@ def _resolve_multirun_config(config_path: Path) -> dict:
     "--obs-data",
     type=click.Path(dir_okay=False, path_type=Path),
     default=None,
-    help="Path to the Caldor observational HDF5 file.",
+    help="Path to the benchmark observational HDF5 file.",
 )
 @click.option(
     "--output-json",
@@ -616,6 +630,18 @@ def _resolve_multirun_config(config_path: Path) -> dict:
     is_flag=True,
     help="Create firebench_report.md and the figures directory for the benchmark run.",
 )
+@click.option(
+    "--mae-half-score-pp",
+    type=float,
+    default=None,
+    help="FMC: positive MAE in percentage points scoring 50 (required for FMC runs).",
+)
+@click.option(
+    "--event-tolerance-seconds",
+    type=float,
+    default=None,
+    help="FMC: maximum model/sample time offset (default: 3600 seconds).",
+)
 def run(
     case: str,
     target: str,
@@ -632,6 +658,8 @@ def run(
     full_name: bool,
     no_run: bool,
     report: bool,
+    mae_half_score_pp: float | None,
+    event_tolerance_seconds: float | None,
 ) -> None:
     """
     Run a benchmark target against model std HDF5 output.
@@ -643,6 +671,17 @@ def run(
             target = target_normalizer(target)
         except ValueError as exc:
             raise click.UsageError(str(exc)) from exc
+
+    run_options = _benchmark_run_options(
+        case_info,
+        {
+            "mae_half_score_pp": mae_half_score_pp,
+            "event_tolerance_seconds": event_tolerance_seconds,
+        },
+        require=not no_run,
+    )
+    if not no_run and obs_data is None and _get_default(case_info, "obs_data") is None:
+        raise click.UsageError("--obs-data is required for this benchmark.")
 
     verbose = verbose if verbose is not None else _get_default(case_info, "verbose")
     log_file = log_file or _get_default(case_info, "log_file")
@@ -677,17 +716,21 @@ def run(
         else:
             target_info = None
 
-    case_info["func"](
-        model_output,
-        benchmark_target=target,
-        name=name,
-        overwrite=overwrite,
-        sign=sign,
-        obs_data=obs_data,
-        output_json=output_json,
-        score_card_report=score_card_report,
-        score_card_full_name=full_name,
-    )
+    try:
+        case_info["func"](
+            model_output,
+            benchmark_target=target,
+            name=name,
+            overwrite=overwrite,
+            sign=sign,
+            obs_data=obs_data,
+            output_json=output_json,
+            score_card_report=score_card_report,
+            score_card_full_name=full_name,
+            **run_options,
+        )
+    except (ValueError, OSError, KeyError) as exc:
+        raise click.ClickException(str(exc)) from exc
     if report:
         report_figures = _create_report_figures(
             case_info=case_info,
@@ -754,6 +797,7 @@ def multirun(config: Path) -> None:
             output_json=output_json,
             score_card_report=score_card_report,
             score_card_full_name=resolved_config["full_name"],
+            **resolved_config["run_options"],
         )
         if not result or "score_card" not in result:
             raise click.UsageError(
@@ -2349,6 +2393,60 @@ def cache_clean(source: tuple[str, ...], yes: bool) -> None:
     for target in targets:
         shutil.rmtree(target)
     click.echo("Cache cleaned.")
+
+
+@main.group()
+def fmc() -> None:
+    """Standardize NFMDB fuel-moisture observations."""
+
+
+@fmc.command("standardize")
+@click.option(
+    "--input", "input_path", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.option("--output", type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--timezone", "source_timezone", help="IANA zone required for date-only live samples.")
+@click.option("--created-by", default="FireBench NFMDB CSV converter", show_default=True)
+@click.option("--description")
+@click.option("--project-name")
+@click.option("--license", "data_license", default="nfmdb.org", show_default=True)
+@click.option("--data-source", default="NFMDB download", show_default=True)
+@click.option("--overwrite", is_flag=True)
+def fmc_standardize(
+    input_path,
+    output,
+    source_timezone,
+    created_by,
+    description,
+    project_name,
+    data_license,
+    data_source,
+    overwrite,
+):
+    """Convert an NFMDB CSV to a raw standard HDF5 file, without QC."""
+    from .standardize import new_std_file, standardize_nfmdb_csv, validate_h5_std
+
+    output = output or input_path.with_suffix(".h5")
+    if output.resolve() == input_path.resolve():
+        raise click.UsageError("input and output paths must differ")
+    if output.exists() and not overwrite:
+        raise click.UsageError(f"{output} already exists; use --overwrite")
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=output.parent) as directory:
+            temporary = Path(directory) / "fmc.h5"
+            with new_std_file(str(temporary), created_by) as handle:
+                handle.attrs.update(license=data_license, data_source=data_source)
+                if description:
+                    handle.attrs["description"] = description
+                if project_name:
+                    handle.attrs["project_name"] = project_name
+                standardize_nfmdb_csv(input_path, handle, timezone=source_timezone)
+                validate_h5_std(handle)
+            os.replace(temporary, output)
+    except (ValueError, OSError, KeyError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Standardized FMC: {output}")
 
 
 if __name__ == "__main__":

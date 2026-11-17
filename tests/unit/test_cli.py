@@ -44,6 +44,8 @@ def test_cli_import_does_not_load_heavy_runtime_dependencies():
     (
         ["list"],
         ["list", "001"],
+        ["list", "FMC"],
+        ["list", "FMC", "ALL"],
         ["data", "list"],
         ["data", "versions", "001"],
         ["keys", "list"],
@@ -1492,3 +1494,105 @@ def test_experiment_convert_names_the_file_it_cannot_read(tmp_path):
     )
     assert result.exit_code != 0
     assert "sensor_fixed.csv: The file's times state no UTC offset" in result.output
+
+
+def test_fmc_standardize_and_score(tmp_path):
+    from click.testing import CliRunner
+    from firebench.cli import main
+
+    source = tmp_path / "fmc.csv"
+    source.write_text(
+        "STID,DATE,FUEL_TYPE,FUEL_VARIATION,PERCENT,NAME,GACC,GROUP,LAT,LON,ELE\n"
+        "2,2024-01-01,Pine,None,100,Station,NOCC,Tahoe,39,-120,7600\n"
+    )
+    runner = CliRunner()
+    result = runner.invoke(main, ["fmc", "standardize", "--input", str(source)])
+    assert result.exit_code != 0
+    assert "timezone" in result.output
+    assert not source.with_suffix(".h5").exists()
+    args = ["fmc", "standardize", "--input", str(source), "--timezone", "America/Los_Angeles"]
+    result = runner.invoke(main, args)
+    assert result.exit_code == 0, result.output
+    assert runner.invoke(main, args).exit_code != 0
+    args = [
+        "run",
+        "FMC",
+        "ALL",
+        str(source.with_suffix(".h5")),
+        "--obs-data",
+        str(source.with_suffix(".h5")),
+        "--log-file",
+        str(tmp_path / "run.log"),
+        "--mae-half-score-pp",
+        "10",
+        "--output-json",
+        str(tmp_path / "results.json"),
+        "--score-card-report",
+        str(tmp_path / "card.pdf"),
+    ]
+    result = runner.invoke(main, args)
+    assert result.exit_code == 0, result.output
+    import json
+
+    assert json.loads((tmp_path / "results.json").read_text())["score_card"]["Score Total"] == 100
+    assert runner.invoke(main, args).exit_code != 0
+
+
+def test_fmc_uses_shared_run_interface(tmp_path):
+    runner = CliRunner()
+    assert runner.invoke(main, ["fmc", "score"]).exit_code == 2
+    listed = runner.invoke(main, ["list"])
+    assert listed.exit_code == 0
+    assert "Fuel_Moisture" in listed.output
+    args = [
+        "run",
+        "Fuel_Moisture",
+        "A",
+        str(tmp_path / "model.h5"),
+        "--log-file",
+        str(tmp_path / "fmc.log"),
+    ]
+    dry_run = runner.invoke(main, args + ["--no-run"])
+    assert dry_run.exit_code == 0, dry_run.output
+    assert "FMC target: ALL" in dry_run.output
+    missing_scale = runner.invoke(main, args)
+    assert missing_scale.exit_code == 2
+    assert "--mae-half-score-pp is required" in missing_scale.output
+    missing_observations = runner.invoke(main, args + ["--mae-half-score-pp", "10"])
+    assert missing_observations.exit_code == 2
+    assert "--obs-data is required" in missing_observations.output
+    invalid_target = runner.invoke(main, ["run", "FMC", "UNKNOWN", "missing.h5"])
+    assert invalid_target.exit_code == 2
+    assert "Unknown FMC target" in invalid_target.output
+
+
+def test_fmc_multirun(tmp_path):
+    from firebench.standardize import new_std_file, standardize_nfmdb_csv
+
+    csv_path = tmp_path / "obs.csv"
+    csv_path.write_text(
+        "STID,DATE,FUEL_TYPE,FUEL_VARIATION,PERCENT,NAME,GACC,GROUP,LAT,LON,ELE\n"
+        "2,2024-01-01,Pine,None,100,Station,NOCC,Tahoe,39,-120,7600\n"
+    )
+    with new_std_file(str(tmp_path / "obs.h5"), "test") as handle:
+        standardize_nfmdb_csv(csv_path, handle, timezone="America/Los_Angeles")
+    config = tmp_path / "models.yaml"
+    config.write_text("""case: FMC
+target: ALL
+obs_data: obs.h5
+mae_half_score_pp: 10
+event_tolerance_seconds: 3600
+output_dir: results
+models:
+  - name: first
+    model_output: obs.h5
+  - name: second
+    model_output: obs.h5
+""")
+    result = CliRunner().invoke(main, ["multirun", str(config)])
+    assert result.exit_code == 0, result.output
+    for model in ("first", "second"):
+        payload = json.loads((tmp_path / "results" / f"{model}_rslt.json").read_text())
+        assert payload["score_card"]["Score Total"] == 100
+        assert payload["parameters"]["mae_half_score_pp"] == 10
+    assert (tmp_path / "results" / "comparison_scorecard.pdf").exists()

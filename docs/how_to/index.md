@@ -8,6 +8,7 @@ details.
 :maxdepth: 1
 
 validate_hdf5.md
+fuel_moisture.md
 fire_detections.md
 lightning.md
 weather_radar.md
